@@ -53,7 +53,7 @@ function frame(): void {
   const active = strokeCapture.getActiveStroke();
   if (active) {
     renderer.drawStroke(
-      active.points as Array<{ x: number; y: number }>,
+      active.points,
       hexToRgba(active.color),
       active.width,
     );

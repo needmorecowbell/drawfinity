@@ -32,7 +32,7 @@ export class Renderer {
   }
 
   drawStroke(
-    points: StrokePoint[],
+    points: readonly StrokePoint[],
     color: [number, number, number, number],
     width: number,
   ): void {

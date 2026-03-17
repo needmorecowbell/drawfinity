@@ -1,13 +1,13 @@
-import { Stroke } from "./Stroke";
+import { Stroke, DocumentModel } from "./Stroke";
 
-export class DrawDocument {
+export class DrawDocument implements DocumentModel {
   private strokes: Stroke[] = [];
 
   addStroke(stroke: Stroke): void {
     this.strokes.push(stroke);
   }
 
-  getStrokes(): readonly Stroke[] {
+  getStrokes(): Stroke[] {
     return this.strokes;
   }
 

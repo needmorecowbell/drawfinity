@@ -12,6 +12,12 @@ export interface Stroke {
   timestamp: number;
 }
 
+/** Minimal document interface for stroke storage — implemented by both DrawDocument and DrawfinityDoc. */
+export interface DocumentModel {
+  addStroke(stroke: Stroke): void;
+  getStrokes(): Stroke[];
+}
+
 let idCounter = 0;
 
 export function generateStrokeId(): string {

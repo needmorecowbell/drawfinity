@@ -1,6 +1,6 @@
 import { Renderer } from "./renderer";
 import { Camera, CameraController } from "./camera";
-import { DrawDocument } from "./model";
+import { DrawfinityDoc } from "./crdt";
 import { StrokeCapture } from "./input";
 
 const canvas = document.getElementById("drawfinity-canvas") as HTMLCanvasElement;
@@ -11,7 +11,7 @@ if (!canvas) {
 const renderer = new Renderer(canvas);
 const camera = new Camera();
 const cameraController = new CameraController(camera, canvas);
-const doc = new DrawDocument();
+const doc = new DrawfinityDoc();
 const strokeCapture = new StrokeCapture(camera, cameraController, doc, canvas);
 
 // Set initial viewport size

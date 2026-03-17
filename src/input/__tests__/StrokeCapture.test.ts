@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { StrokeCapture } from "../StrokeCapture";
 import { Camera } from "../../camera";
 import { CameraController } from "../../camera";
-import { DrawDocument } from "../../model/Document";
+import { DrawfinityDoc } from "../../crdt";
 
 function createMockCanvas() {
   const listeners: Record<string, Function[]> = {};
@@ -25,7 +25,7 @@ function createMockCanvas() {
 describe("StrokeCapture", () => {
   let camera: Camera;
   let cameraController: { panning: boolean };
-  let doc: DrawDocument;
+  let doc: DrawfinityDoc;
   let canvas: ReturnType<typeof createMockCanvas>;
   let capture: StrokeCapture;
 
@@ -33,7 +33,7 @@ describe("StrokeCapture", () => {
     camera = new Camera();
     camera.setViewportSize(800, 600);
     cameraController = { panning: false };
-    doc = new DrawDocument();
+    doc = new DrawfinityDoc();
     canvas = createMockCanvas();
     capture = new StrokeCapture(
       camera,

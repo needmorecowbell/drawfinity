@@ -1,8 +1,8 @@
 import * as Y from "yjs";
-import { Stroke } from "../model/Stroke";
+import { Stroke, DocumentModel } from "../model/Stroke";
 import { strokeToYMap, yMapToStroke } from "./StrokeAdapter";
 
-export class DrawfinityDoc {
+export class DrawfinityDoc implements DocumentModel {
   private doc: Y.Doc;
   private strokes: Y.Array<Y.Map<unknown>>;
 

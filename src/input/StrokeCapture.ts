@@ -1,12 +1,11 @@
 import { Camera } from "../camera";
 import { CameraController } from "../camera";
-import { DrawDocument } from "../model/Document";
-import { Stroke, StrokePoint, generateStrokeId } from "../model/Stroke";
+import { DocumentModel, Stroke, StrokePoint, generateStrokeId } from "../model/Stroke";
 
 export class StrokeCapture {
   private camera: Camera;
   private cameraController: CameraController;
-  private document: DrawDocument;
+  private document: DocumentModel;
   private canvas: HTMLCanvasElement;
 
   private activeStroke: StrokePoint[] | null = null;
@@ -20,7 +19,7 @@ export class StrokeCapture {
   constructor(
     camera: Camera,
     cameraController: CameraController,
-    document: DrawDocument,
+    document: DocumentModel,
     canvas: HTMLCanvasElement,
   ) {
     this.camera = camera;

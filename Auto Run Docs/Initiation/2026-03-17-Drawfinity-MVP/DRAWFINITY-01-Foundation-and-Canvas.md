@@ -18,7 +18,7 @@ Set up the Tauri + TypeScript project from scratch, establish the WebGL renderin
   - Export a single `Renderer` class that owns the context, shaders, and provides `clear()` and `drawStroke(points, color, width)` methods
   - Wire the canvas into `src/App.tsx` (or `main.ts`) so it fills the window, and call `clear()` on init to confirm WebGL is working — you should see the off-white background
 
-- [ ] Implement the camera system for infinite pan and zoom in `src/camera/`:
+- [x] Implement the camera system for infinite pan and zoom in `src/camera/`:
   - `Camera.ts` — stores `position` (x, y) and `zoom` (scale factor), provides `getTransformMatrix(): mat3` that maps world coordinates to screen (NDC) coordinates, and `screenToWorld(screenX, screenY): {x, y}` for converting pointer positions
   - `CameraController.ts` — listens for pointer events on the canvas:
     - Middle mouse button drag (or Ctrl+left drag) → pan the camera

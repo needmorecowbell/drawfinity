@@ -1,0 +1,1 @@
+export { StrokeCapture } from "./StrokeCapture";

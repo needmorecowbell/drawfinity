@@ -27,7 +27,7 @@ Set up the Tauri + TypeScript project from scratch, establish the WebGL renderin
   - Clamp zoom to a reasonable range (e.g., 0.01x to 100x) to prevent degenerate states
   - Integrate the camera transform matrix into the Renderer's draw calls via the shader uniform
 
-- [ ] Implement freehand stroke capture and the in-memory document model:
+- [x] Implement freehand stroke capture and the in-memory document model:
   - `src/model/Stroke.ts` — define a `Stroke` type: `{ id: string, points: Array<{x: number, y: number, pressure: number}>, color: string, width: number, timestamp: number }`
   - `src/model/Document.ts` — holds an array of `Stroke` objects, provides `addStroke()`, `getStrokes()`, and `clear()` methods. This will later be replaced by the CRDT-backed model, so keep the interface minimal and clean
   - `src/input/StrokeCapture.ts` — on pointerdown (left button), begin a new stroke; on pointermove, append points (converting screen coords to world coords via Camera); on pointerup, finalize the stroke and add it to the Document. Read `pressure` from the PointerEvent (defaults to 0.5 for mice without pressure)

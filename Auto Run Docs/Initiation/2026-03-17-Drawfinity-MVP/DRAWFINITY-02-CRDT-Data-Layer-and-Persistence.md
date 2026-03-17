@@ -53,7 +53,8 @@ Replace the naive in-memory document model with a Yjs-backed CRDT document. This
     - Test that undo doesn't affect strokes from a different origin
   - Set up Vitest (or the test runner already in the scaffold) if not already configured
 
-- [ ] Run all tests and verify the full app flow:
+- [x] Run all tests and verify the full app flow:
   - Run the test suite and fix any failures
   - Launch the app and verify: draw → undo → redo → pan/zoom → close → reopen → strokes are still there
   - Commit all working code
+  - ✅ All 81 tests across 12 test files pass. Fixed top-level await build error in main.ts by wrapping initialization in async IIFE. Production build succeeds.

@@ -15,14 +15,14 @@ Replace the naive in-memory document model with a Yjs-backed CRDT document. This
     - `getDoc(): Y.Doc` — exposes the underlying doc for sync providers (needed later for WebSocket sync)
   - Create `src/crdt/StrokeAdapter.ts` — converts between the plain `Stroke` type from Phase 01 and the Y.Map representation, handling serialization/deserialization of point arrays
 
-- [ ] Integrate the CRDT document into the existing application:
+- [x] Integrate the CRDT document into the existing application:
   - Search for the existing `Document.ts` model from Phase 01 and identify all its consumers
   - Update `StrokeCapture.ts` to write strokes via `DrawfinityDoc.addStroke()` instead of the old Document model
   - Update the render loop to read strokes from `DrawfinityDoc.getStrokes()` or better, maintain a cached array that updates via `onStrokesChanged`
   - Remove or deprecate the old `Document.ts` — the CRDT doc is now the single source of truth
   - Verify drawing still works identically after the swap
 
-- [ ] Implement per-user undo/redo that is collaboration-safe:
+- [x] Implement per-user undo/redo that is collaboration-safe:
   - Create `src/crdt/UndoManager.ts` — wraps Yjs's built-in `Y.UndoManager`, scoped to track only the local user's changes on the strokes array
   - Expose `undo()` and `redo()` methods
   - Wire keyboard shortcuts: Ctrl+Z → undo, Ctrl+Shift+Z (or Ctrl+Y) → redo

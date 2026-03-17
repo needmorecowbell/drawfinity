@@ -1,6 +1,6 @@
 import { Renderer } from "./renderer";
 import { Camera, CameraController } from "./camera";
-import { DrawfinityDoc } from "./crdt";
+import { DrawfinityDoc, UndoManager } from "./crdt";
 import { StrokeCapture } from "./input";
 
 const canvas = document.getElementById("drawfinity-canvas") as HTMLCanvasElement;
@@ -13,6 +13,7 @@ const camera = new Camera();
 const cameraController = new CameraController(camera, canvas);
 const doc = new DrawfinityDoc();
 const strokeCapture = new StrokeCapture(camera, cameraController, doc, canvas);
+const undoManager = new UndoManager(doc.getStrokesArray());
 
 // Set initial viewport size
 camera.setViewportSize(canvas.clientWidth, canvas.clientHeight);
@@ -33,6 +34,35 @@ function hexToRgba(hex: string): [number, number, number, number] {
 
 // HUD overlay
 const hudZoom = document.getElementById("hud-zoom");
+const hudUndo = document.getElementById("hud-undo");
+
+function updateHudUndoRedo(): void {
+  if (hudUndo) {
+    const parts: string[] = [];
+    if (undoManager.canUndo()) parts.push("Undo");
+    if (undoManager.canRedo()) parts.push("Redo");
+    hudUndo.textContent = parts.length > 0 ? parts.join(" · ") : "";
+  }
+}
+
+// Update HUD when undo/redo stack changes
+undoManager.onStackChange(updateHudUndoRedo);
+
+// Keyboard shortcuts for undo/redo
+document.addEventListener("keydown", (e: KeyboardEvent) => {
+  const mod = e.ctrlKey || e.metaKey;
+  if (!mod) return;
+
+  if (e.key === "z" && !e.shiftKey) {
+    e.preventDefault();
+    undoManager.undo();
+    updateHudUndoRedo();
+  } else if ((e.key === "z" && e.shiftKey) || e.key === "y") {
+    e.preventDefault();
+    undoManager.redo();
+    updateHudUndoRedo();
+  }
+});
 
 // Render loop
 function frame(): void {
@@ -68,5 +98,5 @@ console.log("Drawfinity: WebGL2 renderer initialized with camera system");
 
 // Expose for debugging
 (window as unknown as Record<string, unknown>).__drawfinity = {
-  renderer, camera, cameraController, doc, strokeCapture,
+  renderer, camera, cameraController, doc, strokeCapture, undoManager,
 };

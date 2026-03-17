@@ -33,7 +33,7 @@ Set up the Tauri + TypeScript project from scratch, establish the WebGL renderin
   - `src/input/StrokeCapture.ts` — on pointerdown (left button), begin a new stroke; on pointermove, append points (converting screen coords to world coords via Camera); on pointerup, finalize the stroke and add it to the Document. Read `pressure` from the PointerEvent (defaults to 0.5 for mice without pressure)
   - Render all strokes from the Document on every frame using `requestAnimationFrame`. The render loop should: clear the canvas, set the camera uniform, iterate over strokes and draw each one
 
-- [ ] Create the main application entry point that wires everything together:
+- [x] Create the main application entry point that wires everything together:
   - In `src/main.ts` (or `App.tsx`), create the canvas element, initialize Renderer, Camera, CameraController, Document, and StrokeCapture
   - Set up the render loop with `requestAnimationFrame`
   - Add a simple HUD overlay (plain HTML div) showing current zoom level (e.g., "100%") — this confirms the camera is working and gives visual feedback during zoom

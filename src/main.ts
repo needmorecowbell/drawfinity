@@ -31,10 +31,18 @@ function hexToRgba(hex: string): [number, number, number, number] {
   return [r, g, b, 1.0];
 }
 
+// HUD overlay
+const hudZoom = document.getElementById("hud-zoom");
+
 // Render loop
 function frame(): void {
   renderer.clear();
   renderer.setCameraMatrix(camera.getTransformMatrix());
+
+  // Update HUD zoom display
+  if (hudZoom) {
+    hudZoom.textContent = `${Math.round(camera.zoom * 100)}%`;
+  }
 
   // Draw all finalized strokes
   for (const stroke of doc.getStrokes()) {

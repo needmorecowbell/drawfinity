@@ -29,7 +29,7 @@ Replace the naive in-memory document model with a Yjs-backed CRDT document. This
   - Ensure undo only reverts the local user's strokes, not strokes from other origins (this is inherent to Y.UndoManager's tracking, but verify it by simulating two different origins adding strokes)
   - Add undo/redo to the HUD overlay (display "Undo" / "Redo" availability or just test via keyboard)
 
-- [ ] Add local file persistence using Yjs document encoding:
+- [x] Add local file persistence using Yjs document encoding:
   - Create `src/persistence/LocalStorage.ts`:
     - `saveDocument(doc: Y.Doc, filePath: string): Promise<void>` — encodes the Y.Doc state to a binary update (`Y.encodeStateAsUpdate`) and writes it to disk via Tauri's `fs` API
     - `loadDocument(filePath: string): Promise<Y.Doc>` — reads the binary file and applies it to a new Y.Doc via `Y.applyUpdate`

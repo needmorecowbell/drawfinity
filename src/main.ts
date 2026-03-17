@@ -2,6 +2,7 @@ import { Renderer } from "./renderer";
 import { Camera, CameraController } from "./camera";
 import { DrawfinityDoc, UndoManager } from "./crdt";
 import { StrokeCapture } from "./input";
+import { loadDocument, getDefaultFilePath, AutoSave } from "./persistence";
 
 const canvas = document.getElementById("drawfinity-canvas") as HTMLCanvasElement;
 if (!canvas) {
@@ -11,7 +12,28 @@ if (!canvas) {
 const renderer = new Renderer(canvas);
 const camera = new Camera();
 const cameraController = new CameraController(camera, canvas);
-const doc = new DrawfinityDoc();
+
+// Load persisted document if it exists, otherwise start fresh
+let doc: DrawfinityDoc;
+let autoSave: AutoSave;
+
+try {
+  const savePath = await getDefaultFilePath();
+  const loadedDoc = await loadDocument(savePath);
+  doc = new DrawfinityDoc(loadedDoc ?? undefined);
+  autoSave = new AutoSave(doc.getDoc(), savePath);
+  autoSave.start();
+  if (loadedDoc) {
+    console.log("Drawfinity: loaded saved document from", savePath);
+  }
+} catch (err) {
+  console.warn("Drawfinity: could not load saved document, starting fresh", err);
+  doc = new DrawfinityDoc();
+  const savePath = await getDefaultFilePath();
+  autoSave = new AutoSave(doc.getDoc(), savePath);
+  autoSave.start();
+}
+
 const strokeCapture = new StrokeCapture(camera, cameraController, doc, canvas);
 const undoManager = new UndoManager(doc.getStrokesArray());
 
@@ -96,7 +118,12 @@ requestAnimationFrame(frame);
 // Confirm WebGL is working — the off-white background should be visible
 console.log("Drawfinity: WebGL2 renderer initialized with camera system");
 
+// Save before closing
+window.addEventListener("beforeunload", () => {
+  autoSave.saveNow();
+});
+
 // Expose for debugging
 (window as unknown as Record<string, unknown>).__drawfinity = {
-  renderer, camera, cameraController, doc, strokeCapture, undoManager,
+  renderer, camera, cameraController, doc, strokeCapture, undoManager, autoSave,
 };

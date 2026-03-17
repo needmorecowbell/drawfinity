@@ -42,7 +42,7 @@ Replace the naive in-memory document model with a Yjs-backed CRDT document. This
   - On app launch, check for an existing save file and load it if present
   - Verify: draw some strokes, close the app, reopen — strokes should persist
 
-- [ ] Write tests for the CRDT data layer:
+- [x] Write tests for the CRDT data layer:
   - Create `src/crdt/__tests__/DrawfinityDoc.test.ts`:
     - Test adding strokes and reading them back
     - Test that two independent Y.Docs can sync by exchanging state updates (simulates future collaboration)

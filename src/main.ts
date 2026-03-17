@@ -1,22 +1,15 @@
-import { invoke } from "@tauri-apps/api/core";
+import { Renderer } from "./renderer";
 
-let greetInputEl: HTMLInputElement | null;
-let greetMsgEl: HTMLElement | null;
-
-async function greet() {
-  if (greetMsgEl && greetInputEl) {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    greetMsgEl.textContent = await invoke("greet", {
-      name: greetInputEl.value,
-    });
-  }
+const canvas = document.getElementById("drawfinity-canvas") as HTMLCanvasElement;
+if (!canvas) {
+  throw new Error("Canvas element not found");
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-  greetInputEl = document.querySelector("#greet-input");
-  greetMsgEl = document.querySelector("#greet-msg");
-  document.querySelector("#greet-form")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    greet();
-  });
-});
+const renderer = new Renderer(canvas);
+renderer.clear();
+
+// Confirm WebGL is working — the off-white background should be visible
+console.log("Drawfinity: WebGL2 renderer initialized");
+
+// Expose for debugging
+(window as unknown as Record<string, unknown>).__drawfinity = { renderer };

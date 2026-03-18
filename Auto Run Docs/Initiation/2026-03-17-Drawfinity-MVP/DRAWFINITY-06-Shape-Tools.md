@@ -66,10 +66,11 @@ Add geometric shape tools (rectangle, ellipse, polygon, star) as first-class can
   - Wire keyboard shortcuts
   - *(Completed: Added 4 shape tool buttons (▭ ○ ⬡ ☆) with active highlighting, fill toggle + fill color picker, sides spinner for polygon/star, onShapeConfigChange callback, wired shape config changes to ToolManager and ShapeCapture, 29 Toolbar tests passing, 428 total tests passing)*
 
-- [ ] Eraser support for shapes:
+- [x] Eraser support for shapes:
   - Update `EraserTool.ts` with shape intersection tests (point-in-rotated-rect, point-in-ellipse, point-in-polygon)
   - Shapes are erased whole (no splitting — unlike strokes, splitting a rectangle doesn't make geometric sense)
   - Use `removeShape()` through the existing undo-friendly transaction flow
+  - *(Completed: Added `worldToShapeLocal()` for rotation-aware local coordinate transform, `pointIntersectsRectangle()` using SDF, `pointIntersectsEllipse()` with gradient approximation, `pointIntersectsPolygonVertices()` with edge distance + ray-cast interior test, `getPolygonVertices()`/`getStarVertices()` generators, `pointIntersectsShape()` dispatcher, `findIntersectingShapes()` on EraserTool class. Extended `DocumentModel` with optional `getShapes()`/`removeShape()`. Updated `StrokeCapture.eraseAt()` to also erase shapes via whole-shape removal. 29 new shape eraser tests, 457 total tests passing)*
 
 - [ ] Tests:
   - Unit tests for ShapeMesh vertex generation (all 4 shape types)

@@ -118,14 +118,25 @@ export class StrokeCapture {
   }
 
   private eraseAt(worldX: number, worldY: number): void {
-    if (!this.document.replaceStroke && !this.document.removeStroke) return;
-    const strokes = this.document.getStrokes();
-    const results = this.eraserTool.computeErasureResults(worldX, worldY, strokes);
-    for (const { strokeId, fragments } of results) {
-      if (this.document.replaceStroke) {
-        this.document.replaceStroke(strokeId, fragments);
-      } else if (this.document.removeStroke) {
-        this.document.removeStroke(strokeId);
+    // Erase strokes (split or remove)
+    if (this.document.replaceStroke || this.document.removeStroke) {
+      const strokes = this.document.getStrokes();
+      const results = this.eraserTool.computeErasureResults(worldX, worldY, strokes);
+      for (const { strokeId, fragments } of results) {
+        if (this.document.replaceStroke) {
+          this.document.replaceStroke(strokeId, fragments);
+        } else if (this.document.removeStroke) {
+          this.document.removeStroke(strokeId);
+        }
+      }
+    }
+
+    // Erase shapes (whole-shape removal)
+    if (this.document.getShapes && this.document.removeShape) {
+      const shapes = this.document.getShapes();
+      const hitShapeIds = this.eraserTool.findIntersectingShapes(worldX, worldY, shapes);
+      for (const shapeId of hitShapeIds) {
+        this.document.removeShape(shapeId);
       }
     }
   }

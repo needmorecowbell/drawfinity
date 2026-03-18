@@ -21,7 +21,7 @@ Introduce local user identity for collaboration: name, color, persistent prefere
   - Create `src/user/index.ts` barrel export
   - Create `src/user/__tests__/UserStore.test.ts` — test load/save, default generation, persistence
 
-- [ ] User preferences:
+- [x] User preferences:
   - Create `src/user/UserPreferences.ts` with `UserPreferences` interface: `defaultBrush` (preset index), `defaultColor` (hex), `saveDirectory?` (string, Tauri only), `serverUrl?` (string), `lastRoomId?` (string)
   - `loadPreferences(): UserPreferences` — reads from localStorage with sensible defaults
   - `savePreferences(prefs): void` — persists to localStorage

@@ -7,10 +7,11 @@ import { DrawfinityDoc, UndoManager } from "./crdt";
 import { StrokeCapture, ShapeCapture } from "./input";
 import { ToolManager, BRUSH_PRESETS, isShapeTool } from "./tools";
 import type { ToolType } from "./tools";
-import { Toolbar, ConnectionPanel } from "./ui";
+import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel } from "./ui";
 import { CursorManager } from "./ui/CursorManager";
 import { FpsCounter } from "./ui/FpsCounter";
 import { SyncManager } from "./sync";
+import { loadProfile, loadPreferences } from "./user";
 
 const canvas = document.getElementById("drawfinity-canvas") as HTMLCanvasElement;
 if (!canvas) {
@@ -71,6 +72,20 @@ window.addEventListener("unhandledrejection", (e) => {
 
   const syncManager = new SyncManager(doc.getDoc());
   const toolManager = new ToolManager();
+
+  // Load user profile and preferences
+  let userProfile = loadProfile();
+  let userPreferences = loadPreferences();
+
+  // Pass user profile to SyncManager for awareness
+  syncManager.setUser(userProfile);
+
+  // Apply user preferences: default brush and default color
+  if (userPreferences.defaultBrush >= 0 && userPreferences.defaultBrush < BRUSH_PRESETS.length) {
+    toolManager.setBrush(BRUSH_PRESETS[userPreferences.defaultBrush]);
+  }
+  toolManager.setColor(userPreferences.defaultColor);
+
   const strokeCapture = new StrokeCapture(camera, cameraController, doc, canvas);
   strokeCapture.setBrushConfig(toolManager.getBrush());
   const shapeCapture = new ShapeCapture(camera, cameraController, doc, canvas);
@@ -187,8 +202,85 @@ window.addEventListener("unhandledrejection", (e) => {
   // Initialize toolbar shape config from ToolManager defaults
   toolbar.setShapeConfig(toolManager.getShapeConfig());
 
+  // Initialize toolbar with user preferences
+  if (userPreferences.defaultBrush >= 0 && userPreferences.defaultBrush < BRUSH_PRESETS.length) {
+    toolbar.selectBrush(userPreferences.defaultBrush);
+  }
+  toolbar.setColorUI(userPreferences.defaultColor);
+
   // Connection panel
   const connectionPanel = new ConnectionPanel(syncManager);
+
+  // Remote cursors overlay
+  const remoteCursors = new RemoteCursors(document.body, camera);
+  remoteCursors.attach(syncManager);
+
+  // Settings panel
+  const settingsPanel = new SettingsPanel(userProfile, userPreferences, {
+    onSave: (profile, preferences) => {
+      userProfile = profile;
+      userPreferences = preferences;
+      syncManager.setUser(profile);
+      // Apply updated default brush/color
+      if (preferences.defaultBrush >= 0 && preferences.defaultBrush < BRUSH_PRESETS.length) {
+        toolManager.setBrush(BRUSH_PRESETS[preferences.defaultBrush]);
+        strokeCapture.setBrushConfig(toolManager.getBrush());
+        toolbar.selectBrush(preferences.defaultBrush);
+        cursorManager.setBrushWidth(toolManager.getBrush().baseWidth);
+      }
+      toolManager.setColor(preferences.defaultColor);
+      strokeCapture.setColor(preferences.defaultColor);
+      toolbar.setColorUI(preferences.defaultColor);
+      // Update user color indicator
+      updateUserColorIndicator();
+    },
+  });
+
+  // Settings gear button in toolbar
+  const settingsButton = document.createElement("button");
+  settingsButton.className = "toolbar-btn settings-btn";
+  settingsButton.title = "Settings (Ctrl+,)";
+  settingsButton.textContent = "\u2699"; // ⚙
+  settingsButton.addEventListener("pointerdown", (e) => {
+    e.stopPropagation();
+    settingsPanel.toggle();
+  });
+  const toolbarEl = document.getElementById("toolbar");
+  if (toolbarEl) {
+    toolbarEl.appendChild(settingsButton);
+  }
+
+  // User color indicator (shown when connected to collaboration session)
+  const userColorIndicator = document.createElement("div");
+  userColorIndicator.className = "user-color-indicator";
+  userColorIndicator.style.display = "none";
+  userColorIndicator.style.backgroundColor = userProfile.color;
+  userColorIndicator.title = userProfile.name;
+  if (toolbarEl) {
+    toolbarEl.appendChild(userColorIndicator);
+  }
+
+  function updateUserColorIndicator(): void {
+    userColorIndicator.style.backgroundColor = userProfile.color;
+    userColorIndicator.title = userProfile.name;
+  }
+
+  // Show/hide user color indicator based on connection state
+  syncManager.onConnectionStateChange((state) => {
+    userColorIndicator.style.display = state === "connected" ? "" : "none";
+  });
+
+  // Broadcast cursor position on pointermove when connected
+  canvas.addEventListener("pointermove", (e) => {
+    if (syncManager.getConnectionState() !== "connected") return;
+    const rect = canvas.getBoundingClientRect();
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    const [vw, vh] = camera.getViewportSize();
+    const worldX = (screenX - vw / 2) / camera.zoom + camera.x;
+    const worldY = (screenY - vh / 2) / camera.zoom + camera.y;
+    syncManager.updateCursorPosition(worldX, worldY);
+  });
 
   // Cursor manager — reflects active tool and brush size
   const cursorManager = new CursorManager(canvas);
@@ -228,6 +320,13 @@ window.addEventListener("unhandledrejection", (e) => {
     if (mod && e.key === "k") {
       e.preventDefault();
       connectionPanel.toggle();
+      return;
+    }
+
+    // Settings panel toggle
+    if (mod && e.key === ",") {
+      e.preventDefault();
+      settingsPanel.toggle();
       return;
     }
 
@@ -280,6 +379,9 @@ window.addEventListener("unhandledrejection", (e) => {
     // Update toolbar zoom display and cursor size
     toolbar.updateZoom(camera.zoom * 100);
     cursorManager.setZoom(camera.zoom);
+
+    // Reposition remote cursors on camera change
+    remoteCursors.updatePositions();
 
     // Draw dot grid background
     const viewportBounds = camera.getViewportBounds();
@@ -359,13 +461,14 @@ window.addEventListener("unhandledrejection", (e) => {
 
   // Clean up before closing
   window.addEventListener("beforeunload", () => {
+    remoteCursors.detach();
     syncManager.disconnect();
     autoSave.saveNow();
   });
 
   // Expose for debugging
   (window as unknown as Record<string, unknown>).__drawfinity = {
-    renderer, camera, cameraAnimator, cameraController, doc, strokeCapture, shapeCapture, undoManager, autoSave, toolManager, toolbar, syncManager, connectionPanel, spatialIndex, cursorManager, fpsCounter,
+    renderer, camera, cameraAnimator, cameraController, doc, strokeCapture, shapeCapture, undoManager, autoSave, toolManager, toolbar, syncManager, connectionPanel, spatialIndex, cursorManager, fpsCounter, remoteCursors, settingsPanel,
   };
 
   console.log("Drawfinity: init complete, toolbar created");

@@ -156,6 +156,21 @@ html, body {
   text-align: center;
 }
 
+.toolbar-btn.settings-btn {
+  font-size: 18px;
+  margin-left: auto;
+}
+
+.user-color-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
 /* Shape options panel */
 .shape-options {
   gap: 4px;

@@ -57,7 +57,7 @@ Introduce local user identity for collaboration: name, color, persistent prefere
     - "Save" / "Close" buttons
   - Persist changes to UserStore and UserPreferences on save
 
-- [ ] Wire into main.ts:
+- [x] Wire into main.ts:
   - Load UserProfile and UserPreferences on startup
   - Pass UserProfile to SyncManager
   - Apply UserPreferences to ToolManager (default brush, default color)

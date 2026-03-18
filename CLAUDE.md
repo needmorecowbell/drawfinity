@@ -125,6 +125,7 @@ Each module has an `index.ts` barrel. Import from the barrel (`from "./renderer"
 | `Ctrl+0` | Reset zoom to 100% |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / Redo |
 | `Ctrl+K` | Toggle connection panel |
+| `Ctrl+,` | Toggle settings panel |
 | `F3` | Toggle FPS counter |
 | Middle mouse drag | Pan |
 | Scroll wheel | Zoom (discrete steps) |

@@ -1,6 +1,7 @@
 import { WebGLContext } from "./WebGLContext";
 import { StrokeRenderer, StrokePoint } from "./StrokeRenderer";
 import { DotGridRenderer } from "./DotGridRenderer";
+import { StrokeVertexCache } from "./StrokeVertexCache";
 
 /**
  * Top-level renderer that owns the WebGL context, shaders, and stroke renderer.
@@ -10,11 +11,13 @@ export class Renderer {
   private context: WebGLContext;
   private strokeRenderer: StrokeRenderer;
   private dotGridRenderer: DotGridRenderer;
+  readonly vertexCache: StrokeVertexCache;
 
   constructor(canvas: HTMLCanvasElement) {
     this.context = new WebGLContext(canvas);
     this.strokeRenderer = new StrokeRenderer(this.context.gl);
     this.dotGridRenderer = new DotGridRenderer(this.context.gl);
+    this.vertexCache = new StrokeVertexCache();
   }
 
   get gl(): WebGL2RenderingContext {
@@ -48,6 +51,14 @@ export class Renderer {
     width: number,
   ): void {
     this.strokeRenderer.drawStroke(points, color, width);
+  }
+
+  /**
+   * Draw multiple strokes in a single batched draw call.
+   * Pass pre-generated vertex data arrays (from StrokeVertexCache).
+   */
+  drawStrokeBatch(strips: Float32Array[]): void {
+    this.strokeRenderer.drawStrokeBatch(strips);
   }
 
   destroy(): void {

@@ -7,6 +7,7 @@ import { StrokeCapture } from "./input";
 import { ToolManager, BRUSH_PRESETS } from "./tools";
 import { Toolbar, ConnectionPanel } from "./ui";
 import { CursorManager } from "./ui/CursorManager";
+import { FpsCounter } from "./ui/FpsCounter";
 import { SyncManager } from "./sync";
 
 const canvas = document.getElementById("drawfinity-canvas") as HTMLCanvasElement;
@@ -62,6 +63,7 @@ window.addEventListener("unhandledrejection", (e) => {
   doc.onStrokesChanged(() => {
     spatialIndex.rebuild(doc.getStrokes());
     clearLODCache(); // Invalidate LOD cache when stroke set changes
+    renderer.vertexCache.clear(); // Invalidate vertex cache when strokes change
   });
 
   const syncManager = new SyncManager(doc.getDoc());
@@ -69,6 +71,9 @@ window.addEventListener("unhandledrejection", (e) => {
   const strokeCapture = new StrokeCapture(camera, cameraController, doc, canvas);
   strokeCapture.setBrushConfig(toolManager.getBrush());
   const undoManager = new UndoManager(doc.getStrokesArray());
+
+  // FPS counter (toggled with F3)
+  const fpsCounter = new FpsCounter();
 
   // Set initial viewport size
   camera.setViewportSize(canvas.clientWidth, canvas.clientHeight);
@@ -155,6 +160,13 @@ window.addEventListener("unhandledrejection", (e) => {
   document.addEventListener("keydown", (e: KeyboardEvent) => {
     const mod = e.ctrlKey || e.metaKey;
 
+    // FPS counter toggle
+    if (e.key === "F3") {
+      e.preventDefault();
+      fpsCounter.toggle();
+      return;
+    }
+
     // Undo/Redo
     if (mod && e.key === "z" && !e.shiftKey) {
       e.preventDefault();
@@ -204,7 +216,7 @@ window.addEventListener("unhandledrejection", (e) => {
   });
 
   // Render loop
-  function frame(): void {
+  function frame(now: number): void {
     // Advance smooth zoom/pan animations (momentum, animated transitions)
     cameraAnimator.tick();
 
@@ -221,16 +233,27 @@ window.addEventListener("unhandledrejection", (e) => {
     renderer.drawDotGrid(cameraMatrix, viewportBounds, camera.zoom);
 
     // Draw only strokes visible in the current viewport, with LOD simplification
+    const allStrokes = doc.getStrokes();
     const visibleStrokes = spatialIndex.query(viewportBounds);
     const currentZoom = camera.zoom;
+    const vertexCache = renderer.vertexCache;
+
+    // Batch all visible strokes into a single draw call
+    const strips: Float32Array[] = [];
     for (const stroke of visibleStrokes) {
       const rgba = hexToRgba(stroke.color);
       rgba[3] = stroke.opacity ?? 1.0;
       const lodPoints = getStrokeLOD(stroke.id, stroke.points, currentZoom);
-      renderer.drawStroke(lodPoints, rgba, stroke.width);
+      const data = vertexCache.get(stroke.id, lodPoints, rgba, stroke.width, currentZoom);
+      if (data) {
+        strips.push(data);
+      }
+    }
+    if (strips.length > 0) {
+      renderer.drawStrokeBatch(strips);
     }
 
-    // Draw the in-progress stroke
+    // Draw the in-progress stroke (not cached — it changes every frame)
     const active = strokeCapture.getActiveStroke();
     if (active) {
       const rgba = hexToRgba(active.color);
@@ -241,6 +264,9 @@ window.addEventListener("unhandledrejection", (e) => {
         active.width,
       );
     }
+
+    // Update FPS counter
+    fpsCounter.update(now, allStrokes.length, visibleStrokes.length);
 
     requestAnimationFrame(frame);
   }
@@ -257,7 +283,7 @@ window.addEventListener("unhandledrejection", (e) => {
 
   // Expose for debugging
   (window as unknown as Record<string, unknown>).__drawfinity = {
-    renderer, camera, cameraAnimator, cameraController, doc, strokeCapture, undoManager, autoSave, toolManager, toolbar, syncManager, connectionPanel, spatialIndex, cursorManager,
+    renderer, camera, cameraAnimator, cameraController, doc, strokeCapture, undoManager, autoSave, toolManager, toolbar, syncManager, connectionPanel, spatialIndex, cursorManager, fpsCounter,
   };
 
   console.log("Drawfinity: init complete, toolbar created");

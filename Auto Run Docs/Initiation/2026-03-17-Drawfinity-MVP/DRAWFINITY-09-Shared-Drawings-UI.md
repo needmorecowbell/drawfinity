@@ -34,7 +34,7 @@ Build a browsable interface for collaborative drawings: configure server URL, li
   - Add CORS headers for the API routes (already have `tower-http` CORS)
   - Server-side tests for each endpoint (in `server/src/api.rs` or `tests/`)
 
-- [ ] Client: Server API client:
+- [x] Client: Server API client:
   - Create `src/sync/ServerApi.ts`:
     - `fetchRooms(serverUrl): Promise<RoomInfo[]>` — HTTP GET `/api/rooms`, parse JSON
     - `fetchRoom(serverUrl, roomId): Promise<RoomDetail>` — HTTP GET room detail

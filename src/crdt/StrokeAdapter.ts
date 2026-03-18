@@ -6,6 +6,7 @@ import { Stroke, StrokePoint } from "../model/Stroke";
  */
 export function strokeToYMap(stroke: Stroke): Y.Map<unknown> {
   const yMap = new Y.Map<unknown>();
+  yMap.set("type", "stroke");
   yMap.set("id", stroke.id);
   yMap.set("color", stroke.color);
   yMap.set("width", stroke.width);

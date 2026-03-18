@@ -29,7 +29,7 @@ Add geometric shape tools (rectangle, ellipse, polygon, star) as first-class can
   - Apply rotation transform to all vertices
   - Create `src/renderer/__tests__/ShapeMesh.test.ts` with tests for each shape type: vertex count, winding order, bounding correctness
 
-- [ ] Update CRDT layer for shapes:
+- [x] Update CRDT layer for shapes:
   - Add `shapeToYMap()` and `yMapToShape()` to `src/crdt/StrokeAdapter.ts` (or create `ShapeAdapter.ts`)
   - Add `type` field to Y.Map for new items; absent `type` → stroke for backward compat
   - Add to `DrawfinityDoc.ts`: `addShape(shape)`, `removeShape(shapeId)`, `getShapes()`, `getAllItems(): CanvasItem[]`

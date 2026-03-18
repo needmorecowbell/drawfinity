@@ -46,7 +46,7 @@ Add a home screen that appears before the canvas, allowing users to browse, crea
     - Generate on explicit save and periodically (every 30s of activity), not on every auto-save
   - Store thumbnail in manifest via DrawingManager
 
-- [ ] Refactor main.ts into CanvasApp:
+- [x] Refactor main.ts into CanvasApp:
   - Create `src/canvas/CanvasApp.ts`:
     - Encapsulates: Renderer, Camera, CameraController, DrawfinityDoc, StrokeCapture, Toolbar, SyncManager, AutoSave, FpsCounter, UndoManager
     - `async init(drawingId: string): Promise<void>` — load drawing, set up canvas, start render loop

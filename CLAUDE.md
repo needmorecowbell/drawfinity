@@ -16,7 +16,7 @@ npm run tauri dev
 # Build production bundle
 npm run build
 
-# Run all tests (356 tests, ~2s)
+# Run all tests (597 tests, ~5s)
 npx vitest run
 
 # Run a specific test file
@@ -42,9 +42,10 @@ npm run tauri:fresh
 
 ```
 src/
-├── main.ts              # App bootstrap, render loop, keyboard shortcuts
+├── main.ts              # App bootstrap — creates CanvasApp, loads DrawingManager
 ├── styles.css           # All CSS (toolbar, connection panel, HUD)
 ├── camera/              # Pan/zoom with momentum and animated transitions
+├── canvas/              # CanvasApp class — encapsulates full drawing canvas lifecycle
 ├── crdt/                # Yjs CRDT document, stroke adapter, undo manager
 ├── input/               # Pointer event capture, stroke smoothing
 ├── model/               # Stroke/Document type definitions
@@ -103,7 +104,7 @@ On Linux, Tauri uses WebKitGTK which **aggressively caches** frontend assets. If
 `tsconfig.json` has `noUnusedLocals` and `noUnusedParameters` enabled. Unused imports will break `npm run build`. Remove them rather than prefixing with `_`.
 
 ### Test environment
-Tests use **Vitest** with **jsdom** for DOM-dependent tests. WebGL is mocked in renderer tests. Run the full suite with `npx vitest run` — all 316 tests should pass in ~2s.
+Tests use **Vitest** with **jsdom** for DOM-dependent tests. WebGL is mocked in renderer tests. Run the full suite with `npx vitest run` — all 597 tests should pass in ~2s.
 
 ### Barrel exports
 Each module has an `index.ts` barrel. Import from the barrel (`from "./renderer"`) not from individual files, unless you need a specific non-exported type.

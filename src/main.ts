@@ -1,6 +1,7 @@
 import { Renderer } from "./renderer";
 import { SpatialIndex } from "./renderer/SpatialIndex";
 import { getStrokeLOD, clearLODCache } from "./renderer/StrokeLOD";
+import { generateShapeVertices } from "./renderer/ShapeMesh";
 import { Camera, CameraAnimator, CameraController } from "./camera";
 import { DrawfinityDoc, UndoManager } from "./crdt";
 import { StrokeCapture, ShapeCapture } from "./input";
@@ -58,13 +59,14 @@ window.addEventListener("unhandledrejection", (e) => {
   }
 
   const spatialIndex = new SpatialIndex();
-  // Build initial index from any persisted strokes
-  spatialIndex.rebuild(doc.getStrokes());
-  // Keep index in sync when strokes change (add/remove/undo/redo/remote sync)
+  // Build initial index from any persisted strokes and shapes
+  spatialIndex.rebuildAll(doc.getStrokes(), doc.getShapes());
+  // Keep index in sync when items change (add/remove/undo/redo/remote sync)
   doc.onStrokesChanged(() => {
-    spatialIndex.rebuild(doc.getStrokes());
+    spatialIndex.rebuildAll(doc.getStrokes(), doc.getShapes());
     clearLODCache(); // Invalidate LOD cache when stroke set changes
     renderer.vertexCache.clear(); // Invalidate vertex cache when strokes change
+    renderer.shapeVertexCache.clear(); // Invalidate shape vertex cache
   });
 
   const syncManager = new SyncManager(doc.getDoc());
@@ -271,6 +273,23 @@ window.addEventListener("unhandledrejection", (e) => {
     const currentZoom = camera.zoom;
     const vertexCache = renderer.vertexCache;
 
+    // Draw visible shapes (fills first, then outlines on top)
+    const visibleShapes = spatialIndex.queryShapes(viewportBounds);
+    const shapeVertexCache = renderer.shapeVertexCache;
+    const shapeFills: Float32Array[] = [];
+    const shapeOutlines: Float32Array[] = [];
+    for (const shape of visibleShapes) {
+      const vd = shapeVertexCache.get(shape);
+      if (vd.fill) shapeFills.push(vd.fill);
+      if (vd.outline) shapeOutlines.push(vd.outline);
+    }
+    if (shapeFills.length > 0) {
+      renderer.drawShapeFillBatch(shapeFills);
+    }
+    if (shapeOutlines.length > 0) {
+      renderer.drawShapeOutlineBatch(shapeOutlines);
+    }
+
     // Batch all visible strokes into a single draw call
     const strips: Float32Array[] = [];
     for (const stroke of visibleStrokes) {
@@ -296,6 +315,18 @@ window.addEventListener("unhandledrejection", (e) => {
         rgba,
         active.width,
       );
+    }
+
+    // Draw the in-progress shape preview (not cached — it changes every frame)
+    const previewShape = shapeCapture.getPreviewShape();
+    if (previewShape) {
+      const pvd = generateShapeVertices(previewShape);
+      if (pvd.fill) {
+        renderer.drawShapeFillBatch([pvd.fill]);
+      }
+      if (pvd.outline) {
+        renderer.drawShapeOutlineBatch([pvd.outline]);
+      }
     }
 
     // Update FPS counter

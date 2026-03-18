@@ -52,11 +52,12 @@ Add geometric shape tools (rectangle, ellipse, polygon, star) as first-class can
   - Add keyboard shortcuts: `R` for rectangle, `O` for ellipse, `P` for polygon, `S` for star (check for conflicts with existing shortcuts)
   - *(Completed: Extended ToolType, added ShapeToolConfig/isShapeTool/SHAPE_TOOL_TYPES, wired ShapeCapture enable/disable in main.ts switchTool, added StrokeCapture.setEnabled gating, keyboard shortcuts R/O/P/S, 13 ToolManager tests passing, 401 total tests passing)*
 
-- [ ] Update renderer and spatial index:
+- [x] Update renderer and spatial index:
   - Update `SpatialIndex.ts` to index shapes by their AABB (trivial from center + width/height + rotation)
   - Create `ShapeVertexCache.ts` (or extend `StrokeVertexCache`) to cache shape vertex data, invalidated on shape change
   - Update render loop in `main.ts` to render shapes alongside strokes in the same batch pass (or a second pass if fill requires different draw mode)
   - Update `Renderer.ts` with `drawShape()` or integrate into `drawStrokeBatch()`
+  - *(Completed: Added `computeShapeBounds()` with rotation-aware AABB, `addShape()`/`removeShape()`/`queryShapes()`/`rebuildAll()` to SpatialIndex, created ShapeVertexCache, added `drawShapeFillBatch()` (GL_TRIANGLES) and `drawShapeOutlineBatch()` (TRIANGLE_STRIP) to Renderer via `drawTriangleBatch()` on StrokeRenderer, integrated shape rendering + live preview into main.ts render loop, 419 tests passing)*
 
 - [ ] Update toolbar UI:
   - Add shape tool buttons to the toolbar (rectangle, ellipse, polygon icons)

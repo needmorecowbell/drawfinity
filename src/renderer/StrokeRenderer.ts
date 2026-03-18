@@ -177,6 +177,47 @@ export class StrokeRenderer {
     gl.bindVertexArray(null);
   }
 
+  /**
+   * Draw multiple triangle-list arrays in a single draw call (GL_TRIANGLES).
+   * Used for shape fills which use triangle fan geometry rather than strips.
+   */
+  drawTriangleBatch(triangleArrays: Float32Array[]): void {
+    if (triangleArrays.length === 0) return;
+
+    const gl = this.gl;
+
+    let totalFloats = 0;
+    for (const arr of triangleArrays) {
+      totalFloats += arr.length;
+    }
+    if (totalFloats === 0) return;
+
+    // Grow the reusable batch buffer if needed
+    if (totalFloats > this.batchBufferCapacity) {
+      this.batchBufferCapacity = Math.ceil(totalFloats * 1.5);
+      this.batchBuffer = new Float32Array(this.batchBufferCapacity);
+    }
+
+    const buffer = this.batchBuffer!;
+    let offset = 0;
+
+    for (const arr of triangleArrays) {
+      if (arr.length === 0) continue;
+      buffer.set(arr, offset);
+      offset += arr.length;
+    }
+
+    const vertexCount = offset / 6;
+    if (vertexCount === 0) return;
+
+    this.shader.use();
+    gl.bindVertexArray(this.vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, buffer.subarray(0, offset), gl.DYNAMIC_DRAW);
+    gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
+    gl.bindVertexArray(null);
+  }
+
   destroy(): void {
     this.gl.deleteBuffer(this.vbo);
     this.gl.deleteVertexArray(this.vao);

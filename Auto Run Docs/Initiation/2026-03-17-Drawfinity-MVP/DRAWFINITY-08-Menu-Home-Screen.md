@@ -38,7 +38,7 @@ Add a home screen that appears before the canvas, allowing users to browse, crea
   - Update `LocalStorage.ts` to delegate to DrawingManager
   - Update `AutoSave.ts` to accept a drawing ID and save to the correct file path
 
-- [ ] Thumbnail generation:
+- [x] Thumbnail generation:
   - Create `src/persistence/ThumbnailGenerator.ts`:
     - Create a small offscreen WebGL2 canvas (200x150)
     - Render all strokes/shapes with a computed "fit all" camera transform

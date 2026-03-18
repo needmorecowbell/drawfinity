@@ -33,8 +33,12 @@ export class HomeScreen {
   constructor(callbacks: HomeScreenCallbacks) {
     this.callbacks = callbacks;
 
-    this.container = document.createElement("div");
+    // Use existing DOM container if available, otherwise create one (for tests)
+    this.container =
+      document.getElementById("home-screen") ??
+      document.createElement("div");
     this.container.id = "home-screen";
+    this.container.innerHTML = "";
 
     // Header
     const header = document.createElement("div");
@@ -144,14 +148,17 @@ export class HomeScreen {
   show(): void {
     if (this.visible) return;
     this.visible = true;
-    document.body.appendChild(this.container);
+    if (!this.container.parentNode) {
+      document.body.appendChild(this.container);
+    }
+    this.container.style.display = "";
     document.addEventListener("pointerdown", this.boundCloseContextMenu);
   }
 
   hide(): void {
     if (!this.visible) return;
     this.visible = false;
-    this.container.remove();
+    this.container.style.display = "none";
     this.closeContextMenu();
     document.removeEventListener("pointerdown", this.boundCloseContextMenu);
   }
@@ -162,6 +169,7 @@ export class HomeScreen {
 
   destroy(): void {
     this.hide();
+    this.container.innerHTML = "";
   }
 
   getContainer(): HTMLElement {

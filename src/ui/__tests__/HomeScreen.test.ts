@@ -51,11 +51,11 @@ describe("HomeScreen", () => {
     expect(document.getElementById("home-screen")).not.toBeNull();
   });
 
-  it("hide() removes container from DOM", () => {
+  it("hide() hides container", () => {
     screen.show();
     screen.hide();
     expect(screen.isVisible()).toBe(false);
-    expect(document.getElementById("home-screen")).toBeNull();
+    expect(screen.getContainer().style.display).toBe("none");
   });
 
   it("shows empty state when no drawings", () => {
@@ -329,8 +329,8 @@ describe("HomeScreen", () => {
   it("destroy cleans up DOM", () => {
     screen.show();
     screen.destroy();
-    expect(document.getElementById("home-screen")).toBeNull();
     expect(screen.isVisible()).toBe(false);
+    expect(screen.getContainer().children.length).toBe(0);
   });
 
   it("keydown in search input does not propagate", () => {

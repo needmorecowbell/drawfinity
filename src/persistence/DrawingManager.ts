@@ -57,6 +57,12 @@ export class DrawingManager {
     return manifest.drawings;
   }
 
+  async getDrawingName(id: string): Promise<string> {
+    const manifest = await this.ensureManifest();
+    const drawing = manifest.drawings.find((d) => d.id === id);
+    return drawing?.name ?? "Untitled";
+  }
+
   async createDrawing(name: string): Promise<DrawingMetadata> {
     const manifest = await this.ensureManifest();
     const id = generateId();

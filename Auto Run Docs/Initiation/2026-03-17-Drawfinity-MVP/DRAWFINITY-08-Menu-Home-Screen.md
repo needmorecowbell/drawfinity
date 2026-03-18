@@ -83,10 +83,11 @@ Add a home screen that appears before the canvas, allowing users to browse, crea
   - Keyboard shortcut: `Ctrl+W` or `Escape` returns to home from canvas
   - *(Completed: Home button with ⌂ icon, inline editable drawing name with Enter/Escape/blur handling, Ctrl+W and Escape shortcuts, ViewManager wiring for navigation and rename callbacks, 8 new Toolbar tests, 648 total tests passing)*
 
-- [ ] Update index.html:
+- [x] Update index.html:
   - Add container divs for both views: `<div id="home-screen">` and `<div id="canvas-view">`
   - Canvas view contains existing `<canvas>` element
   - Home screen is populated by HomeScreen.ts
+  - *(Completed: Added `#home-screen` and `#canvas-view` container divs to index.html, wired main.ts to use ViewManager with DrawingManager integration and in-memory browser fallback, updated HomeScreen to use pre-existing DOM container with display toggle, added getDrawingName to DrawingManager, 648 tests passing)*
 
 - [ ] Tests:
   - Unit tests for DrawingManifest CRUD operations (mock Tauri FS)

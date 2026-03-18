@@ -6,3 +6,5 @@ export { FpsCounter } from "./FpsCounter";
 export { RemoteCursors } from "./RemoteCursors";
 export { SettingsPanel } from "./SettingsPanel";
 export type { SettingsPanelCallbacks } from "./SettingsPanel";
+export { HomeScreen } from "./HomeScreen";
+export type { HomeScreenCallbacks } from "./HomeScreen";

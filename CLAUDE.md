@@ -16,7 +16,7 @@ npm run tauri dev
 # Build production bundle
 npm run build
 
-# Run all tests (597 tests, ~5s)
+# Run all tests (624 tests, ~5s)
 npx vitest run
 
 # Run a specific test file
@@ -104,7 +104,7 @@ On Linux, Tauri uses WebKitGTK which **aggressively caches** frontend assets. If
 `tsconfig.json` has `noUnusedLocals` and `noUnusedParameters` enabled. Unused imports will break `npm run build`. Remove them rather than prefixing with `_`.
 
 ### Test environment
-Tests use **Vitest** with **jsdom** for DOM-dependent tests. WebGL is mocked in renderer tests. Run the full suite with `npx vitest run` — all 597 tests should pass in ~2s.
+Tests use **Vitest** with **jsdom** for DOM-dependent tests. WebGL is mocked in renderer tests. Run the full suite with `npx vitest run` — all 624 tests should pass in ~2s.
 
 ### Barrel exports
 Each module has an `index.ts` barrel. Import from the barrel (`from "./renderer"`) not from individual files, unless you need a specific non-exported type.

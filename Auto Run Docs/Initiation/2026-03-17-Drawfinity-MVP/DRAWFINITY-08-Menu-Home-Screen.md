@@ -56,7 +56,7 @@ Add a home screen that appears before the canvas, allowing users to browse, crea
   - Create `src/canvas/index.ts` barrel export
   - Slim `main.ts` down to: create ViewManager, load DrawingManager, show initial view
 
-- [ ] Home screen view:
+- [x] Home screen view:
   - Create `src/ui/HomeScreen.ts`:
     - Full-page view with a grid of drawing cards (thumbnail, name, last modified date)
     - "New Drawing" button — creates drawing with default name ("Untitled"), opens it in canvas

@@ -93,6 +93,45 @@ describe("DrawfinityDoc", () => {
     expect(drawDoc2.getStrokes()[0].id).toBe("pre-existing");
   });
 
+  describe("removeStroke", () => {
+    it("removes a stroke by ID", () => {
+      drawDoc.addStroke(makeStroke("s1"));
+      drawDoc.addStroke(makeStroke("s2"));
+      drawDoc.addStroke(makeStroke("s3"));
+
+      const removed = drawDoc.removeStroke("s2");
+      expect(removed).toBe(true);
+      expect(drawDoc.getStrokes().map((s) => s.id)).toEqual(["s1", "s3"]);
+    });
+
+    it("returns false when stroke ID is not found", () => {
+      drawDoc.addStroke(makeStroke("s1"));
+      expect(drawDoc.removeStroke("nonexistent")).toBe(false);
+    });
+
+    it("fires onStrokesChanged when a stroke is removed", () => {
+      drawDoc.addStroke(makeStroke("s1"));
+      const callback = vi.fn();
+      drawDoc.onStrokesChanged(callback);
+
+      drawDoc.removeStroke("s1");
+      expect(callback).toHaveBeenCalled();
+    });
+
+    it("is undoable via Y.UndoManager", () => {
+      drawDoc.addStroke(makeStroke("s1"));
+      drawDoc.addStroke(makeStroke("s2"));
+
+      const um = new Y.UndoManager(drawDoc.getStrokesArray());
+
+      drawDoc.removeStroke("s1");
+      expect(drawDoc.getStrokes().map((s) => s.id)).toEqual(["s2"]);
+
+      um.undo();
+      expect(drawDoc.getStrokes().map((s) => s.id)).toEqual(["s1", "s2"]);
+    });
+  });
+
   describe("two independent Y.Docs syncing via state updates", () => {
     it("syncs strokes between two docs", () => {
       const doc1 = new DrawfinityDoc();

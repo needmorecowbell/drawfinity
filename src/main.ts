@@ -75,19 +75,35 @@ function hexToRgba(hex: string): [number, number, number, number] {
   // Update HUD when undo/redo stack changes
   undoManager.onStackChange(updateHudUndoRedo);
 
-  // Keyboard shortcuts for undo/redo
+  // Keyboard shortcuts
   document.addEventListener("keydown", (e: KeyboardEvent) => {
     const mod = e.ctrlKey || e.metaKey;
-    if (!mod) return;
 
-    if (e.key === "z" && !e.shiftKey) {
+    // Undo/Redo
+    if (mod && e.key === "z" && !e.shiftKey) {
       e.preventDefault();
       undoManager.undo();
       updateHudUndoRedo();
-    } else if ((e.key === "z" && e.shiftKey) || e.key === "y") {
+      return;
+    }
+    if (mod && ((e.key === "z" && e.shiftKey) || e.key === "y")) {
       e.preventDefault();
       undoManager.redo();
       updateHudUndoRedo();
+      return;
+    }
+
+    // Don't process tool shortcuts when a modifier is held
+    if (mod) return;
+
+    // Tool switching
+    if (e.key === "e" || e.key === "E") {
+      toolManager.setTool("eraser");
+      strokeCapture.setTool("eraser");
+    } else if (e.key === "b" || e.key === "B") {
+      toolManager.setTool("brush");
+      strokeCapture.setTool("brush");
+      strokeCapture.setBrushConfig(toolManager.getBrush());
     }
   });
 

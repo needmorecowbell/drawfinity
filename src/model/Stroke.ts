@@ -16,6 +16,7 @@ export interface Stroke {
 export interface DocumentModel {
   addStroke(stroke: Stroke): void;
   getStrokes(): Stroke[];
+  removeStroke?(strokeId: string): boolean;
 }
 
 let idCounter = 0;

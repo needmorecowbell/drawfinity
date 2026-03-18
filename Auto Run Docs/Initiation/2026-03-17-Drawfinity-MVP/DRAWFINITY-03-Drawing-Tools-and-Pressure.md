@@ -26,7 +26,7 @@ Build out the full drawing toolkit: pressure-sensitive strokes with variable wid
   - Create `src/tools/ToolManager.ts` — manages the active tool (brush/eraser), active brush config, and current color. Exposes `setTool()`, `setBrush()`, `setColor()`, `getActiveConfig()`
   - Integrate ToolManager into StrokeCapture so new strokes use the active brush config
 
-- [ ] Implement the eraser tool:
+- [x] Implement the eraser tool:
   - In `src/tools/EraserTool.ts`:
     - Eraser works by detecting which strokes intersect with the eraser's path
     - On pointermove while erasing, check each stroke's bounding box and then do point-distance checks against the eraser radius

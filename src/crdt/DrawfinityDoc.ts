@@ -18,6 +18,21 @@ export class DrawfinityDoc implements DocumentModel {
     });
   }
 
+  removeStroke(strokeId: string): boolean {
+    let removed = false;
+    this.doc.transact(() => {
+      const arr = this.strokes.toArray();
+      for (let i = arr.length - 1; i >= 0; i--) {
+        if (arr[i].get("id") === strokeId) {
+          this.strokes.delete(i, 1);
+          removed = true;
+          break;
+        }
+      }
+    });
+    return removed;
+  }
+
   getStrokes(): Stroke[] {
     return this.strokes.toArray().map(yMapToStroke);
   }

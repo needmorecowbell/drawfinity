@@ -2,6 +2,8 @@ import { Camera } from "../camera";
 import { CameraController } from "../camera";
 import { DocumentModel, Stroke, StrokePoint, generateStrokeId } from "../model/Stroke";
 import { BrushConfig } from "../tools/Brush";
+import { EraserTool } from "../tools/EraserTool";
+import { ToolType } from "../tools/ToolManager";
 import { smoothStroke } from "./StrokeSmoothing";
 
 export class StrokeCapture {
@@ -15,6 +17,9 @@ export class StrokeCapture {
   private strokeWidth = 2;
   private smoothingWindow = 5;
   private activeBrush: BrushConfig | null = null;
+  private activeTool: ToolType = "brush";
+  private eraserTool: EraserTool = new EraserTool();
+  private isErasing = false;
 
   private onPointerDown: (e: PointerEvent) => void;
   private onPointerMove: (e: PointerEvent) => void;
@@ -48,13 +53,26 @@ export class StrokeCapture {
     if (this.cameraController.panning) return;
 
     const world = this.camera.screenToWorld(e.clientX, e.clientY);
-    const pressure = e.pressure > 0 ? e.pressure : 0.5;
 
+    if (this.activeTool === "eraser") {
+      this.isErasing = true;
+      this.canvas.setPointerCapture(e.pointerId);
+      this.eraseAt(world.x, world.y);
+      return;
+    }
+
+    const pressure = e.pressure > 0 ? e.pressure : 0.5;
     this.activeStroke = [{ x: world.x, y: world.y, pressure }];
     this.canvas.setPointerCapture(e.pointerId);
   }
 
   private handlePointerMove(e: PointerEvent): void {
+    if (this.isErasing) {
+      const world = this.camera.screenToWorld(e.clientX, e.clientY);
+      this.eraseAt(world.x, world.y);
+      return;
+    }
+
     if (!this.activeStroke) return;
 
     const world = this.camera.screenToWorld(e.clientX, e.clientY);
@@ -64,6 +82,12 @@ export class StrokeCapture {
   }
 
   private handlePointerUp(e: PointerEvent): void {
+    if (this.isErasing) {
+      this.isErasing = false;
+      this.canvas.releasePointerCapture(e.pointerId);
+      return;
+    }
+
     if (!this.activeStroke) return;
 
     // Only finalize strokes with at least 2 points
@@ -83,6 +107,15 @@ export class StrokeCapture {
     this.canvas.releasePointerCapture(e.pointerId);
   }
 
+  private eraseAt(worldX: number, worldY: number): void {
+    if (!this.document.removeStroke) return;
+    const strokes = this.document.getStrokes();
+    const hits = this.eraserTool.findIntersectingStrokes(worldX, worldY, strokes);
+    for (const id of hits) {
+      this.document.removeStroke(id);
+    }
+  }
+
   /** Returns the in-progress stroke points (smoothed, for live rendering), or null. */
   getActiveStroke(): { points: readonly StrokePoint[]; color: string; width: number } | null {
     if (!this.activeStroke || this.activeStroke.length < 2) return null;
@@ -100,6 +133,18 @@ export class StrokeCapture {
 
   setSmoothing(windowSize: number): void {
     this.smoothingWindow = windowSize;
+  }
+
+  setTool(tool: ToolType): void {
+    this.activeTool = tool;
+  }
+
+  getTool(): ToolType {
+    return this.activeTool;
+  }
+
+  getEraserTool(): EraserTool {
+    return this.eraserTool;
   }
 
   /** Apply a full brush config — sets color, width, and smoothing from the brush. */

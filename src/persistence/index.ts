@@ -1,6 +1,8 @@
 export {
   saveDocument,
   loadDocument,
+  saveDocumentById,
+  loadDocumentById,
   getDefaultSavePath,
   getDefaultFilePath,
 } from "./LocalStorage";

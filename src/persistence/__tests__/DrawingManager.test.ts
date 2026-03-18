@@ -289,6 +289,75 @@ describe("DrawingManager", () => {
       expect(filePath).toContain("Drawfinity");
     });
   });
+
+  describe("migrateFromSingleFile", () => {
+    it("migrates legacy drawing.drawfinity into manifest", async () => {
+      const legacyData = new Uint8Array([10, 20, 30, 40]);
+      vi.mocked(exists).mockImplementation(async (path) => {
+        if (typeof path === "string" && path.endsWith("drawing.drawfinity"))
+          return true;
+        return false; // manifest doesn't exist
+      });
+      vi.mocked(readFile).mockResolvedValue(legacyData);
+
+      const result = await manager.migrateFromSingleFile();
+
+      expect(result).not.toBeNull();
+      expect(result!.name).toBe("Untitled Drawing");
+      expect(result!.fileName).toMatch(/\.drawfinity$/);
+      // Should have written the copied file and the manifest
+      expect(writeFile).toHaveBeenCalledTimes(2);
+      // Verify the data was copied
+      const writeCall = vi.mocked(writeFile).mock.calls[0];
+      expect(writeCall[1]).toEqual(legacyData);
+    });
+
+    it("returns null when manifest already has drawings", async () => {
+      await manager.createDrawing("Existing");
+      vi.clearAllMocks();
+
+      const result = await manager.migrateFromSingleFile();
+
+      expect(result).toBeNull();
+    });
+
+    it("returns null when no legacy file exists", async () => {
+      vi.mocked(exists).mockResolvedValue(false);
+
+      const result = await manager.migrateFromSingleFile();
+
+      expect(result).toBeNull();
+    });
+
+    it("returns null when legacy file is empty", async () => {
+      vi.mocked(exists).mockImplementation(async (path) => {
+        if (typeof path === "string" && path.endsWith("drawing.drawfinity"))
+          return true;
+        return false;
+      });
+      vi.mocked(readFile).mockResolvedValue(new Uint8Array(0));
+
+      const result = await manager.migrateFromSingleFile();
+
+      expect(result).toBeNull();
+    });
+
+    it("adds migrated drawing to the list", async () => {
+      const legacyData = new Uint8Array([5, 6, 7]);
+      vi.mocked(exists).mockImplementation(async (path) => {
+        if (typeof path === "string" && path.endsWith("drawing.drawfinity"))
+          return true;
+        return false;
+      });
+      vi.mocked(readFile).mockResolvedValue(legacyData);
+
+      await manager.migrateFromSingleFile();
+
+      const list = await manager.listDrawings();
+      expect(list).toHaveLength(1);
+      expect(list[0].name).toBe("Untitled Drawing");
+    });
+  });
 });
 
 async function openDrawingSafe(

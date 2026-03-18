@@ -5,6 +5,7 @@ import {
   remove,
 } from "@tauri-apps/plugin-fs";
 import { documentDir, join } from "@tauri-apps/api/path";
+import { getDefaultFilePath } from "./LocalStorage";
 import {
   DrawingMetadata,
   Manifest,
@@ -193,5 +194,49 @@ export class DrawingManager {
     }
     const dir = await this.getSaveDirectory();
     return join(dir, entry.fileName);
+  }
+
+  /**
+   * Detect and migrate a legacy single-file drawing into the manifest system.
+   * On first launch, if the old `drawing.drawfinity` exists at the legacy path
+   * and the manifest is empty, copy it into the manifest as "Untitled Drawing".
+   * Returns the migrated drawing's metadata, or null if no migration was needed.
+   */
+  async migrateFromSingleFile(): Promise<DrawingMetadata | null> {
+    const manifest = await this.ensureManifest();
+    if (manifest.drawings.length > 0) {
+      return null; // Already has drawings, no migration needed
+    }
+
+    const legacyPath = await getDefaultFilePath();
+    const legacyExists = await exists(legacyPath);
+    if (!legacyExists) {
+      return null; // No legacy file to migrate
+    }
+
+    const legacyData = await readFile(legacyPath);
+    if (legacyData.length === 0) {
+      return null; // Empty legacy file, nothing to migrate
+    }
+
+    const id = generateId();
+    const fileName = `${id}.drawfinity`;
+    const now = new Date().toISOString();
+
+    const metadata: DrawingMetadata = {
+      id,
+      name: "Untitled Drawing",
+      createdAt: now,
+      modifiedAt: now,
+      fileName,
+    };
+
+    const dir = await this.getSaveDirectory();
+    const filePath = await join(dir, fileName);
+    await writeFile(filePath, legacyData);
+
+    manifest.drawings.push(metadata);
+    await this.persistManifest();
+    return metadata;
   }
 }

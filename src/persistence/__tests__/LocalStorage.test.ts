@@ -19,6 +19,8 @@ import { readFile, writeFile, exists, mkdir } from "@tauri-apps/plugin-fs";
 import {
   saveDocument,
   loadDocument,
+  saveDocumentById,
+  loadDocumentById,
   getDefaultSavePath,
   getDefaultFilePath,
 } from "../LocalStorage";
@@ -136,6 +138,73 @@ describe("LocalStorage", () => {
       expect(loadedMap.get("id")).toBe("roundtrip-1");
       expect(loadedMap.get("color")).toBe("#ff0000");
       expect(loadedMap.get("width")).toBe(3);
+    });
+  });
+
+  describe("saveDocumentById", () => {
+    it("delegates to DrawingManager.saveDrawing", async () => {
+      const doc = new Y.Doc();
+      const strokes = doc.getArray<Y.Map<unknown>>("strokes");
+      doc.transact(() => {
+        strokes.push([strokeToYMap(makeStroke("s1"))]);
+      });
+
+      const mockManager = {
+        saveDrawing: vi.fn(async () => {}),
+      };
+
+      await saveDocumentById(
+        doc,
+        "drawing-123",
+        mockManager as unknown as import("../DrawingManager").DrawingManager,
+      );
+
+      expect(mockManager.saveDrawing).toHaveBeenCalledOnce();
+      expect(mockManager.saveDrawing).toHaveBeenCalledWith(
+        "drawing-123",
+        expect.any(Uint8Array),
+      );
+      // Verify the state bytes are non-empty
+      const stateArg = mockManager.saveDrawing.mock.calls[0][1] as Uint8Array;
+      expect(stateArg.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("loadDocumentById", () => {
+    it("loads document from DrawingManager and returns Y.Doc", async () => {
+      const originalDoc = new Y.Doc();
+      const strokes = originalDoc.getArray<Y.Map<unknown>>("strokes");
+      originalDoc.transact(() => {
+        strokes.push([strokeToYMap(makeStroke("loaded-1"))]);
+      });
+      const encoded = Y.encodeStateAsUpdate(originalDoc);
+
+      const mockManager = {
+        openDrawing: vi.fn(async () => encoded),
+      };
+
+      const loaded = await loadDocumentById(
+        "drawing-456",
+        mockManager as unknown as import("../DrawingManager").DrawingManager,
+      );
+
+      expect(loaded).not.toBeNull();
+      const loadedStrokes = loaded!.getArray<Y.Map<unknown>>("strokes");
+      expect(loadedStrokes.length).toBe(1);
+      expect(loadedStrokes.get(0).get("id")).toBe("loaded-1");
+    });
+
+    it("returns null when drawing state is empty", async () => {
+      const mockManager = {
+        openDrawing: vi.fn(async () => new Uint8Array(0)),
+      };
+
+      const loaded = await loadDocumentById(
+        "drawing-empty",
+        mockManager as unknown as import("../DrawingManager").DrawingManager,
+      );
+
+      expect(loaded).toBeNull();
     });
   });
 });

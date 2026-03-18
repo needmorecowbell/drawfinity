@@ -32,7 +32,7 @@ Add a home screen that appears before the canvas, allowing users to browse, crea
     - `getDefaultSaveDirectory(): string` — `~/Documents/Drawfinity/`
   - All file ops use dynamic Tauri imports (same pattern as existing persistence)
 
-- [ ] Migrate from single-file to multi-document:
+- [x] Migrate from single-file to multi-document:
   - On first launch with new system, detect existing `drawing.drawfinity` at the old path
   - If found, copy it into the new manifest as "Untitled Drawing" and create the manifest
   - Update `LocalStorage.ts` to delegate to DrawingManager

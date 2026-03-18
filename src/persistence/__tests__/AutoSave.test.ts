@@ -139,4 +139,69 @@ describe("AutoSave", () => {
     // Should only save once, not twice
     expect(saveDocument).toHaveBeenCalledOnce();
   });
+
+  describe("DrawingManager mode", () => {
+    let managerAutoSave: AutoSave;
+    let mockManager: { saveDrawing: ReturnType<typeof vi.fn> };
+
+    beforeEach(() => {
+      mockManager = {
+        saveDrawing: vi.fn(async () => {}),
+      };
+      managerAutoSave = new AutoSave(
+        doc,
+        "/fallback/path.drawfinity",
+        500,
+        "drawing-abc",
+        mockManager as unknown as import("../DrawingManager").DrawingManager,
+      );
+    });
+
+    afterEach(() => {
+      managerAutoSave.stop();
+    });
+
+    it("saves via DrawingManager when drawingId and manager are set", async () => {
+      managerAutoSave.start();
+      await managerAutoSave.saveNow();
+
+      expect(mockManager.saveDrawing).toHaveBeenCalledOnce();
+      expect(mockManager.saveDrawing).toHaveBeenCalledWith(
+        "drawing-abc",
+        expect.any(Uint8Array),
+      );
+      // Should NOT use the file-based save
+      expect(saveDocument).not.toHaveBeenCalled();
+    });
+
+    it("debounces saves via DrawingManager", () => {
+      managerAutoSave.start();
+
+      const strokes = doc.getArray<Y.Map<unknown>>("strokes");
+      doc.transact(() => {
+        strokes.push([strokeToYMap(makeStroke("s1"))]);
+      });
+
+      vi.advanceTimersByTime(600);
+      expect(mockManager.saveDrawing).toHaveBeenCalledOnce();
+      expect(saveDocument).not.toHaveBeenCalled();
+    });
+
+    it("setDrawingId updates the target drawing", async () => {
+      managerAutoSave.start();
+      managerAutoSave.setDrawingId("drawing-xyz");
+      await managerAutoSave.saveNow();
+
+      expect(mockManager.saveDrawing).toHaveBeenCalledWith(
+        "drawing-xyz",
+        expect.any(Uint8Array),
+      );
+    });
+
+    it("getDrawingId returns current drawing ID", () => {
+      expect(managerAutoSave.getDrawingId()).toBe("drawing-abc");
+      managerAutoSave.setDrawingId("new-id");
+      expect(managerAutoSave.getDrawingId()).toBe("new-id");
+    });
+  });
 });

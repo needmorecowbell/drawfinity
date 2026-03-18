@@ -27,7 +27,7 @@ Introduce local user identity for collaboration: name, color, persistent prefere
   - `savePreferences(prefs): void` — persists to localStorage
   - Create `src/user/__tests__/UserPreferences.test.ts`
 
-- [ ] Awareness integration with SyncManager:
+- [x] Awareness integration with SyncManager:
   - Update `src/sync/SyncManager.ts`:
     - Accept `UserProfile` via constructor or `setUser(profile)` method
     - On connect, set awareness local state: `provider.awareness.setLocalStateField('user', { id, name, color, cursor: null })`

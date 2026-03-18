@@ -7,6 +7,6 @@ export { RemoteCursors } from "./RemoteCursors";
 export { SettingsPanel } from "./SettingsPanel";
 export type { SettingsPanelCallbacks } from "./SettingsPanel";
 export { HomeScreen } from "./HomeScreen";
-export type { HomeScreenCallbacks } from "./HomeScreen";
+export type { HomeScreenCallbacks, TabName, SharedConnectionStatus } from "./HomeScreen";
 export { ViewManager } from "./ViewManager";
 export type { ViewName, ViewManagerDeps } from "./ViewManager";

@@ -16,7 +16,7 @@ npm run tauri dev
 # Build production bundle
 npm run build
 
-# Run all tests (662 tests, ~5s)
+# Run all tests (691 tests, ~5s)
 npx vitest run
 
 # Run a specific test file

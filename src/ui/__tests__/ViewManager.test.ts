@@ -3,11 +3,24 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { DrawingMetadata } from "../../persistence/DrawingManifest";
 import type { ViewManagerDeps } from "../ViewManager";
 
+// Mock dependencies that HomeScreen imports
+vi.mock("../../sync/ServerApi", () => ({
+  fetchRooms: vi.fn().mockResolvedValue([]),
+  createRoom: vi.fn().mockResolvedValue({ id: "r1", name: "Room", clientCount: 0, createdAt: 0, lastActiveAt: 0 }),
+  ServerApiError: class extends Error { constructor(m: string) { super(m); this.name = "ServerApiError"; } },
+}));
+
+vi.mock("../../user/UserPreferences", () => ({
+  loadPreferences: vi.fn(() => ({ defaultBrush: 0, defaultColor: "#000000" })),
+  savePreferences: vi.fn(),
+}));
+
 // Mock CanvasApp
 const mockInit = vi.fn().mockResolvedValue(undefined);
 const mockDestroy = vi.fn();
 const mockGetCurrentDrawingId = vi.fn().mockReturnValue("d1");
 const mockSetDrawingName = vi.fn();
+const mockConnectToRoom = vi.fn();
 
 vi.mock("../../canvas", () => {
   return {
@@ -16,6 +29,7 @@ vi.mock("../../canvas", () => {
       destroy = mockDestroy;
       getCurrentDrawingId = mockGetCurrentDrawingId;
       setDrawingName = mockSetDrawingName;
+      connectToRoom = mockConnectToRoom;
     },
   };
 });

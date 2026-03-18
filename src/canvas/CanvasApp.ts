@@ -394,6 +394,10 @@ export class CanvasApp {
     this.toolbar.setDrawingName(name);
   }
 
+  connectToRoom(serverUrl: string, roomId: string): void {
+    this.syncManager.connect(serverUrl, roomId);
+  }
+
   private switchTool(tool: ToolType): void {
     this.toolManager.setTool(tool);
 

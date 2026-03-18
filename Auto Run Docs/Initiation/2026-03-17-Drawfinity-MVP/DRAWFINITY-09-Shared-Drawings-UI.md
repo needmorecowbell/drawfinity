@@ -43,7 +43,7 @@ Build a browsable interface for collaborative drawings: configure server URL, li
   - Define `RoomInfo` interface: `id`, `name`, `clientCount`, `createdAt`, `lastActiveAt`
   - Create `src/sync/__tests__/ServerApi.test.ts` (mock fetch)
 
-- [ ] Shared drawings tab in home screen:
+- [x] Shared drawings tab in home screen:
   - Update `src/ui/HomeScreen.ts` with a tab bar: "My Drawings" | "Shared"
   - "Shared" tab contents:
     - Server URL input (pre-filled from UserPreferences, Phase 07)

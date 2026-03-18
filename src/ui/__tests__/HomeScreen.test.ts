@@ -3,6 +3,18 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { HomeScreen, HomeScreenCallbacks } from "../HomeScreen";
 import { DrawingMetadata } from "../../persistence/DrawingManifest";
 
+// Mock modules that HomeScreen imports
+vi.mock("../../sync/ServerApi", () => ({
+  fetchRooms: vi.fn().mockResolvedValue([]),
+  createRoom: vi.fn().mockResolvedValue({ id: "r1", name: "Room", clientCount: 0, createdAt: 0, lastActiveAt: 0 }),
+  ServerApiError: class extends Error { constructor(m: string) { super(m); this.name = "ServerApiError"; } },
+}));
+
+vi.mock("../../user/UserPreferences", () => ({
+  loadPreferences: vi.fn(() => ({ defaultBrush: 0, defaultColor: "#000000" })),
+  savePreferences: vi.fn(),
+}));
+
 function makeDrawing(overrides: Partial<DrawingMetadata> = {}): DrawingMetadata {
   return {
     id: "d1",
@@ -302,14 +314,16 @@ describe("HomeScreen", () => {
     screen = new HomeScreen(cb);
     screen.show();
 
-    const changeBtn = screen.getContainer().querySelector(".home-btn-small");
+    const saveDirRow = screen.getContainer().querySelector(".home-save-dir-row");
+    const changeBtn = saveDirRow?.querySelector(".home-btn-small");
     expect(changeBtn).not.toBeNull();
     expect(changeBtn?.textContent).toBe("Change");
   });
 
   it("Change button is not shown without onChangeSaveDirectory callback", () => {
     screen.show();
-    const changeBtn = screen.getContainer().querySelector(".home-btn-small");
+    const saveDirRow = screen.getContainer().querySelector(".home-save-dir-row");
+    const changeBtn = saveDirRow?.querySelector(".home-btn-small");
     expect(changeBtn).toBeNull();
   });
 

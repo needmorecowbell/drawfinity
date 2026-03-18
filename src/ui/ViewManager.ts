@@ -40,6 +40,8 @@ export class ViewManager {
       onDuplicateDrawing: (id: string, newName: string) =>
         deps.duplicateDrawing(id, newName),
       onChangeSaveDirectory: deps.onChangeSaveDirectory,
+      onJoinRoom: (roomId: string, serverUrl: string) =>
+        this.showCanvasWithRoom(roomId, serverUrl),
     };
 
     this.homeScreen = new HomeScreen(callbacks);
@@ -101,6 +103,41 @@ export class ViewManager {
         const name = await this.deps.getDrawingName(drawingId);
         this.canvasApp.setDrawingName(name);
       }
+
+      this.currentView = "canvas";
+    } finally {
+      this.transitioning = false;
+    }
+  }
+
+  private async showCanvasWithRoom(
+    roomId: string,
+    serverUrl: string,
+  ): Promise<void> {
+    if (this.transitioning) return;
+    this.transitioning = true;
+
+    try {
+      // Hide home screen
+      this.homeScreen.hide();
+
+      // Destroy previous canvas app if any
+      if (this.canvasApp) {
+        this.canvasApp.destroy();
+        this.canvasApp = null;
+      }
+
+      // Show canvas container and init app with room ID as drawing ID
+      this.canvasContainer.style.display = "";
+      this.canvasApp = new CanvasApp();
+      await this.canvasApp.init(roomId, {
+        onGoHome: () => this.showHome(),
+        onRenameDrawing: (id, name) => this.deps.renameDrawing(id, name),
+      });
+
+      // Connect to the room
+      this.canvasApp.connectToRoom(serverUrl, roomId);
+      this.canvasApp.setDrawingName(roomId);
 
       this.currentView = "canvas";
     } finally {

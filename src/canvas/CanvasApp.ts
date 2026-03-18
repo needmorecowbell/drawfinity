@@ -177,7 +177,9 @@ export class CanvasApp {
     this.toolbar.setColorUI(userPreferences.defaultColor);
 
     // Connection panel
-    this.connectionPanel = new ConnectionPanel(this.syncManager);
+    this.connectionPanel = new ConnectionPanel(this.syncManager, {
+      onLeaveSession: () => this.callbacks.onGoHome?.(),
+    });
 
     // Remote cursors overlay
     this.remoteCursors = new RemoteCursors(document.body, this.camera);
@@ -394,7 +396,8 @@ export class CanvasApp {
     this.toolbar.setDrawingName(name);
   }
 
-  connectToRoom(serverUrl: string, roomId: string): void {
+  connectToRoom(serverUrl: string, roomId: string, roomName?: string): void {
+    this.connectionPanel.setRoomInfo(roomId, roomName);
     this.syncManager.connect(serverUrl, roomId);
   }
 

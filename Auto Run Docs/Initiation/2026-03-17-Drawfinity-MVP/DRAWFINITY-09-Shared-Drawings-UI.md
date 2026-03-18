@@ -56,7 +56,7 @@ Build a browsable interface for collaborative drawings: configure server URL, li
     - Empty state when no rooms exist ("No shared drawings yet — create one!")
   - Save last-used server URL to UserPreferences on successful connection
 
-- [ ] Enhanced connection panel for in-canvas use:
+- [x] Enhanced connection panel for in-canvas use:
   - Update `src/ui/ConnectionPanel.ts`:
     - Show current room name and ID
     - Show list of connected users with name + color indicator (from awareness, Phase 07)

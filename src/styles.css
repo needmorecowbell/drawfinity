@@ -380,6 +380,98 @@ html, body {
   color: #666;
 }
 
+/* Connected info section */
+.conn-connected-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.conn-room-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #222;
+}
+
+.conn-room-id-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.conn-room-id {
+  font-size: 12px;
+  color: #888;
+  font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.conn-btn-small {
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
+.conn-participant-count {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+.conn-user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.conn-user-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.conn-user-item:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.conn-user-color {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.conn-user-name {
+  font-size: 13px;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conn-user-list-empty {
+  font-size: 12px;
+  color: #999;
+  padding: 4px 6px;
+}
+
+.conn-btn-danger {
+  background: #e53935;
+  color: #fff;
+  margin-top: 4px;
+}
+
+.conn-btn-danger:hover {
+  background: #c62828;
+}
+
 /* Remote Cursors */
 #remote-cursors-container {
   position: fixed;

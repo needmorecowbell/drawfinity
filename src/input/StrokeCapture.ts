@@ -1,6 +1,7 @@
 import { Camera } from "../camera";
 import { CameraController } from "../camera";
 import { DocumentModel, Stroke, StrokePoint, generateStrokeId } from "../model/Stroke";
+import { smoothStroke } from "./StrokeSmoothing";
 
 export class StrokeCapture {
   private camera: Camera;
@@ -11,6 +12,7 @@ export class StrokeCapture {
   private activeStroke: StrokePoint[] | null = null;
   private strokeColor = "#000000";
   private strokeWidth = 2;
+  private smoothingWindow = 5;
 
   private onPointerDown: (e: PointerEvent) => void;
   private onPointerMove: (e: PointerEvent) => void;
@@ -64,9 +66,10 @@ export class StrokeCapture {
 
     // Only finalize strokes with at least 2 points
     if (this.activeStroke.length >= 2) {
+      const smoothed = smoothStroke(this.activeStroke, this.smoothingWindow);
       const stroke: Stroke = {
         id: generateStrokeId(),
-        points: this.activeStroke,
+        points: smoothed,
         color: this.strokeColor,
         width: this.strokeWidth,
         timestamp: Date.now(),
@@ -78,10 +81,11 @@ export class StrokeCapture {
     this.canvas.releasePointerCapture(e.pointerId);
   }
 
-  /** Returns the in-progress stroke points (for live rendering), or null. */
+  /** Returns the in-progress stroke points (smoothed, for live rendering), or null. */
   getActiveStroke(): { points: readonly StrokePoint[]; color: string; width: number } | null {
     if (!this.activeStroke || this.activeStroke.length < 2) return null;
-    return { points: this.activeStroke, color: this.strokeColor, width: this.strokeWidth };
+    const smoothed = smoothStroke(this.activeStroke, this.smoothingWindow);
+    return { points: smoothed, color: this.strokeColor, width: this.strokeWidth };
   }
 
   setColor(color: string): void {
@@ -90,6 +94,10 @@ export class StrokeCapture {
 
   setWidth(width: number): void {
     this.strokeWidth = width;
+  }
+
+  setSmoothing(windowSize: number): void {
+    this.smoothingWindow = windowSize;
   }
 
   destroy(): void {

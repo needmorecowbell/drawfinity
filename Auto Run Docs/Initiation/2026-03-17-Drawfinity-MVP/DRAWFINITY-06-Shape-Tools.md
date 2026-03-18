@@ -36,7 +36,7 @@ Add geometric shape tools (rectangle, ellipse, polygon, star) as first-class can
   - Ensure `getStrokes()` still works (filters by type) so existing code doesn't break
   - Verify undo/redo works for shape add/remove (same Y.Array, same UndoManager)
 
-- [ ] Shape capture (input handling):
+- [x] Shape capture (input handling):
   - Create `src/input/ShapeCapture.ts`:
     - `pointerdown`: record start point in world coordinates
     - `pointermove`: compute shape preview dimensions from drag extent, render preview overlay
@@ -44,6 +44,7 @@ Add geometric shape tools (rectangle, ellipse, polygon, star) as first-class can
     - Hold `Shift` for constrained proportions (square from rectangle, circle from ellipse)
     - Hold `Alt` for center-out drawing mode (start point = center, not corner)
   - Coordinate with `StrokeCapture.ts` — active tool determines which capture handles input
+  - *(Completed: ShapeCapture with enable/disable gating, ShapeToolConfig, preview support, 18 unit tests passing)*
 
 - [ ] Shape tools in ToolManager:
   - Extend `ToolType` to include `"rectangle" | "ellipse" | "polygon" | "star"`

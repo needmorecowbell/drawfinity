@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "clean": "rm -rf dist src-tauri/target && echo 'Cleaned dist + Cargo target'",
+    "clean:cache": "rm -rf dist src-tauri/target ~/.local/share/com.drawfinity.app/WebKitCache ~/.local/share/com.drawfinity.app/CacheStorage && echo 'Cleaned dist + Cargo target + WebKitGTK cache'",
+    "tauri:fresh": "npm run clean:cache && npm run tauri dev"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -15,6 +18,7 @@
     "@tauri-apps/plugin-fs": "^2.4.5",
     "@tauri-apps/plugin-opener": "^2",
     "lib0": "^0.2.117",
+    "y-websocket": "^3.0.0",
     "yjs": "^13.6.30"
   },
   "devDependencies": {

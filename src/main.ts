@@ -2,9 +2,9 @@ import { Renderer } from "./renderer";
 import { Camera, CameraAnimator, CameraController } from "./camera";
 import { DrawfinityDoc, UndoManager } from "./crdt";
 import { StrokeCapture } from "./input";
-import { loadDocument, getDefaultFilePath, AutoSave } from "./persistence";
 import { ToolManager, BRUSH_PRESETS } from "./tools";
 import { Toolbar } from "./ui";
+import { SyncManager } from "./sync";
 
 const canvas = document.getElementById("drawfinity-canvas") as HTMLCanvasElement;
 if (!canvas) {
@@ -24,12 +24,20 @@ function hexToRgba(hex: string): [number, number, number, number] {
   return [r, g, b, 1.0];
 }
 
+// Surface unhandled promise rejections (WebKitGTK swallows them silently)
+window.addEventListener("unhandledrejection", (e) => {
+  console.error("Drawfinity: unhandled rejection:", e.reason);
+});
+
 (async () => {
-  // Load persisted document if it exists, otherwise start fresh
+  console.log("Drawfinity: async init starting");
+  // Load persisted document if it exists, otherwise start fresh.
+  // Persistence imports are dynamic so the app works outside Tauri (browser dev mode).
   let doc: DrawfinityDoc;
-  let autoSave: AutoSave;
+  let autoSave: { start(): void; stop(): void; saveNow(): void };
 
   try {
+    const { loadDocument, getDefaultFilePath, AutoSave } = await import("./persistence");
     const savePath = await getDefaultFilePath();
     const loadedDoc = await loadDocument(savePath);
     doc = new DrawfinityDoc(loadedDoc ?? undefined);
@@ -39,13 +47,12 @@ function hexToRgba(hex: string): [number, number, number, number] {
       console.log("Drawfinity: loaded saved document from", savePath);
     }
   } catch (err) {
-    console.warn("Drawfinity: could not load saved document, starting fresh", err);
+    console.warn("Drawfinity: persistence unavailable, running without auto-save", err);
     doc = new DrawfinityDoc();
-    const savePath = await getDefaultFilePath();
-    autoSave = new AutoSave(doc.getDoc(), savePath);
-    autoSave.start();
+    autoSave = { start() {}, stop() {}, saveNow() {} };
   }
 
+  const syncManager = new SyncManager(doc.getDoc());
   const toolManager = new ToolManager();
   const strokeCapture = new StrokeCapture(camera, cameraController, doc, canvas);
   strokeCapture.setBrushConfig(toolManager.getBrush());
@@ -173,15 +180,19 @@ function hexToRgba(hex: string): [number, number, number, number] {
 
     // Draw all finalized strokes
     for (const stroke of doc.getStrokes()) {
-      renderer.drawStroke(stroke.points, hexToRgba(stroke.color), stroke.width);
+      const rgba = hexToRgba(stroke.color);
+      rgba[3] = stroke.opacity ?? 1.0;
+      renderer.drawStroke(stroke.points, rgba, stroke.width);
     }
 
     // Draw the in-progress stroke
     const active = strokeCapture.getActiveStroke();
     if (active) {
+      const rgba = hexToRgba(active.color);
+      rgba[3] = active.opacity;
       renderer.drawStroke(
         active.points,
-        hexToRgba(active.color),
+        rgba,
         active.width,
       );
     }
@@ -193,13 +204,18 @@ function hexToRgba(hex: string): [number, number, number, number] {
   // Confirm WebGL is working — the off-white background should be visible
   console.log("Drawfinity: WebGL2 renderer initialized with camera system");
 
-  // Save before closing
+  // Clean up before closing
   window.addEventListener("beforeunload", () => {
+    syncManager.disconnect();
     autoSave.saveNow();
   });
 
   // Expose for debugging
   (window as unknown as Record<string, unknown>).__drawfinity = {
-    renderer, camera, cameraAnimator, cameraController, doc, strokeCapture, undoManager, autoSave, toolManager, toolbar,
+    renderer, camera, cameraAnimator, cameraController, doc, strokeCapture, undoManager, autoSave, toolManager, toolbar, syncManager,
   };
-})();
+
+  console.log("Drawfinity: init complete, toolbar created");
+})().catch((err) => {
+  console.error("Drawfinity: fatal init error:", err);
+});

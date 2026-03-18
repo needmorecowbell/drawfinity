@@ -32,7 +32,7 @@ Build the Rust WebSocket server that acts as a relay and persistence layer for c
   - This ensures that rooms survive server restarts — clients reconnect and pick up where they left off
   - Add a CLI flag or environment variable for the data directory path (`--data-dir` or `DRAWFINITY_DATA_DIR`)
 
-- [ ] Integrate Yjs WebSocket sync into the client:
+- [x] Integrate Yjs WebSocket sync into the client:
   - `npm install y-websocket` — the standard Yjs WebSocket provider
   - Create `src/sync/SyncManager.ts`:
     - Wraps `WebsocketProvider` from y-websocket

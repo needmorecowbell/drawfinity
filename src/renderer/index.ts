@@ -4,3 +4,5 @@ export { StrokeRenderer } from "./StrokeRenderer";
 export type { StrokePoint } from "./StrokeRenderer";
 export { Renderer } from "./Renderer";
 export { generateTriangleStrip } from "./StrokeMesh";
+export { SpatialIndex, computeStrokeBounds } from "./SpatialIndex";
+export type { AABB } from "./SpatialIndex";

@@ -10,8 +10,8 @@ export class Camera {
   private viewportWidth = 1;
   private viewportHeight = 1;
 
-  static readonly MIN_ZOOM = 0.01;
-  static readonly MAX_ZOOM = 100;
+  static readonly MIN_ZOOM = 1e-10;
+  static readonly MAX_ZOOM = 1e10;
 
   setViewportSize(width: number, height: number): void {
     this.viewportWidth = width;
@@ -52,6 +52,20 @@ export class Camera {
     const worldX = (screenX - this.viewportWidth / 2) / this.zoom + this.x;
     const worldY = (screenY - this.viewportHeight / 2) / this.zoom + this.y;
     return { x: worldX, y: worldY };
+  }
+
+  /**
+   * Returns the world-space axis-aligned bounding box of the current viewport.
+   */
+  getViewportBounds(): { minX: number; minY: number; maxX: number; maxY: number } {
+    const halfW = this.viewportWidth / (2 * this.zoom);
+    const halfH = this.viewportHeight / (2 * this.zoom);
+    return {
+      minX: this.x - halfW,
+      minY: this.y - halfH,
+      maxX: this.x + halfW,
+      maxY: this.y + halfH,
+    };
   }
 
   /**

@@ -4,7 +4,7 @@ Optimize the WebGL rendering pipeline for smooth performance at any zoom level, 
 
 ## Tasks
 
-- [ ] Implement spatial indexing for efficient rendering at scale:
+- [x] Implement spatial indexing for efficient rendering at scale:
   - Create `src/renderer/SpatialIndex.ts` — a simple grid-based spatial index (or quadtree) that maps strokes to spatial buckets based on their bounding boxes
   - On each frame, query the spatial index with the camera's visible viewport to get only the strokes that are on screen
   - Skip rendering strokes that are entirely outside the viewport

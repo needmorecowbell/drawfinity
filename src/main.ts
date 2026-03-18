@@ -1,4 +1,5 @@
 import { Renderer } from "./renderer";
+import { SpatialIndex } from "./renderer/SpatialIndex";
 import { Camera, CameraAnimator, CameraController } from "./camera";
 import { DrawfinityDoc, UndoManager } from "./crdt";
 import { StrokeCapture } from "./input";
@@ -51,6 +52,14 @@ window.addEventListener("unhandledrejection", (e) => {
     doc = new DrawfinityDoc();
     autoSave = { start() {}, stop() {}, saveNow() {} };
   }
+
+  const spatialIndex = new SpatialIndex();
+  // Build initial index from any persisted strokes
+  spatialIndex.rebuild(doc.getStrokes());
+  // Keep index in sync when strokes change (add/remove/undo/redo/remote sync)
+  doc.onStrokesChanged(() => {
+    spatialIndex.rebuild(doc.getStrokes());
+  });
 
   const syncManager = new SyncManager(doc.getDoc());
   const toolManager = new ToolManager();
@@ -188,8 +197,10 @@ window.addEventListener("unhandledrejection", (e) => {
     // Update toolbar zoom display
     toolbar.updateZoom(camera.zoom * 100);
 
-    // Draw all finalized strokes
-    for (const stroke of doc.getStrokes()) {
+    // Draw only strokes visible in the current viewport
+    const viewportBounds = camera.getViewportBounds();
+    const visibleStrokes = spatialIndex.query(viewportBounds);
+    for (const stroke of visibleStrokes) {
       const rgba = hexToRgba(stroke.color);
       rgba[3] = stroke.opacity ?? 1.0;
       renderer.drawStroke(stroke.points, rgba, stroke.width);
@@ -222,7 +233,7 @@ window.addEventListener("unhandledrejection", (e) => {
 
   // Expose for debugging
   (window as unknown as Record<string, unknown>).__drawfinity = {
-    renderer, camera, cameraAnimator, cameraController, doc, strokeCapture, undoManager, autoSave, toolManager, toolbar, syncManager, connectionPanel,
+    renderer, camera, cameraAnimator, cameraController, doc, strokeCapture, undoManager, autoSave, toolManager, toolbar, syncManager, connectionPanel, spatialIndex,
   };
 
   console.log("Drawfinity: init complete, toolbar created");

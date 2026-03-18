@@ -68,13 +68,14 @@ Add a home screen that appears before the canvas, allowing users to browse, crea
     - Sort options: by name, by date modified
   - Style with CSS — clean grid layout, matches Drawfinity visual style
 
-- [ ] View manager:
+- [x] View manager:
   - Create `src/ui/ViewManager.ts`:
     - Manages two views: "home" and "canvas"
     - `showHome()` — destroy current CanvasApp if active, show HomeScreen, refresh drawing list
     - `showCanvas(drawingId)` — hide HomeScreen, create and init CanvasApp with drawing ID
     - `getCurrentView(): "home" | "canvas"`
   - Add transitions between views (simple fade or instant switch)
+  - *(Completed: ViewManager class with transition guard, 15 unit tests passing)*
 
 - [ ] Update toolbar with navigation:
   - Add "Home" button (house icon) to toolbar — returns to home screen

@@ -1,0 +1,120 @@
+import { CanvasApp } from "../canvas";
+import { HomeScreen, HomeScreenCallbacks } from "./HomeScreen";
+import type { DrawingMetadata } from "../persistence/DrawingManifest";
+
+export type ViewName = "home" | "canvas";
+
+export interface ViewManagerDeps {
+  listDrawings: () => Promise<DrawingMetadata[]>;
+  createDrawing: (name: string) => Promise<DrawingMetadata>;
+  deleteDrawing: (id: string) => Promise<void>;
+  renameDrawing: (id: string, name: string) => Promise<void>;
+  duplicateDrawing: (id: string, newName: string) => Promise<DrawingMetadata>;
+  getSaveDirectory: () => Promise<string>;
+  onChangeSaveDirectory?: () => Promise<string | null>;
+}
+
+export class ViewManager {
+  private currentView: ViewName = "home";
+  private canvasApp: CanvasApp | null = null;
+  private homeScreen: HomeScreen;
+  private deps: ViewManagerDeps;
+  private canvasContainer: HTMLElement;
+  private transitioning = false;
+
+  constructor(canvasContainer: HTMLElement, deps: ViewManagerDeps) {
+    this.deps = deps;
+    this.canvasContainer = canvasContainer;
+
+    const callbacks: HomeScreenCallbacks = {
+      onOpenDrawing: (id: string) => this.showCanvas(id),
+      onCreateDrawing: async () => {
+        const drawing = await deps.createDrawing("Untitled");
+        this.showCanvas(drawing.id);
+        return drawing;
+      },
+      onDeleteDrawing: (id: string) => deps.deleteDrawing(id),
+      onRenameDrawing: (id: string, name: string) =>
+        deps.renameDrawing(id, name),
+      onDuplicateDrawing: (id: string, newName: string) =>
+        deps.duplicateDrawing(id, newName),
+      onChangeSaveDirectory: deps.onChangeSaveDirectory,
+    };
+
+    this.homeScreen = new HomeScreen(callbacks);
+    this.canvasContainer.style.display = "none";
+  }
+
+  async showHome(): Promise<void> {
+    if (this.transitioning) return;
+    this.transitioning = true;
+
+    try {
+      // Destroy current canvas app if active
+      if (this.canvasApp) {
+        this.canvasApp.destroy();
+        this.canvasApp = null;
+      }
+
+      // Hide canvas container
+      this.canvasContainer.style.display = "none";
+
+      // Refresh drawing list and show home screen
+      const drawings = await this.deps.listDrawings();
+      this.homeScreen.setDrawings(drawings);
+
+      const saveDir = await this.deps.getSaveDirectory();
+      this.homeScreen.setSaveDirectory(saveDir);
+
+      this.homeScreen.show();
+      this.currentView = "home";
+    } finally {
+      this.transitioning = false;
+    }
+  }
+
+  async showCanvas(drawingId: string): Promise<void> {
+    if (this.transitioning) return;
+    this.transitioning = true;
+
+    try {
+      // Hide home screen
+      this.homeScreen.hide();
+
+      // Destroy previous canvas app if any
+      if (this.canvasApp) {
+        this.canvasApp.destroy();
+        this.canvasApp = null;
+      }
+
+      // Show canvas container and init app
+      this.canvasContainer.style.display = "";
+      this.canvasApp = new CanvasApp();
+      await this.canvasApp.init(drawingId);
+
+      this.currentView = "canvas";
+    } finally {
+      this.transitioning = false;
+    }
+  }
+
+  getCurrentView(): ViewName {
+    return this.currentView;
+  }
+
+  getCanvasApp(): CanvasApp | null {
+    return this.canvasApp;
+  }
+
+  getHomeScreen(): HomeScreen {
+    return this.homeScreen;
+  }
+
+  destroy(): void {
+    if (this.canvasApp) {
+      this.canvasApp.destroy();
+      this.canvasApp = null;
+    }
+    this.homeScreen.destroy();
+  }
+}

@@ -10,13 +10,13 @@ Build out the full drawing toolkit: pressure-sensitive strokes with variable wid
   - Update the vertex shader to accept per-vertex width (already have position and color)
   - Verify existing strokes still render correctly, now with pressure-based width variation (mouse strokes at pressure 0.5 should look similar to before)
 
-- [ ] Add stroke smoothing and pressure-sensitive opacity:
+- [x] Add stroke smoothing and pressure-sensitive opacity:
   - Create `src/input/StrokeSmoothing.ts` — applies a simple moving-average or Catmull-Rom interpolation to incoming points, reducing jaggedness from fast mouse/stylus movement. Keep the raw points and produce smoothed points for rendering
   - Update the fragment shader to support per-vertex alpha (opacity), derived from pressure. Low pressure → more transparent, high pressure → fully opaque
   - Wire pressure from PointerEvent into the stroke points (already captured in Phase 01, now actually used for rendering)
   - Test with mouse (constant pressure 0.5 → consistent width/opacity) and note that Wacom testing will happen on the Linux machine
 
-- [ ] Create the brush system with multiple brush types:
+- [x] Create the brush system with multiple brush types:
   - Create `src/tools/Brush.ts` — defines a `BrushConfig` type: `{ name: string, baseWidth: number, pressureCurve: (p: number) => number, opacityCurve: (p: number) => number, color: string, smoothing: number }`
   - Create `src/tools/BrushPresets.ts` — define at least 4 presets:
     - **Pen**: firm, consistent width, full opacity, low smoothing (technical drawing)

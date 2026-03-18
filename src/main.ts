@@ -3,6 +3,7 @@ import { Camera, CameraAnimator, CameraController } from "./camera";
 import { DrawfinityDoc, UndoManager } from "./crdt";
 import { StrokeCapture } from "./input";
 import { loadDocument, getDefaultFilePath, AutoSave } from "./persistence";
+import { ToolManager } from "./tools";
 
 const canvas = document.getElementById("drawfinity-canvas") as HTMLCanvasElement;
 if (!canvas) {
@@ -44,7 +45,9 @@ function hexToRgba(hex: string): [number, number, number, number] {
     autoSave.start();
   }
 
+  const toolManager = new ToolManager();
   const strokeCapture = new StrokeCapture(camera, cameraController, doc, canvas);
+  strokeCapture.setBrushConfig(toolManager.getBrush());
   const undoManager = new UndoManager(doc.getStrokesArray());
 
   // Set initial viewport size
@@ -130,6 +133,6 @@ function hexToRgba(hex: string): [number, number, number, number] {
 
   // Expose for debugging
   (window as unknown as Record<string, unknown>).__drawfinity = {
-    renderer, camera, cameraAnimator, cameraController, doc, strokeCapture, undoManager, autoSave,
+    renderer, camera, cameraAnimator, cameraController, doc, strokeCapture, undoManager, autoSave, toolManager,
   };
 })();

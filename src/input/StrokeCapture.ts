@@ -1,6 +1,7 @@
 import { Camera } from "../camera";
 import { CameraController } from "../camera";
 import { DocumentModel, Stroke, StrokePoint, generateStrokeId } from "../model/Stroke";
+import { BrushConfig } from "../tools/Brush";
 import { smoothStroke } from "./StrokeSmoothing";
 
 export class StrokeCapture {
@@ -13,6 +14,7 @@ export class StrokeCapture {
   private strokeColor = "#000000";
   private strokeWidth = 2;
   private smoothingWindow = 5;
+  private activeBrush: BrushConfig | null = null;
 
   private onPointerDown: (e: PointerEvent) => void;
   private onPointerMove: (e: PointerEvent) => void;
@@ -98,6 +100,19 @@ export class StrokeCapture {
 
   setSmoothing(windowSize: number): void {
     this.smoothingWindow = windowSize;
+  }
+
+  /** Apply a full brush config — sets color, width, and smoothing from the brush. */
+  setBrushConfig(brush: BrushConfig): void {
+    this.activeBrush = brush;
+    this.strokeColor = brush.color;
+    this.strokeWidth = brush.baseWidth;
+    this.smoothingWindow = brush.smoothing;
+  }
+
+  /** Returns the active brush config, or null if none set. */
+  getBrushConfig(): BrushConfig | null {
+    return this.activeBrush;
   }
 
   destroy(): void {

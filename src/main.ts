@@ -1,5 +1,6 @@
 import { Renderer } from "./renderer";
 import { SpatialIndex } from "./renderer/SpatialIndex";
+import { getStrokeLOD, clearLODCache } from "./renderer/StrokeLOD";
 import { Camera, CameraAnimator, CameraController } from "./camera";
 import { DrawfinityDoc, UndoManager } from "./crdt";
 import { StrokeCapture } from "./input";
@@ -59,6 +60,7 @@ window.addEventListener("unhandledrejection", (e) => {
   // Keep index in sync when strokes change (add/remove/undo/redo/remote sync)
   doc.onStrokesChanged(() => {
     spatialIndex.rebuild(doc.getStrokes());
+    clearLODCache(); // Invalidate LOD cache when stroke set changes
   });
 
   const syncManager = new SyncManager(doc.getDoc());
@@ -197,13 +199,15 @@ window.addEventListener("unhandledrejection", (e) => {
     // Update toolbar zoom display
     toolbar.updateZoom(camera.zoom * 100);
 
-    // Draw only strokes visible in the current viewport
+    // Draw only strokes visible in the current viewport, with LOD simplification
     const viewportBounds = camera.getViewportBounds();
     const visibleStrokes = spatialIndex.query(viewportBounds);
+    const currentZoom = camera.zoom;
     for (const stroke of visibleStrokes) {
       const rgba = hexToRgba(stroke.color);
       rgba[3] = stroke.opacity ?? 1.0;
-      renderer.drawStroke(stroke.points, rgba, stroke.width);
+      const lodPoints = getStrokeLOD(stroke.id, stroke.points, currentZoom);
+      renderer.drawStroke(lodPoints, rgba, stroke.width);
     }
 
     // Draw the in-progress stroke

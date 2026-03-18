@@ -11,7 +11,7 @@ Optimize the WebGL rendering pipeline for smooth performance at any zoom level, 
   - Update the index when strokes are added or removed (hook into `DrawfinityDoc.onStrokesChanged`)
   - This is critical for performance when canvases grow to thousands of strokes — without it, every frame renders everything
 
-- [ ] Add level-of-detail (LOD) rendering for deep zoom:
+- [x] Add level-of-detail (LOD) rendering for deep zoom:
   - When zoomed far out (many strokes visible but tiny), reduce point density for distant strokes — simplify polylines using Douglas-Peucker or similar algorithm based on current zoom level
   - When zoomed far in, render at full detail
   - Create `src/renderer/StrokeLOD.ts` — given a stroke and a zoom level, returns a simplified point array

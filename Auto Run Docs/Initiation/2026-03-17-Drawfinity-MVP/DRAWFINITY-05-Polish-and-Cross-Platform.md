@@ -18,7 +18,7 @@ Optimize the WebGL rendering pipeline for smooth performance at any zoom level, 
   - Cache LOD results per stroke per zoom bracket (e.g., 4 LOD levels) to avoid re-computing every frame
   - Verify: zoom way out with many strokes → frame rate should stay smooth
 
-- [ ] Add visual canvas enhancements:
+- [x] Add visual canvas enhancements:
   - Dot grid background that scales with zoom — small dots at regular world-space intervals, giving spatial reference without being distracting. Render as a separate WebGL draw call (instanced points or a tiled texture)
   - Custom cursor that reflects the active tool and brush size:
     - Brush: circle outline matching current brush width (scaled by zoom)

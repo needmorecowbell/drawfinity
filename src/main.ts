@@ -6,6 +6,7 @@ import { DrawfinityDoc, UndoManager } from "./crdt";
 import { StrokeCapture } from "./input";
 import { ToolManager, BRUSH_PRESETS } from "./tools";
 import { Toolbar, ConnectionPanel } from "./ui";
+import { CursorManager } from "./ui/CursorManager";
 import { SyncManager } from "./sync";
 
 const canvas = document.getElementById("drawfinity-canvas") as HTMLCanvasElement;
@@ -83,6 +84,7 @@ window.addEventListener("unhandledrejection", (e) => {
     toolManager.setTool(tool);
     strokeCapture.setTool(tool);
     toolbar.setToolUI(tool);
+    cursorManager.setTool(tool);
     if (tool === "brush") {
       strokeCapture.setBrushConfig(toolManager.getBrush());
     }
@@ -94,6 +96,7 @@ window.addEventListener("unhandledrejection", (e) => {
     toolManager.setBrush(preset);
     strokeCapture.setBrushConfig(toolManager.getBrush());
     toolbar.selectBrush(index);
+    cursorManager.setBrushWidth(toolManager.getBrush().baseWidth);
   }
 
   function doUndo(): void {
@@ -117,6 +120,8 @@ window.addEventListener("unhandledrejection", (e) => {
       toolManager.setBrush(brush);
       strokeCapture.setTool("brush");
       strokeCapture.setBrushConfig(toolManager.getBrush());
+      cursorManager.setTool("brush");
+      cursorManager.setBrushWidth(toolManager.getBrush().baseWidth);
     },
     onColorChange: (color) => {
       toolManager.setColor(color);
@@ -134,6 +139,14 @@ window.addEventListener("unhandledrejection", (e) => {
 
   // Connection panel
   const connectionPanel = new ConnectionPanel(syncManager);
+
+  // Cursor manager — reflects active tool and brush size
+  const cursorManager = new CursorManager(canvas);
+  cursorManager.setBrushWidth(toolManager.getBrush().baseWidth);
+  cameraController.onPanStateChange = (panning) => {
+    cursorManager.setPanning(panning);
+    if (!panning) cursorManager.updateCursor();
+  };
 
   // Update toolbar when undo/redo stack changes
   undoManager.onStackChange(updateUndoRedoState);
@@ -181,10 +194,12 @@ window.addEventListener("unhandledrejection", (e) => {
       const brush = toolManager.getBrush();
       brush.baseWidth = Math.max(0.5, brush.baseWidth - 1);
       strokeCapture.setBrushConfig(brush);
+      cursorManager.setBrushWidth(brush.baseWidth);
     } else if (e.key === "]") {
       const brush = toolManager.getBrush();
       brush.baseWidth = Math.min(64, brush.baseWidth + 1);
       strokeCapture.setBrushConfig(brush);
+      cursorManager.setBrushWidth(brush.baseWidth);
     }
   });
 
@@ -194,13 +209,18 @@ window.addEventListener("unhandledrejection", (e) => {
     cameraAnimator.tick();
 
     renderer.clear();
-    renderer.setCameraMatrix(camera.getTransformMatrix());
+    const cameraMatrix = camera.getTransformMatrix();
+    renderer.setCameraMatrix(cameraMatrix);
 
-    // Update toolbar zoom display
+    // Update toolbar zoom display and cursor size
     toolbar.updateZoom(camera.zoom * 100);
+    cursorManager.setZoom(camera.zoom);
+
+    // Draw dot grid background
+    const viewportBounds = camera.getViewportBounds();
+    renderer.drawDotGrid(cameraMatrix, viewportBounds, camera.zoom);
 
     // Draw only strokes visible in the current viewport, with LOD simplification
-    const viewportBounds = camera.getViewportBounds();
     const visibleStrokes = spatialIndex.query(viewportBounds);
     const currentZoom = camera.zoom;
     for (const stroke of visibleStrokes) {
@@ -237,7 +257,7 @@ window.addEventListener("unhandledrejection", (e) => {
 
   // Expose for debugging
   (window as unknown as Record<string, unknown>).__drawfinity = {
-    renderer, camera, cameraAnimator, cameraController, doc, strokeCapture, undoManager, autoSave, toolManager, toolbar, syncManager, connectionPanel, spatialIndex,
+    renderer, camera, cameraAnimator, cameraController, doc, strokeCapture, undoManager, autoSave, toolManager, toolbar, syncManager, connectionPanel, spatialIndex, cursorManager,
   };
 
   console.log("Drawfinity: init complete, toolbar created");

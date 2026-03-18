@@ -164,9 +164,13 @@ export class CameraController {
       const factor = Math.exp(zoomDelta);
       this.camera.zoomAt(e.clientX, e.clientY, factor);
     } else {
-      // Mouse wheel → discrete zoom steps
+      // Mouse wheel → smooth animated zoom steps
       const factor = e.deltaY < 0 ? this.ZOOM_STEP : 1 / this.ZOOM_STEP;
-      this.camera.zoomAt(e.clientX, e.clientY, factor);
+      this.animator.animateZoomTo(
+        this.camera.zoom * factor,
+        e.clientX,
+        e.clientY,
+      );
     }
   }
 
@@ -177,6 +181,7 @@ export class CameraController {
     if (e.code === "Space" && !e.repeat) {
       this.spaceHeld = true;
       this.canvas.style.cursor = "grab";
+      if (this.onPanStateChange) this.onPanStateChange(true);
       e.preventDefault();
       return;
     }
@@ -213,8 +218,12 @@ export class CameraController {
     if (e.code === "Space") {
       this.spaceHeld = false;
       this.canvas.style.cursor = "";
+      if (this.onPanStateChange) this.onPanStateChange(false);
     }
   }
+
+  /** Optional callback invoked when pan mode state changes. */
+  onPanStateChange: ((panning: boolean) => void) | null = null;
 
   // ── Multi-pointer pinch helpers ───────────────────────────────
 

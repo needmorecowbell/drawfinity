@@ -144,7 +144,8 @@ describe("CameraController", () => {
     expect(controller.panning).toBe(false);
   });
 
-  it("zooms in on scroll up (discrete steps)", () => {
+  it("zooms in on scroll up via animated zoom", () => {
+    const animateSpy = vi.spyOn(animator, "animateZoomTo");
     const wheel = getHandler(canvas, "wheel");
     wheel({
       deltaY: -100,
@@ -153,10 +154,15 @@ describe("CameraController", () => {
       ctrlKey: false,
       preventDefault: vi.fn(),
     });
-    expect(camera.zoom).toBeGreaterThan(1);
+    expect(animateSpy).toHaveBeenCalledWith(
+      expect.closeTo(1.1, 1),
+      400,
+      300,
+    );
   });
 
-  it("zooms out on scroll down (discrete steps)", () => {
+  it("zooms out on scroll down via animated zoom", () => {
+    const animateSpy = vi.spyOn(animator, "animateZoomTo");
     const wheel = getHandler(canvas, "wheel");
     wheel({
       deltaY: 100,
@@ -165,7 +171,11 @@ describe("CameraController", () => {
       ctrlKey: false,
       preventDefault: vi.fn(),
     });
-    expect(camera.zoom).toBeLessThan(1);
+    expect(animateSpy).toHaveBeenCalledWith(
+      expect.closeTo(1 / 1.1, 1),
+      400,
+      300,
+    );
   });
 
   it("handles trackpad pinch (ctrlKey + wheel) with continuous zoom", () => {
@@ -291,6 +301,27 @@ describe("CameraController", () => {
     // Release pointers
     up({ pointerId: 1 });
     up({ pointerId: 2 });
+  });
+
+  it("invokes onPanStateChange when Space key toggles pan mode", () => {
+    const panCallback = vi.fn();
+    controller.onPanStateChange = panCallback;
+
+    const keyDown = getDocHandler("keydown");
+    const keyUp = getDocHandler("keyup");
+
+    keyDown({
+      code: "Space",
+      key: " ",
+      repeat: false,
+      ctrlKey: false,
+      metaKey: false,
+      preventDefault: vi.fn(),
+    });
+    expect(panCallback).toHaveBeenCalledWith(true);
+
+    keyUp({ code: "Space" });
+    expect(panCallback).toHaveBeenCalledWith(false);
   });
 
   it("removes all listeners on destroy", () => {

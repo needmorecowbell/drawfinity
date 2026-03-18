@@ -1,5 +1,6 @@
 import { WebGLContext } from "./WebGLContext";
 import { StrokeRenderer, StrokePoint } from "./StrokeRenderer";
+import { DotGridRenderer } from "./DotGridRenderer";
 
 /**
  * Top-level renderer that owns the WebGL context, shaders, and stroke renderer.
@@ -8,10 +9,12 @@ import { StrokeRenderer, StrokePoint } from "./StrokeRenderer";
 export class Renderer {
   private context: WebGLContext;
   private strokeRenderer: StrokeRenderer;
+  private dotGridRenderer: DotGridRenderer;
 
   constructor(canvas: HTMLCanvasElement) {
     this.context = new WebGLContext(canvas);
     this.strokeRenderer = new StrokeRenderer(this.context.gl);
+    this.dotGridRenderer = new DotGridRenderer(this.context.gl);
   }
 
   get gl(): WebGL2RenderingContext {
@@ -31,6 +34,14 @@ export class Renderer {
     this.strokeRenderer.setCameraMatrix(matrix);
   }
 
+  drawDotGrid(
+    cameraMatrix: Float32Array,
+    viewportBounds: { minX: number; minY: number; maxX: number; maxY: number },
+    zoom: number,
+  ): void {
+    this.dotGridRenderer.draw(cameraMatrix, viewportBounds, zoom);
+  }
+
   drawStroke(
     points: readonly StrokePoint[],
     color: [number, number, number, number],
@@ -41,6 +52,7 @@ export class Renderer {
 
   destroy(): void {
     this.strokeRenderer.destroy();
+    this.dotGridRenderer.destroy();
     this.context.destroy();
   }
 }

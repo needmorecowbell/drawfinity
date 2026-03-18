@@ -27,7 +27,7 @@ Optimize the WebGL rendering pipeline for smooth performance at any zoom level, 
   - Smooth animated zoom (lerp toward target zoom over a few frames instead of instant snap)
   - Add a minimap or viewport indicator in the corner showing where you are relative to all content (optional — implement if time allows)
 
-- [ ] Profile and optimize rendering performance:
+- [x] Profile and optimize rendering performance:
   - Add a simple FPS counter to the HUD (toggled with a debug key, e.g., F3)
   - Create a stress test: programmatically generate 1000+ random strokes spread across a large area
   - Profile with browser dev tools (or Tauri's webview inspector):
@@ -40,7 +40,7 @@ Optimize the WebGL rendering pipeline for smooth performance at any zoom level, 
     - Avoid re-uploading unchanged vertex data every frame (cache GPU buffers per stroke)
   - Target: 60fps with 1000 strokes visible at once
 
-- [ ] Cross-platform build and verification:
+- [x] Cross-platform build and verification:
   - Update `tauri.conf.json` with proper app metadata (name, version, window title, default window size)
   - Build for the current platform: `npm run tauri build`
   - Document any platform-specific issues encountered during build
@@ -55,6 +55,7 @@ Optimize the WebGL rendering pipeline for smooth performance at any zoom level, 
     - Toolbar and keyboard shortcuts function
     - WebSocket collaboration connects and syncs (if server is running)
   - Fix any platform-specific issues found
+  - **Completed 2026-03-18**: Updated tauri.conf.json (window 1280x800, min 800x600, centered, descriptions, fixed identifier from .app to .canvas). Built successfully on Linux — .deb and .rpm packages produced. AppImage failed (linuxdeploy issue, documented). Fixed 3 unused-import TS errors. Created `docs/cross-platform-notes.md` with full build/compatibility reference.
 
 - [ ] Final integration test and commit:
   - Run the full test suite

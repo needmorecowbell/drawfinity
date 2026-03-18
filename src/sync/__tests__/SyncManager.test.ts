@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import * as Y from "yjs";
-import { SyncManager, ConnectionState } from "../SyncManager";
+import { SyncManager } from "../SyncManager";
 
 // Mock y-websocket
 const mockProvider = {

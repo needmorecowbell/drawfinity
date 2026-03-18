@@ -1,4 +1,4 @@
-import { Stroke, StrokePoint } from "../model/Stroke";
+import { Stroke } from "../model/Stroke";
 
 export interface AABB {
   minX: number;

@@ -3,7 +3,6 @@ import { generateTriangleStrip } from "../StrokeMesh";
 import { StrokeVertexCache } from "../StrokeVertexCache";
 import { SpatialIndex } from "../SpatialIndex";
 import { getStrokeLOD, clearLODCache } from "../StrokeLOD";
-import type { StrokePoint } from "../StrokeRenderer";
 import type { Stroke } from "../../model/Stroke";
 
 /** Generate a random stroke with the given number of points spread across a given area. */

@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "drawfinity",
+  "productName": "Drawfinity",
   "version": "0.1.0",
-  "identifier": "com.drawfinity.app",
+  "identifier": "com.drawfinity.canvas",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -13,9 +13,12 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Drawfinity",
-        "width": 800,
-        "height": 600
+        "title": "Drawfinity — Infinite Canvas Drawing",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "center": true
       }
     ],
     "security": {
@@ -31,6 +34,8 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "shortDescription": "Infinite canvas drawing app with real-time collaboration",
+    "longDescription": "Drawfinity is an infinite canvas drawing application featuring pressure-sensitive brush tools, real-time collaboration via WebSocket sync, and a high-performance WebGL rendering pipeline."
   }
 }

@@ -21,6 +21,7 @@ export class StrokeCapture {
   private eraserTool: EraserTool = new EraserTool();
   private isErasing = false;
   private activeStrokeOpacityCurve: ((p: number) => number) | null = null;
+  private enabled = true;
 
   private onPointerDown: (e: PointerEvent) => void;
   private onPointerMove: (e: PointerEvent) => void;
@@ -48,6 +49,7 @@ export class StrokeCapture {
   }
 
   private handlePointerDown(e: PointerEvent): void {
+    if (!this.enabled) return;
     // Only start stroke on left button without Ctrl (Ctrl+left is pan)
     if (e.button !== 0 || e.ctrlKey) return;
     // Don't draw while camera is panning
@@ -116,11 +118,15 @@ export class StrokeCapture {
   }
 
   private eraseAt(worldX: number, worldY: number): void {
-    if (!this.document.removeStroke) return;
+    if (!this.document.replaceStroke && !this.document.removeStroke) return;
     const strokes = this.document.getStrokes();
-    const hits = this.eraserTool.findIntersectingStrokes(worldX, worldY, strokes);
-    for (const id of hits) {
-      this.document.removeStroke(id);
+    const results = this.eraserTool.computeErasureResults(worldX, worldY, strokes);
+    for (const { strokeId, fragments } of results) {
+      if (this.document.replaceStroke) {
+        this.document.replaceStroke(strokeId, fragments);
+      } else if (this.document.removeStroke) {
+        this.document.removeStroke(strokeId);
+      }
     }
   }
 
@@ -131,6 +137,18 @@ export class StrokeCapture {
     const avgPressure = this.activeStroke.reduce((s, p) => s + p.pressure, 0) / this.activeStroke.length;
     const opacity = this.activeStrokeOpacityCurve ? this.activeStrokeOpacityCurve(avgPressure) : 1.0;
     return { points: smoothed, color: this.strokeColor, width: this.strokeWidth, opacity };
+  }
+
+  setEnabled(enabled: boolean): void {
+    this.enabled = enabled;
+    if (!enabled) {
+      this.activeStroke = null;
+      this.isErasing = false;
+    }
+  }
+
+  isEnabled(): boolean {
+    return this.enabled;
   }
 
   setColor(color: string): void {

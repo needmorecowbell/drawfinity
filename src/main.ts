@@ -3,8 +3,9 @@ import { SpatialIndex } from "./renderer/SpatialIndex";
 import { getStrokeLOD, clearLODCache } from "./renderer/StrokeLOD";
 import { Camera, CameraAnimator, CameraController } from "./camera";
 import { DrawfinityDoc, UndoManager } from "./crdt";
-import { StrokeCapture } from "./input";
-import { ToolManager, BRUSH_PRESETS } from "./tools";
+import { StrokeCapture, ShapeCapture } from "./input";
+import { ToolManager, BRUSH_PRESETS, isShapeTool } from "./tools";
+import type { ToolType } from "./tools";
 import { Toolbar, ConnectionPanel } from "./ui";
 import { CursorManager } from "./ui/CursorManager";
 import { FpsCounter } from "./ui/FpsCounter";
@@ -70,6 +71,8 @@ window.addEventListener("unhandledrejection", (e) => {
   const toolManager = new ToolManager();
   const strokeCapture = new StrokeCapture(camera, cameraController, doc, canvas);
   strokeCapture.setBrushConfig(toolManager.getBrush());
+  const shapeCapture = new ShapeCapture(camera, cameraController, doc, canvas);
+  shapeCapture.setEnabled(false);
   const undoManager = new UndoManager(doc.getStrokesArray());
 
   // FPS counter (toggled with F3)
@@ -84,14 +87,36 @@ window.addEventListener("unhandledrejection", (e) => {
   });
   resizeObserver.observe(canvas);
 
-  // Helper: sync tool state across ToolManager, StrokeCapture, and Toolbar
-  function switchTool(tool: "brush" | "eraser"): void {
+  // Helper: sync tool state across ToolManager, StrokeCapture, ShapeCapture, and Toolbar
+  function switchTool(tool: ToolType): void {
     toolManager.setTool(tool);
-    strokeCapture.setTool(tool);
-    toolbar.setToolUI(tool);
-    cursorManager.setTool(tool);
-    if (tool === "brush") {
-      strokeCapture.setBrushConfig(toolManager.getBrush());
+
+    if (isShapeTool(tool)) {
+      // Enable shape capture, disable stroke capture
+      strokeCapture.setTool("brush"); // deactivate eraser mode
+      strokeCapture.setEnabled(false);
+      shapeCapture.setEnabled(true);
+      shapeCapture.setConfig({
+        shapeType: tool,
+        strokeColor: toolManager.getColor(),
+        strokeWidth: toolManager.getBrush().baseWidth,
+        fillColor: toolManager.getShapeConfig().fillColor,
+        opacity: 1.0,
+        sides: toolManager.getShapeConfig().sides,
+        starInnerRadius: toolManager.getShapeConfig().starInnerRadius,
+      });
+      toolbar.setToolUI(tool);
+      cursorManager.setTool("brush"); // crosshair-like cursor for shapes
+    } else {
+      // Brush or eraser — disable shape capture, enable stroke capture
+      shapeCapture.setEnabled(false);
+      strokeCapture.setEnabled(true);
+      strokeCapture.setTool(tool as "brush" | "eraser");
+      toolbar.setToolUI(tool);
+      cursorManager.setTool(tool as "brush" | "eraser");
+      if (tool === "brush") {
+        strokeCapture.setBrushConfig(toolManager.getBrush());
+      }
     }
   }
 
@@ -132,7 +157,7 @@ window.addEventListener("unhandledrejection", (e) => {
       toolManager.setColor(color);
       strokeCapture.setColor(color);
     },
-    onToolChange: (tool) => {
+    onToolChange: (tool: ToolType) => {
       switchTool(tool);
     },
     onUndo: doUndo,
@@ -194,6 +219,14 @@ window.addEventListener("unhandledrejection", (e) => {
       switchTool("eraser");
     } else if (e.key === "b" || e.key === "B") {
       switchTool("brush");
+    } else if (e.key === "r" || e.key === "R") {
+      switchTool("rectangle");
+    } else if (e.key === "o" || e.key === "O") {
+      switchTool("ellipse");
+    } else if (e.key === "p" || e.key === "P") {
+      switchTool("polygon");
+    } else if (e.key === "s" || e.key === "S") {
+      switchTool("star");
     }
 
     // Brush preset selection (1-4)
@@ -283,7 +316,7 @@ window.addEventListener("unhandledrejection", (e) => {
 
   // Expose for debugging
   (window as unknown as Record<string, unknown>).__drawfinity = {
-    renderer, camera, cameraAnimator, cameraController, doc, strokeCapture, undoManager, autoSave, toolManager, toolbar, syncManager, connectionPanel, spatialIndex, cursorManager, fpsCounter,
+    renderer, camera, cameraAnimator, cameraController, doc, strokeCapture, shapeCapture, undoManager, autoSave, toolManager, toolbar, syncManager, connectionPanel, spatialIndex, cursorManager, fpsCounter,
   };
 
   console.log("Drawfinity: init complete, toolbar created");

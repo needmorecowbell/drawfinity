@@ -114,6 +114,10 @@ Each module has an `index.ts` barrel. Import from the barrel (`from "./renderer"
 |-----|--------|
 | `B` | Switch to brush tool |
 | `E` | Switch to eraser tool |
+| `R` | Switch to rectangle shape tool |
+| `O` | Switch to ellipse shape tool |
+| `P` | Switch to polygon shape tool |
+| `S` | Switch to star shape tool |
 | `1`–`4` | Select brush preset (Pen, Pencil, Marker, Highlighter) |
 | `[` / `]` | Decrease / increase brush size |
 | `Space` + drag | Pan mode |

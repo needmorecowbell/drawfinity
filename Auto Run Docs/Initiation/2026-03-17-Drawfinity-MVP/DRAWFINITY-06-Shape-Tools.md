@@ -46,10 +46,11 @@ Add geometric shape tools (rectangle, ellipse, polygon, star) as first-class can
   - Coordinate with `StrokeCapture.ts` — active tool determines which capture handles input
   - *(Completed: ShapeCapture with enable/disable gating, ShapeToolConfig, preview support, 18 unit tests passing)*
 
-- [ ] Shape tools in ToolManager:
+- [x] Shape tools in ToolManager:
   - Extend `ToolType` to include `"rectangle" | "ellipse" | "polygon" | "star"`
   - Add shape-specific config to ToolManager: sides (polygon), inner radius ratio (star), fill color
   - Add keyboard shortcuts: `R` for rectangle, `O` for ellipse, `P` for polygon, `S` for star (check for conflicts with existing shortcuts)
+  - *(Completed: Extended ToolType, added ShapeToolConfig/isShapeTool/SHAPE_TOOL_TYPES, wired ShapeCapture enable/disable in main.ts switchTool, added StrokeCapture.setEnabled gating, keyboard shortcuts R/O/P/S, 13 ToolManager tests passing, 401 total tests passing)*
 
 - [ ] Update renderer and spatial index:
   - Update `SpatialIndex.ts` to index shapes by their AABB (trivial from center + width/height + rotation)

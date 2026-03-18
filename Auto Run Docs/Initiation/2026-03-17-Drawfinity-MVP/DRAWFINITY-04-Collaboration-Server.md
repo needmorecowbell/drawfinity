@@ -11,7 +11,7 @@ Build the Rust WebSocket server that acts as a relay and persistence layer for c
   - Set up the binary entry point with Tokio async runtime
   - Verify it compiles and runs (`cargo run` in `server/`)
 
-- [ ] Implement WebSocket room management:
+- [x] Implement WebSocket room management:
   - Create `server/src/room.rs`:
     - `Room` struct: holds a room ID, a set of connected client senders, and the accumulated Yjs document state (as raw bytes)
     - `RoomManager` struct: holds a `HashMap<String, Room>`, provides `create_room()`, `join_room()`, `leave_room()`, `get_or_create_room()`

@@ -79,9 +79,9 @@ Build a browsable interface for collaborative drawings: configure server URL, li
   - Room creator name is set from UserProfile when creating a room via API — added: HomeScreen now passes loadProfile().name to createRoom()
   - Bonus: room name is now passed through onJoinRoom → ViewManager → CanvasApp so toolbar shows room name instead of ID
 
-- [ ] Tests:
-  - Server: integration tests for `GET /api/rooms`, `POST /api/rooms`, `GET /api/rooms/{id}`
-  - Server: test room metadata persistence and recovery
-  - Client: unit tests for ServerApi (mock fetch responses, error handling)
-  - Client: unit tests for shared tab rendering (room list, connection state)
-  - Client: unit tests for auto-reconnect logic (backoff timing, max attempts)
+- [x] Tests:
+  - Server: integration tests for `GET /api/rooms`, `POST /api/rooms`, `GET /api/rooms/{id}` — 7 tests in `api.rs::tests`
+  - Server: test room metadata persistence and recovery — 8 tests across `room.rs::tests` and `persistence.rs::tests`
+  - Client: unit tests for ServerApi (mock fetch responses, error handling) — 11 tests in `ServerApi.test.ts`
+  - Client: unit tests for shared tab rendering (room list, connection state) — 20 tests in `HomeScreenShared.test.ts`
+  - Client: unit tests for auto-reconnect logic (backoff timing, max attempts) — 13 tests in `SyncManager.test.ts` auto-reconnect describe block

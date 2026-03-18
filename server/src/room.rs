@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
 
+use crate::persistence::{DebouncedWriter, Persistence};
+
 /// A collaborative room holding connected clients and accumulated document state.
 #[allow(dead_code)]
 pub struct Room {
@@ -25,21 +27,39 @@ impl Room {
         }
     }
 
+    pub fn with_state(id: String, doc_state: Vec<u8>) -> Self {
+        let (tx, _) = broadcast::channel(256);
+        Self {
+            id,
+            tx,
+            client_count: 0,
+            doc_state,
+        }
+    }
 }
 
 /// Manages all active rooms, providing create/join/leave semantics.
 pub struct RoomManager {
     rooms: Arc<RwLock<HashMap<String, Arc<RwLock<Room>>>>>,
+    persistence: Arc<Persistence>,
+    debounced_writer: DebouncedWriter,
 }
 
 impl RoomManager {
-    pub fn new() -> Self {
+    pub fn new(persistence: Arc<Persistence>) -> Self {
+        let debounced_writer = DebouncedWriter::spawn(
+            Arc::clone(&persistence),
+            std::time::Duration::from_secs(5),
+        );
         Self {
             rooms: Arc::new(RwLock::new(HashMap::new())),
+            persistence,
+            debounced_writer,
         }
     }
 
     /// Get or create a room by ID. Returns the room handle.
+    /// Loads persisted state from disk if the room doesn't exist in memory.
     pub async fn get_or_create_room(&self, room_id: &str) -> Arc<RwLock<Room>> {
         // Fast path: room already exists
         {
@@ -49,14 +69,20 @@ impl RoomManager {
             }
         }
 
-        // Slow path: create the room
+        // Slow path: create the room, loading persisted state if available
         let mut rooms = self.rooms.write().await;
         // Double-check after acquiring write lock
         if let Some(room) = rooms.get(room_id) {
             return Arc::clone(room);
         }
 
-        let room = Arc::new(RwLock::new(Room::new(room_id.to_string())));
+        let room = if let Some(state) = self.persistence.load(room_id).await {
+            tracing::info!(room_id = room_id, bytes = state.len(), "Restored room from disk");
+            Arc::new(RwLock::new(Room::with_state(room_id.to_string(), state)))
+        } else {
+            Arc::new(RwLock::new(Room::new(room_id.to_string())))
+        };
+
         rooms.insert(room_id.to_string(), Arc::clone(&room));
         tracing::info!(room_id = room_id, "Created new room");
         room
@@ -77,9 +103,9 @@ impl RoomManager {
         (tx, state)
     }
 
-    /// Leave a room: decrements client count, cleans up empty rooms after a brief period.
+    /// Leave a room: decrements client count, persists and cleans up empty rooms after a brief period.
     pub async fn leave_room(&self, room_id: &str) {
-        let should_remove = {
+        let (should_remove, state_to_persist) = {
             let rooms = self.rooms.read().await;
             if let Some(room) = rooms.get(room_id) {
                 let mut room_guard = room.write().await;
@@ -89,11 +115,26 @@ impl RoomManager {
                     clients = room_guard.client_count,
                     "Client left room"
                 );
-                room_guard.client_count == 0
+                let empty = room_guard.client_count == 0;
+                let state = if empty {
+                    Some(room_guard.doc_state.clone())
+                } else {
+                    None
+                };
+                (empty, state)
             } else {
-                false
+                (false, None)
             }
         };
+
+        // Immediately persist when room becomes empty
+        if let Some(state) = state_to_persist {
+            if !state.is_empty() {
+                if let Err(e) = self.persistence.save(room_id, &state).await {
+                    tracing::error!(room_id = room_id, error = %e, "Failed to persist on room empty");
+                }
+            }
+        }
 
         if should_remove {
             // Clean up empty rooms after a timeout to allow reconnections
@@ -114,24 +155,33 @@ impl RoomManager {
         }
     }
 
-    /// Update the stored document state for a room.
+    /// Update the stored document state for a room, with debounced persistence.
     pub async fn update_doc_state(&self, room_id: &str, state: Vec<u8>) {
         let rooms = self.rooms.read().await;
         if let Some(room) = rooms.get(room_id) {
             let mut room_guard = room.write().await;
-            room_guard.doc_state = state;
+            room_guard.doc_state = state.clone();
+            // Queue debounced write to disk
+            self.debounced_writer.queue_save(room_id.to_string(), state);
         }
     }
-
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
+
+    fn test_persistence(dir: &TempDir) -> Arc<Persistence> {
+        Arc::new(Persistence::new(dir.path().to_path_buf()))
+    }
 
     #[tokio::test]
     async fn test_get_or_create_room() {
-        let manager = RoomManager::new();
+        let dir = TempDir::new().unwrap();
+        let p = test_persistence(&dir);
+        p.init().await.unwrap();
+        let manager = RoomManager::new(p);
         let room = manager.get_or_create_room("test-room").await;
         let guard = room.read().await;
         assert_eq!(guard.id, "test-room");
@@ -141,7 +191,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_join_room_creates_if_missing() {
-        let manager = RoomManager::new();
+        let dir = TempDir::new().unwrap();
+        let p = test_persistence(&dir);
+        p.init().await.unwrap();
+        let manager = RoomManager::new(p);
         let (_tx, state) = manager.join_room("new-room").await;
         assert!(state.is_empty());
 
@@ -153,7 +206,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_join_room_sends_existing_state() {
-        let manager = RoomManager::new();
+        let dir = TempDir::new().unwrap();
+        let p = test_persistence(&dir);
+        p.init().await.unwrap();
+        let manager = RoomManager::new(p);
 
         // Set up a room with some state
         let room = manager.get_or_create_room("state-room").await;
@@ -169,7 +225,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_multiple_joins() {
-        let manager = RoomManager::new();
+        let dir = TempDir::new().unwrap();
+        let p = test_persistence(&dir);
+        p.init().await.unwrap();
+        let manager = RoomManager::new(p);
         manager.join_room("multi").await;
         manager.join_room("multi").await;
         manager.join_room("multi").await;
@@ -181,7 +240,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_leave_room_decrements() {
-        let manager = RoomManager::new();
+        let dir = TempDir::new().unwrap();
+        let p = test_persistence(&dir);
+        p.init().await.unwrap();
+        let manager = RoomManager::new(p);
         manager.join_room("leave-test").await;
         manager.join_room("leave-test").await;
 
@@ -194,7 +256,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_update_doc_state() {
-        let manager = RoomManager::new();
+        let dir = TempDir::new().unwrap();
+        let p = test_persistence(&dir);
+        p.init().await.unwrap();
+        let manager = RoomManager::new(p);
         manager.join_room("update-test").await;
         manager
             .update_doc_state("update-test", vec![10, 20, 30])
@@ -207,7 +272,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_broadcast_to_subscribers() {
-        let manager = RoomManager::new();
+        let dir = TempDir::new().unwrap();
+        let p = test_persistence(&dir);
+        p.init().await.unwrap();
+        let manager = RoomManager::new(p);
         let (tx, _state) = manager.join_room("broadcast-test").await;
 
         let mut rx = tx.subscribe();
@@ -215,5 +283,19 @@ mod tests {
 
         let msg = rx.recv().await.unwrap();
         assert_eq!(msg, vec![42, 43]);
+    }
+
+    #[tokio::test]
+    async fn test_room_loads_persisted_state() {
+        let dir = TempDir::new().unwrap();
+        let p = test_persistence(&dir);
+        p.init().await.unwrap();
+
+        // Pre-persist some state
+        p.save("persisted-room", &[99, 88, 77]).await.unwrap();
+
+        let manager = RoomManager::new(p);
+        let (_tx, state) = manager.join_room("persisted-room").await;
+        assert_eq!(state, vec![99, 88, 77]);
     }
 }

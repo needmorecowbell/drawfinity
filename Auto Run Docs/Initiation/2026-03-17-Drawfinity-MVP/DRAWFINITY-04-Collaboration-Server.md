@@ -24,7 +24,7 @@ Build the Rust WebSocket server that acts as a relay and persistence layer for c
     - On disconnect: remove the client from the room, clean up empty rooms after a timeout
   - Wire the WebSocket handler into the HTTP server
 
-- [ ] Add server-side document persistence:
+- [x] Add server-side document persistence:
   - Create `server/src/persistence.rs`:
     - Store room documents to disk as binary files in a configurable data directory (e.g., `./data/{room_id}.bin`)
     - On room creation, check for an existing file and load it

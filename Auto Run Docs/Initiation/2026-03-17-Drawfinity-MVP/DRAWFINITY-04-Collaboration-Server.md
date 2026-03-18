@@ -4,7 +4,7 @@ Build the Rust WebSocket server that acts as a relay and persistence layer for c
 
 ## Tasks
 
-- [ ] Scaffold the Rust collaboration server:
+- [x] Scaffold the Rust collaboration server:
   - Create a new Rust project in `server/` within the Drawfinity repo (`cargo init server`)
   - Add dependencies: `tokio` (async runtime), `warp` or `axum` (HTTP/WebSocket framework), `serde` + `serde_json` (serialization), `uuid` (room IDs)
   - Implement a basic health-check HTTP endpoint (`GET /health` → 200 OK)

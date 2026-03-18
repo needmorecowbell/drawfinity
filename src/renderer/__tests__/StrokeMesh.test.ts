@@ -19,8 +19,8 @@ function vertexColor(data: Float32Array, index: number): [number, number, number
 describe("StrokeMesh.generateTriangleStrip", () => {
   describe("two-point polyline (single segment)", () => {
     const points: StrokePoint[] = [
-      { x: 0, y: 0 },
-      { x: 10, y: 0 },
+      { x: 0, y: 0, pressure: 1.0 },
+      { x: 10, y: 0, pressure: 1.0 },
     ];
     const width = 4;
 
@@ -31,9 +31,9 @@ describe("StrokeMesh.generateTriangleStrip", () => {
       expect(data!.length).toBe(24);
     });
 
-    it("offsets vertices perpendicular to segment with magnitude width/2", () => {
+    it("offsets vertices perpendicular to segment with magnitude (width*pressure)/2", () => {
       const data = generateTriangleStrip(points, width, WHITE)!;
-      const halfW = width / 2;
+      const halfW = (width * 1.0) / 2;
 
       // Segment direction is (1, 0), so normal is (0, 1) (perpendicular)
       // First point (0,0): left vertex at (0, +halfW), right at (0, -halfW)
@@ -67,11 +67,11 @@ describe("StrokeMesh.generateTriangleStrip", () => {
   });
 
   describe("multi-segment polyline with miter joins", () => {
-    // L-shaped path: right then up
+    // L-shaped path: right then up, full pressure
     const points: StrokePoint[] = [
-      { x: 0, y: 0 },
-      { x: 10, y: 0 },
-      { x: 10, y: 10 },
+      { x: 0, y: 0, pressure: 1.0 },
+      { x: 10, y: 0, pressure: 1.0 },
+      { x: 10, y: 10, pressure: 1.0 },
     ];
     const width = 2;
 
@@ -146,12 +146,66 @@ describe("StrokeMesh.generateTriangleStrip", () => {
       for (const n of [2, 3, 5, 10, 20]) {
         const points: StrokePoint[] = [];
         for (let i = 0; i < n; i++) {
-          points.push({ x: i * 10, y: 0 });
+          points.push({ x: i * 10, y: 0, pressure: 1.0 });
         }
         const data = generateTriangleStrip(points, 1, WHITE);
         expect(data).not.toBeNull();
         expect(data!.length).toBe(n * 2 * 6);
       }
+    });
+  });
+
+  describe("pressure-based width variation", () => {
+    it("uses default pressure 0.5 when pressure is not provided", () => {
+      const points: StrokePoint[] = [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+      ];
+      const width = 4;
+      const data = generateTriangleStrip(points, width, WHITE)!;
+      // Default pressure 0.5 → halfWidth = (4 * 0.5) / 2 = 1
+      const [, ly0] = vertexPos(data, 0);
+      expect(ly0).toBeCloseTo(1);
+    });
+
+    it("produces wider geometry at higher pressure", () => {
+      const width = 4;
+      const lowPressure: StrokePoint[] = [
+        { x: 0, y: 0, pressure: 0.25 },
+        { x: 10, y: 0, pressure: 0.25 },
+      ];
+      const highPressure: StrokePoint[] = [
+        { x: 0, y: 0, pressure: 1.0 },
+        { x: 10, y: 0, pressure: 1.0 },
+      ];
+
+      const lowData = generateTriangleStrip(lowPressure, width, WHITE)!;
+      const highData = generateTriangleStrip(highPressure, width, WHITE)!;
+
+      // Low pressure: halfWidth = (4 * 0.25) / 2 = 0.5
+      const [, lowY] = vertexPos(lowData, 0);
+      expect(lowY).toBeCloseTo(0.5);
+
+      // High pressure: halfWidth = (4 * 1.0) / 2 = 2.0
+      const [, highY] = vertexPos(highData, 0);
+      expect(highY).toBeCloseTo(2.0);
+    });
+
+    it("varies width per-point along a single stroke", () => {
+      const points: StrokePoint[] = [
+        { x: 0, y: 0, pressure: 0.5 },
+        { x: 10, y: 0, pressure: 1.0 },
+      ];
+      const width = 4;
+      const data = generateTriangleStrip(points, width, WHITE)!;
+
+      // First point: halfWidth = (4 * 0.5) / 2 = 1.0
+      const [, ly0] = vertexPos(data, 0);
+      expect(ly0).toBeCloseTo(1.0);
+
+      // Second point: halfWidth = (4 * 1.0) / 2 = 2.0
+      const [, ly1] = vertexPos(data, 2);
+      expect(ly1).toBeCloseTo(2.0);
     });
   });
 });

@@ -4,7 +4,7 @@ Build out the full drawing toolkit: pressure-sensitive strokes with variable wid
 
 ## Tasks
 
-- [ ] Extend the triangle strip renderer (from Phase 02.5) with per-point pressure-based width:
+- [x] Extend the triangle strip renderer (from Phase 02.5) with per-point pressure-based width:
   - **Prerequisite**: Phase 02.5 delivers `StrokeMesh.ts` with uniform-width triangle strip geometry and miter joins, replacing `GL_LINE_STRIP` + `gl.lineWidth()`. This task builds on that foundation.
   - Update `StrokeMesh.ts` to accept per-vertex pressure values and compute `±(width * pressure) / 2` offsets instead of uniform `±width/2`
   - Update the vertex shader to accept per-vertex width (already have position and color)

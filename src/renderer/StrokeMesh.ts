@@ -34,7 +34,6 @@ export function generateTriangleStrip(
 
   if (deduped.length < 2) return null;
 
-  const halfWidth = width / 2;
   const vertexCount = deduped.length * 2;
   // 6 floats per vertex: x, y, r, g, b, a
   const data = new Float32Array(vertexCount * 6);
@@ -98,6 +97,11 @@ export function generateTriangleStrip(
 
     const px = deduped[i].x;
     const py = deduped[i].y;
+
+    // Per-point pressure-based half-width: ±(width * pressure) / 2
+    // Default pressure is 0.5 for mouse input (consistent with StrokeCapture)
+    const pressure = deduped[i].pressure ?? 0.5;
+    const halfWidth = (width * pressure) / 2;
 
     // Left vertex
     const li = (i * 2) * 6;

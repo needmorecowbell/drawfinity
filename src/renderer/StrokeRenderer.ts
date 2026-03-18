@@ -8,6 +8,7 @@ import { generateTriangleStrip } from "./StrokeMesh";
 export interface StrokePoint {
   x: number;
   y: number;
+  pressure?: number;
 }
 
 /**

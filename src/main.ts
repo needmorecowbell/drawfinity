@@ -1,5 +1,5 @@
 import { Renderer } from "./renderer";
-import { Camera, CameraController } from "./camera";
+import { Camera, CameraAnimator, CameraController } from "./camera";
 import { DrawfinityDoc, UndoManager } from "./crdt";
 import { StrokeCapture } from "./input";
 import { loadDocument, getDefaultFilePath, AutoSave } from "./persistence";
@@ -11,7 +11,8 @@ if (!canvas) {
 
 const renderer = new Renderer(canvas);
 const camera = new Camera();
-const cameraController = new CameraController(camera, canvas);
+const cameraAnimator = new CameraAnimator(camera);
+const cameraController = new CameraController(camera, canvas, cameraAnimator);
 
 function hexToRgba(hex: string): [number, number, number, number] {
   const h = hex.replace("#", "");
@@ -89,6 +90,9 @@ function hexToRgba(hex: string): [number, number, number, number] {
 
   // Render loop
   function frame(): void {
+    // Advance smooth zoom/pan animations (momentum, animated transitions)
+    cameraAnimator.tick();
+
     renderer.clear();
     renderer.setCameraMatrix(camera.getTransformMatrix());
 
@@ -126,6 +130,6 @@ function hexToRgba(hex: string): [number, number, number, number] {
 
   // Expose for debugging
   (window as unknown as Record<string, unknown>).__drawfinity = {
-    renderer, camera, cameraController, doc, strokeCapture, undoManager, autoSave,
+    renderer, camera, cameraAnimator, cameraController, doc, strokeCapture, undoManager, autoSave,
   };
 })();

@@ -83,8 +83,6 @@ describe("DrawfinityDoc", () => {
 
   it("accepts an existing Y.Doc in the constructor", () => {
     const doc = new Y.Doc();
-    const strokes = doc.getArray<Y.Map<unknown>>("strokes");
-
     // Pre-populate via a separate DrawfinityDoc
     const other = new DrawfinityDoc(doc);
     other.addStroke(makeStroke("pre-existing"));

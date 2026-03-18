@@ -7,15 +7,20 @@ export class Camera {
   y = 0;
   zoom = 1;
 
-  private canvasWidth = 1;
-  private canvasHeight = 1;
+  private viewportWidth = 1;
+  private viewportHeight = 1;
 
   static readonly MIN_ZOOM = 0.01;
   static readonly MAX_ZOOM = 100;
 
   setViewportSize(width: number, height: number): void {
-    this.canvasWidth = width;
-    this.canvasHeight = height;
+    this.viewportWidth = width;
+    this.viewportHeight = height;
+  }
+
+  /** Returns [width, height] of the current viewport in CSS pixels. */
+  getViewportSize(): [number, number] {
+    return [this.viewportWidth, this.viewportHeight];
   }
 
   /**
@@ -26,8 +31,8 @@ export class Camera {
    * then map pixel coords to NDC.
    */
   getTransformMatrix(): Float32Array {
-    const sx = (2 * this.zoom) / this.canvasWidth;
-    const sy = (-2 * this.zoom) / this.canvasHeight; // flip Y for screen coords
+    const sx = (2 * this.zoom) / this.viewportWidth;
+    const sy = (-2 * this.zoom) / this.viewportHeight; // flip Y for screen coords
     const tx = -this.x * sx;
     const ty = -this.y * sy;
 
@@ -44,8 +49,8 @@ export class Camera {
    */
   screenToWorld(screenX: number, screenY: number): { x: number; y: number } {
     // Screen center is (canvasWidth/2, canvasHeight/2) which maps to camera position
-    const worldX = (screenX - this.canvasWidth / 2) / this.zoom + this.x;
-    const worldY = (screenY - this.canvasHeight / 2) / this.zoom + this.y;
+    const worldX = (screenX - this.viewportWidth / 2) / this.zoom + this.x;
+    const worldY = (screenY - this.viewportHeight / 2) / this.zoom + this.y;
     return { x: worldX, y: worldY };
   }
 

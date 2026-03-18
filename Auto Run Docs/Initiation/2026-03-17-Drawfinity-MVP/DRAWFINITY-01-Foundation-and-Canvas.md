@@ -7,7 +7,7 @@ Set up the Tauri + TypeScript project from scratch, establish the WebGL renderin
 - [x] Initialize the Tauri v2 project with a TypeScript + Vite frontend:
   - Run `npm create tauri-app@latest` (or equivalent) in the project root, selecting TypeScript + Vite template
   - Project name: `drawfinity`, identifier: `com.drawfinity.app`
-  - Verify the scaffold builds and launches with `cargo tauri dev`
+  - Verify the scaffold builds and launches with `npm run tauri dev`
   - Add a `.gitignore` covering `node_modules/`, `target/`, `dist/`, and OS files
   - Commit the initial scaffold
 
@@ -40,7 +40,7 @@ Set up the Tauri + TypeScript project from scratch, establish the WebGL renderin
   - Ensure the app handles window resize gracefully (update canvas size and WebGL viewport)
   - Verify the complete flow: launch the app, draw strokes with the mouse, pan around, zoom in/out — strokes should remain in world space and render correctly at any zoom level
 
-- [x] Run the app with `cargo tauri dev` and verify the following work end-to-end:
+- [x] Run the app with `npm run tauri dev` and verify the following work end-to-end:
   - The app opens a native window with an off-white canvas
   - Drawing with mouse creates visible strokes
   - Middle-mouse drag pans the view
@@ -50,3 +50,4 @@ Set up the Tauri + TypeScript project from scratch, establish the WebGL renderin
   - Fix any issues found during verification
   - Commit all working code
   - **Verified:** Fixed TypeScript error (readonly array type mismatch in `drawStroke`). All 48 tests pass, `tsc --noEmit` clean, frontend builds, Tauri debug binary compiles successfully. Code review confirms all verification items are correctly implemented.
+  - **Note (2026-03-17):** Verification was compilation-only (`tsc --noEmit` + `cargo build`). The app was not launched with `npm run tauri dev` for runtime end-to-end testing. The Tauri CLI is an npm devDependency (`@tauri-apps/cli`), not a cargo plugin — `cargo tauri dev` does not work in this project.

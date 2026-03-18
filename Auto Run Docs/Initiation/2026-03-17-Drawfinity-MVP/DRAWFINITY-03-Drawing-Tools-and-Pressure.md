@@ -49,7 +49,7 @@ Build out the full drawing toolkit: pressure-sensitive strokes with variable wid
     - `[` and `]` → decrease/increase brush size
   - Ensure the toolbar does NOT capture pointer events that should go to the canvas (use proper event delegation)
 
-- [ ] Test the complete drawing experience:
+- [x] Test the complete drawing experience:
   - Launch the app and verify each brush type produces visually distinct strokes
   - Verify eraser removes strokes and is undoable
   - Verify color changes affect new strokes (not existing ones)

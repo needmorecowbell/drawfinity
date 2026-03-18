@@ -325,3 +325,37 @@ html, body {
   font-size: 12px;
   color: #666;
 }
+
+/* Remote Cursors */
+#remote-cursors-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  overflow: hidden;
+}
+
+.remote-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.remote-cursor-arrow {
+  line-height: 0;
+}
+
+.remote-cursor-label {
+  position: absolute;
+  top: 16px;
+  left: 10px;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  color: #fff;
+  padding: 1px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  line-height: 1.4;
+}

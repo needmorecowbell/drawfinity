@@ -37,7 +37,7 @@ Introduce local user identity for collaboration: name, color, persistent prefere
   - Define `RemoteUser` interface: `{ id, name, color, cursor: { x, y } | null }`
   - Update `src/sync/__tests__/SyncManager.test.ts` with awareness tests
 
-- [ ] Remote cursor rendering:
+- [x] Remote cursor rendering:
   - Create `src/ui/RemoteCursors.ts`:
     - Subscribes to SyncManager remote user awareness
     - For each remote user with a non-null cursor position, renders a colored cursor + name label

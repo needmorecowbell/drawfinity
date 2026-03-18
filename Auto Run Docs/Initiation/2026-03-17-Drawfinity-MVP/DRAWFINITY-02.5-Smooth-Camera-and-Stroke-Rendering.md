@@ -67,7 +67,7 @@ Pre-Phase-03 intervention to fix two foundational issues before layering on draw
   - Verify that existing strokes render correctly with the new geometry — mouse strokes at default width should look similar to before but with consistent thickness at all zoom levels
   - Verify that zooming in/out keeps stroke width proportional to the canvas content (world-space width), not fixed to screen pixels
 
-- [ ] Add test suite for `StrokeMesh`:
+- [x] Add test suite for `StrokeMesh`:
   - Create `src/renderer/__tests__/StrokeMesh.test.ts`
   - Test that a two-point polyline produces the expected 4 vertices (one quad)
   - Test that vertex offsets are perpendicular to the segment direction and have magnitude `width/2`

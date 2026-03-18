@@ -3,7 +3,7 @@ import { Camera, CameraAnimator, CameraController } from "./camera";
 import { DrawfinityDoc, UndoManager } from "./crdt";
 import { StrokeCapture } from "./input";
 import { ToolManager, BRUSH_PRESETS } from "./tools";
-import { Toolbar } from "./ui";
+import { Toolbar, ConnectionPanel } from "./ui";
 import { SyncManager } from "./sync";
 
 const canvas = document.getElementById("drawfinity-canvas") as HTMLCanvasElement;
@@ -121,6 +121,9 @@ window.addEventListener("unhandledrejection", (e) => {
     },
   });
 
+  // Connection panel
+  const connectionPanel = new ConnectionPanel(syncManager);
+
   // Update toolbar when undo/redo stack changes
   undoManager.onStackChange(updateUndoRedoState);
 
@@ -137,6 +140,13 @@ window.addEventListener("unhandledrejection", (e) => {
     if (mod && ((e.key === "z" && e.shiftKey) || e.key === "y")) {
       e.preventDefault();
       doRedo();
+      return;
+    }
+
+    // Connection panel toggle
+    if (mod && e.key === "k") {
+      e.preventDefault();
+      connectionPanel.toggle();
       return;
     }
 
@@ -212,7 +222,7 @@ window.addEventListener("unhandledrejection", (e) => {
 
   // Expose for debugging
   (window as unknown as Record<string, unknown>).__drawfinity = {
-    renderer, camera, cameraAnimator, cameraController, doc, strokeCapture, undoManager, autoSave, toolManager, toolbar, syncManager,
+    renderer, camera, cameraAnimator, cameraController, doc, strokeCapture, undoManager, autoSave, toolManager, toolbar, syncManager, connectionPanel,
   };
 
   console.log("Drawfinity: init complete, toolbar created");

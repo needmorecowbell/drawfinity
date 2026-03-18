@@ -45,7 +45,7 @@ Build the Rust WebSocket server that acts as a relay and persistence layer for c
   - On connect, the Yjs sync protocol automatically exchanges state — no custom merge logic needed
   - The existing render loop already observes the CRDT doc, so remote strokes should appear automatically
 
-- [ ] Build a minimal connection UI in the client:
+- [x] Build a minimal connection UI in the client:
   - Add a connection panel to the toolbar or as a modal:
     - Server URL input (default: `ws://localhost:8080`)
     - Room ID input (with a "Generate Random" button)

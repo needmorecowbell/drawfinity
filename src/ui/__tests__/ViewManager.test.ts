@@ -7,6 +7,7 @@ import type { ViewManagerDeps } from "../ViewManager";
 const mockInit = vi.fn().mockResolvedValue(undefined);
 const mockDestroy = vi.fn();
 const mockGetCurrentDrawingId = vi.fn().mockReturnValue("d1");
+const mockSetDrawingName = vi.fn();
 
 vi.mock("../../canvas", () => {
   return {
@@ -14,6 +15,7 @@ vi.mock("../../canvas", () => {
       init = mockInit;
       destroy = mockDestroy;
       getCurrentDrawingId = mockGetCurrentDrawingId;
+      setDrawingName = mockSetDrawingName;
     },
   };
 });
@@ -119,9 +121,12 @@ describe("ViewManager", () => {
       expect(vm.getHomeScreen().isVisible()).toBe(false);
     });
 
-    it("creates and initializes CanvasApp with drawing ID", async () => {
+    it("creates and initializes CanvasApp with drawing ID and callbacks", async () => {
       await vm.showCanvas("d1");
-      expect(mockInit).toHaveBeenCalledWith("d1");
+      expect(mockInit).toHaveBeenCalledWith("d1", expect.objectContaining({
+        onGoHome: expect.any(Function),
+        onRenameDrawing: expect.any(Function),
+      }));
       expect(vm.getCanvasApp()).not.toBeNull();
     });
 
@@ -130,7 +135,7 @@ describe("ViewManager", () => {
       mockDestroy.mockClear();
       await vm.showCanvas("d2");
       expect(mockDestroy).toHaveBeenCalledOnce();
-      expect(mockInit).toHaveBeenCalledWith("d2");
+      expect(mockInit).toHaveBeenCalledWith("d2", expect.any(Object));
     });
   });
 

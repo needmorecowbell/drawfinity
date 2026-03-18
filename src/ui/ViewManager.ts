@@ -12,6 +12,7 @@ export interface ViewManagerDeps {
   duplicateDrawing: (id: string, newName: string) => Promise<DrawingMetadata>;
   getSaveDirectory: () => Promise<string>;
   onChangeSaveDirectory?: () => Promise<string | null>;
+  getDrawingName?: (id: string) => Promise<string>;
 }
 
 export class ViewManager {
@@ -90,7 +91,16 @@ export class ViewManager {
       // Show canvas container and init app
       this.canvasContainer.style.display = "";
       this.canvasApp = new CanvasApp();
-      await this.canvasApp.init(drawingId);
+      await this.canvasApp.init(drawingId, {
+        onGoHome: () => this.showHome(),
+        onRenameDrawing: (id, name) => this.deps.renameDrawing(id, name),
+      });
+
+      // Set drawing name in toolbar
+      if (this.deps.getDrawingName) {
+        const name = await this.deps.getDrawingName(drawingId);
+        this.canvasApp.setDrawingName(name);
+      }
 
       this.currentView = "canvas";
     } finally {

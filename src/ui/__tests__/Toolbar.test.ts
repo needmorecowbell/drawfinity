@@ -12,6 +12,8 @@ function makeCallbacks(): ToolbarCallbacks {
     onRedo: vi.fn(),
     onBrushSizeChange: vi.fn(),
     onShapeConfigChange: vi.fn(),
+    onHome: vi.fn(),
+    onRenameDrawing: vi.fn(),
   };
 }
 
@@ -55,8 +57,8 @@ describe("Toolbar", () => {
 
   it("renders undo and redo buttons", () => {
     const buttons = document.querySelectorAll(".toolbar-btn");
-    // 4 brush + 1 eraser + 4 shape + 1 fill toggle + 1 undo + 1 redo = 12
-    expect(buttons.length).toBe(12);
+    // 1 home + 4 brush + 1 eraser + 4 shape + 1 fill toggle + 1 undo + 1 redo = 13
+    expect(buttons.length).toBe(13);
   });
 
   it("renders zoom display", () => {
@@ -111,7 +113,7 @@ describe("Toolbar", () => {
 
   it("updateUndoRedo enables/disables buttons", () => {
     toolbar.updateUndoRedo(true, false);
-    const buttons = document.querySelectorAll(".toolbar-btn:not(.brush-btn):not(.eraser-btn):not(.shape-btn):not(.fill-toggle)");
+    const buttons = document.querySelectorAll(".toolbar-btn:not(.brush-btn):not(.eraser-btn):not(.shape-btn):not(.fill-toggle):not(.home-btn)");
     // Undo should be enabled, redo disabled
     const undoBtn = buttons[0] as HTMLButtonElement;
     const redoBtn = buttons[1] as HTMLButtonElement;
@@ -138,7 +140,7 @@ describe("Toolbar", () => {
 
   it("clicking undo button fires onUndo", () => {
     toolbar.updateUndoRedo(true, true);
-    const buttons = document.querySelectorAll(".toolbar-btn:not(.brush-btn):not(.eraser-btn):not(.shape-btn):not(.fill-toggle)");
+    const buttons = document.querySelectorAll(".toolbar-btn:not(.brush-btn):not(.eraser-btn):not(.shape-btn):not(.fill-toggle):not(.home-btn)");
     const undoBtn = buttons[0] as HTMLButtonElement;
     undoBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
     expect(callbacks.onUndo).toHaveBeenCalled();
@@ -146,7 +148,7 @@ describe("Toolbar", () => {
 
   it("clicking redo button fires onRedo", () => {
     toolbar.updateUndoRedo(true, true);
-    const buttons = document.querySelectorAll(".toolbar-btn:not(.brush-btn):not(.eraser-btn):not(.shape-btn):not(.fill-toggle)");
+    const buttons = document.querySelectorAll(".toolbar-btn:not(.brush-btn):not(.eraser-btn):not(.shape-btn):not(.fill-toggle):not(.home-btn)");
     const redoBtn = buttons[1] as HTMLButtonElement;
     redoBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
     expect(callbacks.onRedo).toHaveBeenCalled();
@@ -250,6 +252,95 @@ describe("Toolbar", () => {
     for (const btn of document.querySelectorAll(".shape-btn")) {
       expect(btn.classList.contains("active")).toBe(false);
     }
+  });
+
+  it("renders home button", () => {
+    const homeBtn = document.querySelector(".home-btn");
+    expect(homeBtn).not.toBeNull();
+    expect(homeBtn!.textContent).toBe("\u2302");
+  });
+
+  it("clicking home button fires onHome callback", () => {
+    const homeBtn = document.querySelector(".home-btn") as HTMLButtonElement;
+    homeBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    expect(callbacks.onHome).toHaveBeenCalled();
+  });
+
+  it("renders drawing name container", () => {
+    const container = document.querySelector(".toolbar-drawing-name");
+    expect(container).not.toBeNull();
+    const display = document.querySelector(".drawing-name-display");
+    expect(display).not.toBeNull();
+  });
+
+  it("setDrawingName updates display text", () => {
+    toolbar.setDrawingName("My Drawing");
+    const display = document.querySelector(".drawing-name-display") as HTMLElement;
+    expect(display.textContent).toBe("My Drawing");
+  });
+
+  it("clicking drawing name enters rename mode", () => {
+    toolbar.setDrawingName("Test");
+    const display = document.querySelector(".drawing-name-display") as HTMLElement;
+    const input = document.querySelector(".drawing-name-input") as HTMLInputElement;
+
+    display.click();
+    expect(input.style.display).toBe("");
+    expect(display.style.display).toBe("none");
+    expect(input.value).toBe("Test");
+  });
+
+  it("pressing Enter in rename input commits the new name", () => {
+    toolbar.setDrawingName("Old Name");
+    const display = document.querySelector(".drawing-name-display") as HTMLElement;
+    const input = document.querySelector(".drawing-name-input") as HTMLInputElement;
+
+    display.click();
+    input.value = "New Name";
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+    expect(display.textContent).toBe("New Name");
+    expect(input.style.display).toBe("none");
+    expect(display.style.display).toBe("");
+    expect(callbacks.onRenameDrawing).toHaveBeenCalledWith("New Name");
+  });
+
+  it("pressing Escape in rename input cancels without changing name", () => {
+    toolbar.setDrawingName("Original");
+    const display = document.querySelector(".drawing-name-display") as HTMLElement;
+    const input = document.querySelector(".drawing-name-input") as HTMLInputElement;
+
+    display.click();
+    input.value = "Changed";
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+
+    expect(display.textContent).toBe("Original");
+    expect(input.style.display).toBe("none");
+    expect(callbacks.onRenameDrawing).not.toHaveBeenCalled();
+  });
+
+  it("does not fire rename callback when name is unchanged", () => {
+    toolbar.setDrawingName("Same");
+    const display = document.querySelector(".drawing-name-display") as HTMLElement;
+    const input = document.querySelector(".drawing-name-input") as HTMLInputElement;
+
+    display.click();
+    input.value = "Same";
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+    expect(callbacks.onRenameDrawing).not.toHaveBeenCalled();
+  });
+
+  it("does not fire rename callback for empty name", () => {
+    toolbar.setDrawingName("Test");
+    const display = document.querySelector(".drawing-name-display") as HTMLElement;
+    const input = document.querySelector(".drawing-name-input") as HTMLInputElement;
+
+    display.click();
+    input.value = "   ";
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+    expect(callbacks.onRenameDrawing).not.toHaveBeenCalled();
   });
 
   it("destroy removes toolbar from DOM", () => {

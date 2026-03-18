@@ -10,6 +10,8 @@ export interface ToolbarCallbacks {
   onRedo: () => void;
   onBrushSizeChange: (delta: number) => void;
   onShapeConfigChange?: (config: Partial<ShapeToolConfig>) => void;
+  onHome?: () => void;
+  onRenameDrawing?: (name: string) => void;
 }
 
 const PRESET_COLORS = [
@@ -43,6 +45,11 @@ export class Toolbar {
   private sidesInput!: HTMLInputElement;
   private sidesContainer!: HTMLDivElement;
 
+  private homeButton!: HTMLButtonElement;
+  private drawingNameEl!: HTMLSpanElement;
+  private drawingNameInput!: HTMLInputElement;
+  private drawingNameContainer!: HTMLDivElement;
+
   private activeBrushIndex = 0;
   private activeTool: ToolType = "brush";
   private activeColor = "#000000";
@@ -58,6 +65,48 @@ export class Toolbar {
   }
 
   private build(): void {
+    // Home button
+    this.homeButton = document.createElement("button");
+    this.homeButton.className = "toolbar-btn home-btn";
+    this.homeButton.title = "Home (Ctrl+W)";
+    this.homeButton.textContent = "\u2302"; // ⌂
+    this.homeButton.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.callbacks.onHome?.();
+    });
+    this.container.appendChild(this.homeButton);
+
+    // Drawing name (editable)
+    this.drawingNameContainer = document.createElement("div");
+    this.drawingNameContainer.className = "toolbar-drawing-name";
+
+    this.drawingNameEl = document.createElement("span");
+    this.drawingNameEl.className = "drawing-name-display";
+    this.drawingNameEl.textContent = "";
+    this.drawingNameEl.title = "Click to rename";
+    this.drawingNameEl.addEventListener("click", () => this.startRename());
+
+    this.drawingNameInput = document.createElement("input");
+    this.drawingNameInput.type = "text";
+    this.drawingNameInput.className = "drawing-name-input";
+    this.drawingNameInput.style.display = "none";
+    this.drawingNameInput.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+      if (e.key === "Enter") {
+        this.commitRename();
+      } else if (e.key === "Escape") {
+        this.cancelRename();
+      }
+    });
+    this.drawingNameInput.addEventListener("blur", () => this.commitRename());
+
+    this.drawingNameContainer.appendChild(this.drawingNameEl);
+    this.drawingNameContainer.appendChild(this.drawingNameInput);
+    this.container.appendChild(this.drawingNameContainer);
+
+    // Divider after nav section
+    this.container.appendChild(this.createDivider());
+
     // Brush presets section
     const brushSection = this.createSection("toolbar-section");
     for (let i = 0; i < BRUSH_PRESETS.length; i++) {
@@ -343,6 +392,36 @@ export class Toolbar {
     }
     this.fillColorInput.style.display = this.fillEnabled ? "" : "none";
     this.sidesInput.value = String(config.sides);
+  }
+
+  setDrawingName(name: string): void {
+    this.drawingNameEl.textContent = name;
+    this.drawingNameEl.title = `${name} — click to rename`;
+  }
+
+  private startRename(): void {
+    this.drawingNameInput.value = this.drawingNameEl.textContent || "";
+    this.drawingNameEl.style.display = "none";
+    this.drawingNameInput.style.display = "";
+    this.drawingNameInput.focus();
+    this.drawingNameInput.select();
+  }
+
+  private commitRename(): void {
+    if (this.drawingNameInput.style.display === "none") return;
+    const newName = this.drawingNameInput.value.trim();
+    this.drawingNameInput.style.display = "none";
+    this.drawingNameEl.style.display = "";
+    if (newName && newName !== this.drawingNameEl.textContent) {
+      this.drawingNameEl.textContent = newName;
+      this.drawingNameEl.title = `${newName} — click to rename`;
+      this.callbacks.onRenameDrawing?.(newName);
+    }
+  }
+
+  private cancelRename(): void {
+    this.drawingNameInput.style.display = "none";
+    this.drawingNameEl.style.display = "";
   }
 
   private colorToRgb(hex: string): string {

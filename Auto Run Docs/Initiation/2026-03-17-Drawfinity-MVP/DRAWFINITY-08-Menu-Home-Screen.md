@@ -77,10 +77,11 @@ Add a home screen that appears before the canvas, allowing users to browse, crea
   - Add transitions between views (simple fade or instant switch)
   - *(Completed: ViewManager class with transition guard, 15 unit tests passing)*
 
-- [ ] Update toolbar with navigation:
+- [x] Update toolbar with navigation:
   - Add "Home" button (house icon) to toolbar — returns to home screen
   - Add drawing name display in toolbar (editable — click to rename)
   - Keyboard shortcut: `Ctrl+W` or `Escape` returns to home from canvas
+  - *(Completed: Home button with ⌂ icon, inline editable drawing name with Enter/Escape/blur handling, Ctrl+W and Escape shortcuts, ViewManager wiring for navigation and rename callbacks, 8 new Toolbar tests, 648 total tests passing)*
 
 - [ ] Update index.html:
   - Add container divs for both views: `<div id="home-screen">` and `<div id="canvas-view">`

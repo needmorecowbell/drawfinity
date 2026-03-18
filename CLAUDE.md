@@ -104,7 +104,7 @@ On Linux, Tauri uses WebKitGTK which **aggressively caches** frontend assets. If
 `tsconfig.json` has `noUnusedLocals` and `noUnusedParameters` enabled. Unused imports will break `npm run build`. Remove them rather than prefixing with `_`.
 
 ### Test environment
-Tests use **Vitest** with **jsdom** for DOM-dependent tests. WebGL is mocked in renderer tests. Run the full suite with `npx vitest run` — all 624 tests should pass in ~2s.
+Tests use **Vitest** with **jsdom** for DOM-dependent tests. WebGL is mocked in renderer tests. Run the full suite with `npx vitest run` — all 648 tests should pass in ~5s.
 
 ### Barrel exports
 Each module has an `index.ts` barrel. Import from the barrel (`from "./renderer"`) not from individual files, unless you need a specific non-exported type.
@@ -125,6 +125,8 @@ Each module has an `index.ts` barrel. Import from the barrel (`from "./renderer"
 | `Ctrl+=` / `Ctrl+-` | Animated zoom in/out |
 | `Ctrl+0` | Reset zoom to 100% |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / Redo |
+| `Ctrl+W` | Return to home screen |
+| `Escape` | Return to home screen |
 | `Ctrl+K` | Toggle connection panel |
 | `Ctrl+,` | Toggle settings panel |
 | `F3` | Toggle FPS counter |

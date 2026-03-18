@@ -156,6 +156,45 @@ html, body {
   text-align: center;
 }
 
+.toolbar-btn.home-btn {
+  font-size: 16px;
+}
+
+.toolbar-drawing-name {
+  display: flex;
+  align-items: center;
+  max-width: 160px;
+}
+
+.drawing-name-display {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 12px;
+  color: #444;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.drawing-name-display:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.drawing-name-input {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 12px;
+  color: #222;
+  border: 1px solid #0066FF;
+  border-radius: 4px;
+  padding: 2px 6px;
+  outline: none;
+  width: 140px;
+  background: white;
+}
+
 .toolbar-btn.settings-btn {
   font-size: 18px;
   margin-left: auto;

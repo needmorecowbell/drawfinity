@@ -13,6 +13,11 @@ import { FpsCounter } from "../ui/FpsCounter";
 import { SyncManager } from "../sync";
 import { loadProfile, loadPreferences } from "../user";
 
+export interface CanvasAppCallbacks {
+  onGoHome?: () => void;
+  onRenameDrawing?: (id: string, name: string) => void;
+}
+
 function hexToRgba(hex: string): [number, number, number, number] {
   const h = hex.replace("#", "");
   const r = parseInt(h.substring(0, 2), 16) / 255;
@@ -51,8 +56,10 @@ export class CanvasApp {
   private userColorIndicator!: HTMLDivElement;
   private connectionStateUnsubscribe: (() => void) | null = null;
   private initialized = false;
+  private callbacks: CanvasAppCallbacks = {};
 
-  async init(drawingId: string): Promise<void> {
+  async init(drawingId: string, callbacks?: CanvasAppCallbacks): Promise<void> {
+    this.callbacks = callbacks ?? {};
     this.drawingId = drawingId;
 
     const canvas = document.getElementById("drawfinity-canvas") as HTMLCanvasElement;
@@ -142,6 +149,10 @@ export class CanvasApp {
       onUndo: () => this.doUndo(),
       onRedo: () => this.doRedo(),
       onBrushSizeChange: () => {},
+      onHome: () => this.callbacks.onGoHome?.(),
+      onRenameDrawing: (name) => {
+        this.callbacks.onRenameDrawing?.(this.drawingId, name);
+      },
       onShapeConfigChange: (config) => {
         this.toolManager.setShapeConfig(config);
         if (isShapeTool(this.toolManager.getTool())) {
@@ -379,6 +390,10 @@ export class CanvasApp {
     return this.doc;
   }
 
+  setDrawingName(name: string): void {
+    this.toolbar.setDrawingName(name);
+  }
+
   private switchTool(tool: ToolType): void {
     this.toolManager.setTool(tool);
 
@@ -469,7 +484,18 @@ export class CanvasApp {
       return;
     }
 
+    if (mod && e.key === "w") {
+      e.preventDefault();
+      this.callbacks.onGoHome?.();
+      return;
+    }
+
     if (mod) return;
+
+    if (e.key === "Escape") {
+      this.callbacks.onGoHome?.();
+      return;
+    }
 
     if (e.key === "e" || e.key === "E") {
       this.switchTool("eraser");

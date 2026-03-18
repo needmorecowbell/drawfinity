@@ -191,7 +191,7 @@ describe("StrokeMesh.generateTriangleStrip", () => {
       expect(highY).toBeCloseTo(2.0);
     });
 
-    it("scales alpha by pressure for pressure-sensitive opacity", () => {
+    it("passes color alpha through unchanged (opacity is caller's responsibility)", () => {
       const color: [number, number, number, number] = [1, 1, 1, 0.8];
       const points: StrokePoint[] = [
         { x: 0, y: 0, pressure: 0.5 },
@@ -199,11 +199,10 @@ describe("StrokeMesh.generateTriangleStrip", () => {
       ];
       const data = generateTriangleStrip(points, 4, color)!;
 
-      // First point: alpha = 0.8 * 0.5 = 0.4
+      // Both points should have the color's alpha (0.8), not pressure-scaled
       const c0 = vertexColor(data, 0);
-      expect(c0[3]).toBeCloseTo(0.4, 5);
+      expect(c0[3]).toBeCloseTo(0.8, 5);
 
-      // Second point: alpha = 0.8 * 1.0 = 0.8
       const c2 = vertexColor(data, 2);
       expect(c2[3]).toBeCloseTo(0.8, 5);
     });

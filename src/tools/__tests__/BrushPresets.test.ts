@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { PEN, PENCIL, MARKER, HIGHLIGHTER, BRUSH_PRESETS } from "../BrushPresets";
-import { BrushConfig } from "../Brush";
+
 
 describe("BrushPresets", () => {
   it("exports exactly 4 presets", () => {

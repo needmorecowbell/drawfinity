@@ -86,13 +86,13 @@ describe("Camera", () => {
     });
 
     it("clamps zoom to maximum", () => {
-      camera.zoom = 90;
-      camera.zoomAt(400, 300, 2);
+      camera.zoom = Camera.MAX_ZOOM / 2;
+      camera.zoomAt(400, 300, 3);
       expect(camera.zoom).toBe(Camera.MAX_ZOOM);
     });
 
     it("clamps zoom to minimum", () => {
-      camera.zoom = 0.02;
+      camera.zoom = Camera.MIN_ZOOM * 2;
       camera.zoomAt(400, 300, 0.1);
       expect(camera.zoom).toBe(Camera.MIN_ZOOM);
     });

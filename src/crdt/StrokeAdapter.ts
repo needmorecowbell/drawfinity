@@ -9,6 +9,7 @@ export function strokeToYMap(stroke: Stroke): Y.Map<unknown> {
   yMap.set("id", stroke.id);
   yMap.set("color", stroke.color);
   yMap.set("width", stroke.width);
+  yMap.set("opacity", stroke.opacity);
   yMap.set("timestamp", stroke.timestamp);
 
   const yPoints = new Y.Array<Y.Map<number>>();
@@ -37,6 +38,7 @@ export function yMapToStroke(yMap: Y.Map<unknown>): Stroke {
     id: yMap.get("id") as string,
     color: yMap.get("color") as string,
     width: yMap.get("width") as number,
+    opacity: (yMap.get("opacity") as number) ?? 1.0,
     timestamp: yMap.get("timestamp") as number,
     points,
   };

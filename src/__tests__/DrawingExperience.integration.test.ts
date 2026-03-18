@@ -7,7 +7,7 @@ import { BRUSH_PRESETS, PEN, PENCIL, MARKER, HIGHLIGHTER } from "../tools/BrushP
 import { EraserTool } from "../tools/EraserTool";
 import { Toolbar, ToolbarCallbacks } from "../ui/Toolbar";
 import { Stroke } from "../model/Stroke";
-import { strokeToYMap, yMapToStroke } from "../crdt/StrokeAdapter";
+
 import * as Y from "yjs";
 
 function makeStroke(overrides: Partial<Stroke> = {}): Stroke {

@@ -103,9 +103,6 @@ export function generateTriangleStrip(
     const pressure = deduped[i].pressure ?? 0.5;
     const halfWidth = (width * pressure) / 2;
 
-    // Per-vertex alpha: scale base alpha by pressure for pressure-sensitive opacity
-    const vertexAlpha = a * pressure;
-
     // Left vertex
     const li = (i * 2) * 6;
     data[li] = px + nx * halfWidth;
@@ -113,7 +110,7 @@ export function generateTriangleStrip(
     data[li + 2] = r;
     data[li + 3] = g;
     data[li + 4] = b;
-    data[li + 5] = vertexAlpha;
+    data[li + 5] = a;
 
     // Right vertex
     const ri = (i * 2 + 1) * 6;
@@ -122,7 +119,7 @@ export function generateTriangleStrip(
     data[ri + 2] = r;
     data[ri + 3] = g;
     data[ri + 4] = b;
-    data[ri + 5] = vertexAlpha;
+    data[ri + 5] = a;
   }
 
   return data;

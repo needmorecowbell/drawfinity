@@ -9,6 +9,7 @@ export interface Stroke {
   points: StrokePoint[];
   color: string;
   width: number;
+  opacity?: number;
   timestamp: number;
 }
 

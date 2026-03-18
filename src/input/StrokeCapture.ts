@@ -20,6 +20,7 @@ export class StrokeCapture {
   private activeTool: ToolType = "brush";
   private eraserTool: EraserTool = new EraserTool();
   private isErasing = false;
+  private activeStrokeOpacityCurve: ((p: number) => number) | null = null;
 
   private onPointerDown: (e: PointerEvent) => void;
   private onPointerMove: (e: PointerEvent) => void;
@@ -61,8 +62,10 @@ export class StrokeCapture {
       return;
     }
 
-    const pressure = e.pressure > 0 ? e.pressure : 0.5;
+    const rawPressure = e.pressure > 0 ? e.pressure : 0.5;
+    const pressure = this.activeBrush ? this.activeBrush.pressureCurve(rawPressure) : rawPressure;
     this.activeStroke = [{ x: world.x, y: world.y, pressure }];
+    this.activeStrokeOpacityCurve = this.activeBrush?.opacityCurve ?? null;
     this.canvas.setPointerCapture(e.pointerId);
   }
 
@@ -76,7 +79,8 @@ export class StrokeCapture {
     if (!this.activeStroke) return;
 
     const world = this.camera.screenToWorld(e.clientX, e.clientY);
-    const pressure = e.pressure > 0 ? e.pressure : 0.5;
+    const rawPressure = e.pressure > 0 ? e.pressure : 0.5;
+    const pressure = this.activeBrush ? this.activeBrush.pressureCurve(rawPressure) : rawPressure;
 
     this.activeStroke.push({ x: world.x, y: world.y, pressure });
   }
@@ -93,11 +97,15 @@ export class StrokeCapture {
     // Only finalize strokes with at least 2 points
     if (this.activeStroke.length >= 2) {
       const smoothed = smoothStroke(this.activeStroke, this.smoothingWindow);
+      // Compute stroke-level opacity from the brush's opacityCurve using average pressure
+      const avgPressure = this.activeStroke.reduce((s, p) => s + p.pressure, 0) / this.activeStroke.length;
+      const opacity = this.activeStrokeOpacityCurve ? this.activeStrokeOpacityCurve(avgPressure) : 1.0;
       const stroke: Stroke = {
         id: generateStrokeId(),
         points: smoothed,
         color: this.strokeColor,
         width: this.strokeWidth,
+        opacity,
         timestamp: Date.now(),
       };
       this.document.addStroke(stroke);
@@ -117,10 +125,12 @@ export class StrokeCapture {
   }
 
   /** Returns the in-progress stroke points (smoothed, for live rendering), or null. */
-  getActiveStroke(): { points: readonly StrokePoint[]; color: string; width: number } | null {
+  getActiveStroke(): { points: readonly StrokePoint[]; color: string; width: number; opacity: number } | null {
     if (!this.activeStroke || this.activeStroke.length < 2) return null;
     const smoothed = smoothStroke(this.activeStroke, this.smoothingWindow);
-    return { points: smoothed, color: this.strokeColor, width: this.strokeWidth };
+    const avgPressure = this.activeStroke.reduce((s, p) => s + p.pressure, 0) / this.activeStroke.length;
+    const opacity = this.activeStrokeOpacityCurve ? this.activeStrokeOpacityCurve(avgPressure) : 1.0;
+    return { points: smoothed, color: this.strokeColor, width: this.strokeWidth, opacity };
   }
 
   setColor(color: string): void {

@@ -1,4 +1,4 @@
-import { Stroke, StrokePoint } from "../model/Stroke";
+import { Stroke } from "../model/Stroke";
 
 /**
  * Computes the axis-aligned bounding box of a stroke's points.

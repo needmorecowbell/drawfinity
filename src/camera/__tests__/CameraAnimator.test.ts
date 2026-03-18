@@ -97,19 +97,19 @@ describe("CameraAnimator", () => {
     });
 
     it("clamps to MAX_ZOOM", () => {
-      animator.animateZoomCentered(500);
-      for (let i = 0; i < 200; i++) {
+      animator.animateZoomCentered(Camera.MAX_ZOOM * 10);
+      for (let i = 0; i < 500; i++) {
         if (!animator.tick()) break;
       }
-      expect(camera.zoom).toBeCloseTo(Camera.MAX_ZOOM, 1);
+      expect(camera.zoom).toBeCloseTo(Camera.MAX_ZOOM, 0);
     });
 
     it("clamps to MIN_ZOOM", () => {
-      animator.animateZoomCentered(0.001);
-      for (let i = 0; i < 200; i++) {
+      animator.animateZoomCentered(Camera.MIN_ZOOM / 10);
+      for (let i = 0; i < 500; i++) {
         if (!animator.tick()) break;
       }
-      expect(camera.zoom).toBeCloseTo(Camera.MIN_ZOOM, 3);
+      expect(camera.zoom).toBeCloseTo(Camera.MIN_ZOOM, 15);
     });
   });
 

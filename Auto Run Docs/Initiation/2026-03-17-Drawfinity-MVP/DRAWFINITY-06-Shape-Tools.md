@@ -59,11 +59,12 @@ Add geometric shape tools (rectangle, ellipse, polygon, star) as first-class can
   - Update `Renderer.ts` with `drawShape()` or integrate into `drawStrokeBatch()`
   - *(Completed: Added `computeShapeBounds()` with rotation-aware AABB, `addShape()`/`removeShape()`/`queryShapes()`/`rebuildAll()` to SpatialIndex, created ShapeVertexCache, added `drawShapeFillBatch()` (GL_TRIANGLES) and `drawShapeOutlineBatch()` (TRIANGLE_STRIP) to Renderer via `drawTriangleBatch()` on StrokeRenderer, integrated shape rendering + live preview into main.ts render loop, 419 tests passing)*
 
-- [ ] Update toolbar UI:
+- [x] Update toolbar UI:
   - Add shape tool buttons to the toolbar (rectangle, ellipse, polygon icons)
   - Add shape-specific options panel: fill color picker, sides spinner for polygon/star
   - Highlight active shape tool
   - Wire keyboard shortcuts
+  - *(Completed: Added 4 shape tool buttons (▭ ○ ⬡ ☆) with active highlighting, fill toggle + fill color picker, sides spinner for polygon/star, onShapeConfigChange callback, wired shape config changes to ToolManager and ShapeCapture, 29 Toolbar tests passing, 428 total tests passing)*
 
 - [ ] Eraser support for shapes:
   - Update `EraserTool.ts` with shape intersection tests (point-in-rotated-rect, point-in-ellipse, point-in-polygon)

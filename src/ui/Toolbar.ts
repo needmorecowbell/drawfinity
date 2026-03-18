@@ -1,6 +1,6 @@
 import { BrushConfig } from "../tools/Brush";
 import { BRUSH_PRESETS } from "../tools/BrushPresets";
-import { ToolType } from "../tools/ToolManager";
+import { ToolType, isShapeTool, ShapeToolConfig } from "../tools/ToolManager";
 
 export interface ToolbarCallbacks {
   onBrushSelect: (brush: BrushConfig) => void;
@@ -9,6 +9,7 @@ export interface ToolbarCallbacks {
   onUndo: () => void;
   onRedo: () => void;
   onBrushSizeChange: (delta: number) => void;
+  onShapeConfigChange?: (config: Partial<ShapeToolConfig>) => void;
 }
 
 const PRESET_COLORS = [
@@ -17,20 +18,36 @@ const PRESET_COLORS = [
   "#FF69B4", "#8B4513", "#808080", "#00CED1",
 ];
 
+/** Shape tool definitions for the toolbar. */
+const SHAPE_TOOLS: { type: ToolType; label: string; title: string; shortcut: string }[] = [
+  { type: "rectangle", label: "\u25AD", title: "Rectangle", shortcut: "R" },
+  { type: "ellipse", label: "\u25CB", title: "Ellipse", shortcut: "O" },
+  { type: "polygon", label: "\u2B53", title: "Polygon", shortcut: "P" },
+  { type: "star", label: "\u2606", title: "Star", shortcut: "S" },
+];
+
 export class Toolbar {
   private container: HTMLElement;
   private callbacks: ToolbarCallbacks;
   private brushButtons: HTMLButtonElement[] = [];
+  private shapeButtons: HTMLButtonElement[] = [];
   private colorSwatches: HTMLButtonElement[] = [];
   private eraserButton!: HTMLButtonElement;
   private undoButton!: HTMLButtonElement;
   private redoButton!: HTMLButtonElement;
   private zoomDisplay!: HTMLSpanElement;
   private customColorInput!: HTMLInputElement;
+  private shapeOptionsPanel!: HTMLDivElement;
+  private fillColorInput!: HTMLInputElement;
+  private fillToggle!: HTMLButtonElement;
+  private sidesInput!: HTMLInputElement;
+  private sidesContainer!: HTMLDivElement;
 
   private activeBrushIndex = 0;
   private activeTool: ToolType = "brush";
   private activeColor = "#000000";
+  private fillEnabled = false;
+  private fillColor = "#0066FF";
 
   constructor(callbacks: ToolbarCallbacks) {
     this.callbacks = callbacks;
@@ -72,6 +89,88 @@ export class Toolbar {
     });
     toolSection.appendChild(this.eraserButton);
     this.container.appendChild(toolSection);
+
+    // Divider
+    this.container.appendChild(this.createDivider());
+
+    // Shape tool buttons
+    const shapeSection = this.createSection("toolbar-section");
+    for (const shapeTool of SHAPE_TOOLS) {
+      const btn = document.createElement("button");
+      btn.className = "toolbar-btn shape-btn";
+      btn.title = `${shapeTool.title} (${shapeTool.shortcut})`;
+      btn.textContent = shapeTool.label;
+      btn.dataset.shape = shapeTool.type;
+      btn.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        this.setTool(shapeTool.type);
+      });
+      shapeSection.appendChild(btn);
+      this.shapeButtons.push(btn);
+    }
+    this.container.appendChild(shapeSection);
+
+    // Shape options panel (shown only when a shape tool is active)
+    this.shapeOptionsPanel = document.createElement("div");
+    this.shapeOptionsPanel.className = "toolbar-section shape-options";
+    this.shapeOptionsPanel.style.display = "none";
+
+    // Fill toggle button
+    this.fillToggle = document.createElement("button");
+    this.fillToggle.className = "toolbar-btn fill-toggle";
+    this.fillToggle.title = "Toggle fill";
+    this.fillToggle.textContent = "\u25A7"; // ▧ (partial fill icon)
+    this.fillToggle.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.fillEnabled = !this.fillEnabled;
+      this.fillToggle.classList.toggle("active", this.fillEnabled);
+      this.fillColorInput.style.display = this.fillEnabled ? "" : "none";
+      this.emitShapeConfig();
+    });
+    this.shapeOptionsPanel.appendChild(this.fillToggle);
+
+    // Fill color input
+    this.fillColorInput = document.createElement("input");
+    this.fillColorInput.type = "color";
+    this.fillColorInput.className = "toolbar-color-input fill-color-input";
+    this.fillColorInput.value = this.fillColor;
+    this.fillColorInput.title = "Fill color";
+    this.fillColorInput.style.display = "none";
+    this.fillColorInput.addEventListener("input", (e) => {
+      this.fillColor = (e.target as HTMLInputElement).value;
+      this.emitShapeConfig();
+    });
+    this.shapeOptionsPanel.appendChild(this.fillColorInput);
+
+    // Sides spinner (for polygon/star)
+    this.sidesContainer = document.createElement("div");
+    this.sidesContainer.className = "sides-container";
+    this.sidesContainer.style.display = "none";
+    const sidesLabel = document.createElement("span");
+    sidesLabel.className = "sides-label";
+    sidesLabel.textContent = "Sides";
+    this.sidesContainer.appendChild(sidesLabel);
+    this.sidesInput = document.createElement("input");
+    this.sidesInput.type = "number";
+    this.sidesInput.className = "sides-input";
+    this.sidesInput.min = "3";
+    this.sidesInput.max = "32";
+    this.sidesInput.value = "5";
+    this.sidesInput.title = "Number of sides";
+    this.sidesInput.addEventListener("input", () => {
+      const val = parseInt(this.sidesInput.value, 10);
+      if (val >= 3 && val <= 32) {
+        this.emitShapeConfig();
+      }
+    });
+    // Prevent keyboard shortcuts from firing while typing in the input
+    this.sidesInput.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+    });
+    this.sidesContainer.appendChild(this.sidesInput);
+    this.shapeOptionsPanel.appendChild(this.sidesContainer);
+
+    this.container.appendChild(this.shapeOptionsPanel);
 
     // Divider
     this.container.appendChild(this.createDivider());
@@ -179,6 +278,17 @@ export class Toolbar {
       btn.classList.toggle("active",
         tool === "brush" && btn.dataset.index === String(this.activeBrushIndex));
     }
+    for (const btn of this.shapeButtons) {
+      btn.classList.toggle("active", btn.dataset.shape === tool);
+    }
+    // Show/hide shape options panel
+    const shapeActive = isShapeTool(tool);
+    this.shapeOptionsPanel.style.display = shapeActive ? "" : "none";
+    if (shapeActive) {
+      // Show sides spinner only for polygon and star
+      this.sidesContainer.style.display =
+        (tool === "polygon" || tool === "star") ? "" : "none";
+    }
   }
 
   setColor(color: string): void {
@@ -212,6 +322,27 @@ export class Toolbar {
 
   getActiveBrushIndex(): number {
     return this.activeBrushIndex;
+  }
+
+  /** Notify the host about shape config changes. */
+  private emitShapeConfig(): void {
+    const sides = parseInt(this.sidesInput.value, 10);
+    this.callbacks.onShapeConfigChange?.({
+      fillColor: this.fillEnabled ? this.fillColor : null,
+      sides: isNaN(sides) ? 5 : Math.max(3, Math.min(32, sides)),
+    });
+  }
+
+  /** Update shape options UI from external state. */
+  setShapeConfig(config: ShapeToolConfig): void {
+    this.fillEnabled = config.fillColor !== null;
+    this.fillToggle.classList.toggle("active", this.fillEnabled);
+    if (config.fillColor !== null) {
+      this.fillColor = config.fillColor;
+      this.fillColorInput.value = config.fillColor;
+    }
+    this.fillColorInput.style.display = this.fillEnabled ? "" : "none";
+    this.sidesInput.value = String(config.sides);
   }
 
   private colorToRgb(hex: string): string {

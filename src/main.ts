@@ -167,7 +167,25 @@ window.addEventListener("unhandledrejection", (e) => {
     onBrushSizeChange: (_delta) => {
       // Handled via keyboard shortcuts below
     },
+    onShapeConfigChange: (config) => {
+      toolManager.setShapeConfig(config);
+      // Re-apply config to active shape capture if a shape tool is selected
+      if (isShapeTool(toolManager.getTool())) {
+        shapeCapture.setConfig({
+          shapeType: toolManager.getTool() as "rectangle" | "ellipse" | "polygon" | "star",
+          strokeColor: toolManager.getColor(),
+          strokeWidth: toolManager.getBrush().baseWidth,
+          fillColor: toolManager.getShapeConfig().fillColor,
+          opacity: 1.0,
+          sides: toolManager.getShapeConfig().sides,
+          starInnerRadius: toolManager.getShapeConfig().starInnerRadius,
+        });
+      }
+    },
   });
+
+  // Initialize toolbar shape config from ToolManager defaults
+  toolbar.setShapeConfig(toolManager.getShapeConfig());
 
   // Connection panel
   const connectionPanel = new ConnectionPanel(syncManager);

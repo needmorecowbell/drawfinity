@@ -156,6 +156,49 @@ html, body {
   text-align: center;
 }
 
+/* Shape options panel */
+.shape-options {
+  gap: 4px;
+}
+
+.fill-toggle {
+  font-size: 16px;
+}
+
+.fill-color-input {
+  width: 18px;
+  height: 18px;
+}
+
+.sides-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sides-label {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  color: #666;
+  white-space: nowrap;
+}
+
+.sides-input {
+  width: 40px;
+  height: 24px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: system-ui, -apple-system, sans-serif;
+  text-align: center;
+  outline: none;
+  padding: 0 2px;
+}
+
+.sides-input:focus {
+  border-color: #0066FF;
+}
+
 /* Connection Panel */
 #connection-overlay {
   position: fixed;

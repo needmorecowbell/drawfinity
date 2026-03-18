@@ -34,7 +34,7 @@ Build out the full drawing toolkit: pressure-sensitive strokes with variable wid
   - Eraser operations should be undoable via the existing UndoManager
   - Wire eraser activation to the ToolManager (e.g., keyboard shortcut 'E' to toggle)
 
-- [ ] Build the toolbar UI:
+- [x] Build the toolbar UI:
   - Create `src/ui/Toolbar.tsx` (or vanilla TS + HTML if not using React):
     - A floating toolbar anchored to the top or left of the canvas
     - Brush selector: clickable icons/buttons for each brush preset, with the active one highlighted

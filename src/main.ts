@@ -3,7 +3,8 @@ import { Camera, CameraAnimator, CameraController } from "./camera";
 import { DrawfinityDoc, UndoManager } from "./crdt";
 import { StrokeCapture } from "./input";
 import { loadDocument, getDefaultFilePath, AutoSave } from "./persistence";
-import { ToolManager } from "./tools";
+import { ToolManager, BRUSH_PRESETS } from "./tools";
+import { Toolbar } from "./ui";
 
 const canvas = document.getElementById("drawfinity-canvas") as HTMLCanvasElement;
 if (!canvas) {
@@ -59,21 +60,62 @@ function hexToRgba(hex: string): [number, number, number, number] {
   });
   resizeObserver.observe(canvas);
 
-  // HUD overlay
-  const hudZoom = document.getElementById("hud-zoom");
-  const hudUndo = document.getElementById("hud-undo");
-
-  function updateHudUndoRedo(): void {
-    if (hudUndo) {
-      const parts: string[] = [];
-      if (undoManager.canUndo()) parts.push("Undo");
-      if (undoManager.canRedo()) parts.push("Redo");
-      hudUndo.textContent = parts.length > 0 ? parts.join(" · ") : "";
+  // Helper: sync tool state across ToolManager, StrokeCapture, and Toolbar
+  function switchTool(tool: "brush" | "eraser"): void {
+    toolManager.setTool(tool);
+    strokeCapture.setTool(tool);
+    toolbar.setToolUI(tool);
+    if (tool === "brush") {
+      strokeCapture.setBrushConfig(toolManager.getBrush());
     }
   }
 
-  // Update HUD when undo/redo stack changes
-  undoManager.onStackChange(updateHudUndoRedo);
+  function switchBrush(index: number): void {
+    if (index < 0 || index >= BRUSH_PRESETS.length) return;
+    const preset = BRUSH_PRESETS[index];
+    toolManager.setBrush(preset);
+    strokeCapture.setBrushConfig(toolManager.getBrush());
+    toolbar.selectBrush(index);
+  }
+
+  function doUndo(): void {
+    undoManager.undo();
+    updateUndoRedoState();
+  }
+
+  function doRedo(): void {
+    undoManager.redo();
+    updateUndoRedoState();
+  }
+
+  function updateUndoRedoState(): void {
+    toolbar.updateUndoRedo(undoManager.canUndo(), undoManager.canRedo());
+  }
+
+  // Toolbar
+  const toolbar = new Toolbar({
+    onBrushSelect: (brush) => {
+      toolManager.setTool("brush");
+      toolManager.setBrush(brush);
+      strokeCapture.setTool("brush");
+      strokeCapture.setBrushConfig(toolManager.getBrush());
+    },
+    onColorChange: (color) => {
+      toolManager.setColor(color);
+      strokeCapture.setColor(color);
+    },
+    onToolChange: (tool) => {
+      switchTool(tool);
+    },
+    onUndo: doUndo,
+    onRedo: doRedo,
+    onBrushSizeChange: (_delta) => {
+      // Handled via keyboard shortcuts below
+    },
+  });
+
+  // Update toolbar when undo/redo stack changes
+  undoManager.onStackChange(updateUndoRedoState);
 
   // Keyboard shortcuts
   document.addEventListener("keydown", (e: KeyboardEvent) => {
@@ -82,14 +124,12 @@ function hexToRgba(hex: string): [number, number, number, number] {
     // Undo/Redo
     if (mod && e.key === "z" && !e.shiftKey) {
       e.preventDefault();
-      undoManager.undo();
-      updateHudUndoRedo();
+      doUndo();
       return;
     }
     if (mod && ((e.key === "z" && e.shiftKey) || e.key === "y")) {
       e.preventDefault();
-      undoManager.redo();
-      updateHudUndoRedo();
+      doRedo();
       return;
     }
 
@@ -98,12 +138,25 @@ function hexToRgba(hex: string): [number, number, number, number] {
 
     // Tool switching
     if (e.key === "e" || e.key === "E") {
-      toolManager.setTool("eraser");
-      strokeCapture.setTool("eraser");
+      switchTool("eraser");
     } else if (e.key === "b" || e.key === "B") {
-      toolManager.setTool("brush");
-      strokeCapture.setTool("brush");
-      strokeCapture.setBrushConfig(toolManager.getBrush());
+      switchTool("brush");
+    }
+
+    // Brush preset selection (1-4)
+    if (e.key >= "1" && e.key <= "4") {
+      switchBrush(parseInt(e.key) - 1);
+    }
+
+    // Brush size adjustment ([ and ])
+    if (e.key === "[") {
+      const brush = toolManager.getBrush();
+      brush.baseWidth = Math.max(0.5, brush.baseWidth - 1);
+      strokeCapture.setBrushConfig(brush);
+    } else if (e.key === "]") {
+      const brush = toolManager.getBrush();
+      brush.baseWidth = Math.min(64, brush.baseWidth + 1);
+      strokeCapture.setBrushConfig(brush);
     }
   });
 
@@ -115,10 +168,8 @@ function hexToRgba(hex: string): [number, number, number, number] {
     renderer.clear();
     renderer.setCameraMatrix(camera.getTransformMatrix());
 
-    // Update HUD zoom display
-    if (hudZoom) {
-      hudZoom.textContent = `${Math.round(camera.zoom * 100)}%`;
-    }
+    // Update toolbar zoom display
+    toolbar.updateZoom(camera.zoom * 100);
 
     // Draw all finalized strokes
     for (const stroke of doc.getStrokes()) {
@@ -149,6 +200,6 @@ function hexToRgba(hex: string): [number, number, number, number] {
 
   // Expose for debugging
   (window as unknown as Record<string, unknown>).__drawfinity = {
-    renderer, camera, cameraAnimator, cameraController, doc, strokeCapture, undoManager, autoSave, toolManager,
+    renderer, camera, cameraAnimator, cameraController, doc, strokeCapture, undoManager, autoSave, toolManager, toolbar,
   };
 })();

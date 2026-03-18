@@ -27,7 +27,7 @@ html, body {
   z-index: 10;
 }
 
-#hud-zoom, #hud-undo {
+#hud-undo {
   font-family: system-ui, -apple-system, sans-serif;
   font-size: 12px;
   color: #666;
@@ -38,4 +38,118 @@ html, body {
 
 #hud-undo:empty {
   display: none;
+}
+
+/* Toolbar */
+#toolbar {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  z-index: 20;
+  user-select: none;
+}
+
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.toolbar-colors {
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 156px;
+  gap: 3px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.12);
+  margin: 0 4px;
+}
+
+.toolbar-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s;
+}
+
+.toolbar-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.toolbar-btn.active {
+  background: rgba(0, 102, 255, 0.12);
+  color: #0066FF;
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.toolbar-swatch {
+  width: 18px;
+  height: 18px;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.1s;
+}
+
+.toolbar-swatch:hover {
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+.toolbar-swatch.active {
+  border-color: #0066FF;
+}
+
+.toolbar-color-input {
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 4px;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+}
+
+.toolbar-color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.toolbar-color-input::-webkit-color-swatch {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+
+.toolbar-zoom {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  color: #666;
+  padding: 0 6px;
+  min-width: 40px;
+  text-align: center;
 }

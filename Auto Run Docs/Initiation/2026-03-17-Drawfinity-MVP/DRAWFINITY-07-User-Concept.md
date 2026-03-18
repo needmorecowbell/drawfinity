@@ -46,7 +46,7 @@ Introduce local user identity for collaboration: name, color, persistent prefere
     - Fades/hides cursors after 5s idle (no cursor updates received)
     - Cleans up cursor elements when users disconnect
 
-- [ ] Settings UI:
+- [x] Settings UI:
   - Create `src/ui/SettingsPanel.ts`:
     - Modal/panel triggered by gear icon in toolbar or keyboard shortcut (e.g., `Ctrl+,`)
     - Name input field (updates UserProfile)

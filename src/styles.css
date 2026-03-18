@@ -359,3 +359,163 @@ html, body {
   white-space: nowrap;
   line-height: 1.4;
 }
+
+/* Settings Panel */
+#settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#settings-panel {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  padding: 20px;
+  width: 340px;
+  font-family: system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #222;
+  margin-bottom: 4px;
+}
+
+.settings-label {
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.settings-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: system-ui, -apple-system, sans-serif;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.settings-input:focus {
+  border-color: #0066FF;
+}
+
+.settings-color-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.settings-color-swatch {
+  width: 28px;
+  height: 28px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.1s, transform 0.1s;
+}
+
+.settings-color-swatch:hover {
+  transform: scale(1.1);
+}
+
+.settings-color-swatch.active {
+  border-color: #222;
+  transform: scale(1.15);
+}
+
+.settings-brush-row {
+  display: flex;
+  gap: 4px;
+}
+
+.settings-brush-btn {
+  padding: 4px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #444;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.settings-brush-btn:hover {
+  background: #f5f5f5;
+}
+
+.settings-brush-btn.active {
+  background: rgba(0, 102, 255, 0.12);
+  border-color: #0066FF;
+  color: #0066FF;
+}
+
+.settings-save-dir {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-dir-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings-dir-path {
+  font-size: 12px;
+  color: #666;
+  font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.settings-btn-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.settings-btn {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: system-ui, -apple-system, sans-serif;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.settings-btn-primary {
+  background: #0066FF;
+  color: #fff;
+}
+
+.settings-btn-primary:hover {
+  background: #0052cc;
+}
+
+.settings-btn-secondary {
+  background: #f0f0f0;
+  color: #444;
+}
+
+.settings-btn-secondary:hover {
+  background: #e0e0e0;
+}

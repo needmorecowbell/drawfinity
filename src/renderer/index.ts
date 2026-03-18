@@ -6,3 +6,5 @@ export { Renderer } from "./Renderer";
 export { generateTriangleStrip } from "./StrokeMesh";
 export { SpatialIndex, computeStrokeBounds } from "./SpatialIndex";
 export type { AABB } from "./SpatialIndex";
+export { generateShapeVertices, generateRectangleVertices, generateEllipseVertices, generatePolygonVertices, generateStarVertices } from "./ShapeMesh";
+export type { ShapeVertexData } from "./ShapeMesh";

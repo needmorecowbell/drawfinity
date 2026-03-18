@@ -18,7 +18,7 @@ Add geometric shape tools (rectangle, ellipse, polygon, star) as first-class can
   - Add `generateShapeId()` function
   - Update `src/model/index.ts` barrel exports
 
-- [ ] Shape-to-vertex generation:
+- [x] Shape-to-vertex generation:
   - Create `src/renderer/ShapeMesh.ts` with triangle strip generation functions:
     - `generateRectangleVertices(shape)` — 4-corner outline as triangle strip with stroke width
     - `generateEllipseVertices(shape, segments)` — N-gon approximation (32-64 segments)

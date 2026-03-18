@@ -89,9 +89,10 @@ Add a home screen that appears before the canvas, allowing users to browse, crea
   - Home screen is populated by HomeScreen.ts
   - *(Completed: Added `#home-screen` and `#canvas-view` container divs to index.html, wired main.ts to use ViewManager with DrawingManager integration and in-memory browser fallback, updated HomeScreen to use pre-existing DOM container with display toggle, added getDrawingName to DrawingManager, 648 tests passing)*
 
-- [ ] Tests:
+- [x] Tests:
   - Unit tests for DrawingManifest CRUD operations (mock Tauri FS)
   - Unit tests for DrawingManager list/create/delete/rename
   - Unit tests for migration from single-file to multi-document
   - Unit tests for ViewManager state transitions
   - Unit tests for HomeScreen rendering (drawing cards, search filter)
+  - *(Completed: All tests already implemented in prior tasks — 5 DrawingManifest tests, 20 DrawingManager tests (including CRUD + migration), 15 ViewManager state transition tests, 27 HomeScreen tests (cards, search, sort, context menu). 74 tests across 4 files, 648 total suite passing)*

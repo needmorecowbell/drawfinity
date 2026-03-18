@@ -247,6 +247,35 @@ impl RoomManager {
         }
     }
 
+    /// Get a single room's metadata and client count, if it exists.
+    pub async fn get_room_info(&self, room_id: &str) -> Option<(RoomMetadata, usize)> {
+        let rooms = self.rooms.read().await;
+        if let Some(room) = rooms.get(room_id) {
+            let guard = room.read().await;
+            Some((guard.metadata(), guard.client_count))
+        } else {
+            None
+        }
+    }
+
+    /// Create a new room with a generated UUID and optional name/creator.
+    /// Returns the room metadata and client count (0).
+    pub async fn create_named_room(
+        &self,
+        name: Option<String>,
+        creator_name: Option<String>,
+    ) -> RoomMetadata {
+        let room_id = uuid::Uuid::new_v4().to_string();
+        let room = self.get_or_create_room(&room_id).await;
+        let metadata = {
+            let mut guard = room.write().await;
+            guard.name = name;
+            guard.creator_name = creator_name;
+            guard.metadata()
+        };
+        metadata
+    }
+
     /// List metadata for all currently tracked rooms.
     pub async fn list_rooms(&self) -> Vec<(RoomMetadata, usize)> {
         let rooms = self.rooms.read().await;

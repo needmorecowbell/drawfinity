@@ -1,3 +1,4 @@
+mod api;
 mod persistence;
 mod room;
 mod ws;
@@ -6,7 +7,8 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use axum::{routing::get, Router};
+use axum::routing::get;
+use axum::Router;
 use clap::Parser;
 use tower_http::cors::CorsLayer;
 
@@ -43,7 +45,9 @@ async fn main() {
 
     let app = Router::new()
         .route("/health", get(health))
-        .route("/ws/{room_id}", get(ws::ws_handler))
+        .route("/api/rooms", get(api::list_rooms).post(api::create_room))
+        .route("/api/rooms/:room_id", get(api::get_room))
+        .route("/ws/:room_id", get(ws::ws_handler))
         .layer(CorsLayer::permissive())
         .with_state(room_manager);
 

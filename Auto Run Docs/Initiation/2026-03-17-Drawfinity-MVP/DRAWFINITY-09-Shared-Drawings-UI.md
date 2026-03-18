@@ -25,7 +25,7 @@ Build a browsable interface for collaborative drawings: configure server URL, li
   - Update `DebouncedWriter` to also write metadata on save
   - Load metadata on room recovery from disk
 
-- [ ] Server: Room listing REST API:
+- [x] Server: Room listing REST API:
   - Create `server/src/api.rs` with Axum handlers:
     - `GET /api/rooms` — returns JSON array of `{ id, name, client_count, created_at, last_active_at }` for all rooms
     - `GET /api/rooms/{room_id}` — returns room detail including connected user count

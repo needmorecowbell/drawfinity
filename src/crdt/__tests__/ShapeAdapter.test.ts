@@ -87,6 +87,32 @@ describe("ShapeAdapter", () => {
       expect(result.starInnerRadius).toBe(0.4);
     });
 
+    it("round-trips an ellipse", () => {
+      const shape: Shape = {
+        id: "ellipse-1",
+        type: "ellipse",
+        x: 30,
+        y: 40,
+        width: 120,
+        height: 80,
+        rotation: Math.PI / 6,
+        strokeColor: "#00ff00",
+        strokeWidth: 3,
+        fillColor: "#ff00ff",
+        opacity: 0.6,
+        timestamp: 1500,
+      };
+      const doc = new Y.Doc();
+      doc.transact(() => {
+        const arr = doc.getArray<Y.Map<unknown>>("test");
+        arr.push([shapeToYMap(shape)]);
+      });
+      const yMap = doc.getArray<Y.Map<unknown>>("test").get(0);
+      const result = yMapToShape(yMap);
+
+      expect(result).toEqual(shape);
+    });
+
     it("round-trips a polygon without starInnerRadius", () => {
       const shape = makePolygon();
       const doc = new Y.Doc();

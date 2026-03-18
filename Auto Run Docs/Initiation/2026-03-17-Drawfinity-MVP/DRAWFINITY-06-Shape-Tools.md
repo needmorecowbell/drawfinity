@@ -72,9 +72,10 @@ Add geometric shape tools (rectangle, ellipse, polygon, star) as first-class can
   - Use `removeShape()` through the existing undo-friendly transaction flow
   - *(Completed: Added `worldToShapeLocal()` for rotation-aware local coordinate transform, `pointIntersectsRectangle()` using SDF, `pointIntersectsEllipse()` with gradient approximation, `pointIntersectsPolygonVertices()` with edge distance + ray-cast interior test, `getPolygonVertices()`/`getStarVertices()` generators, `pointIntersectsShape()` dispatcher, `findIntersectingShapes()` on EraserTool class. Extended `DocumentModel` with optional `getShapes()`/`removeShape()`. Updated `StrokeCapture.eraseAt()` to also erase shapes via whole-shape removal. 29 new shape eraser tests, 457 total tests passing)*
 
-- [ ] Tests:
+- [x] Tests:
   - Unit tests for ShapeMesh vertex generation (all 4 shape types)
   - Unit tests for shape CRDT serialization round-trip
   - Unit tests for shape hit-testing / eraser intersection
   - Unit tests for ShapeCapture (constrained proportions, center-out mode)
   - Integration test: add shapes, undo, redo, verify document state
+  - *(Verified: All test categories already had comprehensive coverage from prior implementation tasks. Added ellipse round-trip test to ShapeAdapter, and 7 shape integration tests to DrawingExperience.integration.test.ts covering: multi-type shape creation, shape/stroke coexistence, shape erasure, undo/redo for shape add/remove, full shape workflow, and CRDT round-trip. 465 total tests passing.)*

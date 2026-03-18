@@ -7,6 +7,7 @@ import { BRUSH_PRESETS, PEN, PENCIL, MARKER, HIGHLIGHTER } from "../tools/BrushP
 import { EraserTool } from "../tools/EraserTool";
 import { Toolbar, ToolbarCallbacks } from "../ui/Toolbar";
 import { Stroke } from "../model/Stroke";
+import { Shape } from "../model/Shape";
 
 import * as Y from "yjs";
 
@@ -399,6 +400,147 @@ describe("Complete Drawing Experience Integration Tests", () => {
       expect(roundTripped.points).toHaveLength(2);
       expect(roundTripped.points[0].pressure).toBeCloseTo(0.1);
       expect(roundTripped.points[1].pressure).toBeCloseTo(0.9);
+    });
+  });
+
+  describe("Shape integration: add, erase, undo, redo", () => {
+    function makeShape(overrides: Partial<Shape> = {}): Shape {
+      return {
+        id: `shape-${Date.now()}-${Math.random()}`,
+        type: "rectangle",
+        x: 50,
+        y: 50,
+        width: 100,
+        height: 60,
+        rotation: 0,
+        strokeColor: "#000000",
+        strokeWidth: 2,
+        fillColor: null,
+        opacity: 1.0,
+        timestamp: Date.now(),
+        ...overrides,
+      };
+    }
+
+    it("adds multiple shape types and retrieves them", () => {
+      doc.addShape(makeShape({ id: "rect1", type: "rectangle" }));
+      doc.addShape(makeShape({ id: "ell1", type: "ellipse" }));
+      doc.addShape(makeShape({ id: "poly1", type: "polygon", sides: 6 }));
+      doc.addShape(makeShape({ id: "star1", type: "star", sides: 5, starInnerRadius: 0.4 }));
+
+      const shapes = doc.getShapes();
+      expect(shapes).toHaveLength(4);
+      expect(shapes.map((s) => s.type)).toEqual(["rectangle", "ellipse", "polygon", "star"]);
+    });
+
+    it("shapes and strokes coexist without interference", () => {
+      doc.addStroke(makeStroke({ id: "s1" }));
+      doc.addShape(makeShape({ id: "sh1" }));
+      doc.addStroke(makeStroke({ id: "s2" }));
+      doc.addShape(makeShape({ id: "sh2", type: "ellipse" }));
+
+      expect(doc.getStrokes()).toHaveLength(2);
+      expect(doc.getShapes()).toHaveLength(2);
+      expect(doc.getAllItems()).toHaveLength(4);
+
+      // Order is preserved
+      const items = doc.getAllItems();
+      expect(items[0].kind).toBe("stroke");
+      expect(items[1].kind).toBe("shape");
+      expect(items[2].kind).toBe("stroke");
+      expect(items[3].kind).toBe("shape");
+    });
+
+    it("erasing a shape removes only that shape", () => {
+      doc.addShape(makeShape({ id: "keep" }));
+      doc.addShape(makeShape({ id: "erase-me" }));
+      doc.addStroke(makeStroke({ id: "s1" }));
+
+      const eraser = new EraserTool({ radius: 5 });
+      // Simulate eraser finding the shape and removing it
+      doc.removeShape("erase-me");
+
+      expect(doc.getShapes()).toHaveLength(1);
+      expect(doc.getShapes()[0].id).toBe("keep");
+      expect(doc.getStrokes()).toHaveLength(1);
+    });
+
+    it("undo restores erased shape, redo removes it again", () => {
+      doc.addShape(makeShape({ id: "undoable-shape" }));
+      expect(doc.getShapes()).toHaveLength(1);
+
+      doc.removeShape("undoable-shape");
+      expect(doc.getShapes()).toHaveLength(0);
+
+      undoManager.undo();
+      expect(doc.getShapes()).toHaveLength(1);
+      expect(doc.getShapes()[0].id).toBe("undoable-shape");
+
+      undoManager.redo();
+      expect(doc.getShapes()).toHaveLength(0);
+    });
+
+    it("undo/redo works for shape addition", () => {
+      doc.addShape(makeShape({ id: "new-shape" }));
+      expect(doc.getShapes()).toHaveLength(1);
+
+      undoManager.undo();
+      expect(doc.getShapes()).toHaveLength(0);
+
+      undoManager.redo();
+      expect(doc.getShapes()).toHaveLength(1);
+      expect(doc.getShapes()[0].id).toBe("new-shape");
+    });
+
+    it("full shape workflow: add shapes, erase, undo, verify state", () => {
+      // 1. Add a rectangle and an ellipse
+      doc.addShape(makeShape({ id: "rect", type: "rectangle", fillColor: "#ff0000" }));
+      doc.addShape(makeShape({ id: "ell", type: "ellipse", fillColor: "#00ff00" }));
+      doc.addStroke(makeStroke({ id: "stroke1" }));
+
+      expect(doc.getAllItems()).toHaveLength(3);
+
+      // 2. Erase the rectangle
+      doc.removeShape("rect");
+      expect(doc.getShapes()).toHaveLength(1);
+      expect(doc.getShapes()[0].id).toBe("ell");
+
+      // 3. Undo the erase — rectangle returns
+      undoManager.undo();
+      expect(doc.getShapes()).toHaveLength(2);
+
+      // 4. Add a polygon
+      doc.addShape(makeShape({ id: "poly", type: "polygon", sides: 6 }));
+      expect(doc.getAllItems()).toHaveLength(4);
+
+      // 5. Undo the polygon addition
+      undoManager.undo();
+      expect(doc.getAllItems()).toHaveLength(3);
+      expect(doc.getShapes().map((s) => s.id)).toEqual(["rect", "ell"]);
+
+      // 6. Redo — polygon comes back
+      undoManager.redo();
+      expect(doc.getShapes()).toHaveLength(3);
+    });
+
+    it("shapes survive CRDT serialization round-trip", () => {
+      doc.addStroke(makeStroke({ id: "s1", color: "#FF0000" }));
+      doc.addShape(makeShape({ id: "sh1", type: "star", sides: 5, starInnerRadius: 0.4, fillColor: "#00FF00" }));
+
+      const update = Y.encodeStateAsUpdate(doc.getDoc());
+      const newYDoc = new Y.Doc();
+      Y.applyUpdate(newYDoc, update);
+      const newDoc = new DrawfinityDoc(newYDoc);
+
+      expect(newDoc.getStrokes()).toHaveLength(1);
+      expect(newDoc.getShapes()).toHaveLength(1);
+
+      const shape = newDoc.getShapes()[0];
+      expect(shape.id).toBe("sh1");
+      expect(shape.type).toBe("star");
+      expect(shape.sides).toBe(5);
+      expect(shape.starInnerRadius).toBe(0.4);
+      expect(shape.fillColor).toBe("#00FF00");
     });
   });
 

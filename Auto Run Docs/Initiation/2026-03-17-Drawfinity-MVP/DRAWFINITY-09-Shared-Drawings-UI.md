@@ -72,11 +72,12 @@ Build a browsable interface for collaborative drawings: configure server URL, li
     - Expose `onStatusChange(callback)` for UI updates
     - On reconnect, re-set awareness state (user profile + cursor)
 
-- [ ] Wire user identity into shared sessions:
-  - When joining a room, set awareness from UserProfile (Phase 07)
-  - Display user color in participant list
-  - Cursor colors match user colors in RemoteCursors (Phase 07)
-  - Room creator name is set from UserProfile when creating a room via API
+- [x] Wire user identity into shared sessions:
+  - When joining a room, set awareness from UserProfile (Phase 07) — already wired via SyncManager.setUser() in CanvasApp.init()
+  - Display user color in participant list — already wired via ConnectionPanel.updateUserList() using RemoteUser.color
+  - Cursor colors match user colors in RemoteCursors (Phase 07) — already wired via RemoteCursors using RemoteUser.color from awareness
+  - Room creator name is set from UserProfile when creating a room via API — added: HomeScreen now passes loadProfile().name to createRoom()
+  - Bonus: room name is now passed through onJoinRoom → ViewManager → CanvasApp so toolbar shows room name instead of ID
 
 - [ ] Tests:
   - Server: integration tests for `GET /api/rooms`, `POST /api/rooms`, `GET /api/rooms/{id}`

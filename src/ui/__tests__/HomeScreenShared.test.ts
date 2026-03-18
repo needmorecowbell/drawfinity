@@ -32,6 +32,15 @@ vi.mock("../../user/UserPreferences", () => {
   };
 });
 
+// Mock UserStore
+vi.mock("../../user/UserStore", () => ({
+  loadProfile: vi.fn(() => ({
+    id: "test-user-id",
+    name: "Test User",
+    color: "#e74c3c",
+  })),
+}));
+
 import { fetchRooms, createRoom } from "../../sync/ServerApi";
 import { loadPreferences, savePreferences } from "../../user/UserPreferences";
 import type { RoomInfo } from "../../sync/ServerApi";
@@ -555,6 +564,7 @@ describe("HomeScreen Shared Tab", () => {
       expect(callbacks.onJoinRoom).toHaveBeenCalledWith(
         "room-abc",
         "ws://localhost:8080",
+        "Test Room",
       );
     });
 
@@ -593,6 +603,7 @@ describe("HomeScreen Shared Tab", () => {
       expect(callbacks.onJoinRoom).toHaveBeenCalledWith(
         "room-xyz",
         "ws://localhost:8080",
+        "Test Room",
       );
     });
 
@@ -748,12 +759,14 @@ describe("HomeScreen Shared Tab", () => {
         expect(mockCreateRoom).toHaveBeenCalledWith(
           "ws://localhost:8080",
           "My Collab",
+          "Test User",
         );
       });
 
       expect(callbacks.onJoinRoom).toHaveBeenCalledWith(
         "new-room",
         "ws://localhost:8080",
+        "My Collab",
       );
 
       vi.unstubAllGlobals();

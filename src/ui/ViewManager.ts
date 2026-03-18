@@ -40,8 +40,8 @@ export class ViewManager {
       onDuplicateDrawing: (id: string, newName: string) =>
         deps.duplicateDrawing(id, newName),
       onChangeSaveDirectory: deps.onChangeSaveDirectory,
-      onJoinRoom: (roomId: string, serverUrl: string) =>
-        this.showCanvasWithRoom(roomId, serverUrl),
+      onJoinRoom: (roomId: string, serverUrl: string, roomName?: string) =>
+        this.showCanvasWithRoom(roomId, serverUrl, roomName),
     };
 
     this.homeScreen = new HomeScreen(callbacks);
@@ -113,6 +113,7 @@ export class ViewManager {
   private async showCanvasWithRoom(
     roomId: string,
     serverUrl: string,
+    roomName?: string,
   ): Promise<void> {
     if (this.transitioning) return;
     this.transitioning = true;
@@ -136,8 +137,8 @@ export class ViewManager {
       });
 
       // Connect to the room
-      this.canvasApp.connectToRoom(serverUrl, roomId);
-      this.canvasApp.setDrawingName(roomId);
+      this.canvasApp.connectToRoom(serverUrl, roomId, roomName);
+      this.canvasApp.setDrawingName(roomName || roomId);
 
       this.currentView = "canvas";
     } finally {

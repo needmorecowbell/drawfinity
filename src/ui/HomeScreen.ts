@@ -2,6 +2,7 @@ import { DrawingMetadata } from "../persistence/DrawingManifest";
 import type { RoomInfo } from "../sync/ServerApi";
 import { fetchRooms, createRoom, ServerApiError } from "../sync/ServerApi";
 import { loadPreferences, savePreferences } from "../user/UserPreferences";
+import { loadProfile } from "../user/UserStore";
 
 export interface HomeScreenCallbacks {
   onOpenDrawing: (id: string) => void;
@@ -10,7 +11,7 @@ export interface HomeScreenCallbacks {
   onRenameDrawing: (id: string, name: string) => Promise<void>;
   onDuplicateDrawing: (id: string, newName: string) => Promise<DrawingMetadata>;
   onChangeSaveDirectory?: () => Promise<string | null>;
-  onJoinRoom?: (roomId: string, serverUrl: string) => void;
+  onJoinRoom?: (roomId: string, serverUrl: string, roomName?: string) => void;
 }
 
 export type TabName = "my-drawings" | "shared";
@@ -460,13 +461,14 @@ export class HomeScreen {
     if (name === null || name.trim() === "") return;
 
     try {
-      const room = await createRoom(this.lastServerUrl, name.trim());
+      const profile = loadProfile();
+      const room = await createRoom(this.lastServerUrl, name.trim(), profile.name);
       this.rooms.push(room);
       this.renderSharedGrid();
 
       // Immediately join the new room
       if (this.callbacks.onJoinRoom) {
-        this.callbacks.onJoinRoom(room.id, this.lastServerUrl);
+        this.callbacks.onJoinRoom(room.id, this.lastServerUrl, room.name ?? undefined);
       }
     } catch (err) {
       const message =
@@ -541,7 +543,7 @@ export class HomeScreen {
     joinBtn.addEventListener("pointerdown", (e) => {
       e.stopPropagation();
       if (this.callbacks.onJoinRoom) {
-        this.callbacks.onJoinRoom(room.id, this.lastServerUrl);
+        this.callbacks.onJoinRoom(room.id, this.lastServerUrl, room.name ?? undefined);
       }
     });
     card.appendChild(joinBtn);
@@ -551,7 +553,7 @@ export class HomeScreen {
       if ((e.target as HTMLElement).closest(".home-room-join-btn")) return;
       e.stopPropagation();
       if (this.callbacks.onJoinRoom) {
-        this.callbacks.onJoinRoom(room.id, this.lastServerUrl);
+        this.callbacks.onJoinRoom(room.id, this.lastServerUrl, room.name ?? undefined);
       }
     });
 

@@ -3,6 +3,7 @@ import {
   STROKE_VERTEX_SHADER,
   STROKE_FRAGMENT_SHADER,
 } from "./ShaderProgram";
+import { generateTriangleStrip } from "./StrokeMesh";
 
 export interface StrokePoint {
   x: number;
@@ -10,7 +11,8 @@ export interface StrokePoint {
 }
 
 /**
- * Renders polyline strokes as GL_LINE_STRIP with vertex colors.
+ * Renders polyline strokes as GL_TRIANGLE_STRIP with vertex colors.
+ * Uses triangle strip geometry instead of deprecated gl.lineWidth().
  */
 export class StrokeRenderer {
   private gl: WebGL2RenderingContext;
@@ -60,6 +62,10 @@ export class StrokeRenderer {
     );
 
     gl.bindVertexArray(null);
+
+    // Enable alpha blending for smooth anti-aliased edges
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   }
 
   setCameraMatrix(matrix: Float32Array): void {
@@ -78,25 +84,18 @@ export class StrokeRenderer {
 
     const gl = this.gl;
 
-    // Build interleaved vertex data: [x, y, r, g, b, a] per vertex
-    const data = new Float32Array(points.length * 6);
-    for (let i = 0; i < points.length; i++) {
-      const offset = i * 6;
-      data[offset] = points[i].x;
-      data[offset + 1] = points[i].y;
-      data[offset + 2] = color[0];
-      data[offset + 3] = color[1];
-      data[offset + 4] = color[2];
-      data[offset + 5] = color[3];
-    }
+    // Generate triangle strip geometry from the polyline
+    const data = generateTriangleStrip(points, width, color);
+    if (!data) return;
+
+    const vertexCount = data.length / 6;
 
     this.shader.use();
     gl.bindVertexArray(this.vao);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
     gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
 
-    gl.lineWidth(width);
-    gl.drawArrays(gl.LINE_STRIP, 0, points.length);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, vertexCount);
 
     gl.bindVertexArray(null);
   }

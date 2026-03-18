@@ -20,7 +20,6 @@ const mockGl = {
   enableVertexAttribArray: vi.fn(),
   vertexAttribPointer: vi.fn(),
   bufferData: vi.fn(),
-  lineWidth: vi.fn(),
   drawArrays: vi.fn(),
   uniformMatrix3fv: vi.fn(),
   clear: vi.fn(),
@@ -29,6 +28,8 @@ const mockGl = {
   deleteBuffer: vi.fn(),
   deleteVertexArray: vi.fn(),
   deleteProgram: vi.fn(),
+  enable: vi.fn(),
+  blendFunc: vi.fn(),
   VERTEX_SHADER: 0x8b31,
   FRAGMENT_SHADER: 0x8b30,
   LINK_STATUS: 0x8b82,
@@ -38,6 +39,10 @@ const mockGl = {
   DYNAMIC_DRAW: 0x88e8,
   FLOAT: 0x1406,
   LINE_STRIP: 0x0003,
+  TRIANGLE_STRIP: 0x0005,
+  BLEND: 0x0be2,
+  SRC_ALPHA: 0x0302,
+  ONE_MINUS_SRC_ALPHA: 0x0303,
 };
 
 const mockContextInstance = {
@@ -79,14 +84,15 @@ describe("Renderer", () => {
     expect(mockContextInstance.clear).toHaveBeenCalled();
   });
 
-  it("drawStroke() calls gl.drawArrays for valid input", () => {
+  it("drawStroke() calls gl.drawArrays with TRIANGLE_STRIP for valid input", () => {
     const renderer = new Renderer({} as HTMLCanvasElement);
     const points = [
       { x: 0, y: 0 },
       { x: 1, y: 1 },
     ];
     renderer.drawStroke(points, [0, 0, 0, 1], 2);
-    expect(mockGl.drawArrays).toHaveBeenCalledWith(mockGl.LINE_STRIP, 0, 2);
+    // 2 points → 4 vertices in triangle strip (2 per polyline point)
+    expect(mockGl.drawArrays).toHaveBeenCalledWith(mockGl.TRIANGLE_STRIP, 0, 4);
   });
 
   it("drawStroke() skips draw for fewer than 2 points", () => {

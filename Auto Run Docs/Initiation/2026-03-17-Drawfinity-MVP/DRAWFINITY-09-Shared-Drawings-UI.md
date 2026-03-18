@@ -64,7 +64,7 @@ Build a browsable interface for collaborative drawings: configure server URL, li
     - "Leave Session" button — disconnects sync and returns to home screen
     - Real-time participant count
 
-- [ ] Auto-reconnect:
+- [x] Auto-reconnect:
   - Update `src/sync/SyncManager.ts`:
     - Add configurable auto-reconnect with exponential backoff (1s, 2s, 4s, 8s, max 30s)
     - Maximum reconnect attempts (10) before giving up

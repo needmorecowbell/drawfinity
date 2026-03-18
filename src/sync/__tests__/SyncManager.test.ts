@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import * as Y from "yjs";
 import { SyncManager } from "../SyncManager";
+import type { ConnectionState } from "../SyncManager";
 import type { UserProfile } from "../../user";
 
 // Mock awareness
@@ -45,6 +46,7 @@ describe("SyncManager", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
     mockProvider.wsconnected = false;
     mockProvider.wsconnecting = false;
     mockProvider.on.mockReset();
@@ -63,6 +65,7 @@ describe("SyncManager", () => {
 
   afterEach(() => {
     syncManager.destroy();
+    vi.useRealTimers();
   });
 
   it("starts in disconnected state", () => {
@@ -76,7 +79,7 @@ describe("SyncManager", () => {
       "ws://localhost:8080",
       "test-room",
       doc,
-      { connect: true, disableBc: true },
+      { connect: true, disableBc: true, maxBackoffTime: 0 },
     );
   });
 
@@ -110,6 +113,9 @@ describe("SyncManager", () => {
     const listener = vi.fn();
     syncManager.onConnectionStateChange(listener);
 
+    // Use reconnect disabled to get simple disconnected behavior
+    syncManager = new SyncManager(doc, { enabled: false });
+    syncManager.onConnectionStateChange(listener);
     syncManager.connect("ws://localhost:8080", "test-room");
     listener.mockClear();
 
@@ -121,18 +127,19 @@ describe("SyncManager", () => {
     expect(listener).toHaveBeenCalledWith("disconnected");
   });
 
-  it("reports connection state from provider flags", () => {
+  it("reports connection state via getConnectionState", () => {
     syncManager.connect("ws://localhost:8080", "test-room");
 
-    mockProvider.wsconnecting = true;
+    // After connect, state should be "connecting"
     expect(syncManager.getConnectionState()).toBe("connecting");
 
-    mockProvider.wsconnecting = false;
-    mockProvider.wsconnected = true;
-    expect(syncManager.getConnectionState()).toBe("connected");
+    // Simulate connected
+    const statusHandler = mockProvider.on.mock.calls.find(
+      (c: unknown[]) => c[0] === "status",
+    )?.[1] as (event: { status: string }) => void;
 
-    mockProvider.wsconnected = false;
-    expect(syncManager.getConnectionState()).toBe("disconnected");
+    statusHandler({ status: "connected" });
+    expect(syncManager.getConnectionState()).toBe("connected");
   });
 
   it("disconnect destroys provider and notifies listeners", () => {
@@ -200,6 +207,300 @@ describe("SyncManager", () => {
     // After destroy, listeners should be cleared — no further notifications
     // We verify by checking the listener was called for disconnect during destroy
     expect(listener).toHaveBeenCalledWith("disconnected");
+  });
+
+  it("onStatusChange is an alias for onConnectionStateChange", () => {
+    const listener = vi.fn();
+    const unsub = syncManager.onStatusChange(listener);
+
+    syncManager.connect("ws://localhost:8080", "test-room");
+    expect(listener).toHaveBeenCalledWith("connecting");
+
+    unsub();
+    listener.mockClear();
+
+    syncManager.disconnect();
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  describe("auto-reconnect", () => {
+    let listener: ReturnType<typeof vi.fn<(state: ConnectionState) => void>>;
+
+    function simulateConnected(): void {
+      const statusHandler = mockProvider.on.mock.calls.find(
+        (c: unknown[]) => c[0] === "status",
+      )?.[1] as (event: { status: string }) => void;
+      statusHandler({ status: "connected" });
+    }
+
+    function simulateDisconnected(): void {
+      const statusHandler = mockProvider.on.mock.calls.find(
+        (c: unknown[]) => c[0] === "status",
+      )?.[1] as (event: { status: string }) => void;
+      statusHandler({ status: "disconnected" });
+    }
+
+    function getLatestStatusHandler(): (event: {
+      status: string;
+    }) => void {
+      const calls = mockProvider.on.mock.calls.filter(
+        (c: unknown[]) => c[0] === "status",
+      );
+      return calls[calls.length - 1]?.[1] as (event: {
+        status: string;
+      }) => void;
+    }
+
+    beforeEach(() => {
+      listener = vi.fn();
+    });
+
+    it("enters reconnecting state after unexpected disconnect", () => {
+      syncManager = new SyncManager(doc, {
+        enabled: true,
+        initialDelayMs: 1000,
+      });
+      syncManager.onConnectionStateChange(listener);
+      syncManager.connect("ws://localhost:8080", "test-room");
+
+      simulateConnected();
+      listener.mockClear();
+
+      simulateDisconnected();
+
+      expect(listener).toHaveBeenCalledWith("reconnecting");
+      expect(syncManager.getConnectionState()).toBe("reconnecting");
+    });
+
+    it("does not reconnect on intentional disconnect", () => {
+      syncManager = new SyncManager(doc, { enabled: true });
+      syncManager.onConnectionStateChange(listener);
+      syncManager.connect("ws://localhost:8080", "test-room");
+
+      simulateConnected();
+      listener.mockClear();
+
+      syncManager.disconnect();
+
+      expect(listener).toHaveBeenCalledWith("disconnected");
+      expect(listener).not.toHaveBeenCalledWith("reconnecting");
+    });
+
+    it("does not reconnect when reconnect is disabled", () => {
+      syncManager = new SyncManager(doc, { enabled: false });
+      syncManager.onConnectionStateChange(listener);
+      syncManager.connect("ws://localhost:8080", "test-room");
+
+      simulateConnected();
+      listener.mockClear();
+
+      simulateDisconnected();
+
+      expect(listener).toHaveBeenCalledWith("disconnected");
+      expect(listener).not.toHaveBeenCalledWith("reconnecting");
+    });
+
+    it("uses exponential backoff for reconnect delays", () => {
+      syncManager = new SyncManager(doc, {
+        enabled: true,
+        initialDelayMs: 1000,
+        maxDelayMs: 30000,
+        maxAttempts: 5,
+      });
+      syncManager.connect("ws://localhost:8080", "test-room");
+
+      simulateConnected();
+
+      // First disconnect -> reconnecting
+      simulateDisconnected();
+      expect(syncManager.getReconnectAttempts()).toBe(1);
+
+      // After 1000ms, should attempt reconnect (creates new provider)
+      const providerCountBefore = (WebsocketProvider as unknown as ReturnType<typeof vi.fn>).mock.calls.length;
+      vi.advanceTimersByTime(1000);
+      expect((WebsocketProvider as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBe(providerCountBefore + 1);
+
+      // Second disconnect -> 2000ms delay
+      getLatestStatusHandler()({ status: "disconnected" });
+      expect(syncManager.getReconnectAttempts()).toBe(2);
+
+      vi.advanceTimersByTime(1999);
+      const countBeforeSecond = (WebsocketProvider as unknown as ReturnType<typeof vi.fn>).mock.calls.length;
+      expect((WebsocketProvider as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBe(countBeforeSecond);
+      vi.advanceTimersByTime(1);
+      expect((WebsocketProvider as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBe(countBeforeSecond + 1);
+    });
+
+    it("caps backoff delay at maxDelayMs", () => {
+      syncManager = new SyncManager(doc, {
+        enabled: true,
+        initialDelayMs: 1000,
+        maxDelayMs: 5000,
+        maxAttempts: 10,
+      });
+      syncManager.connect("ws://localhost:8080", "test-room");
+      simulateConnected();
+
+      // Trigger multiple disconnects to push backoff past max
+      for (let i = 0; i < 5; i++) {
+        getLatestStatusHandler()({ status: "disconnected" });
+        vi.advanceTimersByTime(30000); // advance well past any delay
+      }
+
+      // At attempt 5, delay would be 1000*2^4=16000, but capped at 5000
+      const countBefore = (WebsocketProvider as unknown as ReturnType<typeof vi.fn>).mock.calls.length;
+      getLatestStatusHandler()({ status: "disconnected" });
+
+      // Should reconnect after 5000ms (capped), not 16000ms
+      vi.advanceTimersByTime(5000);
+      expect((WebsocketProvider as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBe(countBefore + 1);
+    });
+
+    it("transitions to failed after maxAttempts", () => {
+      syncManager = new SyncManager(doc, {
+        enabled: true,
+        initialDelayMs: 100,
+        maxAttempts: 3,
+      });
+      syncManager.onConnectionStateChange(listener);
+      syncManager.connect("ws://localhost:8080", "test-room");
+
+      simulateConnected();
+      listener.mockClear();
+
+      // Exhaust all 3 attempts
+      for (let i = 0; i < 3; i++) {
+        getLatestStatusHandler()({ status: "disconnected" });
+        vi.advanceTimersByTime(30000);
+      }
+
+      // 4th disconnect should give "failed"
+      getLatestStatusHandler()({ status: "disconnected" });
+      expect(listener).toHaveBeenCalledWith("failed");
+      expect(syncManager.getConnectionState()).toBe("failed");
+    });
+
+    it("resets reconnect attempts on successful connection", () => {
+      syncManager = new SyncManager(doc, {
+        enabled: true,
+        initialDelayMs: 100,
+        maxAttempts: 5,
+      });
+      syncManager.connect("ws://localhost:8080", "test-room");
+      simulateConnected();
+
+      // First disconnect -> attempt 1
+      simulateDisconnected();
+      expect(syncManager.getReconnectAttempts()).toBe(1);
+
+      vi.advanceTimersByTime(100);
+
+      // Reconnect succeeds
+      getLatestStatusHandler()({ status: "connected" });
+      expect(syncManager.getReconnectAttempts()).toBe(0);
+    });
+
+    it("re-sets awareness state on reconnect", () => {
+      const profile: UserProfile = {
+        id: "user-1",
+        name: "Test",
+        color: "#ff0000",
+      };
+      syncManager = new SyncManager(doc, {
+        enabled: true,
+        initialDelayMs: 100,
+      });
+      syncManager.setUser(profile);
+      syncManager.connect("ws://localhost:8080", "test-room");
+      simulateConnected();
+
+      mockAwareness.setLocalStateField.mockClear();
+
+      // Disconnect and reconnect
+      simulateDisconnected();
+      vi.advanceTimersByTime(100);
+
+      // Awareness should be re-set when new provider is created
+      expect(mockAwareness.setLocalStateField).toHaveBeenCalledWith("user", {
+        id: "user-1",
+        name: "Test",
+        color: "#ff0000",
+        cursor: null,
+      });
+    });
+
+    it("cancels pending reconnect on explicit disconnect", () => {
+      syncManager = new SyncManager(doc, {
+        enabled: true,
+        initialDelayMs: 5000,
+      });
+      syncManager.onConnectionStateChange(listener);
+      syncManager.connect("ws://localhost:8080", "test-room");
+      simulateConnected();
+
+      simulateDisconnected(); // starts reconnect timer
+      listener.mockClear();
+
+      syncManager.disconnect();
+
+      // Advance past the reconnect delay
+      const countBefore = (WebsocketProvider as unknown as ReturnType<typeof vi.fn>).mock.calls.length;
+      vi.advanceTimersByTime(10000);
+      // No new provider should be created
+      expect((WebsocketProvider as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBe(countBefore);
+    });
+
+    it("cancels pending reconnect on new connect call", () => {
+      syncManager = new SyncManager(doc, {
+        enabled: true,
+        initialDelayMs: 5000,
+      });
+      syncManager.connect("ws://localhost:8080", "room-1");
+      simulateConnected();
+      simulateDisconnected();
+
+      // New connect resets everything
+      syncManager.connect("ws://localhost:8080", "room-2");
+      expect(syncManager.getReconnectAttempts()).toBe(0);
+    });
+
+    it("does not reconnect if never successfully connected", () => {
+      syncManager = new SyncManager(doc, { enabled: true });
+      syncManager.onConnectionStateChange(listener);
+      syncManager.connect("ws://localhost:8080", "test-room");
+
+      // Disconnect without ever connecting
+      simulateDisconnected();
+
+      expect(listener).toHaveBeenCalledWith("disconnected");
+      expect(listener).not.toHaveBeenCalledWith("reconnecting");
+    });
+
+    it("uses default config when none provided", () => {
+      syncManager = new SyncManager(doc);
+      syncManager.connect("ws://localhost:8080", "test-room");
+      simulateConnected();
+      simulateDisconnected();
+
+      // Should enter reconnecting (default is enabled)
+      expect(syncManager.getConnectionState()).toBe("reconnecting");
+    });
+
+    it("destroy cancels pending reconnect timer", () => {
+      syncManager = new SyncManager(doc, {
+        enabled: true,
+        initialDelayMs: 5000,
+      });
+      syncManager.connect("ws://localhost:8080", "test-room");
+      simulateConnected();
+      simulateDisconnected();
+
+      syncManager.destroy();
+
+      const countBefore = (WebsocketProvider as unknown as ReturnType<typeof vi.fn>).mock.calls.length;
+      vi.advanceTimersByTime(10000);
+      expect((WebsocketProvider as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBe(countBefore);
+    });
   });
 
   describe("awareness integration", () => {
@@ -295,7 +596,9 @@ describe("SyncManager", () => {
     it("getRemoteUsers filters out states without valid user data", () => {
       syncManager.connect("ws://localhost:8080", "test-room");
 
-      awarenessStates.set(2, { user: { id: "valid", name: "Valid", color: "#000" } });
+      awarenessStates.set(2, {
+        user: { id: "valid", name: "Valid", color: "#000" },
+      });
       awarenessStates.set(3, { user: { id: "no-name" } }); // missing name/color
       awarenessStates.set(4, {}); // no user field
 

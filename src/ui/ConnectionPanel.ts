@@ -284,6 +284,21 @@ export class ConnectionPanel {
         this.serverInput.disabled = true;
         this.roomInput.disabled = true;
         break;
+      case "reconnecting":
+        this.statusText.textContent = "Reconnecting...";
+        this.connectBtn.style.display = "none";
+        this.leaveBtn.style.display = "";
+        this.connectForm.style.display = "none";
+        this.connectedInfo.style.display = "";
+        break;
+      case "failed":
+        this.statusText.textContent = "Connection failed";
+        this.connectBtn.textContent = "Reconnect";
+        this.connectBtn.style.display = "";
+        this.leaveBtn.style.display = "";
+        this.connectForm.style.display = "none";
+        this.connectedInfo.style.display = "";
+        break;
       case "disconnected":
         this.statusText.textContent = "Offline";
         this.connectBtn.textContent = "Connect";

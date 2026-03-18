@@ -371,6 +371,14 @@ html, body {
   background: #FFCC00;
 }
 
+.conn-status-dot[data-state="reconnecting"] {
+  background: #FF9900;
+}
+
+.conn-status-dot[data-state="failed"] {
+  background: #e53935;
+}
+
 .conn-status-dot[data-state="disconnected"] {
   background: #aaa;
 }

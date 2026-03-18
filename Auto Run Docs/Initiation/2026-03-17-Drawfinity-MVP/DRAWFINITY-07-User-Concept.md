@@ -65,8 +65,9 @@ Introduce local user identity for collaboration: name, color, persistent prefere
   - Broadcast cursor position on pointermove when connected to a collaboration session
   - Update toolbar to show user color indicator when connected
 
-- [ ] Tests:
+- [x] Tests:
   - Unit tests for UserStore (localStorage mock via JSDOM)
   - Unit tests for UserPreferences serialization and defaults
   - Unit tests for RemoteCursors element creation/cleanup
   - Unit tests for awareness state management in SyncManager
+  - All 49 tests across 4 test files passing (UserStore: 8, UserPreferences: 6, RemoteCursors: 10, SyncManager awareness: 11 + 14 connection tests)

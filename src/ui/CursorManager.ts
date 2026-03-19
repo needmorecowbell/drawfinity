@@ -15,6 +15,7 @@ export class CursorManager {
   private eraserRadius = 10;
   private zoom = 1;
   private isPanning = false;
+  private magnifyMode: "default" | "in" | "out" = "default";
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -42,6 +43,39 @@ export class CursorManager {
   setPanning(panning: boolean): void {
     this.isPanning = panning;
     this.updateCursor();
+  }
+
+  setMagnifyMode(mode: "default" | "in" | "out"): void {
+    this.magnifyMode = mode;
+    if (this.currentTool === "magnify") {
+      this.canvas.style.cursor = this.buildMagnifyCursor(mode);
+    }
+  }
+
+  /**
+   * Build a magnifying glass SVG data URI cursor.
+   * Optionally shows "+" (zoom in) or "-" (zoom out) inside the circle.
+   */
+  buildMagnifyCursor(mode: "default" | "in" | "out"): string {
+    const size = 32;
+    const cx = 12, cy = 12, r = 8;
+
+    let symbol = "";
+    if (mode === "in") {
+      symbol = `<line x1="${cx}" y1="${cy - 3}" x2="${cx}" y2="${cy + 3}" stroke="black" stroke-width="1.5"/>` +
+        `<line x1="${cx - 3}" y1="${cy}" x2="${cx + 3}" y2="${cy}" stroke="black" stroke-width="1.5"/>`;
+    } else if (mode === "out") {
+      symbol = `<line x1="${cx - 3}" y1="${cy}" x2="${cx + 3}" y2="${cy}" stroke="black" stroke-width="1.5"/>`;
+    }
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
+      `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="black" stroke-width="2"/>` +
+      symbol +
+      `<line x1="${cx + r * 0.707}" y1="${cy + r * 0.707}" x2="${size - 4}" y2="${size - 4}" stroke="black" stroke-width="2" stroke-linecap="round"/>` +
+      `</svg>`;
+
+    const encoded = encodeURIComponent(svg);
+    return `url("data:image/svg+xml,${encoded}") ${cx} ${cy}, zoom-in`;
   }
 
   /**
@@ -80,7 +114,12 @@ export class CursorManager {
       return;
     }
 
-    if (this.currentTool === "brush") {
+    if (this.currentTool === "pan") {
+      // Pan cursor is managed by CameraController; don't override
+      return;
+    } else if (this.currentTool === "magnify") {
+      this.canvas.style.cursor = this.buildMagnifyCursor(this.magnifyMode);
+    } else if (this.currentTool === "brush") {
       // Cursor reflects the brush setting size, not the zoomed world-space size.
       // A 2px brush always shows as a ~2px cursor regardless of zoom.
       const screenDiameter = Math.max(this.brushWidth, 4);

@@ -1,5 +1,15 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+
+// Mock ResizeObserver for jsdom
+if (typeof ResizeObserver === "undefined") {
+  (globalThis as any).ResizeObserver = class {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  };
+}
+
 import { DrawfinityDoc } from "../crdt/DrawfinityDoc";
 import { UndoManager } from "../crdt/UndoManager";
 import { ToolManager } from "../tools/ToolManager";
@@ -34,6 +44,7 @@ function makeCallbacks(): ToolbarCallbacks {
     onUndo: vi.fn(),
     onRedo: vi.fn(),
     onBrushSizeChange: vi.fn(),
+    onOpacityChange: vi.fn(),
   };
 }
 
@@ -285,20 +296,20 @@ describe("Complete Drawing Experience Integration Tests", () => {
       const container = document.getElementById("toolbar");
       expect(container).toBeTruthy();
 
-      // Verify toolbar buttons exist
+      // Verify toolbar buttons exist (single brush button with hold-to-select)
       const brushBtns = container!.querySelectorAll(".brush-btn");
-      expect(brushBtns.length).toBe(4);
+      expect(brushBtns.length).toBe(1);
 
       const eraserBtn = container!.querySelector(".eraser-btn");
       expect(eraserBtn).toBeTruthy();
 
-      // Simulate pointerdown on a brush button — should not propagate
+      // Simulate pointerdown on the eraser button — should not propagate
       const event = new PointerEvent("pointerdown", {
         bubbles: true,
         cancelable: true,
       });
       const stopSpy = vi.spyOn(event, "stopPropagation");
-      brushBtns[0].dispatchEvent(event);
+      eraserBtn!.dispatchEvent(event);
       expect(stopSpy).toHaveBeenCalled();
 
       toolbar.destroy();

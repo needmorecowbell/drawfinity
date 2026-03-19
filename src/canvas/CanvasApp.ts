@@ -142,7 +142,11 @@ export class CanvasApp {
 
     // React to background color changes (from local or remote edits)
     this.doc.onMetaChanged(() => {
-      this.renderer.setBackgroundColor(this.doc.getBackgroundColor());
+      const bgColor = this.doc.getBackgroundColor();
+      this.renderer.setBackgroundColor(bgColor);
+      if (this.toolbar) {
+        this.toolbar.setBackgroundColorUI(bgColor);
+      }
     });
 
     this.spatialIndex = new SpatialIndex();
@@ -215,6 +219,9 @@ export class CanvasApp {
         this.callbacks.onRenameDrawing?.(this.drawingId, name);
       },
       onCheatSheet: () => this.cheatSheet.toggle(),
+      onBackgroundColorChange: (color) => {
+        this.doc.setBackgroundColor(color);
+      },
       onShapeConfigChange: (config) => {
         this.toolManager.setShapeConfig(config);
         if (isShapeTool(this.toolManager.getTool())) {
@@ -232,6 +239,7 @@ export class CanvasApp {
     });
 
     this.toolbar.setShapeConfig(this.toolManager.getShapeConfig());
+    this.toolbar.setBackgroundColorUI(this.doc.getBackgroundColor());
 
     if (userPreferences.defaultBrush >= 0 && userPreferences.defaultBrush < BRUSH_PRESETS.length) {
       this.toolbar.selectBrush(userPreferences.defaultBrush);

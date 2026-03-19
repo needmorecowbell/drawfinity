@@ -10,6 +10,7 @@ export interface ToolbarCallbacks {
   onRedo: () => void;
   onBrushSizeChange: (delta: number) => void;
   onShapeConfigChange?: (config: Partial<ShapeToolConfig>) => void;
+  onBackgroundColorChange?: (color: string) => void;
   onHome?: () => void;
   onRenameDrawing?: (name: string) => void;
   onCheatSheet?: () => void;
@@ -19,6 +20,13 @@ const PRESET_COLORS = [
   "#000000", "#FFFFFF", "#FF0000", "#FF6600",
   "#FFCC00", "#33CC33", "#0066FF", "#9933FF",
   "#FF69B4", "#8B4513", "#808080", "#00CED1",
+];
+
+const BACKGROUND_PRESET_COLORS = [
+  "#FFFFFF", "#FAFAF8", "#D9D9D9", "#666666",
+  "#000000", "#FFF8E7", "#E3F2FD", "#E8F5E9",
+  "#FCE4EC", "#FFFDE7", "#1A237E", "#1B5E20",
+  "#B71C1C", "#4A148C", "#455A64", "#795548",
 ];
 
 /** Shape tool definitions for the toolbar. */
@@ -52,9 +60,15 @@ export class Toolbar {
   private drawingNameInput!: HTMLInputElement;
   private drawingNameContainer!: HTMLDivElement;
 
+  private bgColorSwatches: HTMLButtonElement[] = [];
+  private bgColorInput!: HTMLInputElement;
+  private bgSwatchButton!: HTMLButtonElement;
+  private bgDropdown!: HTMLDivElement;
+
   private activeBrushIndex = 0;
   private activeTool: ToolType = "brush";
   private activeColor = "#000000";
+  private activeBackgroundColor = "#FAFAF8";
   private fillEnabled = false;
   private fillColor = "#0066FF";
 
@@ -222,6 +236,61 @@ export class Toolbar {
     this.shapeOptionsPanel.appendChild(this.sidesContainer);
 
     this.container.appendChild(this.shapeOptionsPanel);
+
+    // Divider
+    this.container.appendChild(this.createDivider());
+
+    // Background color button + dropdown
+    const bgSection = this.createSection("toolbar-section");
+    this.bgSwatchButton = document.createElement("button");
+    this.bgSwatchButton.className = "toolbar-btn bg-color-btn";
+    this.bgSwatchButton.title = "Background color";
+    this.bgSwatchButton.style.backgroundColor = this.activeBackgroundColor;
+    this.bgSwatchButton.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.toggleBgDropdown();
+    });
+    bgSection.appendChild(this.bgSwatchButton);
+    this.container.appendChild(bgSection);
+
+    // Background color dropdown (hidden by default)
+    this.bgDropdown = document.createElement("div");
+    this.bgDropdown.className = "bg-color-dropdown";
+    this.bgDropdown.style.display = "none";
+
+    const bgPalette = document.createElement("div");
+    bgPalette.className = "bg-color-palette";
+    for (const color of BACKGROUND_PRESET_COLORS) {
+      const swatch = document.createElement("button");
+      swatch.className = "bg-color-swatch";
+      swatch.style.backgroundColor = color;
+      if (color === "#FFFFFF") {
+        swatch.style.border = "1px solid #ccc";
+      }
+      if (color === this.activeBackgroundColor) swatch.classList.add("active");
+      swatch.title = color;
+      swatch.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        this.setBackgroundColor(color);
+      });
+      bgPalette.appendChild(swatch);
+      this.bgColorSwatches.push(swatch);
+    }
+    this.bgDropdown.appendChild(bgPalette);
+
+    // Custom background color input
+    this.bgColorInput = document.createElement("input");
+    this.bgColorInput.type = "color";
+    this.bgColorInput.className = "toolbar-color-input bg-custom-color-input";
+    this.bgColorInput.value = this.activeBackgroundColor;
+    this.bgColorInput.title = "Custom background color";
+    this.bgColorInput.addEventListener("input", (e) => {
+      const value = (e.target as HTMLInputElement).value;
+      this.setBackgroundColor(value);
+    });
+    this.bgDropdown.appendChild(this.bgColorInput);
+
+    document.body.appendChild(this.bgDropdown);
 
     // Divider
     this.container.appendChild(this.createDivider());
@@ -440,6 +509,45 @@ export class Toolbar {
     this.drawingNameEl.style.display = "";
   }
 
+  private setBackgroundColor(color: string): void {
+    this.activeBackgroundColor = color;
+    this.bgSwatchButton.style.backgroundColor = color;
+    this.bgColorInput.value = color;
+    for (const swatch of this.bgColorSwatches) {
+      swatch.classList.toggle("active",
+        swatch.style.backgroundColor === this.colorToRgb(color));
+    }
+    this.callbacks.onBackgroundColorChange?.(color);
+    this.closeBgDropdown();
+  }
+
+  /** Update background color UI only (called from external changes like CRDT sync). */
+  setBackgroundColorUI(color: string): void {
+    this.activeBackgroundColor = color;
+    this.bgSwatchButton.style.backgroundColor = color;
+    this.bgColorInput.value = color;
+    for (const swatch of this.bgColorSwatches) {
+      swatch.classList.toggle("active",
+        swatch.style.backgroundColor === this.colorToRgb(color));
+    }
+  }
+
+  private toggleBgDropdown(): void {
+    if (this.bgDropdown.style.display === "none") {
+      // Position below the button
+      const rect = this.bgSwatchButton.getBoundingClientRect();
+      this.bgDropdown.style.top = `${rect.bottom + 4}px`;
+      this.bgDropdown.style.left = `${rect.left}px`;
+      this.bgDropdown.style.display = "";
+    } else {
+      this.closeBgDropdown();
+    }
+  }
+
+  private closeBgDropdown(): void {
+    this.bgDropdown.style.display = "none";
+  }
+
   private colorToRgb(hex: string): string {
     const h = hex.replace("#", "");
     const r = parseInt(h.substring(0, 2), 16);
@@ -450,5 +558,6 @@ export class Toolbar {
 
   destroy(): void {
     this.container.remove();
+    this.bgDropdown.remove();
   }
 }

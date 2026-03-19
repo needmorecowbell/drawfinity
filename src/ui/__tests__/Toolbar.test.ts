@@ -57,8 +57,8 @@ describe("Toolbar", () => {
 
   it("renders undo and redo buttons", () => {
     const buttons = document.querySelectorAll(".toolbar-btn");
-    // 1 home + 4 brush + 1 eraser + 4 shape + 1 fill toggle + 1 undo + 1 redo + 1 help = 14
-    expect(buttons.length).toBe(14);
+    // 1 home + 4 brush + 1 eraser + 4 shape + 1 fill toggle + 1 bg color + 1 undo + 1 redo + 1 help = 15
+    expect(buttons.length).toBe(15);
   });
 
   it("renders zoom display", () => {
@@ -68,8 +68,10 @@ describe("Toolbar", () => {
   });
 
   it("renders custom color input", () => {
-    const input = document.querySelector(".toolbar-color-input") as HTMLInputElement;
-    expect(input).not.toBeNull();
+    const inputs = document.querySelectorAll(".toolbar-color-input");
+    // stroke custom color + fill color + bg custom color = 3
+    expect(inputs.length).toBeGreaterThanOrEqual(1);
+    const input = inputs[0] as HTMLInputElement;
     expect(input.type).toBe("color");
   });
 
@@ -113,7 +115,7 @@ describe("Toolbar", () => {
 
   it("updateUndoRedo enables/disables buttons", () => {
     toolbar.updateUndoRedo(true, false);
-    const buttons = document.querySelectorAll(".toolbar-btn:not(.brush-btn):not(.eraser-btn):not(.shape-btn):not(.fill-toggle):not(.home-btn)");
+    const buttons = document.querySelectorAll(".toolbar-btn:not(.brush-btn):not(.eraser-btn):not(.shape-btn):not(.fill-toggle):not(.home-btn):not(.bg-color-btn)");
     // Undo should be enabled, redo disabled
     const undoBtn = buttons[0] as HTMLButtonElement;
     const redoBtn = buttons[1] as HTMLButtonElement;
@@ -140,7 +142,7 @@ describe("Toolbar", () => {
 
   it("clicking undo button fires onUndo", () => {
     toolbar.updateUndoRedo(true, true);
-    const buttons = document.querySelectorAll(".toolbar-btn:not(.brush-btn):not(.eraser-btn):not(.shape-btn):not(.fill-toggle):not(.home-btn)");
+    const buttons = document.querySelectorAll(".toolbar-btn:not(.brush-btn):not(.eraser-btn):not(.shape-btn):not(.fill-toggle):not(.home-btn):not(.bg-color-btn)");
     const undoBtn = buttons[0] as HTMLButtonElement;
     undoBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
     expect(callbacks.onUndo).toHaveBeenCalled();
@@ -148,7 +150,7 @@ describe("Toolbar", () => {
 
   it("clicking redo button fires onRedo", () => {
     toolbar.updateUndoRedo(true, true);
-    const buttons = document.querySelectorAll(".toolbar-btn:not(.brush-btn):not(.eraser-btn):not(.shape-btn):not(.fill-toggle):not(.home-btn)");
+    const buttons = document.querySelectorAll(".toolbar-btn:not(.brush-btn):not(.eraser-btn):not(.shape-btn):not(.fill-toggle):not(.home-btn):not(.bg-color-btn)");
     const redoBtn = buttons[1] as HTMLButtonElement;
     redoBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
     expect(callbacks.onRedo).toHaveBeenCalled();
@@ -357,6 +359,94 @@ describe("Toolbar", () => {
     const helpBtn = document.querySelector(".help-btn") as HTMLButtonElement;
     helpBtn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(callbacks.onCheatSheet).toHaveBeenCalled();
+  });
+
+  // Background color UI tests
+  it("renders background color button", () => {
+    const bgBtn = document.querySelector(".bg-color-btn");
+    expect(bgBtn).not.toBeNull();
+    expect(bgBtn!.getAttribute("title")).toBe("Background color");
+  });
+
+  it("background color button shows current color", () => {
+    const bgBtn = document.querySelector(".bg-color-btn") as HTMLElement;
+    expect(bgBtn.style.backgroundColor).toBe("rgb(250, 250, 248)"); // #FAFAF8
+  });
+
+  it("clicking background color button toggles dropdown", () => {
+    const bgBtn = document.querySelector(".bg-color-btn") as HTMLButtonElement;
+    const dropdown = document.querySelector(".bg-color-dropdown") as HTMLElement;
+    expect(dropdown.style.display).toBe("none");
+
+    bgBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    expect(dropdown.style.display).toBe("");
+
+    bgBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    expect(dropdown.style.display).toBe("none");
+  });
+
+  it("renders background color preset swatches", () => {
+    const swatches = document.querySelectorAll(".bg-color-swatch");
+    expect(swatches.length).toBe(16);
+  });
+
+  it("clicking a background color swatch fires onBackgroundColorChange", () => {
+    callbacks.onBackgroundColorChange = vi.fn();
+    toolbar.destroy();
+    toolbar = new Toolbar(callbacks);
+
+    const swatches = document.querySelectorAll(".bg-color-swatch");
+    const swatch = swatches[0] as HTMLButtonElement; // #FFFFFF
+    swatch.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    expect(callbacks.onBackgroundColorChange).toHaveBeenCalledWith("#FFFFFF");
+  });
+
+  it("clicking a background color swatch closes dropdown", () => {
+    callbacks.onBackgroundColorChange = vi.fn();
+    toolbar.destroy();
+    toolbar = new Toolbar(callbacks);
+
+    const bgBtn = document.querySelector(".bg-color-btn") as HTMLButtonElement;
+    bgBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    const dropdown = document.querySelector(".bg-color-dropdown") as HTMLElement;
+    expect(dropdown.style.display).toBe("");
+
+    const swatches = document.querySelectorAll(".bg-color-swatch");
+    (swatches[0] as HTMLButtonElement).dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    expect(dropdown.style.display).toBe("none");
+  });
+
+  it("clicking a background swatch updates the button color", () => {
+    callbacks.onBackgroundColorChange = vi.fn();
+    toolbar.destroy();
+    toolbar = new Toolbar(callbacks);
+
+    const swatches = document.querySelectorAll(".bg-color-swatch");
+    (swatches[4] as HTMLButtonElement).dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); // #000000
+    const bgBtn = document.querySelector(".bg-color-btn") as HTMLElement;
+    expect(bgBtn.style.backgroundColor).toBe("rgb(0, 0, 0)");
+  });
+
+  it("setBackgroundColorUI updates button and swatch active state without firing callback", () => {
+    callbacks.onBackgroundColorChange = vi.fn();
+    toolbar.destroy();
+    toolbar = new Toolbar(callbacks);
+
+    toolbar.setBackgroundColorUI("#000000");
+    const bgBtn = document.querySelector(".bg-color-btn") as HTMLElement;
+    expect(bgBtn.style.backgroundColor).toBe("rgb(0, 0, 0)");
+    expect(callbacks.onBackgroundColorChange).not.toHaveBeenCalled();
+
+    // The black swatch should be active
+    const swatches = document.querySelectorAll(".bg-color-swatch");
+    const blackSwatch = Array.from(swatches).find(s => (s as HTMLElement).title === "#000000");
+    expect(blackSwatch!.classList.contains("active")).toBe(true);
+  });
+
+  it("renders custom background color input", () => {
+    const input = document.querySelector(".bg-custom-color-input") as HTMLInputElement;
+    expect(input).not.toBeNull();
+    expect(input.type).toBe("color");
   });
 
   it("destroy removes toolbar from DOM", () => {

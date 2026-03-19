@@ -11,3 +11,7 @@ export { HomeScreen } from "./HomeScreen";
 export type { HomeScreenCallbacks, TabName, SharedConnectionStatus } from "./HomeScreen";
 export { ViewManager } from "./ViewManager";
 export type { ViewName, ViewManagerDeps } from "./ViewManager";
+export { ActionRegistry } from "./ActionRegistry";
+export type { Action, ActionCategory } from "./ActionRegistry";
+export { ACTION_CATEGORIES } from "./ActionRegistry";
+export { CheatSheet } from "./CheatSheet";

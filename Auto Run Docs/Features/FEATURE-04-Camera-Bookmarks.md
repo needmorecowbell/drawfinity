@@ -14,12 +14,12 @@ Allow users to bookmark camera positions (pan + zoom) for quick navigation. Book
 
 ## Tasks
 
-- [ ] Define bookmark data model:
+- [x] Define bookmark data model:
   - `CameraBookmark` interface: `id: string`, `label: string`, `x: number`, `y: number`, `zoom: number`, `createdBy: string`, `createdAt: number`
   - Store as a `Y.Array<Y.Map<unknown>>` named `"bookmarks"` on the Y.Doc
   - Add to `DrawfinityDoc`: `addBookmark(bookmark)`, `removeBookmark(id)`, `getBookmarks()`, `updateBookmark(id, partial)`, `onBookmarksChanged(callback)`
 
-- [ ] Bookmark sidebar UI:
+- [x] Bookmark sidebar UI:
   - Create `src/ui/BookmarkPanel.ts`:
     - Collapsible sidebar panel (slides in from right edge, ~250px wide)
     - Header: "Bookmarks" title + "Add Bookmark" button (captures current camera position)
@@ -31,32 +31,33 @@ Allow users to bookmark camera positions (pan + zoom) for quick navigation. Book
     - Drag-to-reorder would be nice but is not required initially
   - Style consistently with the existing toolbar/panel aesthetic
 
-- [ ] Toolbar integration:
+- [x] Toolbar integration:
   - Add a bookmark icon button to the toolbar (e.g., a flag or pin icon)
   - Click toggles the bookmark sidebar
   - Keyboard shortcut: `Ctrl+B` to toggle the panel
   - Quick-add shortcut: `Ctrl+D` to bookmark the current camera position (prompts for label via a small inline input or uses a default name like "Bookmark 1")
 
-- [ ] Animated camera navigation:
+- [x] Animated camera navigation:
   - Add `CameraAnimator.animateTo(x, y, zoom, durationMs?)` method
   - Use existing log-space zoom interpolation for the zoom axis
   - Linear interpolation for pan (x, y)
   - Default duration: 500ms, eased with an ease-in-out curve
   - Ensure the animation is interruptible (user can pan/zoom during animation to cancel it)
 
-- [ ] Collaboration sync:
-  - Bookmarks auto-sync via Yjs (Y.Array on the shared doc)
-  - When a remote user adds/removes a bookmark, the sidebar updates in real time
-  - Show creator name on each bookmark in collaborative mode (from `createdBy` → awareness or stored name)
+- [x] Collaboration sync:
+  - Bookmarks auto-sync via Yjs (Y.Array on the shared doc) — already working via shared Y.Doc
+  - When a remote user adds/removes a bookmark, the sidebar updates in real time — handled by `onBookmarksChanged` observer
+  - Show creator name on each bookmark in collaborative mode (from `createdBy` → awareness or stored name) — added `createdByName` to model, `resolveUserName`/`isCollaborating` callbacks, creator name display in sidebar
 
-- [ ] "Add Bookmark" flow:
+- [x] "Add Bookmark" flow:
   - Capture current `camera.x`, `camera.y`, `camera.zoom`
-  - Show a small popover or inline input for the label (pre-filled with "Bookmark N" where N increments)
-  - On confirm, add to the Yjs bookmarks array
-  - The new bookmark appears in the sidebar immediately
+  - Show a small popover or inline input for the label (pre-filled with "Bookmark N" where N increments) — implemented as inline input at top of bookmark list with `.bm-adding` styling
+  - On confirm, add to the Yjs bookmarks array — Enter key or blur confirms; Escape cancels without creating
+  - The new bookmark appears in the sidebar immediately — onBookmarksChanged triggers re-render
+  - When `addBookmark(label)` is called with an explicit label, creates immediately without input (used by programmatic callers)
 
-- [ ] Tests:
-  - Unit tests for bookmark CRDT operations (add, remove, update, list)
-  - Unit tests for BookmarkPanel rendering (list items, empty state, add/delete actions)
-  - Unit test for `CameraAnimator.animateTo()` (position interpolation over time)
-  - Integration test: add bookmark on one client, verify it appears on another
+- [x] Tests:
+  - Unit tests for bookmark CRDT operations (add, remove, update, list) — `DrawfinityDocBookmarks.test.ts` (19 tests) + `BookmarkAdapter.test.ts` (4 tests)
+  - Unit tests for BookmarkPanel rendering (list items, empty state, add/delete actions) — `BookmarkPanel.test.ts` (30 tests) + `BookmarkToolbarIntegration.test.ts` (12 tests)
+  - Unit test for `CameraAnimator.animateTo()` (position interpolation over time) — `CameraAnimator.test.ts` animateTo section (8 tests covering interpolation, ease-in-out timing, interruptibility, zoom clamping, default duration)
+  - Integration test: add bookmark on one client, verify it appears on another — `DrawfinityDocBookmarks.test.ts` collaboration sync section (3 tests: state sync, remote observer firing, real-time bidirectional sync)

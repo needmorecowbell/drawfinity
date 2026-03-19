@@ -206,6 +206,7 @@ export class CanvasApp {
       onRenameDrawing: (name) => {
         this.callbacks.onRenameDrawing?.(this.drawingId, name);
       },
+      onCheatSheet: () => this.cheatSheet.toggle(),
       onShapeConfigChange: (config) => {
         this.toolManager.setShapeConfig(config);
         if (isShapeTool(this.toolManager.getTool())) {

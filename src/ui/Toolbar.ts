@@ -12,6 +12,7 @@ export interface ToolbarCallbacks {
   onShapeConfigChange?: (config: Partial<ShapeToolConfig>) => void;
   onHome?: () => void;
   onRenameDrawing?: (name: string) => void;
+  onCheatSheet?: () => void;
 }
 
 const PRESET_COLORS = [
@@ -46,6 +47,7 @@ export class Toolbar {
   private sidesContainer!: HTMLDivElement;
 
   private homeButton!: HTMLButtonElement;
+  private helpButton!: HTMLButtonElement;
   private drawingNameEl!: HTMLSpanElement;
   private drawingNameInput!: HTMLInputElement;
   private drawingNameContainer!: HTMLDivElement;
@@ -289,6 +291,20 @@ export class Toolbar {
     actionSection.appendChild(this.zoomDisplay);
 
     this.container.appendChild(actionSection);
+
+    // Divider
+    this.container.appendChild(this.createDivider());
+
+    // Help button (cheat sheet)
+    this.helpButton = document.createElement("button");
+    this.helpButton.className = "toolbar-btn help-btn";
+    this.helpButton.title = "Keyboard shortcuts (Ctrl+?)";
+    this.helpButton.textContent = "?";
+    this.helpButton.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.callbacks.onCheatSheet?.();
+    });
+    this.container.appendChild(this.helpButton);
   }
 
   private createSection(className: string): HTMLDivElement {

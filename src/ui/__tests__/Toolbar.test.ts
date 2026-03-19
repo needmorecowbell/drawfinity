@@ -57,8 +57,8 @@ describe("Toolbar", () => {
 
   it("renders undo and redo buttons", () => {
     const buttons = document.querySelectorAll(".toolbar-btn");
-    // 1 home + 4 brush + 1 eraser + 4 shape + 1 fill toggle + 1 undo + 1 redo = 13
-    expect(buttons.length).toBe(13);
+    // 1 home + 4 brush + 1 eraser + 4 shape + 1 fill toggle + 1 undo + 1 redo + 1 help = 14
+    expect(buttons.length).toBe(14);
   });
 
   it("renders zoom display", () => {
@@ -341,6 +341,22 @@ describe("Toolbar", () => {
     input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
 
     expect(callbacks.onRenameDrawing).not.toHaveBeenCalled();
+  });
+
+  it("renders help button", () => {
+    const helpBtn = document.querySelector(".help-btn");
+    expect(helpBtn).not.toBeNull();
+    expect(helpBtn!.textContent).toBe("?");
+    expect(helpBtn!.getAttribute("title")).toBe("Keyboard shortcuts (Ctrl+?)");
+  });
+
+  it("clicking help button fires onCheatSheet callback", () => {
+    callbacks.onCheatSheet = vi.fn();
+    toolbar.destroy();
+    toolbar = new Toolbar(callbacks);
+    const helpBtn = document.querySelector(".help-btn") as HTMLButtonElement;
+    helpBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    expect(callbacks.onCheatSheet).toHaveBeenCalled();
   });
 
   it("destroy removes toolbar from DOM", () => {

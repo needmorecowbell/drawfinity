@@ -207,6 +207,11 @@ html, body {
   margin-left: auto;
 }
 
+.toolbar-btn.help-btn {
+  font-size: 14px;
+  font-weight: bold;
+}
+
 .user-color-indicator {
   width: 12px;
   height: 12px;

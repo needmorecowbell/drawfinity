@@ -4,6 +4,8 @@ import { Shape } from "../model/Shape";
 import { CanvasItem } from "../model/Shape";
 import { strokeToYMap, yMapToStroke } from "./StrokeAdapter";
 import { shapeToYMap, yMapToShape } from "./ShapeAdapter";
+import { CameraBookmark } from "../model/Bookmark";
+import { bookmarkToYMap, yMapToBookmark } from "./BookmarkAdapter";
 
 export const DEFAULT_BACKGROUND_COLOR = "#FAFAF8";
 
@@ -11,11 +13,13 @@ export class DrawfinityDoc implements DocumentModel {
   private doc: Y.Doc;
   private items: Y.Array<Y.Map<unknown>>;
   private meta: Y.Map<string>;
+  private bookmarks: Y.Array<Y.Map<unknown>>;
 
   constructor(doc?: Y.Doc) {
     this.doc = doc ?? new Y.Doc();
     this.items = this.doc.getArray<Y.Map<unknown>>("strokes");
     this.meta = this.doc.getMap<string>("meta");
+    this.bookmarks = this.doc.getArray<Y.Map<unknown>>("bookmarks");
   }
 
   addStroke(stroke: Stroke): void {
@@ -142,5 +146,56 @@ export class DrawfinityDoc implements DocumentModel {
 
   getMetaMap(): Y.Map<string> {
     return this.meta;
+  }
+
+  addBookmark(bookmark: CameraBookmark): void {
+    this.doc.transact(() => {
+      const yMap = bookmarkToYMap(bookmark);
+      this.bookmarks.push([yMap]);
+    });
+  }
+
+  removeBookmark(id: string): boolean {
+    let removed = false;
+    this.doc.transact(() => {
+      const arr = this.bookmarks.toArray();
+      for (let i = arr.length - 1; i >= 0; i--) {
+        if (arr[i].get("id") === id) {
+          this.bookmarks.delete(i, 1);
+          removed = true;
+          break;
+        }
+      }
+    });
+    return removed;
+  }
+
+  getBookmarks(): CameraBookmark[] {
+    return this.bookmarks.toArray().map(yMapToBookmark);
+  }
+
+  updateBookmark(id: string, partial: Partial<Omit<CameraBookmark, "id">>): boolean {
+    let updated = false;
+    this.doc.transact(() => {
+      const arr = this.bookmarks.toArray();
+      for (const yMap of arr) {
+        if (yMap.get("id") === id) {
+          for (const [key, value] of Object.entries(partial)) {
+            yMap.set(key, value);
+          }
+          updated = true;
+          break;
+        }
+      }
+    });
+    return updated;
+  }
+
+  onBookmarksChanged(callback: () => void): void {
+    this.bookmarks.observeDeep(callback);
+  }
+
+  getBookmarksArray(): Y.Array<Y.Map<unknown>> {
+    return this.bookmarks;
   }
 }

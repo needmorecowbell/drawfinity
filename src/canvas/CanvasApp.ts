@@ -336,10 +336,7 @@ export class CanvasApp {
     // Bookmark panel
     this.bookmarkPanel = new BookmarkPanel(this.doc, this.camera, {
       onNavigate: (bm) => {
-        // Set camera directly; animated navigation will be added via CameraAnimator.animateTo()
-        this.camera.x = bm.x;
-        this.camera.y = bm.y;
-        this.camera.zoom = bm.zoom;
+        this.cameraAnimator.animateTo(bm.x, bm.y, bm.zoom);
       },
       getUserId: () => userProfile.id ?? "local",
       getUserName: () => userProfile.name,

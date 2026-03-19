@@ -150,6 +150,139 @@ describe("CameraAnimator", () => {
     });
   });
 
+  describe("animateTo", () => {
+    it("animates camera to exact position and zoom over the given duration", () => {
+      let time = 0;
+      const timedAnimator = new CameraAnimator(camera, () => time);
+
+      timedAnimator.animateTo(100, 200, 4, 500);
+
+      // At t=0, should still be at start (easeInOut(0) = 0)
+      expect(camera.x).toBe(0);
+      expect(camera.y).toBe(0);
+      expect(camera.zoom).toBe(1);
+
+      // Midway through
+      time = 250;
+      timedAnimator.tick();
+      // easeInOut(0.5) = 0.5, so position should be halfway
+      expect(camera.x).toBeCloseTo(50, 1);
+      expect(camera.y).toBeCloseTo(100, 1);
+      // Zoom in log-space: exp(log(1) + (log(4)-log(1))*0.5) = exp(0.693) = 2
+      expect(camera.zoom).toBeCloseTo(2, 1);
+
+      // At completion
+      time = 500;
+      timedAnimator.tick();
+      expect(camera.x).toBeCloseTo(100);
+      expect(camera.y).toBeCloseTo(200);
+      expect(camera.zoom).toBeCloseTo(4);
+      expect(timedAnimator.isAnimating).toBe(false);
+    });
+
+    it("uses ease-in-out timing (slow start and end)", () => {
+      let time = 0;
+      const timedAnimator = new CameraAnimator(camera, () => time);
+      timedAnimator.animateTo(100, 0, 1, 1000);
+
+      // At 10% time, easeInOut(0.1) = 4*0.001 = 0.004 → very little movement
+      time = 100;
+      timedAnimator.tick();
+      expect(camera.x).toBeLessThan(5);
+
+      // At 50% time, easeInOut(0.5) = 0.5 → half
+      time = 500;
+      timedAnimator.tick();
+      expect(camera.x).toBeCloseTo(50, 0);
+
+      // At 90% time, easeInOut(0.9) ≈ 0.972 → nearly there
+      time = 900;
+      timedAnimator.tick();
+      expect(camera.x).toBeGreaterThan(95);
+    });
+
+    it("is interruptible by interrupt()", () => {
+      let time = 0;
+      const timedAnimator = new CameraAnimator(camera, () => time);
+      timedAnimator.animateTo(100, 200, 4, 500);
+
+      time = 250;
+      timedAnimator.tick();
+      timedAnimator.interrupt();
+
+      const xAfter = camera.x;
+      time = 500;
+      timedAnimator.tick();
+      // Should not have moved further
+      expect(camera.x).toBe(xAfter);
+      expect(timedAnimator.isAnimating).toBe(false);
+    });
+
+    it("clamps zoom to valid range", () => {
+      let time = 0;
+      const timedAnimator = new CameraAnimator(camera, () => time);
+      timedAnimator.animateTo(0, 0, Camera.MAX_ZOOM * 100, 100);
+
+      time = 100;
+      timedAnimator.tick();
+      expect(camera.zoom).toBeCloseTo(Camera.MAX_ZOOM, 0);
+    });
+
+    it("defaults to 500ms duration", () => {
+      let time = 0;
+      const timedAnimator = new CameraAnimator(camera, () => time);
+      timedAnimator.animateTo(100, 0, 1);
+
+      // At 500ms should be complete
+      time = 500;
+      timedAnimator.tick();
+      expect(camera.x).toBeCloseTo(100);
+      expect(timedAnimator.isAnimating).toBe(false);
+    });
+
+    it("snaps to exact final values on completion", () => {
+      let time = 0;
+      const timedAnimator = new CameraAnimator(camera, () => time);
+      timedAnimator.animateTo(123.456, 789.012, 3.14159, 200);
+
+      time = 200;
+      timedAnimator.tick();
+      expect(camera.x).toBe(123.456);
+      expect(camera.y).toBe(789.012);
+      // zoom snaps to exp(log(clampedZoom))
+      expect(camera.zoom).toBeCloseTo(3.14159, 10);
+    });
+
+    it("reports isAnimating during the animation", () => {
+      let time = 0;
+      const timedAnimator = new CameraAnimator(camera, () => time);
+      expect(timedAnimator.isAnimating).toBe(false);
+
+      timedAnimator.animateTo(100, 200, 2, 500);
+      expect(timedAnimator.isAnimating).toBe(true);
+
+      time = 500;
+      timedAnimator.tick();
+      expect(timedAnimator.isAnimating).toBe(false);
+    });
+
+    it("cancels any existing lerp-based target animation", () => {
+      let time = 0;
+      const timedAnimator = new CameraAnimator(camera, () => time);
+      // Start a lerp animation
+      timedAnimator.animateZoomCentered(4);
+      expect(timedAnimator.isAnimating).toBe(true);
+
+      // animateTo should replace it
+      timedAnimator.animateTo(50, 50, 2, 300);
+      time = 300;
+      timedAnimator.tick();
+      expect(camera.x).toBeCloseTo(50);
+      expect(camera.y).toBeCloseTo(50);
+      expect(camera.zoom).toBeCloseTo(2);
+    });
+  });
+
   describe("animateToFit", () => {
     it("zooms and pans to fit a bounding box", () => {
       animator.animateToFit(-100, -50, 100, 50);

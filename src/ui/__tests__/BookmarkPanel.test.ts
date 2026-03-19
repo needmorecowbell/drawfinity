@@ -248,4 +248,156 @@ describe("BookmarkPanel", () => {
     // Re-create for afterEach
     panel = new BookmarkPanel(doc, camera);
   });
+
+  describe("collaboration sync", () => {
+    let collabPanel: BookmarkPanel;
+
+    afterEach(() => {
+      collabPanel?.destroy();
+    });
+
+    it("shows creator name for remote bookmarks in collaborative mode", () => {
+      collabPanel = new BookmarkPanel(doc, camera, {
+        getUserId: () => "local-user",
+        getUserName: () => "Local User",
+        resolveUserName: (userId) => (userId === "remote-1" ? "Alice" : undefined),
+        isCollaborating: () => true,
+      });
+
+      doc.addBookmark(makeBookmark({ id: "bm-remote", label: "Remote View", createdBy: "remote-1", createdByName: "Alice" }));
+      collabPanel.show();
+
+      const creator = document.querySelector(".bm-creator") as HTMLElement;
+      expect(creator).not.toBeNull();
+      expect(creator.textContent).toBe("Alice");
+    });
+
+    it("hides creator name for own bookmarks", () => {
+      collabPanel = new BookmarkPanel(doc, camera, {
+        getUserId: () => "local-user",
+        getUserName: () => "Local User",
+        resolveUserName: () => undefined,
+        isCollaborating: () => true,
+      });
+
+      doc.addBookmark(makeBookmark({ id: "bm-own", label: "My View", createdBy: "local-user" }));
+      collabPanel.show();
+
+      const creator = document.querySelector(".bm-creator");
+      expect(creator).toBeNull();
+    });
+
+    it("hides creator name when not collaborating", () => {
+      collabPanel = new BookmarkPanel(doc, camera, {
+        getUserId: () => "local-user",
+        getUserName: () => "Local User",
+        resolveUserName: () => "Alice",
+        isCollaborating: () => false,
+      });
+
+      doc.addBookmark(makeBookmark({ id: "bm-solo", label: "Solo View", createdBy: "remote-1" }));
+      collabPanel.show();
+
+      const creator = document.querySelector(".bm-creator");
+      expect(creator).toBeNull();
+    });
+
+    it("falls back to stored createdByName when user is not connected", () => {
+      collabPanel = new BookmarkPanel(doc, camera, {
+        getUserId: () => "local-user",
+        getUserName: () => "Local User",
+        resolveUserName: () => undefined, // user not in awareness
+        isCollaborating: () => true,
+      });
+
+      doc.addBookmark(makeBookmark({ id: "bm-gone", label: "Gone User", createdBy: "gone-user", createdByName: "Bob" }));
+      collabPanel.show();
+
+      const creator = document.querySelector(".bm-creator") as HTMLElement;
+      expect(creator).not.toBeNull();
+      expect(creator.textContent).toBe("Bob");
+    });
+
+    it("stores createdByName when adding a bookmark", () => {
+      collabPanel = new BookmarkPanel(doc, camera, {
+        getUserId: () => "test-user",
+        getUserName: () => "Test User",
+        isCollaborating: () => true,
+      });
+
+      collabPanel.addBookmark("My Spot");
+
+      const bookmarks = doc.getBookmarks();
+      expect(bookmarks[0].createdByName).toBe("Test User");
+    });
+
+    it("refreshList() re-renders the bookmark list", () => {
+      collabPanel = new BookmarkPanel(doc, camera, {
+        getUserId: () => "local-user",
+        getUserName: () => "Local User",
+        resolveUserName: () => undefined,
+        isCollaborating: () => true,
+      });
+
+      doc.addBookmark(makeBookmark({ id: "bm-ref", label: "Refresh Test", createdBy: "remote-1", createdByName: "Old Name" }));
+      collabPanel.show();
+
+      // Initially shows stored name
+      let creator = document.querySelector(".bm-creator") as HTMLElement;
+      expect(creator.textContent).toBe("Old Name");
+
+      // Destroy and recreate with updated resolveUserName
+      collabPanel.destroy();
+      collabPanel = new BookmarkPanel(doc, camera, {
+        getUserId: () => "local-user",
+        getUserName: () => "Local User",
+        resolveUserName: () => "New Name",
+        isCollaborating: () => true,
+      });
+      collabPanel.show();
+      collabPanel.refreshList();
+
+      creator = document.querySelector(".bm-creator") as HTMLElement;
+      expect(creator.textContent).toBe("New Name");
+    });
+
+    it("updates list when remote user adds a bookmark", () => {
+      collabPanel = new BookmarkPanel(doc, camera, {
+        getUserId: () => "local-user",
+        getUserName: () => "Local User",
+        resolveUserName: (id) => (id === "remote-2" ? "Charlie" : undefined),
+        isCollaborating: () => true,
+      });
+      collabPanel.show();
+
+      expect(document.querySelectorAll(".bm-item").length).toBe(0);
+
+      // Simulate remote addition
+      doc.addBookmark(makeBookmark({ id: "remote-added", label: "Remote Added", createdBy: "remote-2", createdByName: "Charlie" }));
+
+      const items = document.querySelectorAll(".bm-item");
+      expect(items.length).toBe(1);
+      expect(document.querySelector(".bm-label")?.textContent).toBe("Remote Added");
+      expect(document.querySelector(".bm-creator")?.textContent).toBe("Charlie");
+    });
+
+    it("updates list when remote user removes a bookmark", () => {
+      doc.addBookmark(makeBookmark({ id: "to-remove", label: "Will Be Removed", createdBy: "remote-3" }));
+
+      collabPanel = new BookmarkPanel(doc, camera, {
+        getUserId: () => "local-user",
+        getUserName: () => "Local User",
+        isCollaborating: () => true,
+      });
+      collabPanel.show();
+
+      expect(document.querySelectorAll(".bm-item").length).toBe(1);
+
+      // Simulate remote removal
+      doc.removeBookmark("to-remove");
+
+      expect(document.querySelectorAll(".bm-item").length).toBe(0);
+      expect(document.querySelector(".bm-empty")).not.toBeNull();
+    });
+  });
 });

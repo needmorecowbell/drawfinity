@@ -42,5 +42,20 @@ describe("BookmarkAdapter", () => {
       const result = yMapToBookmark(yMap);
       expect(result).toEqual(sampleBookmark);
     });
+
+    it("round-trips a bookmark with createdByName", () => {
+      const bmWithName: CameraBookmark = { ...sampleBookmark, createdByName: "Alice" };
+      const yMap = addToDoc(bmWithName);
+      const result = yMapToBookmark(yMap);
+      expect(result.createdByName).toBe("Alice");
+      expect(result).toEqual(bmWithName);
+    });
+
+    it("omits createdByName when not provided", () => {
+      const yMap = addToDoc(sampleBookmark);
+      expect(yMap.get("createdByName")).toBeUndefined();
+      const result = yMapToBookmark(yMap);
+      expect(result.createdByName).toBeUndefined();
+    });
   });
 });

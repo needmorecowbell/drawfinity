@@ -5,6 +5,7 @@ export interface CameraBookmark {
   y: number;
   zoom: number;
   createdBy: string;
+  createdByName?: string;
   createdAt: number;
 }
 

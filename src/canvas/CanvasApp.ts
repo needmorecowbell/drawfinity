@@ -338,6 +338,19 @@ export class CanvasApp {
       },
       getUserId: () => userProfile.id ?? "local",
       getUserName: () => userProfile.name,
+      resolveUserName: (userId) => {
+        const remoteUsers = this.syncManager.getRemoteUsers();
+        const found = remoteUsers.find((u) => u.id === userId);
+        return found?.name;
+      },
+      isCollaborating: () => this.syncManager.getConnectionState() === "connected",
+    });
+
+    // Refresh bookmark panel when remote users change (to update creator names)
+    this.syncManager.onRemoteUsersChange(() => {
+      if (this.bookmarkPanel.isVisible()) {
+        this.bookmarkPanel.refreshList();
+      }
     });
 
     // Action registry + cheat sheet

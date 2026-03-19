@@ -9,12 +9,15 @@ export function bookmarkToYMap(bookmark: CameraBookmark): Y.Map<unknown> {
   yMap.set("y", bookmark.y);
   yMap.set("zoom", bookmark.zoom);
   yMap.set("createdBy", bookmark.createdBy);
+  if (bookmark.createdByName) {
+    yMap.set("createdByName", bookmark.createdByName);
+  }
   yMap.set("createdAt", bookmark.createdAt);
   return yMap;
 }
 
 export function yMapToBookmark(yMap: Y.Map<unknown>): CameraBookmark {
-  return {
+  const bookmark: CameraBookmark = {
     id: yMap.get("id") as string,
     label: yMap.get("label") as string,
     x: yMap.get("x") as number,
@@ -23,4 +26,9 @@ export function yMapToBookmark(yMap: Y.Map<unknown>): CameraBookmark {
     createdBy: yMap.get("createdBy") as string,
     createdAt: yMap.get("createdAt") as number,
   };
+  const createdByName = yMap.get("createdByName") as string | undefined;
+  if (createdByName) {
+    bookmark.createdByName = createdByName;
+  }
+  return bookmark;
 }

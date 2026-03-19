@@ -1751,20 +1751,36 @@ html, body {
   background: rgba(0, 0, 0, 0.03);
 }
 
-.bm-label {
+.bm-label-wrap {
   flex: 1;
-  font-size: 13px;
-  color: #333;
+  display: flex;
+  flex-direction: column;
   cursor: pointer;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
   padding: 2px 0;
   border-radius: 4px;
 }
 
-.bm-label:hover {
+.bm-label {
+  font-size: 13px;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bm-label-wrap:hover .bm-label {
   color: #0066FF;
+}
+
+.bm-creator {
+  font-size: 10px;
+  color: #999;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
 .bm-edit-input {

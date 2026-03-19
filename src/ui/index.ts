@@ -14,3 +14,4 @@ export type { ViewName, ViewManagerDeps } from "./ViewManager";
 export { ActionRegistry } from "./ActionRegistry";
 export type { Action, ActionCategory } from "./ActionRegistry";
 export { ACTION_CATEGORIES } from "./ActionRegistry";
+export { CheatSheet } from "./CheatSheet";

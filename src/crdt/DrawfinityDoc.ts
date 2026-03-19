@@ -5,13 +5,17 @@ import { CanvasItem } from "../model/Shape";
 import { strokeToYMap, yMapToStroke } from "./StrokeAdapter";
 import { shapeToYMap, yMapToShape } from "./ShapeAdapter";
 
+export const DEFAULT_BACKGROUND_COLOR = "#FAFAF8";
+
 export class DrawfinityDoc implements DocumentModel {
   private doc: Y.Doc;
   private items: Y.Array<Y.Map<unknown>>;
+  private meta: Y.Map<string>;
 
   constructor(doc?: Y.Doc) {
     this.doc = doc ?? new Y.Doc();
     this.items = this.doc.getArray<Y.Map<unknown>>("strokes");
+    this.meta = this.doc.getMap<string>("meta");
   }
 
   addStroke(stroke: Stroke): void {
@@ -120,5 +124,23 @@ export class DrawfinityDoc implements DocumentModel {
 
   getStrokesArray(): Y.Array<Y.Map<unknown>> {
     return this.items;
+  }
+
+  getBackgroundColor(): string {
+    return this.meta.get("backgroundColor") ?? DEFAULT_BACKGROUND_COLOR;
+  }
+
+  setBackgroundColor(color: string): void {
+    this.doc.transact(() => {
+      this.meta.set("backgroundColor", color);
+    });
+  }
+
+  onMetaChanged(callback: () => void): void {
+    this.meta.observe(callback);
+  }
+
+  getMetaMap(): Y.Map<string> {
+    return this.meta;
   }
 }

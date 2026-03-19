@@ -131,7 +131,7 @@ describe("ViewManager", () => {
       await vm.showHome();
       await vm.showCanvas("d1");
       expect(vm.getCurrentView()).toBe("canvas");
-      expect(canvasContainer.style.display).toBe("");
+      expect(canvasContainer.style.display).toBe("block");
       expect(vm.getHomeScreen().isVisible()).toBe(false);
     });
 

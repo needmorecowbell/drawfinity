@@ -194,14 +194,14 @@ describe("CanvasApp", () => {
     expect(app.getDoc()).toBeDefined();
     expect(window.requestAnimationFrame).toHaveBeenCalled();
 
-    app.destroy();
+    await app.destroy();
   });
 
   it("destroy() cancels the animation frame and cleans up", async () => {
     const app = new CanvasApp();
     await app.init("test-drawing-id");
 
-    app.destroy();
+    await app.destroy();
 
     expect(window.cancelAnimationFrame).toHaveBeenCalledWith(1);
   });
@@ -212,7 +212,7 @@ describe("CanvasApp", () => {
 
     expect(app.getCurrentDrawingId()).toBe("my-drawing-123");
 
-    app.destroy();
+    await app.destroy();
   });
 
   it("getDoc() returns a valid DrawfinityDoc", async () => {
@@ -224,7 +224,7 @@ describe("CanvasApp", () => {
     expect(typeof doc.getStrokes).toBe("function");
     expect(typeof doc.getShapes).toBe("function");
 
-    app.destroy();
+    await app.destroy();
   });
 
   it("creates toolbar and settings button in DOM", async () => {
@@ -237,7 +237,7 @@ describe("CanvasApp", () => {
     const settingsBtn = document.querySelector(".settings-btn");
     expect(settingsBtn).not.toBeNull();
 
-    app.destroy();
+    await app.destroy();
   });
 
   it("removes settings button and color indicator on destroy", async () => {
@@ -249,7 +249,7 @@ describe("CanvasApp", () => {
     expect(settingsBtn).not.toBeNull();
     expect(colorIndicator).not.toBeNull();
 
-    app.destroy();
+    await app.destroy();
 
     expect(document.querySelector(".settings-btn")).toBeNull();
     expect(document.querySelector(".user-color-indicator")).toBeNull();
@@ -266,8 +266,8 @@ describe("CanvasApp", () => {
     const app = new CanvasApp();
     await app.init("test-double-destroy");
 
-    app.destroy();
-    expect(() => app.destroy()).not.toThrow();
+    await app.destroy();
+    await expect(app.destroy()).resolves.not.toThrow();
   });
 
   it("registers beforeunload handler during init", async () => {
@@ -280,7 +280,7 @@ describe("CanvasApp", () => {
     );
     expect(beforeUnloadCalls.length).toBeGreaterThan(0);
 
-    app.destroy();
+    await app.destroy();
   });
 
   it("removes beforeunload handler on destroy", async () => {
@@ -288,7 +288,7 @@ describe("CanvasApp", () => {
     const app = new CanvasApp();
     await app.init("test-remove-handlers");
 
-    app.destroy();
+    await app.destroy();
 
     const beforeUnloadCalls = removeSpy.mock.calls.filter(
       (call) => call[0] === "beforeunload",

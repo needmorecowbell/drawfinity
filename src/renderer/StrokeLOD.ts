@@ -107,7 +107,7 @@ export function getStrokeLOD(
 ): readonly StrokePoint[] {
   const bracket = getLODBracket(zoom);
 
-  // Full detail — no simplification needed
+  // Full detail — no simplification or subdivision needed
   if (bracket === -1) return points;
 
   // Check cache
@@ -131,10 +131,82 @@ export function getStrokeLOD(
 }
 
 /**
+ * Cache for subdivided stroke points at high zoom.
+ * Keyed by stroke ID, stores subdivided points per zoom bracket.
+ */
+const subdivCache = new Map<string, { bracket: number; points: StrokePoint[] }>();
+
+function getSubdivBracket(zoom: number): number {
+  if (zoom <= 6) return 0;   // 1 subdivision pass
+  if (zoom <= 15) return 1;  // 2 passes
+  return 2;                  // 3 passes
+}
+
+function getSubdividedPoints(
+  strokeId: string,
+  points: readonly StrokePoint[],
+  zoom: number,
+): StrokePoint[] {
+  const bracket = getSubdivBracket(zoom);
+  const cached = subdivCache.get(strokeId);
+  if (cached && cached.bracket === bracket) return cached.points;
+
+  let result: StrokePoint[] = points.slice() as StrokePoint[];
+  const passes = bracket + 1;
+  for (let p = 0; p < passes; p++) {
+    result = catmullRomSubdivide(result);
+  }
+
+  subdivCache.set(strokeId, { bracket, points: result });
+  return result;
+}
+
+/**
+ * Catmull-Rom subdivision: inserts an interpolated midpoint between each
+ * pair of consecutive points using the surrounding points as control points.
+ */
+function catmullRomSubdivide(points: StrokePoint[]): StrokePoint[] {
+  if (points.length < 2) return points;
+  const result: StrokePoint[] = [points[0]];
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[Math.max(i - 1, 0)];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[Math.min(i + 2, points.length - 1)];
+
+    // Catmull-Rom at t=0.5
+    const t = 0.5;
+    const t2 = t * t;
+    const t3 = t2 * t;
+
+    const mx = 0.5 * (
+      (2 * p1.x) +
+      (-p0.x + p2.x) * t +
+      (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
+      (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3
+    );
+    const my = 0.5 * (
+      (2 * p1.y) +
+      (-p0.y + p2.y) * t +
+      (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
+      (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3
+    );
+    const mp = (p1.pressure + p2.pressure) / 2;
+
+    result.push({ x: mx, y: my, pressure: mp });
+    result.push(p2);
+  }
+
+  return result;
+}
+
+/**
  * Invalidate the LOD cache for a specific stroke (e.g., when it's modified).
  */
 export function invalidateStrokeLOD(strokeId: string): void {
   lodCache.delete(strokeId);
+  subdivCache.delete(strokeId);
 }
 
 /**
@@ -142,6 +214,7 @@ export function invalidateStrokeLOD(strokeId: string): void {
  */
 export function clearLODCache(): void {
   lodCache.clear();
+  subdivCache.clear();
 }
 
 /** Exposed for testing. */

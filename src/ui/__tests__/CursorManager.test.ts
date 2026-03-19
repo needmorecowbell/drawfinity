@@ -12,7 +12,7 @@ describe("CursorManager", () => {
   });
 
   it("sets a brush circle cursor by default", () => {
-    cursor.setZoom(1);
+    cursor.setBrushWidth(2);
     expect(canvas.style.cursor).toContain("data:image/svg+xml");
     expect(canvas.style.cursor).toContain("circle");
   });
@@ -23,16 +23,14 @@ describe("CursorManager", () => {
     expect(canvas.style.cursor).toContain("circle");
   });
 
-  it("scales cursor size with zoom level", () => {
+  it("cursor size is independent of zoom level", () => {
     cursor.setBrushWidth(10);
     cursor.setZoom(1);
     const cursorAtZoom1 = canvas.style.cursor;
 
     cursor.setZoom(2);
-    const cursorAtZoom2 = canvas.style.cursor;
-
-    // Different zoom levels should produce different cursors
-    expect(cursorAtZoom1).not.toBe(cursorAtZoom2);
+    // Cursor stays the same — size reflects brush setting, not zoom
+    expect(canvas.style.cursor).toBe(cursorAtZoom1);
   });
 
   it("does not override cursor when panning", () => {

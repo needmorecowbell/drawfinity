@@ -76,7 +76,7 @@ describe("SyncManager", () => {
     syncManager.connect("ws://localhost:8080", "test-room");
 
     expect(WebsocketProvider).toHaveBeenCalledWith(
-      "ws://localhost:8080",
+      "ws://localhost:8080/ws",
       "test-room",
       doc,
       { connect: true, disableBc: true, maxBackoffTime: 0 },

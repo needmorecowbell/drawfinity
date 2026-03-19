@@ -16,6 +16,11 @@ window.addEventListener("unhandledrejection", (e) => {
   let viewManager: ViewManager;
 
   try {
+    // Verify Tauri runtime is present before using persistence
+    if (!(globalThis as Record<string, unknown>).__TAURI_INTERNALS__) {
+      throw new Error("Tauri runtime not available");
+    }
+
     const { DrawingManager } = await import("./persistence");
     const drawingManager = new DrawingManager();
 
@@ -34,14 +39,29 @@ window.addEventListener("unhandledrejection", (e) => {
       "Drawfinity: persistence unavailable, using in-memory stubs",
     );
 
-    // Provide in-memory stubs for browser-only mode
-    const memDrawings: Array<{
+    // Browser-only mode: persist drawing list to localStorage
+    const DRAWINGS_KEY = "drawfinity:drawings";
+
+    function loadDrawings(): Array<{
       id: string;
       name: string;
       createdAt: string;
       modifiedAt: string;
       fileName: string;
-    }> = [];
+    }> {
+      try {
+        const raw = localStorage.getItem(DRAWINGS_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveDrawings(drawings: typeof memDrawings): void {
+      try { localStorage.setItem(DRAWINGS_KEY, JSON.stringify(drawings)); } catch { /* quota */ }
+    }
+
+    const memDrawings = loadDrawings();
 
     viewManager = new ViewManager(canvasContainer, {
       listDrawings: async () => memDrawings,
@@ -54,18 +74,24 @@ window.addEventListener("unhandledrejection", (e) => {
           fileName: "",
         };
         memDrawings.push(drawing);
+        saveDrawings(memDrawings);
         return drawing;
       },
       deleteDrawing: async (id) => {
         const idx = memDrawings.findIndex((d) => d.id === id);
         if (idx >= 0) memDrawings.splice(idx, 1);
+        saveDrawings(memDrawings);
+        // Also remove the drawing's Yjs state
+        localStorage.removeItem(`drawfinity:doc:${id}`);
       },
       renameDrawing: async (id, name) => {
         const d = memDrawings.find((d) => d.id === id);
-        if (d) d.name = name;
+        if (d) {
+          d.name = name;
+          saveDrawings(memDrawings);
+        }
       },
       duplicateDrawing: async (id, newName) => {
-        const src = memDrawings.find((d) => d.id === id);
         const dup = {
           id: crypto.randomUUID(),
           name: newName,
@@ -73,10 +99,16 @@ window.addEventListener("unhandledrejection", (e) => {
           modifiedAt: new Date().toISOString(),
           fileName: "",
         };
-        if (src) memDrawings.push(dup);
+        memDrawings.push(dup);
+        saveDrawings(memDrawings);
+        // Copy the Yjs doc state too
+        const srcState = localStorage.getItem(`drawfinity:doc:${id}`);
+        if (srcState) {
+          try { localStorage.setItem(`drawfinity:doc:${dup.id}`, srcState); } catch { /* quota */ }
+        }
         return dup;
       },
-      getSaveDirectory: async () => "(browser mode)",
+      getSaveDirectory: async () => "(browser — localStorage)",
       getDrawingName: async (id) => {
         const d = memDrawings.find((d) => d.id === id);
         return d?.name ?? "Untitled";
@@ -92,4 +124,10 @@ window.addEventListener("unhandledrejection", (e) => {
   console.log("Drawfinity: init complete");
 })().catch((err) => {
   console.error("Drawfinity: fatal init error:", err);
+  // Show error visually instead of white screen
+  document.body.innerHTML = `<div style="padding:40px;font-family:system-ui,sans-serif">
+    <h2>Drawfinity failed to start</h2>
+    <pre style="color:#c00">${err?.message ?? err}</pre>
+    <p style="color:#666">Check the browser console for details.</p>
+  </div>`;
 });

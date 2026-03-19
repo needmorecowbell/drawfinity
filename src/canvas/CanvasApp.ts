@@ -3,6 +3,7 @@ import { SpatialIndex } from "../renderer/SpatialIndex";
 import { getStrokeLOD, clearLODCache } from "../renderer/StrokeLOD";
 import { generateShapeVertices } from "../renderer/ShapeMesh";
 import { Camera, CameraAnimator, CameraController } from "../camera";
+import * as Y from "yjs";
 import { DrawfinityDoc, UndoManager } from "../crdt";
 import { StrokeCapture, ShapeCapture } from "../input";
 import { ToolManager, BRUSH_PRESETS, isShapeTool } from "../tools";
@@ -11,7 +12,7 @@ import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel } from "../ui";
 import { CursorManager } from "../ui/CursorManager";
 import { FpsCounter } from "../ui/FpsCounter";
 import { SyncManager } from "../sync";
-import { loadProfile, loadPreferences } from "../user";
+import { loadProfileAsync, loadPreferencesAsync } from "../user";
 
 export interface CanvasAppCallbacks {
   onGoHome?: () => void;
@@ -83,9 +84,53 @@ export class CanvasApp {
       this.autoSave = new AutoSave(this.doc.getDoc(), savePath, 2000, drawingId, drawingManager);
       this.autoSave.start();
     } catch (err) {
-      console.warn("CanvasApp: persistence unavailable, running without auto-save", err);
-      this.doc = new DrawfinityDoc();
-      this.autoSave = { start() {}, stop() {}, async saveNow() {} };
+      console.warn("CanvasApp: Tauri persistence unavailable, falling back to localStorage", err);
+
+      // Browser fallback: persist Yjs state to localStorage
+      const storageKey = `drawfinity:doc:${drawingId}`;
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        try {
+          const bytes = Uint8Array.from(atob(saved), c => c.charCodeAt(0));
+          const loadedDoc = new Y.Doc();
+          Y.applyUpdate(loadedDoc, bytes);
+          this.doc = new DrawfinityDoc(loadedDoc);
+        } catch {
+          this.doc = new DrawfinityDoc();
+        }
+      } else {
+        this.doc = new DrawfinityDoc();
+      }
+
+      let saveTimer: ReturnType<typeof setTimeout> | null = null;
+      const debouncedSave = () => {
+        if (saveTimer) clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+          const state = Y.encodeStateAsUpdate(this.doc.getDoc());
+          const b64 = btoa(String.fromCharCode(...state));
+          try { localStorage.setItem(storageKey, b64); } catch { /* quota exceeded */ }
+        }, 2000);
+      };
+      this.doc.onStrokesChanged(debouncedSave);
+
+      this.autoSave = {
+        start() {},
+        stop() { if (saveTimer) clearTimeout(saveTimer); },
+        async saveNow() {
+          if (saveTimer) clearTimeout(saveTimer);
+          const state = Y.encodeStateAsUpdate(this.doc.getDoc());
+          const b64 = btoa(String.fromCharCode(...state));
+          try { localStorage.setItem(storageKey, b64); } catch { /* quota exceeded */ }
+        },
+      };
+      // Bind saveNow to capture the correct `this.doc`
+      const doc = this.doc;
+      this.autoSave.saveNow = async () => {
+        if (saveTimer) clearTimeout(saveTimer);
+        const state = Y.encodeStateAsUpdate(doc.getDoc());
+        const b64 = btoa(String.fromCharCode(...state));
+        try { localStorage.setItem(storageKey, b64); } catch { /* quota exceeded */ }
+      };
     }
 
     this.spatialIndex = new SpatialIndex();
@@ -101,8 +146,8 @@ export class CanvasApp {
     this.syncManager = new SyncManager(this.doc.getDoc());
     this.toolManager = new ToolManager();
 
-    let userProfile = loadProfile();
-    let userPreferences = loadPreferences();
+    let userProfile = await loadProfileAsync();
+    let userPreferences = await loadPreferencesAsync();
 
     this.syncManager.setUser(userProfile);
 
@@ -134,14 +179,18 @@ export class CanvasApp {
       onBrushSelect: (brush) => {
         this.toolManager.setTool("brush");
         this.toolManager.setBrush(brush);
+        this.shapeCapture.setEnabled(false);
+        this.strokeCapture.setEnabled(true);
         this.strokeCapture.setTool("brush");
         this.strokeCapture.setBrushConfig(this.toolManager.getBrush());
+        this.toolbar.setToolUI("brush");
         this.cursorManager.setTool("brush");
         this.cursorManager.setBrushWidth(this.toolManager.getBrush().baseWidth);
       },
       onColorChange: (color) => {
         this.toolManager.setColor(color);
         this.strokeCapture.setColor(color);
+        this.shapeCapture.setConfig({ strokeColor: color });
       },
       onToolChange: (tool: ToolType) => {
         this.switchTool(tool);
@@ -199,6 +248,7 @@ export class CanvasApp {
         }
         this.toolManager.setColor(preferences.defaultColor);
         this.strokeCapture.setColor(preferences.defaultColor);
+        this.shapeCapture.setConfig({ strokeColor: preferences.defaultColor });
         this.toolbar.setColorUI(preferences.defaultColor);
         this.updateUserColorIndicator(userProfile);
       },
@@ -333,7 +383,7 @@ export class CanvasApp {
     console.log("CanvasApp: initialized for drawing", drawingId);
   }
 
-  destroy(): void {
+  async destroy(): Promise<void> {
     if (!this.initialized) return;
 
     // Stop render loop
@@ -347,9 +397,9 @@ export class CanvasApp {
     document.removeEventListener("keydown", this.keydownHandler);
     this.canvas.removeEventListener("pointermove", this.pointermoveHandler);
 
-    // Stop auto-save and save final state
+    // Stop auto-save and flush final state to disk
     this.autoSave.stop();
-    this.autoSave.saveNow();
+    await this.autoSave.saveNow();
 
     // Disconnect collaboration
     this.remoteCursors.detach();
@@ -526,11 +576,13 @@ export class CanvasApp {
       const brush = this.toolManager.getBrush();
       brush.baseWidth = Math.max(0.5, brush.baseWidth - 1);
       this.strokeCapture.setBrushConfig(brush);
+      this.shapeCapture.setConfig({ strokeWidth: brush.baseWidth });
       this.cursorManager.setBrushWidth(brush.baseWidth);
     } else if (e.key === "]") {
       const brush = this.toolManager.getBrush();
       brush.baseWidth = Math.min(64, brush.baseWidth + 1);
       this.strokeCapture.setBrushConfig(brush);
+      this.shapeCapture.setConfig({ strokeWidth: brush.baseWidth });
       this.cursorManager.setBrushWidth(brush.baseWidth);
     }
   }

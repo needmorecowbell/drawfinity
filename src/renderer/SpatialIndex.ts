@@ -225,7 +225,7 @@ export class SpatialIndex {
 
   /**
    * Query all strokes whose bounding boxes intersect the given viewport AABB.
-   * Returns a deduplicated array of strokes.
+   * Returns a deduplicated array of strokes sorted by document order (timestamp).
    */
   query(viewport: AABB): Stroke[] {
     const range = this.getCellRange(viewport);
@@ -252,6 +252,8 @@ export class SpatialIndex {
       }
     }
 
+    // Sort by document order so newer strokes render on top of older ones
+    result.sort((a, b) => a.timestamp - b.timestamp);
     return result;
   }
 
@@ -283,6 +285,7 @@ export class SpatialIndex {
       }
     }
 
+    result.sort((a, b) => a.timestamp - b.timestamp);
     return result;
   }
 

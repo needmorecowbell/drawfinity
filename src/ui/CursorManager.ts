@@ -37,7 +37,6 @@ export class CursorManager {
 
   setZoom(zoom: number): void {
     this.zoom = zoom;
-    this.updateCursor();
   }
 
   setPanning(panning: boolean): void {
@@ -48,17 +47,26 @@ export class CursorManager {
   /**
    * Build an SVG circle cursor at the given screen-pixel diameter.
    * Returns a CSS cursor value string.
+   * The circle is always shown, clamped between 4px and 128px (browser cursor limit).
+   * A small crosshair is drawn at the center for precision at large sizes.
    */
   private buildCircleCursor(screenDiameter: number): string {
-    // Clamp to reasonable range for cursor rendering
+    // Browsers typically cap custom cursors at 128px
     const d = Math.max(4, Math.min(128, Math.round(screenDiameter)));
     const r = d / 2;
     const svgSize = d + 2; // 1px padding for stroke
     const center = svgSize / 2;
 
+    // Add a center crosshair for large cursors where the center is hard to judge
+    const crosshair = d > 32
+      ? `<line x1="${center - 4}" y1="${center}" x2="${center + 4}" y2="${center}" stroke="rgba(0,0,0,0.4)" stroke-width="1"/>` +
+        `<line x1="${center}" y1="${center - 4}" x2="${center}" y2="${center + 4}" stroke="rgba(0,0,0,0.4)" stroke-width="1"/>`
+      : "";
+
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgSize}" height="${svgSize}">` +
       `<circle cx="${center}" cy="${center}" r="${r}" fill="none" stroke="rgba(0,0,0,0.5)" stroke-width="1"/>` +
       `<circle cx="${center}" cy="${center}" r="${r}" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1" stroke-dasharray="2,2"/>` +
+      crosshair +
       `</svg>`;
 
     const encoded = encodeURIComponent(svg);
@@ -73,10 +81,12 @@ export class CursorManager {
     }
 
     if (this.currentTool === "brush") {
-      const screenDiameter = this.brushWidth * this.zoom;
+      // Cursor reflects the brush setting size, not the zoomed world-space size.
+      // A 2px brush always shows as a ~2px cursor regardless of zoom.
+      const screenDiameter = Math.max(this.brushWidth, 4);
       this.canvas.style.cursor = this.buildCircleCursor(screenDiameter);
     } else if (this.currentTool === "eraser") {
-      const screenDiameter = this.eraserRadius * 2 * this.zoom;
+      const screenDiameter = Math.max(this.eraserRadius * 2, 4);
       this.canvas.style.cursor = this.buildCircleCursor(screenDiameter);
     }
   }

@@ -309,7 +309,7 @@ export class HomeScreen {
     if (!this.container.parentNode) {
       document.body.appendChild(this.container);
     }
-    this.container.style.display = "";
+    this.container.style.display = "flex";
     document.addEventListener("pointerdown", this.boundCloseContextMenu);
   }
 

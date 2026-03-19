@@ -179,7 +179,7 @@ export class ShapeCapture {
       height: h,
       rotation: 0,
       strokeColor: this.config.strokeColor,
-      strokeWidth: this.config.strokeWidth,
+      strokeWidth: this.config.strokeWidth / this.camera.zoom,
       fillColor: this.config.fillColor,
       opacity: this.config.opacity,
       sides: this.config.sides,

@@ -1,4 +1,4 @@
 export type { UserProfile } from "./UserProfile";
-export { loadProfile, saveProfile, onProfileChange, USER_COLORS } from "./UserStore";
+export { loadProfile, loadProfileAsync, saveProfile, onProfileChange, USER_COLORS } from "./UserStore";
 export type { UserPreferences } from "./UserPreferences";
-export { loadPreferences, savePreferences } from "./UserPreferences";
+export { loadPreferences, loadPreferencesAsync, savePreferences } from "./UserPreferences";

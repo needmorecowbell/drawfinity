@@ -1,6 +1,8 @@
 import type { UserProfile } from "./UserProfile";
+import { readConfigFile, writeConfigFile } from "./ConfigFile";
 
 const STORAGE_KEY = "drawfinity:user-profile";
+const CONFIG_FILENAME = "profile.json";
 
 const USER_COLORS = [
   "#e74c3c", "#e67e22", "#f1c40f", "#2ecc71",
@@ -42,9 +44,26 @@ export function loadProfile(): UserProfile {
 
 export function saveProfile(profile: UserProfile): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+  writeConfigFile(CONFIG_FILENAME, JSON.stringify(profile)).catch(() => {});
   for (const listener of profileListeners) {
     listener(profile);
   }
+}
+
+/** Load profile from config file (Tauri) with localStorage fallback. */
+export async function loadProfileAsync(): Promise<UserProfile> {
+  const raw = await readConfigFile(CONFIG_FILENAME);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed.id && parsed.name && parsed.color) {
+        // Sync to localStorage for fast synchronous access next time
+        localStorage.setItem(STORAGE_KEY, raw);
+        return parsed as UserProfile;
+      }
+    } catch { /* fall through */ }
+  }
+  return loadProfile();
 }
 
 const profileListeners = new Set<(profile: UserProfile) => void>();

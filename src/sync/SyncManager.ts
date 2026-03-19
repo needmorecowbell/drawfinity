@@ -80,7 +80,11 @@ export class SyncManager {
   }
 
   private createProvider(serverUrl: string, roomId: string): void {
-    this.provider = new WebsocketProvider(serverUrl, roomId, this.doc, {
+    // y-websocket constructs URL as serverUrl + '/' + roomId.
+    // Our server expects /ws/:room_id, so append /ws to the base URL if not present.
+    const trimmed = serverUrl.replace(/\/+$/, "");
+    const wsUrl = trimmed.endsWith("/ws") ? trimmed : trimmed + "/ws";
+    this.provider = new WebsocketProvider(wsUrl, roomId, this.doc, {
       connect: true,
       disableBc: true,
       maxBackoffTime: 0, // Disable y-websocket's built-in reconnect; we handle it ourselves

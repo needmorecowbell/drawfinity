@@ -55,7 +55,7 @@ export class ViewManager {
     try {
       // Destroy current canvas app if active
       if (this.canvasApp) {
-        this.canvasApp.destroy();
+        await this.canvasApp.destroy();
         this.canvasApp = null;
       }
 
@@ -86,12 +86,12 @@ export class ViewManager {
 
       // Destroy previous canvas app if any
       if (this.canvasApp) {
-        this.canvasApp.destroy();
+        await this.canvasApp.destroy();
         this.canvasApp = null;
       }
 
       // Show canvas container and init app
-      this.canvasContainer.style.display = "";
+      this.canvasContainer.style.display = "block";
       this.canvasApp = new CanvasApp();
       await this.canvasApp.init(drawingId, {
         onGoHome: () => this.showHome(),
@@ -124,12 +124,12 @@ export class ViewManager {
 
       // Destroy previous canvas app if any
       if (this.canvasApp) {
-        this.canvasApp.destroy();
+        await this.canvasApp.destroy();
         this.canvasApp = null;
       }
 
       // Show canvas container and init app with room ID as drawing ID
-      this.canvasContainer.style.display = "";
+      this.canvasContainer.style.display = "block";
       this.canvasApp = new CanvasApp();
       await this.canvasApp.init(roomId, {
         onGoHome: () => this.showHome(),
@@ -158,9 +158,9 @@ export class ViewManager {
     return this.homeScreen;
   }
 
-  destroy(): void {
+  async destroy(): Promise<void> {
     if (this.canvasApp) {
-      this.canvasApp.destroy();
+      await this.canvasApp.destroy();
       this.canvasApp = null;
     }
     this.homeScreen.destroy();

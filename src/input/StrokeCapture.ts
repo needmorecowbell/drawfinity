@@ -21,6 +21,8 @@ export class StrokeCapture {
   private eraserTool: EraserTool = new EraserTool();
   private isErasing = false;
   private activeStrokeOpacityCurve: ((p: number) => number) | null = null;
+  /** World-space width for the active stroke (brushWidth / zoom at stroke start). */
+  private activeStrokeWorldWidth = 2;
   private enabled = true;
 
   private onPointerDown: (e: PointerEvent) => void;
@@ -68,6 +70,8 @@ export class StrokeCapture {
     const pressure = this.activeBrush ? this.activeBrush.pressureCurve(rawPressure) : rawPressure;
     this.activeStroke = [{ x: world.x, y: world.y, pressure }];
     this.activeStrokeOpacityCurve = this.activeBrush?.opacityCurve ?? null;
+    // Convert screen-space brush width to world-space at current zoom
+    this.activeStrokeWorldWidth = this.strokeWidth / this.camera.zoom;
     this.canvas.setPointerCapture(e.pointerId);
   }
 
@@ -106,7 +110,7 @@ export class StrokeCapture {
         id: generateStrokeId(),
         points: smoothed,
         color: this.strokeColor,
-        width: this.strokeWidth,
+        width: this.activeStrokeWorldWidth,
         opacity,
         timestamp: Date.now(),
       };
@@ -147,7 +151,7 @@ export class StrokeCapture {
     const smoothed = smoothStroke(this.activeStroke, this.smoothingWindow);
     const avgPressure = this.activeStroke.reduce((s, p) => s + p.pressure, 0) / this.activeStroke.length;
     const opacity = this.activeStrokeOpacityCurve ? this.activeStrokeOpacityCurve(avgPressure) : 1.0;
-    return { points: smoothed, color: this.strokeColor, width: this.strokeWidth, opacity };
+    return { points: smoothed, color: this.strokeColor, width: this.activeStrokeWorldWidth, opacity };
   }
 
   setEnabled(enabled: boolean): void {

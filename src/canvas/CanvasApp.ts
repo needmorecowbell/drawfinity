@@ -8,7 +8,7 @@ import { DrawfinityDoc, UndoManager } from "../crdt";
 import { StrokeCapture, ShapeCapture, MagnifyCapture } from "../input";
 import { ToolManager, BRUSH_PRESETS, isShapeTool } from "../tools";
 import type { ToolType } from "../tools";
-import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel } from "../ui";
+import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel, BookmarkPanel } from "../ui";
 import { ICONS } from "../ui/ToolbarIcons";
 import { renderExport, downloadCanvas } from "../ui/ExportRenderer";
 import type { ExportDialogResult } from "../ui/ExportDialog";
@@ -61,6 +61,8 @@ export class CanvasApp {
   private keydownHandler!: (e: KeyboardEvent) => void;
   private pointermoveHandler!: (e: PointerEvent) => void;
   private beforeUnloadHandler!: () => void;
+  private bookmarkPanel!: BookmarkPanel;
+  private bookmarkButton!: HTMLButtonElement;
   private settingsButton!: HTMLButtonElement;
   private userColorIndicator!: HTMLDivElement;
   private connectionStateUnsubscribe: (() => void) | null = null;
@@ -329,10 +331,36 @@ export class CanvasApp {
       },
     });
 
+    // Bookmark panel
+    this.bookmarkPanel = new BookmarkPanel(this.doc, this.camera, {
+      onNavigate: (bm) => {
+        // Set camera directly; animated navigation will be added via CameraAnimator.animateTo()
+        this.camera.x = bm.x;
+        this.camera.y = bm.y;
+        this.camera.zoom = bm.zoom;
+      },
+      getUserId: () => userProfile.id ?? "local",
+      getUserName: () => userProfile.name,
+    });
+
     // Action registry + cheat sheet
     this.actionRegistry = new ActionRegistry();
     this.registerActions();
     this.cheatSheet = new CheatSheet(this.actionRegistry);
+
+    // Bookmark toggle button (in navigation group)
+    this.bookmarkButton = document.createElement("button");
+    this.bookmarkButton.className = "toolbar-btn bookmark-btn";
+    this.bookmarkButton.title = "Bookmarks (Ctrl+B)";
+    this.bookmarkButton.innerHTML = ICONS.bookmark;
+    this.bookmarkButton.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.bookmarkPanel.toggle();
+    });
+    const navGroup = this.toolbar.getGroup("navigation");
+    if (navGroup) {
+      navGroup.appendChild(this.bookmarkButton);
+    }
 
     // Settings gear button
     this.settingsButton = document.createElement("button");
@@ -490,8 +518,10 @@ export class CanvasApp {
     this.toolbar.destroy();
     this.connectionPanel.destroy();
     this.settingsPanel.destroy();
+    this.bookmarkPanel.destroy();
     this.cheatSheet.destroy();
     this.fpsCounter.destroy();
+    this.bookmarkButton.remove();
     this.settingsButton.remove();
     this.userColorIndicator.remove();
 
@@ -744,6 +774,8 @@ export class CanvasApp {
     r.register({ id: "go-home", label: "Go home", shortcut: "Escape", category: "Navigation", execute: () => this.callbacks.onGoHome?.() });
 
     // Panels
+    r.register({ id: "toggle-bookmarks", label: "Bookmarks panel", shortcut: "Ctrl+B", category: "Panels", execute: () => this.bookmarkPanel.toggle() });
+    r.register({ id: "quick-add-bookmark", label: "Add bookmark", shortcut: "Ctrl+D", category: "Panels", execute: () => this.bookmarkPanel.addBookmark() });
     r.register({ id: "toggle-connection", label: "Connection panel", shortcut: "Ctrl+K", category: "Panels", execute: () => this.connectionPanel.toggle() });
     r.register({ id: "toggle-settings", label: "Settings", shortcut: "Ctrl+,", category: "Panels", execute: () => this.settingsPanel.toggle() });
     r.register({ id: "toggle-cheatsheet", label: "Keyboard shortcuts", shortcut: "Ctrl+?", category: "Panels", execute: () => this.cheatSheet.toggle() });
@@ -773,6 +805,18 @@ export class CanvasApp {
     if (mod && ((e.key === "z" && e.shiftKey) || e.key === "y")) {
       e.preventDefault();
       this.doRedo();
+      return;
+    }
+
+    if (mod && (e.key === "b" || e.key === "B") && !e.shiftKey) {
+      e.preventDefault();
+      this.bookmarkPanel.toggle();
+      return;
+    }
+
+    if (mod && (e.key === "d" || e.key === "D") && !e.shiftKey) {
+      e.preventDefault();
+      this.bookmarkPanel.addBookmark();
       return;
     }
 

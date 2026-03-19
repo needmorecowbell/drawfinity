@@ -7,6 +7,8 @@ export interface BookmarkPanelCallbacks {
   onNavigate?: (bookmark: CameraBookmark) => void;
   getUserId?: () => string;
   getUserName?: () => string;
+  resolveUserName?: (userId: string) => string | undefined;
+  isCollaborating?: () => boolean;
 }
 
 export class BookmarkPanel {
@@ -110,15 +112,30 @@ export class BookmarkPanel {
         input.select();
       });
     } else {
+      const labelWrap = document.createElement("span");
+      labelWrap.className = "bm-label-wrap";
+      labelWrap.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        this.callbacks.onNavigate?.(bm);
+      });
+
       const label = document.createElement("span");
       label.className = "bm-label";
       label.textContent = bm.label;
       label.title = `${bm.label} (${Math.round(bm.zoom * 100)}%)`;
-      label.addEventListener("pointerdown", (e) => {
-        e.stopPropagation();
-        this.callbacks.onNavigate?.(bm);
-      });
-      item.appendChild(label);
+      labelWrap.appendChild(label);
+
+      if (this.callbacks.isCollaborating?.()) {
+        const creatorName = this.getCreatorName(bm);
+        if (creatorName) {
+          const creator = document.createElement("span");
+          creator.className = "bm-creator";
+          creator.textContent = creatorName;
+          labelWrap.appendChild(creator);
+        }
+      }
+
+      item.appendChild(labelWrap);
     }
 
     const actions = document.createElement("span");
@@ -160,6 +177,7 @@ export class BookmarkPanel {
       y: this.camera.y,
       zoom: this.camera.zoom,
       createdBy: this.callbacks.getUserId?.() ?? "local",
+      createdByName: this.callbacks.getUserName?.(),
       createdAt: Date.now(),
     };
 
@@ -168,6 +186,14 @@ export class BookmarkPanel {
     if (!this.visible) {
       this.show();
     }
+  }
+
+  private getCreatorName(bm: CameraBookmark): string | undefined {
+    if (bm.createdBy === "local") return undefined;
+    const localId = this.callbacks.getUserId?.();
+    if (bm.createdBy === localId) return undefined;
+    const resolved = this.callbacks.resolveUserName?.(bm.createdBy);
+    return resolved ?? bm.createdByName;
   }
 
   private startEdit(id: string): void {
@@ -191,6 +217,10 @@ export class BookmarkPanel {
 
   private deleteBookmark(id: string): void {
     this.doc.removeBookmark(id);
+  }
+
+  refreshList(): void {
+    this.renderList();
   }
 
   show(): void {

@@ -169,8 +169,19 @@ describe("BookmarkPanel", () => {
   });
 
   describe("addBookmark()", () => {
-    it("adds a bookmark at current camera position", () => {
+    it("shows inline input pre-filled with default label", () => {
       panel.addBookmark();
+
+      const input = document.querySelector(".bm-edit-input") as HTMLInputElement;
+      expect(input).not.toBeNull();
+      expect(input.value).toBe("Bookmark 1");
+    });
+
+    it("creates bookmark at current camera position on Enter", () => {
+      panel.addBookmark();
+
+      const input = document.querySelector(".bm-edit-input") as HTMLInputElement;
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
 
       const bookmarks = doc.getBookmarks();
       expect(bookmarks.length).toBe(1);
@@ -181,20 +192,65 @@ describe("BookmarkPanel", () => {
       expect(bookmarks[0].createdBy).toBe("test-user");
     });
 
-    it("uses custom label when provided", () => {
+    it("allows user to type a custom name before confirming", () => {
+      panel.addBookmark();
+
+      const input = document.querySelector(".bm-edit-input") as HTMLInputElement;
+      input.value = "My View";
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+      const bookmarks = doc.getBookmarks();
+      expect(bookmarks[0].label).toBe("My View");
+    });
+
+    it("cancels add on Escape without creating bookmark", () => {
+      panel.addBookmark();
+
+      const input = document.querySelector(".bm-edit-input") as HTMLInputElement;
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+
+      expect(doc.getBookmarks().length).toBe(0);
+      expect(document.querySelector(".bm-edit-input")).toBeNull();
+    });
+
+    it("confirms add on blur", () => {
+      panel.addBookmark();
+
+      const input = document.querySelector(".bm-edit-input") as HTMLInputElement;
+      input.value = "Blur Test";
+      input.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+
+      const bookmarks = doc.getBookmarks();
+      expect(bookmarks.length).toBe(1);
+      expect(bookmarks[0].label).toBe("Blur Test");
+    });
+
+    it("uses default label if input is empty on confirm", () => {
+      panel.addBookmark();
+
+      const input = document.querySelector(".bm-edit-input") as HTMLInputElement;
+      input.value = "";
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+      expect(doc.getBookmarks()[0].label).toBe("Bookmark 1");
+    });
+
+    it("uses custom label when provided (immediate, no input)", () => {
       panel.addBookmark("My Spot");
 
       const bookmarks = doc.getBookmarks();
       expect(bookmarks[0].label).toBe("My Spot");
+      // No input should be shown
+      expect(document.querySelector(".bm-adding")).toBeNull();
     });
 
-    it("increments default label number", () => {
-      panel.addBookmark();
+    it("increments default label number based on existing bookmarks", () => {
+      panel.addBookmark("First");
+      panel.addBookmark("Second");
       panel.addBookmark();
 
-      const bookmarks = doc.getBookmarks();
-      expect(bookmarks[0].label).toBe("Bookmark 1");
-      expect(bookmarks[1].label).toBe("Bookmark 2");
+      const input = document.querySelector(".bm-edit-input") as HTMLInputElement;
+      expect(input.value).toBe("Bookmark 3");
     });
 
     it("shows panel if not already visible", () => {
@@ -213,11 +269,17 @@ describe("BookmarkPanel", () => {
     expect(addBtn).not.toBeNull();
   });
 
-  it("clicking add button adds a bookmark", () => {
+  it("clicking add button shows inline input for naming", () => {
     panel.show();
     const addBtn = document.querySelector(".bm-add-btn") as HTMLButtonElement;
     addBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
 
+    const input = document.querySelector(".bm-edit-input") as HTMLInputElement;
+    expect(input).not.toBeNull();
+    expect(input.value).toBe("Bookmark 1");
+
+    // Confirm to actually create the bookmark
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     expect(doc.getBookmarks().length).toBe(1);
   });
 

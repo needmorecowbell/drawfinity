@@ -1751,6 +1751,10 @@ html, body {
   background: rgba(0, 0, 0, 0.03);
 }
 
+.bm-adding {
+  background: rgba(0, 102, 255, 0.04);
+}
+
 .bm-label-wrap {
   flex: 1;
   display: flex;

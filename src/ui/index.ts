@@ -31,3 +31,5 @@ export type { ToolbarOverflowConfig } from "./ToolbarOverflow";
 export { TurtlePanel } from "./TurtlePanel";
 export type { TurtlePanelCallbacks } from "./TurtlePanel";
 export { ICONS } from "./ToolbarIcons";
+export { BookmarkPanel } from "./BookmarkPanel";
+export type { BookmarkPanelCallbacks } from "./BookmarkPanel";

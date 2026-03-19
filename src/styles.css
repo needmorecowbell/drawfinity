@@ -56,7 +56,9 @@ html, body {
   left: 50%;
   transform: translateX(-50%);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   padding: 6px 10px;
   background: rgba(255, 255, 255, 0.85);
@@ -65,6 +67,14 @@ html, body {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
   z-index: 20;
   user-select: none;
+  max-width: calc(100vw - 24px);
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
 .toolbar-section {
@@ -88,8 +98,10 @@ html, body {
 }
 
 .toolbar-btn {
-  width: 32px;
-  height: 32px;
+  min-width: 36px;
+  min-height: 36px;
+  width: 36px;
+  height: 36px;
   border: none;
   border-radius: 6px;
   background: transparent;
@@ -115,6 +127,16 @@ html, body {
 .toolbar-btn:disabled {
   opacity: 0.3;
   cursor: default;
+}
+
+.toolbar-btn svg {
+  display: block;
+  pointer-events: none;
+}
+
+.subtool-option svg {
+  display: block;
+  pointer-events: none;
 }
 
 .toolbar-swatch {
@@ -158,9 +180,26 @@ html, body {
   font-family: system-ui, -apple-system, sans-serif;
   font-size: 11px;
   color: #666;
-  padding: 0 6px;
+  padding: 0 4px;
   min-width: 40px;
   text-align: center;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.toolbar-zoom:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.toolbar-btn.zoom-in-btn,
+.toolbar-btn.zoom-out-btn {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.toolbar-btn.fit-all-btn {
+  font-size: 16px;
 }
 
 .toolbar-btn.home-btn {
@@ -235,6 +274,8 @@ html, body {
 .toolbar-btn.bg-color-btn {
   width: 24px;
   height: 24px;
+  min-width: 24px;
+  min-height: 24px;
   border: 2px solid rgba(0, 0, 0, 0.15);
   border-radius: 4px;
   padding: 0;
@@ -289,9 +330,272 @@ html, body {
   border-color: #0066FF;
 }
 
-.bg-custom-color-input {
-  width: 100%;
-  height: 24px;
+/* Sub-tool popover (hold-to-select) */
+.subtool-popover {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 30;
+}
+
+.subtool-option {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s;
+}
+
+.subtool-option:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.subtool-option.active {
+  background: rgba(0, 102, 255, 0.12);
+  color: #0066FF;
+}
+
+/* Brush size popover */
+.brush-size-btn {
+  min-width: 32px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.brush-size-popover {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 30;
+  min-width: 200px;
+}
+
+.brush-size-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.brush-size-slider {
+  flex: 1;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #0066FF;
+}
+
+.brush-size-numeric {
+  width: 48px;
+  height: 28px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  text-align: center;
+  font-size: 12px;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #fff;
+  outline: none;
+}
+
+.brush-size-numeric:focus {
+  border-color: #0066FF;
+}
+
+/* Remove spinner arrows for cleaner look */
+.brush-size-numeric::-webkit-inner-spin-button,
+.brush-size-numeric::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.brush-size-presets {
+  display: flex;
+  gap: 2px;
+}
+
+.brush-size-preset {
+  flex: 1;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  font-size: 11px;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #444;
+  transition: background 0.1s;
+}
+
+.brush-size-preset:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.brush-size-preset.active {
+  background: rgba(0, 102, 255, 0.12);
+  color: #0066FF;
+}
+
+/* Opacity slider */
+.opacity-btn {
+  min-width: 40px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.opacity-popover {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 30;
+  min-width: 200px;
+}
+
+.opacity-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.opacity-slider {
+  flex: 1;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #0066FF;
+}
+
+.opacity-value-label {
+  min-width: 36px;
+  text-align: center;
+  font-size: 12px;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #444;
+}
+
+.opacity-presets {
+  display: flex;
+  gap: 2px;
+}
+
+.opacity-preset {
+  flex: 1;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  font-size: 11px;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #444;
+  transition: background 0.1s;
+}
+
+.opacity-preset:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.opacity-preset.active {
+  background: rgba(0, 102, 255, 0.12);
+  color: #0066FF;
+}
+
+/* Export dialog */
+.export-btn {
+  font-size: 16px;
+}
+
+.export-popover {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 30;
+  min-width: 220px;
+}
+
+.export-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.export-label {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.export-option-group {
+  display: flex;
+  gap: 2px;
+}
+
+.export-option {
+  flex: 1;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  font-size: 11px;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #444;
+  transition: background 0.1s;
+  white-space: nowrap;
+  padding: 0 6px;
+}
+
+.export-option:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.export-option.active {
+  background: rgba(0, 102, 255, 0.12);
+  color: #0066FF;
+}
+
+.export-confirm-btn {
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: #0066FF;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: system-ui, -apple-system, sans-serif;
+  transition: background 0.1s;
+  margin-top: 4px;
+}
+
+.export-confirm-btn:hover {
+  background: #0052cc;
 }
 
 /* Shape options panel */
@@ -335,6 +639,57 @@ html, body {
 
 .sides-input:focus {
   border-color: #0066FF;
+}
+
+/* Toolbar overflow menu */
+.toolbar-overflow-btn {
+  min-width: 36px;
+  min-height: 36px;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 18px;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #444;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s;
+  flex-shrink: 0;
+}
+
+.toolbar-overflow-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.toolbar-overflow-btn.visible {
+  display: flex;
+}
+
+.toolbar-overflow-menu {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  max-width: calc(100vw - 24px);
+}
+
+.toolbar-group.toolbar-collapsed {
+  display: none;
+}
+
+.toolbar-divider.toolbar-collapsed {
+  display: none;
 }
 
 /* Connection Panel */
@@ -655,11 +1010,8 @@ html, body {
   border: 1px solid #ddd;
   border-radius: 6px;
   font-size: 13px;
-  font-family: system-ui, -apple-system, sans-serif;
-  outline: none;
   background: #fff;
-  cursor: pointer;
-  transition: border-color 0.15s;
+  outline: none;
 }
 
 .settings-select:focus {
@@ -747,7 +1099,7 @@ html, body {
   margin-top: 8px;
 }
 
-.settings-btn {
+.settings-btn-row .settings-btn {
   padding: 6px 16px;
   border: none;
   border-radius: 6px;
@@ -757,21 +1109,21 @@ html, body {
   transition: background 0.15s;
 }
 
-.settings-btn-primary {
+.settings-btn-row .settings-btn-primary {
   background: #0066FF;
   color: #fff;
 }
 
-.settings-btn-primary:hover {
+.settings-btn-row .settings-btn-primary:hover {
   background: #0052cc;
 }
 
-.settings-btn-secondary {
+.settings-btn-row .settings-btn-secondary {
   background: #f0f0f0;
   color: #444;
 }
 
-.settings-btn-secondary:hover {
+.settings-btn-row .settings-btn-secondary:hover {
   background: #e0e0e0;
 }
 
@@ -845,7 +1197,7 @@ html, body {
   border-color: #0066FF;
 }
 
-.home-btn {
+#home-screen .home-btn {
   padding: 8px 16px;
   border: none;
   border-radius: 8px;
@@ -857,25 +1209,25 @@ html, body {
   white-space: nowrap;
 }
 
-.home-btn-primary {
+#home-screen .home-btn-primary {
   background: #0066FF;
   color: #fff;
 }
 
-.home-btn-primary:hover {
+#home-screen .home-btn-primary:hover {
   background: #0052cc;
 }
 
-.home-btn-secondary {
+#home-screen .home-btn-secondary {
   background: #f0f0f0;
   color: #444;
 }
 
-.home-btn-secondary:hover {
+#home-screen .home-btn-secondary:hover {
   background: #e0e0e0;
 }
 
-.home-btn-small {
+#home-screen .home-btn-small {
   padding: 4px 10px;
   font-size: 12px;
   font-weight: 500;
@@ -1287,6 +1639,21 @@ html, body {
   text-align: center;
   font-size: 14px;
   color: #999;
+}
+
+/* Toolbar Tooltip */
+.toolbar-tooltip {
+  position: fixed;
+  z-index: 40;
+  padding: 4px 8px;
+  background: rgba(34, 34, 34, 0.9);
+  color: #fff;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  line-height: 1.4;
 }
 
 @media (max-width: 680px) {

@@ -64,6 +64,23 @@ describe("UserPreferences", () => {
     expect(prefs.defaultColor).toBe("#000000");
   });
 
+  it("saves and loads gridStyle preference", () => {
+    const prefs: UserPreferences = {
+      defaultBrush: 0,
+      defaultColor: "#000000",
+      gridStyle: "lines",
+    };
+    savePreferences(prefs);
+
+    const loaded = loadPreferences();
+    expect(loaded.gridStyle).toBe("lines");
+  });
+
+  it("defaults gridStyle to undefined when not stored", () => {
+    const prefs = loadPreferences();
+    expect(prefs.gridStyle).toBeUndefined();
+  });
+
   it("handles corrupted localStorage data gracefully", () => {
     storageMap.set("drawfinity:user-preferences", "not-json");
     const prefs = loadPreferences();

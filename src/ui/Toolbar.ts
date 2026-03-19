@@ -1,6 +1,15 @@
 import { BrushConfig } from "../tools/Brush";
 import { BRUSH_PRESETS } from "../tools/BrushPresets";
 import { ToolType, isShapeTool, ShapeToolConfig } from "../tools/ToolManager";
+import type { GridStyle } from "../user/UserPreferences";
+import { BrushSizeSlider } from "./BrushSizeSlider";
+import { OpacitySlider } from "./OpacitySlider";
+import { ExportDialog } from "./ExportDialog";
+import type { ExportDialogResult } from "./ExportDialog";
+import { SubToolPicker, SubToolOption } from "./SubToolPicker";
+import { ICONS } from "./ToolbarIcons";
+import { Tooltip } from "./Tooltip";
+import { ToolbarOverflow } from "./ToolbarOverflow";
 
 export interface ToolbarCallbacks {
   onBrushSelect: (brush: BrushConfig) => void;
@@ -8,19 +17,20 @@ export interface ToolbarCallbacks {
   onToolChange: (tool: ToolType) => void;
   onUndo: () => void;
   onRedo: () => void;
-  onBrushSizeChange: (delta: number) => void;
+  onBrushSizeChange: (size: number) => void;
+  onOpacityChange: (opacity: number) => void;
+  onGridStyleChange?: (style: GridStyle) => void;
   onShapeConfigChange?: (config: Partial<ShapeToolConfig>) => void;
   onBackgroundColorChange?: (color: string) => void;
   onHome?: () => void;
   onRenameDrawing?: (name: string) => void;
   onCheatSheet?: () => void;
+  onExport?: (options: ExportDialogResult) => void;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
+  onZoomReset?: () => void;
+  onFitAll?: () => void;
 }
-
-const PRESET_COLORS = [
-  "#000000", "#FFFFFF", "#FF0000", "#FF6600",
-  "#FFCC00", "#33CC33", "#0066FF", "#9933FF",
-  "#FF69B4", "#8B4513", "#808080", "#00CED1",
-];
 
 const BACKGROUND_PRESET_COLORS = [
   "#FFFFFF", "#FAFAF8", "#D9D9D9", "#666666",
@@ -29,23 +39,45 @@ const BACKGROUND_PRESET_COLORS = [
   "#B71C1C", "#4A148C", "#455A64", "#795548",
 ];
 
+const PRESET_COLORS = [
+  "#000000", "#FFFFFF", "#FF0000", "#FF6600",
+  "#FFCC00", "#33CC33", "#0066FF", "#9933FF",
+  "#FF69B4", "#8B4513", "#808080", "#00CED1",
+];
+
 /** Shape tool definitions for the toolbar. */
 const SHAPE_TOOLS: { type: ToolType; label: string; title: string; shortcut: string }[] = [
-  { type: "rectangle", label: "\u25AD", title: "Rectangle", shortcut: "R" },
-  { type: "ellipse", label: "\u25CB", title: "Ellipse", shortcut: "O" },
-  { type: "polygon", label: "\u2B53", title: "Polygon", shortcut: "P" },
-  { type: "star", label: "\u2606", title: "Star", shortcut: "S" },
+  { type: "rectangle", label: ICONS.rectangle, title: "Rectangle", shortcut: "R" },
+  { type: "ellipse", label: ICONS.ellipse, title: "Ellipse", shortcut: "O" },
+  { type: "polygon", label: ICONS.polygon, title: "Polygon", shortcut: "P" },
+  { type: "star", label: ICONS.star, title: "Star", shortcut: "S" },
 ];
+
+/** Toolbar group identifiers for logical organization. */
+export type ToolbarGroup = "tools" | "properties" | "actions" | "navigation" | "panels";
 
 export class Toolbar {
   private container: HTMLElement;
   private callbacks: ToolbarCallbacks;
-  private brushButtons: HTMLButtonElement[] = [];
-  private shapeButtons: HTMLButtonElement[] = [];
+  private brushButton!: HTMLButtonElement;
+  private shapeButton!: HTMLButtonElement;
+  private panButton!: HTMLButtonElement;
+  private magnifyButton!: HTMLButtonElement;
+  private brushPicker!: SubToolPicker;
+  private shapePicker!: SubToolPicker;
+  private gridPicker!: SubToolPicker;
+  private brushSizeSlider!: BrushSizeSlider;
+  private brushSizeButton!: HTMLButtonElement;
+  private opacitySlider!: OpacitySlider;
+  private opacityButton!: HTMLButtonElement;
   private colorSwatches: HTMLButtonElement[] = [];
   private eraserButton!: HTMLButtonElement;
   private undoButton!: HTMLButtonElement;
   private redoButton!: HTMLButtonElement;
+  private gridButton!: HTMLButtonElement;
+  private zoomInButton!: HTMLButtonElement;
+  private zoomOutButton!: HTMLButtonElement;
+  private fitAllButton!: HTMLButtonElement;
   private zoomDisplay!: HTMLSpanElement;
   private customColorInput!: HTMLInputElement;
   private shapeOptionsPanel!: HTMLDivElement;
@@ -54,26 +86,38 @@ export class Toolbar {
   private sidesInput!: HTMLInputElement;
   private sidesContainer!: HTMLDivElement;
 
+  private bgSwatchButton!: HTMLButtonElement;
+  private bgDropdown!: HTMLDivElement;
+  private bgColorSwatches: HTMLButtonElement[] = [];
+  private bgColorInput!: HTMLInputElement;
+
   private homeButton!: HTMLButtonElement;
   private helpButton!: HTMLButtonElement;
+  private exportButton!: HTMLButtonElement;
+  private exportDialog!: ExportDialog;
   private drawingNameEl!: HTMLSpanElement;
   private drawingNameInput!: HTMLInputElement;
   private drawingNameContainer!: HTMLDivElement;
 
-  private bgColorSwatches: HTMLButtonElement[] = [];
-  private bgColorInput!: HTMLInputElement;
-  private bgSwatchButton!: HTMLButtonElement;
-  private bgDropdown!: HTMLDivElement;
+  private groups: Map<ToolbarGroup, HTMLDivElement> = new Map();
+  private tooltip: Tooltip;
+  private overflow!: ToolbarOverflow;
 
   private activeBrushIndex = 0;
   private activeTool: ToolType = "brush";
+  private previousTool: ToolType = "brush";
   private activeColor = "#000000";
-  private activeBackgroundColor = "#FAFAF8";
+  private gridStyle: GridStyle = "dots";
+  private lastNonNoneGridStyle: GridStyle = "dots";
   private fillEnabled = false;
   private fillColor = "#0066FF";
+  private activeBackgroundColor = "#FAFAF8";
+  private boundBgDismiss: (e: PointerEvent) => void;
 
   constructor(callbacks: ToolbarCallbacks) {
     this.callbacks = callbacks;
+    this.tooltip = Tooltip.getInstance();
+    this.boundBgDismiss = this.handleBgDismiss.bind(this);
     this.container = document.createElement("div");
     this.container.id = "toolbar";
     this.build();
@@ -81,16 +125,374 @@ export class Toolbar {
   }
 
   private build(): void {
-    // Home button
+    // === TOOLS GROUP: Brush (hold→presets), Eraser, Shapes (hold→types) ===
+    const toolsGroup = this.createGroup("tools");
+
+    // Brush button with hold-to-select presets
+    const BRUSH_ICONS: Record<string, string> = {
+      "Pen": ICONS.pen,
+      "Pencil": ICONS.pencil,
+      "Marker": ICONS.marker,
+      "Highlighter": ICONS.highlighter,
+    };
+    const brushOptions: SubToolOption[] = BRUSH_PRESETS.map((preset, i) => ({
+      id: String(i),
+      label: BRUSH_ICONS[preset.name] ?? ICONS.brush,
+      title: `${preset.name} (${i + 1})`,
+    }));
+    this.brushButton = document.createElement("button");
+    this.brushButton.className = "toolbar-btn brush-btn active";
+    this.brushPicker = new SubToolPicker({
+      options: brushOptions,
+      onSelect: (id) => this.selectBrush(parseInt(id, 10)),
+    });
+    this.brushPicker.attach(this.brushButton);
+    this.tooltip.attach(this.brushButton, "Brush (B)");
+    toolsGroup.appendChild(this.brushButton);
+
+    // Eraser
+    this.eraserButton = document.createElement("button");
+    this.eraserButton.className = "toolbar-btn eraser-btn";
+    this.tooltip.attach(this.eraserButton, "Eraser (E)");
+    this.eraserButton.innerHTML = ICONS.eraser;
+    this.eraserButton.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.setTool(this.activeTool === "eraser" ? "brush" : "eraser");
+    });
+    toolsGroup.appendChild(this.eraserButton);
+
+    // Shape button with hold-to-select shape types
+    const shapeOptions: SubToolOption[] = SHAPE_TOOLS.map(st => ({
+      id: st.type,
+      label: st.label,
+      title: `${st.title} (${st.shortcut})`,
+    }));
+    this.shapeButton = document.createElement("button");
+    this.shapeButton.className = "toolbar-btn shape-btn";
+    this.shapePicker = new SubToolPicker({
+      options: shapeOptions,
+      onSelect: (id) => this.setTool(id as ToolType),
+    });
+    this.shapePicker.attach(this.shapeButton);
+    this.tooltip.attach(this.shapeButton, "Shapes (hold to select)");
+    toolsGroup.appendChild(this.shapeButton);
+
+    // Pan/Zoom tool
+    this.panButton = document.createElement("button");
+    this.panButton.className = "toolbar-btn pan-btn";
+    this.tooltip.attach(this.panButton, "Pan/Zoom (G)");
+    this.panButton.innerHTML = ICONS.pan;
+    this.panButton.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      if (this.activeTool === "pan") {
+        this.setTool(this.previousTool);
+      } else {
+        this.setTool("pan");
+      }
+    });
+    toolsGroup.appendChild(this.panButton);
+
+    // Magnify tool
+    this.magnifyButton = document.createElement("button");
+    this.magnifyButton.className = "toolbar-btn magnify-btn";
+    this.tooltip.attach(this.magnifyButton, "Magnify (Z)");
+    this.magnifyButton.innerHTML = ICONS.magnify;
+    this.magnifyButton.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      if (this.activeTool === "magnify") {
+        this.setTool(this.previousTool);
+      } else {
+        this.setTool("magnify");
+      }
+    });
+    toolsGroup.appendChild(this.magnifyButton);
+
+    this.container.appendChild(toolsGroup);
+
+    this.container.appendChild(this.createDivider());
+
+    // === PROPERTIES GROUP: Brush size, Shape options, Color palette ===
+    const propertiesGroup = this.createGroup("properties");
+
+    // Brush size slider
+    this.brushSizeButton = document.createElement("button");
+    this.brushSizeButton.className = "toolbar-btn brush-size-btn";
+    this.brushSizeSlider = new BrushSizeSlider({
+      onChange: (size) => this.callbacks.onBrushSizeChange(size),
+    });
+    this.brushSizeSlider.attach(this.brushSizeButton);
+    this.tooltip.attach(this.brushSizeButton, "Brush size ([ / ])");
+    propertiesGroup.appendChild(this.brushSizeButton);
+
+    // Opacity slider
+    this.opacityButton = document.createElement("button");
+    this.opacityButton.className = "toolbar-btn opacity-btn";
+    this.opacitySlider = new OpacitySlider({
+      onChange: (opacity) => this.callbacks.onOpacityChange(opacity),
+    });
+    this.opacitySlider.attach(this.opacityButton);
+    this.tooltip.attach(this.opacityButton, "Opacity");
+    propertiesGroup.appendChild(this.opacityButton);
+
+    // Shape options panel (shown only when a shape tool is active)
+    this.shapeOptionsPanel = document.createElement("div");
+    this.shapeOptionsPanel.className = "toolbar-section shape-options";
+    this.shapeOptionsPanel.style.display = "none";
+
+    this.fillToggle = document.createElement("button");
+    this.fillToggle.className = "toolbar-btn fill-toggle";
+    this.tooltip.attach(this.fillToggle, "Toggle fill");
+    this.fillToggle.innerHTML = ICONS.fillToggle;
+    this.fillToggle.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.fillEnabled = !this.fillEnabled;
+      this.fillToggle.classList.toggle("active", this.fillEnabled);
+      this.fillColorInput.style.display = this.fillEnabled ? "" : "none";
+      this.emitShapeConfig();
+    });
+    this.shapeOptionsPanel.appendChild(this.fillToggle);
+
+    this.fillColorInput = document.createElement("input");
+    this.fillColorInput.type = "color";
+    this.fillColorInput.className = "toolbar-color-input fill-color-input";
+    this.fillColorInput.value = this.fillColor;
+    this.tooltip.attach(this.fillColorInput, "Fill color");
+    this.fillColorInput.style.display = "none";
+    this.fillColorInput.addEventListener("input", (e) => {
+      this.fillColor = (e.target as HTMLInputElement).value;
+      this.emitShapeConfig();
+    });
+    this.shapeOptionsPanel.appendChild(this.fillColorInput);
+
+    this.sidesContainer = document.createElement("div");
+    this.sidesContainer.className = "sides-container";
+    this.sidesContainer.style.display = "none";
+    const sidesLabel = document.createElement("span");
+    sidesLabel.className = "sides-label";
+    sidesLabel.textContent = "Sides";
+    this.sidesContainer.appendChild(sidesLabel);
+    this.sidesInput = document.createElement("input");
+    this.sidesInput.type = "number";
+    this.sidesInput.className = "sides-input";
+    this.sidesInput.min = "3";
+    this.sidesInput.max = "32";
+    this.sidesInput.value = "5";
+    this.tooltip.attach(this.sidesInput, "Number of sides");
+    this.sidesInput.addEventListener("input", () => {
+      const val = parseInt(this.sidesInput.value, 10);
+      if (val >= 3 && val <= 32) {
+        this.emitShapeConfig();
+      }
+    });
+    this.sidesInput.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+    });
+    this.sidesContainer.appendChild(this.sidesInput);
+    this.shapeOptionsPanel.appendChild(this.sidesContainer);
+    propertiesGroup.appendChild(this.shapeOptionsPanel);
+
+    // Color palette
+    const colorSection = this.createSection("toolbar-section toolbar-colors");
+    for (const color of PRESET_COLORS) {
+      const swatch = document.createElement("button");
+      swatch.className = "toolbar-swatch";
+      swatch.style.backgroundColor = color;
+      if (color === "#FFFFFF") {
+        swatch.style.border = "1px solid #ccc";
+      }
+      if (color === this.activeColor) swatch.classList.add("active");
+      this.tooltip.attach(swatch, color);
+      swatch.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        this.setColor(color);
+      });
+      colorSection.appendChild(swatch);
+      this.colorSwatches.push(swatch);
+    }
+
+    this.customColorInput = document.createElement("input");
+    this.customColorInput.type = "color";
+    this.customColorInput.className = "toolbar-color-input";
+    this.customColorInput.value = this.activeColor;
+    this.tooltip.attach(this.customColorInput, "Custom color");
+    this.customColorInput.addEventListener("input", (e) => {
+      const value = (e.target as HTMLInputElement).value;
+      this.setColor(value);
+    });
+    colorSection.appendChild(this.customColorInput);
+    propertiesGroup.appendChild(colorSection);
+
+    // Background color button
+    this.bgSwatchButton = document.createElement("button");
+    this.bgSwatchButton.className = "toolbar-btn bg-color-btn";
+    this.bgSwatchButton.style.backgroundColor = this.activeBackgroundColor;
+    this.tooltip.attach(this.bgSwatchButton, "Background color");
+    this.bgSwatchButton.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.toggleBgDropdown();
+    });
+    propertiesGroup.appendChild(this.bgSwatchButton);
+
+    // Background color dropdown (hidden by default)
+    this.bgDropdown = document.createElement("div");
+    this.bgDropdown.className = "bg-color-dropdown";
+    this.bgDropdown.style.display = "none";
+
+    const bgPalette = document.createElement("div");
+    bgPalette.className = "bg-color-palette";
+    for (const color of BACKGROUND_PRESET_COLORS) {
+      const swatch = document.createElement("button");
+      swatch.className = "bg-color-swatch";
+      swatch.style.backgroundColor = color;
+      if (color === "#FFFFFF") {
+        swatch.style.border = "1px solid #ccc";
+      }
+      if (color === this.activeBackgroundColor) swatch.classList.add("active");
+      this.tooltip.attach(swatch, color);
+      swatch.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        this.setBackgroundColor(color);
+      });
+      bgPalette.appendChild(swatch);
+      this.bgColorSwatches.push(swatch);
+    }
+    this.bgDropdown.appendChild(bgPalette);
+
+    this.bgColorInput = document.createElement("input");
+    this.bgColorInput.type = "color";
+    this.bgColorInput.className = "toolbar-color-input bg-custom-color-input";
+    this.bgColorInput.value = this.activeBackgroundColor;
+    this.tooltip.attach(this.bgColorInput, "Custom background color");
+    this.bgColorInput.addEventListener("input", (e) => {
+      const value = (e.target as HTMLInputElement).value;
+      this.setBackgroundColor(value);
+    });
+    this.bgDropdown.appendChild(this.bgColorInput);
+
+    document.body.appendChild(this.bgDropdown);
+
+    this.container.appendChild(propertiesGroup);
+
+    this.container.appendChild(this.createDivider());
+
+    // === ACTIONS GROUP: Undo, Redo ===
+    const actionsGroup = this.createGroup("actions");
+
+    this.undoButton = document.createElement("button");
+    this.undoButton.className = "toolbar-btn";
+    this.tooltip.attach(this.undoButton, "Undo (Ctrl+Z)");
+    this.undoButton.innerHTML = ICONS.undo;
+    this.undoButton.disabled = true;
+    this.undoButton.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.callbacks.onUndo();
+    });
+    actionsGroup.appendChild(this.undoButton);
+
+    this.redoButton = document.createElement("button");
+    this.redoButton.className = "toolbar-btn";
+    this.tooltip.attach(this.redoButton, "Redo (Ctrl+Shift+Z)");
+    this.redoButton.innerHTML = ICONS.redo;
+    this.redoButton.disabled = true;
+    this.redoButton.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.callbacks.onRedo();
+    });
+    actionsGroup.appendChild(this.redoButton);
+
+    // Export button
+    this.exportButton = document.createElement("button");
+    this.exportButton.className = "toolbar-btn export-btn";
+    this.tooltip.attach(this.exportButton, "Export (Ctrl+Shift+E)");
+    this.exportButton.innerHTML = ICONS.export;
+    this.exportDialog = new ExportDialog({
+      onExport: (options) => this.callbacks.onExport?.(options),
+    });
+    this.exportDialog.attach(this.exportButton);
+    actionsGroup.appendChild(this.exportButton);
+
+    this.container.appendChild(actionsGroup);
+
+    this.container.appendChild(this.createDivider());
+
+    // === NAVIGATION GROUP: Grid toggle, Zoom controls ===
+    const navigationGroup = this.createGroup("navigation");
+
+    this.gridButton = document.createElement("button");
+    this.gridButton.className = "toolbar-btn grid-btn active";
+    const gridOptions: SubToolOption[] = [
+      { id: "dots", label: ICONS.gridDots, title: "Dot grid" },
+      { id: "lines", label: ICONS.gridLines, title: "Line grid" },
+      { id: "none", label: ICONS.gridNone, title: "No grid" },
+    ];
+    this.gridPicker = new SubToolPicker({
+      options: gridOptions,
+      onSelect: (id) => this.selectGridStyle(id as GridStyle),
+    });
+    this.gridPicker.attach(this.gridButton);
+    this.tooltip.attach(this.gridButton, "Grid (hold to select, Ctrl+')");
+    navigationGroup.appendChild(this.gridButton);
+
+    // Zoom out
+    this.zoomOutButton = document.createElement("button");
+    this.zoomOutButton.className = "toolbar-btn zoom-out-btn";
+    this.tooltip.attach(this.zoomOutButton, "Zoom out (Ctrl+\u2212)");
+    this.zoomOutButton.innerHTML = ICONS.zoomOut;
+    this.zoomOutButton.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.callbacks.onZoomOut?.();
+    });
+    navigationGroup.appendChild(this.zoomOutButton);
+
+    // Zoom display (clickable → reset to 100%)
+    this.zoomDisplay = document.createElement("span");
+    this.zoomDisplay.className = "toolbar-zoom";
+    this.zoomDisplay.textContent = "100%";
+    this.tooltip.attach(this.zoomDisplay, "Reset zoom (Ctrl+0)");
+    this.zoomDisplay.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.callbacks.onZoomReset?.();
+    });
+    navigationGroup.appendChild(this.zoomDisplay);
+
+    // Zoom in
+    this.zoomInButton = document.createElement("button");
+    this.zoomInButton.className = "toolbar-btn zoom-in-btn";
+    this.tooltip.attach(this.zoomInButton, "Zoom in (Ctrl+=)");
+    this.zoomInButton.innerHTML = ICONS.zoomIn;
+    this.zoomInButton.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.callbacks.onZoomIn?.();
+    });
+    navigationGroup.appendChild(this.zoomInButton);
+
+    // Fit all content
+    this.fitAllButton = document.createElement("button");
+    this.fitAllButton.className = "toolbar-btn fit-all-btn";
+    this.tooltip.attach(this.fitAllButton, "Fit all content");
+    this.fitAllButton.innerHTML = ICONS.fitAll;
+    this.fitAllButton.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.callbacks.onFitAll?.();
+    });
+    navigationGroup.appendChild(this.fitAllButton);
+
+    this.container.appendChild(navigationGroup);
+
+    this.container.appendChild(this.createDivider());
+
+    // === PANELS GROUP: Home, Drawing name, Help ===
+    const panelsGroup = this.createGroup("panels");
+
     this.homeButton = document.createElement("button");
     this.homeButton.className = "toolbar-btn home-btn";
-    this.homeButton.title = "Home (Ctrl+W)";
-    this.homeButton.textContent = "\u2302"; // ⌂
+    this.tooltip.attach(this.homeButton, "Home (Ctrl+W)");
+    this.homeButton.innerHTML = ICONS.home;
     this.homeButton.addEventListener("pointerdown", (e) => {
       e.stopPropagation();
       this.callbacks.onHome?.();
     });
-    this.container.appendChild(this.homeButton);
+    panelsGroup.appendChild(this.homeButton);
 
     // Drawing name (editable)
     this.drawingNameContainer = document.createElement("div");
@@ -99,7 +501,7 @@ export class Toolbar {
     this.drawingNameEl = document.createElement("span");
     this.drawingNameEl.className = "drawing-name-display";
     this.drawingNameEl.textContent = "";
-    this.drawingNameEl.title = "Click to rename";
+    this.tooltip.attach(this.drawingNameEl, "Click to rename");
     this.drawingNameEl.addEventListener("click", () => this.startRename());
 
     this.drawingNameInput = document.createElement("input");
@@ -118,262 +520,34 @@ export class Toolbar {
 
     this.drawingNameContainer.appendChild(this.drawingNameEl);
     this.drawingNameContainer.appendChild(this.drawingNameInput);
-    this.container.appendChild(this.drawingNameContainer);
-
-    // Divider after nav section
-    this.container.appendChild(this.createDivider());
-
-    // Brush presets section
-    const brushSection = this.createSection("toolbar-section");
-    for (let i = 0; i < BRUSH_PRESETS.length; i++) {
-      const preset = BRUSH_PRESETS[i];
-      const btn = document.createElement("button");
-      btn.className = "toolbar-btn brush-btn";
-      btn.title = `${preset.name} (${i + 1})`;
-      btn.textContent = preset.name[0]; // First letter as icon
-      btn.dataset.index = String(i);
-      if (i === 0) btn.classList.add("active");
-      btn.addEventListener("pointerdown", (e) => {
-        e.stopPropagation();
-        this.selectBrush(i);
-      });
-      brushSection.appendChild(btn);
-      this.brushButtons.push(btn);
-    }
-    this.container.appendChild(brushSection);
-
-    // Eraser button
-    const toolSection = this.createSection("toolbar-section");
-    this.eraserButton = document.createElement("button");
-    this.eraserButton.className = "toolbar-btn eraser-btn";
-    this.eraserButton.title = "Eraser (E)";
-    this.eraserButton.textContent = "\u2718"; // ✘
-    this.eraserButton.addEventListener("pointerdown", (e) => {
-      e.stopPropagation();
-      this.setTool(this.activeTool === "eraser" ? "brush" : "eraser");
-    });
-    toolSection.appendChild(this.eraserButton);
-    this.container.appendChild(toolSection);
-
-    // Divider
-    this.container.appendChild(this.createDivider());
-
-    // Shape tool buttons
-    const shapeSection = this.createSection("toolbar-section");
-    for (const shapeTool of SHAPE_TOOLS) {
-      const btn = document.createElement("button");
-      btn.className = "toolbar-btn shape-btn";
-      btn.title = `${shapeTool.title} (${shapeTool.shortcut})`;
-      btn.textContent = shapeTool.label;
-      btn.dataset.shape = shapeTool.type;
-      btn.addEventListener("pointerdown", (e) => {
-        e.stopPropagation();
-        this.setTool(shapeTool.type);
-      });
-      shapeSection.appendChild(btn);
-      this.shapeButtons.push(btn);
-    }
-    this.container.appendChild(shapeSection);
-
-    // Shape options panel (shown only when a shape tool is active)
-    this.shapeOptionsPanel = document.createElement("div");
-    this.shapeOptionsPanel.className = "toolbar-section shape-options";
-    this.shapeOptionsPanel.style.display = "none";
-
-    // Fill toggle button
-    this.fillToggle = document.createElement("button");
-    this.fillToggle.className = "toolbar-btn fill-toggle";
-    this.fillToggle.title = "Toggle fill";
-    this.fillToggle.textContent = "\u25A7"; // ▧ (partial fill icon)
-    this.fillToggle.addEventListener("pointerdown", (e) => {
-      e.stopPropagation();
-      this.fillEnabled = !this.fillEnabled;
-      this.fillToggle.classList.toggle("active", this.fillEnabled);
-      this.fillColorInput.style.display = this.fillEnabled ? "" : "none";
-      this.emitShapeConfig();
-    });
-    this.shapeOptionsPanel.appendChild(this.fillToggle);
-
-    // Fill color input
-    this.fillColorInput = document.createElement("input");
-    this.fillColorInput.type = "color";
-    this.fillColorInput.className = "toolbar-color-input fill-color-input";
-    this.fillColorInput.value = this.fillColor;
-    this.fillColorInput.title = "Fill color";
-    this.fillColorInput.style.display = "none";
-    this.fillColorInput.addEventListener("input", (e) => {
-      this.fillColor = (e.target as HTMLInputElement).value;
-      this.emitShapeConfig();
-    });
-    this.shapeOptionsPanel.appendChild(this.fillColorInput);
-
-    // Sides spinner (for polygon/star)
-    this.sidesContainer = document.createElement("div");
-    this.sidesContainer.className = "sides-container";
-    this.sidesContainer.style.display = "none";
-    const sidesLabel = document.createElement("span");
-    sidesLabel.className = "sides-label";
-    sidesLabel.textContent = "Sides";
-    this.sidesContainer.appendChild(sidesLabel);
-    this.sidesInput = document.createElement("input");
-    this.sidesInput.type = "number";
-    this.sidesInput.className = "sides-input";
-    this.sidesInput.min = "3";
-    this.sidesInput.max = "32";
-    this.sidesInput.value = "5";
-    this.sidesInput.title = "Number of sides";
-    this.sidesInput.addEventListener("input", () => {
-      const val = parseInt(this.sidesInput.value, 10);
-      if (val >= 3 && val <= 32) {
-        this.emitShapeConfig();
-      }
-    });
-    // Prevent keyboard shortcuts from firing while typing in the input
-    this.sidesInput.addEventListener("keydown", (e) => {
-      e.stopPropagation();
-    });
-    this.sidesContainer.appendChild(this.sidesInput);
-    this.shapeOptionsPanel.appendChild(this.sidesContainer);
-
-    this.container.appendChild(this.shapeOptionsPanel);
-
-    // Divider
-    this.container.appendChild(this.createDivider());
-
-    // Background color button + dropdown
-    const bgSection = this.createSection("toolbar-section");
-    this.bgSwatchButton = document.createElement("button");
-    this.bgSwatchButton.className = "toolbar-btn bg-color-btn";
-    this.bgSwatchButton.title = "Background color";
-    this.bgSwatchButton.style.backgroundColor = this.activeBackgroundColor;
-    this.bgSwatchButton.addEventListener("pointerdown", (e) => {
-      e.stopPropagation();
-      this.toggleBgDropdown();
-    });
-    bgSection.appendChild(this.bgSwatchButton);
-    this.container.appendChild(bgSection);
-
-    // Background color dropdown (hidden by default)
-    this.bgDropdown = document.createElement("div");
-    this.bgDropdown.className = "bg-color-dropdown";
-    this.bgDropdown.style.display = "none";
-
-    const bgPalette = document.createElement("div");
-    bgPalette.className = "bg-color-palette";
-    for (const color of BACKGROUND_PRESET_COLORS) {
-      const swatch = document.createElement("button");
-      swatch.className = "bg-color-swatch";
-      swatch.style.backgroundColor = color;
-      if (color === "#FFFFFF") {
-        swatch.style.border = "1px solid #ccc";
-      }
-      if (color === this.activeBackgroundColor) swatch.classList.add("active");
-      swatch.title = color;
-      swatch.addEventListener("pointerdown", (e) => {
-        e.stopPropagation();
-        this.setBackgroundColor(color);
-      });
-      bgPalette.appendChild(swatch);
-      this.bgColorSwatches.push(swatch);
-    }
-    this.bgDropdown.appendChild(bgPalette);
-
-    // Custom background color input
-    this.bgColorInput = document.createElement("input");
-    this.bgColorInput.type = "color";
-    this.bgColorInput.className = "toolbar-color-input bg-custom-color-input";
-    this.bgColorInput.value = this.activeBackgroundColor;
-    this.bgColorInput.title = "Custom background color";
-    this.bgColorInput.addEventListener("input", (e) => {
-      const value = (e.target as HTMLInputElement).value;
-      this.setBackgroundColor(value);
-    });
-    this.bgDropdown.appendChild(this.bgColorInput);
-
-    document.body.appendChild(this.bgDropdown);
-
-    // Divider
-    this.container.appendChild(this.createDivider());
-
-    // Color palette
-    const colorSection = this.createSection("toolbar-section toolbar-colors");
-    for (const color of PRESET_COLORS) {
-      const swatch = document.createElement("button");
-      swatch.className = "toolbar-swatch";
-      swatch.style.backgroundColor = color;
-      if (color === "#FFFFFF") {
-        swatch.style.border = "1px solid #ccc";
-      }
-      if (color === this.activeColor) swatch.classList.add("active");
-      swatch.title = color;
-      swatch.addEventListener("pointerdown", (e) => {
-        e.stopPropagation();
-        this.setColor(color);
-      });
-      colorSection.appendChild(swatch);
-      this.colorSwatches.push(swatch);
-    }
-
-    // Custom color input
-    this.customColorInput = document.createElement("input");
-    this.customColorInput.type = "color";
-    this.customColorInput.className = "toolbar-color-input";
-    this.customColorInput.value = this.activeColor;
-    this.customColorInput.title = "Custom color";
-    this.customColorInput.addEventListener("input", (e) => {
-      const value = (e.target as HTMLInputElement).value;
-      this.setColor(value);
-    });
-    colorSection.appendChild(this.customColorInput);
-    this.container.appendChild(colorSection);
-
-    // Divider
-    this.container.appendChild(this.createDivider());
-
-    // Undo/Redo + Zoom
-    const actionSection = this.createSection("toolbar-section");
-    this.undoButton = document.createElement("button");
-    this.undoButton.className = "toolbar-btn";
-    this.undoButton.title = "Undo (Ctrl+Z)";
-    this.undoButton.textContent = "\u21B6"; // ↶
-    this.undoButton.disabled = true;
-    this.undoButton.addEventListener("pointerdown", (e) => {
-      e.stopPropagation();
-      this.callbacks.onUndo();
-    });
-    actionSection.appendChild(this.undoButton);
-
-    this.redoButton = document.createElement("button");
-    this.redoButton.className = "toolbar-btn";
-    this.redoButton.title = "Redo (Ctrl+Shift+Z)";
-    this.redoButton.textContent = "\u21B7"; // ↷
-    this.redoButton.disabled = true;
-    this.redoButton.addEventListener("pointerdown", (e) => {
-      e.stopPropagation();
-      this.callbacks.onRedo();
-    });
-    actionSection.appendChild(this.redoButton);
-
-    this.zoomDisplay = document.createElement("span");
-    this.zoomDisplay.className = "toolbar-zoom";
-    this.zoomDisplay.textContent = "100%";
-    actionSection.appendChild(this.zoomDisplay);
-
-    this.container.appendChild(actionSection);
-
-    // Divider
-    this.container.appendChild(this.createDivider());
+    panelsGroup.appendChild(this.drawingNameContainer);
 
     // Help button (cheat sheet)
     this.helpButton = document.createElement("button");
     this.helpButton.className = "toolbar-btn help-btn";
-    this.helpButton.title = "Keyboard shortcuts (Ctrl+?)";
-    this.helpButton.textContent = "?";
+    this.tooltip.attach(this.helpButton, "Keyboard shortcuts (Ctrl+?)");
+    this.helpButton.innerHTML = ICONS.help;
     this.helpButton.addEventListener("click", (e) => {
       e.stopPropagation();
       this.callbacks.onCheatSheet?.();
     });
-    this.container.appendChild(this.helpButton);
+    panelsGroup.appendChild(this.helpButton);
+
+    this.container.appendChild(panelsGroup);
+
+    // === OVERFLOW: responsive collapse of less-used groups ===
+    this.overflow = new ToolbarOverflow({
+      container: this.container,
+      groups: this.groups,
+    });
+  }
+
+  private createGroup(name: ToolbarGroup): HTMLDivElement {
+    const group = document.createElement("div");
+    group.className = "toolbar-group";
+    group.dataset.group = name;
+    this.groups.set(name, group);
+    return group;
   }
 
   private createSection(className: string): HTMLDivElement {
@@ -388,13 +562,15 @@ export class Toolbar {
     return div;
   }
 
+  /** Get a toolbar group element for external components to append to. */
+  getGroup(name: ToolbarGroup): HTMLDivElement | undefined {
+    return this.groups.get(name);
+  }
+
   selectBrush(index: number): void {
     if (index < 0 || index >= BRUSH_PRESETS.length) return;
     this.activeBrushIndex = index;
-    for (const btn of this.brushButtons) {
-      btn.classList.toggle("active", btn.dataset.index === String(index));
-    }
-    // Switch to brush tool when selecting a brush
+    this.brushPicker.setLastUsedId(String(index));
     this.setToolUI("brush");
     this.callbacks.onBrushSelect(BRUSH_PRESETS[index]);
   }
@@ -406,23 +582,29 @@ export class Toolbar {
 
   /** Update UI only (called from external keyboard shortcuts). */
   setToolUI(tool: ToolType): void {
+    if (this.activeTool !== "pan" && this.activeTool !== "magnify" && tool !== this.activeTool) {
+      this.previousTool = this.activeTool;
+    }
     this.activeTool = tool;
     this.eraserButton.classList.toggle("active", tool === "eraser");
-    for (const btn of this.brushButtons) {
-      btn.classList.toggle("active",
-        tool === "brush" && btn.dataset.index === String(this.activeBrushIndex));
-    }
-    for (const btn of this.shapeButtons) {
-      btn.classList.toggle("active", btn.dataset.shape === tool);
-    }
-    // Show/hide shape options panel
+    this.brushButton.classList.toggle("active", tool === "brush");
+    this.panButton.classList.toggle("active", tool === "pan");
+    this.magnifyButton.classList.toggle("active", tool === "magnify");
     const shapeActive = isShapeTool(tool);
+    this.shapeButton.classList.toggle("active", shapeActive);
+    if (shapeActive) {
+      this.shapePicker.setLastUsedId(tool);
+    }
     this.shapeOptionsPanel.style.display = shapeActive ? "" : "none";
     if (shapeActive) {
-      // Show sides spinner only for polygon and star
       this.sidesContainer.style.display =
         (tool === "polygon" || tool === "star") ? "" : "none";
     }
+  }
+
+  /** Get the tool that was active before pan mode. */
+  getPreviousTool(): ToolType {
+    return this.previousTool;
   }
 
   setColor(color: string): void {
@@ -458,7 +640,55 @@ export class Toolbar {
     return this.activeBrushIndex;
   }
 
-  /** Notify the host about shape config changes. */
+  private setBackgroundColor(color: string): void {
+    this.activeBackgroundColor = color;
+    this.bgSwatchButton.style.backgroundColor = color;
+    this.bgColorInput.value = color;
+    for (const swatch of this.bgColorSwatches) {
+      swatch.classList.toggle("active",
+        swatch.style.backgroundColor === this.colorToRgb(color));
+    }
+    this.callbacks.onBackgroundColorChange?.(color);
+    this.closeBgDropdown();
+  }
+
+  /** Update background color UI only (called from external changes). */
+  setBackgroundColorUI(color: string): void {
+    this.activeBackgroundColor = color;
+    this.bgSwatchButton.style.backgroundColor = color;
+    this.bgColorInput.value = color;
+    for (const swatch of this.bgColorSwatches) {
+      swatch.classList.toggle("active",
+        swatch.style.backgroundColor === this.colorToRgb(color));
+    }
+  }
+
+  private toggleBgDropdown(): void {
+    if (this.bgDropdown.style.display === "none") {
+      const rect = this.bgSwatchButton.getBoundingClientRect();
+      this.bgDropdown.style.top = `${rect.bottom + 4}px`;
+      this.bgDropdown.style.left = `${rect.left}px`;
+      this.bgDropdown.style.display = "";
+      requestAnimationFrame(() => {
+        document.addEventListener("pointerdown", this.boundBgDismiss);
+      });
+    } else {
+      this.closeBgDropdown();
+    }
+  }
+
+  private closeBgDropdown(): void {
+    this.bgDropdown.style.display = "none";
+    document.removeEventListener("pointerdown", this.boundBgDismiss);
+  }
+
+  private handleBgDismiss(e: PointerEvent): void {
+    if (!this.bgDropdown.contains(e.target as Node) &&
+        !this.bgSwatchButton.contains(e.target as Node)) {
+      this.closeBgDropdown();
+    }
+  }
+
   private emitShapeConfig(): void {
     const sides = parseInt(this.sidesInput.value, 10);
     this.callbacks.onShapeConfigChange?.({
@@ -481,7 +711,7 @@ export class Toolbar {
 
   setDrawingName(name: string): void {
     this.drawingNameEl.textContent = name;
-    this.drawingNameEl.title = `${name} — click to rename`;
+    this.tooltip.attach(this.drawingNameEl, `${name} — click to rename`);
   }
 
   private startRename(): void {
@@ -499,7 +729,7 @@ export class Toolbar {
     this.drawingNameEl.style.display = "";
     if (newName && newName !== this.drawingNameEl.textContent) {
       this.drawingNameEl.textContent = newName;
-      this.drawingNameEl.title = `${newName} — click to rename`;
+      this.tooltip.attach(this.drawingNameEl, `${newName} — click to rename`);
       this.callbacks.onRenameDrawing?.(newName);
     }
   }
@@ -507,45 +737,6 @@ export class Toolbar {
   private cancelRename(): void {
     this.drawingNameInput.style.display = "none";
     this.drawingNameEl.style.display = "";
-  }
-
-  private setBackgroundColor(color: string): void {
-    this.activeBackgroundColor = color;
-    this.bgSwatchButton.style.backgroundColor = color;
-    this.bgColorInput.value = color;
-    for (const swatch of this.bgColorSwatches) {
-      swatch.classList.toggle("active",
-        swatch.style.backgroundColor === this.colorToRgb(color));
-    }
-    this.callbacks.onBackgroundColorChange?.(color);
-    this.closeBgDropdown();
-  }
-
-  /** Update background color UI only (called from external changes like CRDT sync). */
-  setBackgroundColorUI(color: string): void {
-    this.activeBackgroundColor = color;
-    this.bgSwatchButton.style.backgroundColor = color;
-    this.bgColorInput.value = color;
-    for (const swatch of this.bgColorSwatches) {
-      swatch.classList.toggle("active",
-        swatch.style.backgroundColor === this.colorToRgb(color));
-    }
-  }
-
-  private toggleBgDropdown(): void {
-    if (this.bgDropdown.style.display === "none") {
-      // Position below the button
-      const rect = this.bgSwatchButton.getBoundingClientRect();
-      this.bgDropdown.style.top = `${rect.bottom + 4}px`;
-      this.bgDropdown.style.left = `${rect.left}px`;
-      this.bgDropdown.style.display = "";
-    } else {
-      this.closeBgDropdown();
-    }
-  }
-
-  private closeBgDropdown(): void {
-    this.bgDropdown.style.display = "none";
   }
 
   private colorToRgb(hex: string): string {
@@ -556,8 +747,104 @@ export class Toolbar {
     return `rgb(${r}, ${g}, ${b})`;
   }
 
+  /** Handle grid style selection from SubToolPicker (quick-click or popover). */
+  private selectGridStyle(style: GridStyle): void {
+    if (style === this.gridStyle) {
+      // Quick-click on active style → toggle to "none"
+      this.gridStyle = "none";
+      this.gridPicker.setLastUsedId(this.lastNonNoneGridStyle);
+    } else if (style === "none") {
+      // Explicit "none" pick from popover
+      this.gridStyle = "none";
+      this.gridPicker.setLastUsedId(this.lastNonNoneGridStyle);
+    } else {
+      // Activate a grid style
+      this.gridStyle = style;
+      this.lastNonNoneGridStyle = style;
+    }
+    this.gridButton.classList.toggle("active", this.gridStyle !== "none");
+    this.callbacks.onGridStyleChange?.(this.gridStyle);
+  }
+
+  /** Update grid style UI state (called from external changes). */
+  setGridStyle(style: GridStyle): void {
+    this.gridStyle = style;
+    if (style !== "none") this.lastNonNoneGridStyle = style;
+    this.gridButton.classList.toggle("active", style !== "none");
+    this.gridPicker.setLastUsedId(style === "none" ? this.lastNonNoneGridStyle : style);
+  }
+
+  /** Get the current grid style. */
+  getGridStyle(): GridStyle {
+    return this.gridStyle;
+  }
+
+  /** Update the brush size display (called from external changes like keyboard shortcuts). */
+  setBrushSize(size: number): void {
+    this.brushSizeSlider.setSize(size);
+  }
+
+  /** Update the opacity display (called from external changes). */
+  setOpacity(opacity: number): void {
+    this.opacitySlider.setOpacity(opacity);
+  }
+
+  /** Get the BrushSizeSlider (for testing or external use). */
+  getBrushSizeSlider(): BrushSizeSlider {
+    return this.brushSizeSlider;
+  }
+
+  /** Get the OpacitySlider (for testing or external use). */
+  getOpacitySlider(): OpacitySlider {
+    return this.opacitySlider;
+  }
+
+  /** Get the brush SubToolPicker (for testing or external use). */
+  getBrushPicker(): SubToolPicker {
+    return this.brushPicker;
+  }
+
+  /** Get the shape SubToolPicker (for testing or external use). */
+  getShapePicker(): SubToolPicker {
+    return this.shapePicker;
+  }
+
+  /** Get the grid SubToolPicker (for testing or external use). */
+  getGridPicker(): SubToolPicker {
+    return this.gridPicker;
+  }
+
+  /** Get the last non-none grid style (for toggle restoration). */
+  getLastNonNoneGridStyle(): GridStyle {
+    return this.lastNonNoneGridStyle;
+  }
+
+  /** Get the ExportDialog (for testing or external use). */
+  getExportDialog(): ExportDialog {
+    return this.exportDialog;
+  }
+
+  /** Get the Tooltip instance (for testing). */
+  getTooltip(): Tooltip {
+    return this.tooltip;
+  }
+
+  /** Get the ToolbarOverflow instance (for testing). */
+  getOverflow(): ToolbarOverflow {
+    return this.overflow;
+  }
+
   destroy(): void {
-    this.container.remove();
+    this.overflow.destroy();
+    this.brushPicker.destroy();
+    this.shapePicker.destroy();
+    this.gridPicker.destroy();
+    this.brushSizeSlider.destroy();
+    this.opacitySlider.destroy();
+    this.exportDialog.destroy();
+    this.tooltip.destroy();
+    this.closeBgDropdown();
     this.bgDropdown.remove();
+    this.container.remove();
   }
 }

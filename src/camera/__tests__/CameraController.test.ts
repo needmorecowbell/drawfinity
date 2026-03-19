@@ -324,6 +324,70 @@ describe("CameraController", () => {
     expect(panCallback).toHaveBeenCalledWith(false);
   });
 
+  // Pan tool mode tests
+  it("panToolActive enables panning state", () => {
+    expect(controller.panToolActive).toBe(false);
+    controller.panToolActive = true;
+    expect(controller.panToolActive).toBe(true);
+    expect(controller.panning).toBe(true);
+  });
+
+  it("panToolActive sets grab cursor", () => {
+    controller.panToolActive = true;
+    expect(canvas.style.cursor).toBe("grab");
+    controller.panToolActive = false;
+    expect(canvas.style.cursor).toBe("");
+  });
+
+  it("panToolActive fires onPanStateChange callback", () => {
+    const panCallback = vi.fn();
+    controller.onPanStateChange = panCallback;
+    controller.panToolActive = true;
+    expect(panCallback).toHaveBeenCalledWith(true);
+    controller.panToolActive = false;
+    expect(panCallback).toHaveBeenCalledWith(false);
+  });
+
+  it("pans on left-click drag when panToolActive", () => {
+    controller.panToolActive = true;
+    const down = getHandler(canvas, "pointerdown");
+    const move = getHandler(canvas, "pointermove");
+    const up = getHandler(canvas, "pointerup");
+
+    down({
+      button: 0,
+      ctrlKey: false,
+      clientX: 100,
+      clientY: 100,
+      pointerId: 1,
+      preventDefault: vi.fn(),
+    });
+
+    // Cursor should switch to grabbing during drag
+    expect(canvas.style.cursor).toBe("grabbing");
+
+    move({ clientX: 150, clientY: 120, pointerId: 1 });
+    expect(camera.x).toBeCloseTo(-50);
+    expect(camera.y).toBeCloseTo(-20);
+
+    up({ pointerId: 1 });
+    // Cursor should return to grab after release
+    expect(canvas.style.cursor).toBe("grab");
+  });
+
+  it("does not pan on left-click when panToolActive is false", () => {
+    const down = getHandler(canvas, "pointerdown");
+    down({
+      button: 0,
+      ctrlKey: false,
+      clientX: 100,
+      clientY: 100,
+      pointerId: 1,
+      preventDefault: vi.fn(),
+    });
+    expect(controller.panning).toBe(false);
+  });
+
   it("removes all listeners on destroy", () => {
     controller.destroy();
 

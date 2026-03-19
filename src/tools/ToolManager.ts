@@ -2,7 +2,7 @@ import { BrushConfig } from "./Brush";
 import { PEN } from "./BrushPresets";
 import type { ShapeType } from "../model/Shape";
 
-export type ToolType = "brush" | "eraser" | "rectangle" | "ellipse" | "polygon" | "star";
+export type ToolType = "brush" | "eraser" | "rectangle" | "ellipse" | "polygon" | "star" | "pan" | "magnify";
 
 /** Shape tool types that map to ShapeType. */
 export const SHAPE_TOOL_TYPES: readonly ToolType[] = ["rectangle", "ellipse", "polygon", "star"] as const;
@@ -21,6 +21,7 @@ export class ToolManager {
   private activeTool: ToolType = "brush";
   private activeBrush: BrushConfig = { ...PEN };
   private currentColor: string = PEN.color;
+  private strokeOpacity: number = 1.0;
   private shapeConfig: ShapeToolConfig = {
     fillColor: null,
     sides: 5,
@@ -52,6 +53,14 @@ export class ToolManager {
 
   getColor(): string {
     return this.currentColor;
+  }
+
+  setOpacity(opacity: number): void {
+    this.strokeOpacity = Math.max(0, Math.min(1, opacity));
+  }
+
+  getOpacity(): number {
+    return this.strokeOpacity;
   }
 
   setShapeConfig(config: Partial<ShapeToolConfig>): void {

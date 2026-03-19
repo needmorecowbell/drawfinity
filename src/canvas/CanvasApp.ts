@@ -5,16 +5,19 @@ import { generateShapeVertices } from "../renderer/ShapeMesh";
 import { Camera, CameraAnimator, CameraController } from "../camera";
 import * as Y from "yjs";
 import { DrawfinityDoc, UndoManager } from "../crdt";
-import { StrokeCapture, ShapeCapture } from "../input";
+import { StrokeCapture, ShapeCapture, MagnifyCapture } from "../input";
 import { ToolManager, BRUSH_PRESETS, isShapeTool } from "../tools";
 import type { ToolType } from "../tools";
 import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel } from "../ui";
+import { ICONS } from "../ui/ToolbarIcons";
+import { renderExport, downloadCanvas } from "../ui/ExportRenderer";
+import type { ExportDialogResult } from "../ui/ExportDialog";
 import { ActionRegistry } from "../ui/ActionRegistry";
 import { CheatSheet } from "../ui/CheatSheet";
 import { CursorManager } from "../ui/CursorManager";
 import { FpsCounter } from "../ui/FpsCounter";
 import { SyncManager } from "../sync";
-import { loadProfileAsync, loadPreferencesAsync } from "../user";
+import { loadProfileAsync, loadPreferencesAsync, savePreferences, type UserPreferences, type GridStyle } from "../user";
 
 export interface CanvasAppCallbacks {
   onGoHome?: () => void;
@@ -41,6 +44,7 @@ export class CanvasApp {
   private toolManager!: ToolManager;
   private strokeCapture!: StrokeCapture;
   private shapeCapture!: ShapeCapture;
+  private magnifyCapture!: MagnifyCapture;
   private undoManager!: UndoManager;
   private toolbar!: Toolbar;
   private connectionPanel!: ConnectionPanel;
@@ -60,6 +64,8 @@ export class CanvasApp {
   private settingsButton!: HTMLButtonElement;
   private userColorIndicator!: HTMLDivElement;
   private connectionStateUnsubscribe: (() => void) | null = null;
+  private gridStyle: GridStyle = "dots";
+  private userPreferences: UserPreferences | null = null;
   private initialized = false;
   private callbacks: CanvasAppCallbacks = {};
 
@@ -137,7 +143,7 @@ export class CanvasApp {
       };
     }
 
-    // Apply initial background color and grid style from document/preferences
+    // Apply initial background color from document
     this.renderer.setBackgroundColor(this.doc.getBackgroundColor());
 
     // React to background color changes (from local or remote edits)
@@ -164,6 +170,7 @@ export class CanvasApp {
 
     let userProfile = await loadProfileAsync();
     let userPreferences = await loadPreferencesAsync();
+    this.userPreferences = userPreferences;
 
     this.syncManager.setUser(userProfile);
 
@@ -171,12 +178,16 @@ export class CanvasApp {
       this.toolManager.setBrush(BRUSH_PRESETS[userPreferences.defaultBrush]);
     }
     this.toolManager.setColor(userPreferences.defaultColor);
-    this.renderer.setGridStyle(userPreferences.gridStyle ?? "dots");
+    this.gridStyle = userPreferences.gridStyle ?? "dots";
+    this.renderer.setGridStyle(this.gridStyle);
 
     this.strokeCapture = new StrokeCapture(this.camera, this.cameraController, this.doc, canvas);
     this.strokeCapture.setBrushConfig(this.toolManager.getBrush());
     this.shapeCapture = new ShapeCapture(this.camera, this.cameraController, this.doc, canvas);
     this.shapeCapture.setEnabled(false);
+    this.magnifyCapture = new MagnifyCapture(this.camera, this.cameraAnimator, this.cameraController, canvas);
+    this.magnifyCapture.setEnabled(false);
+    this.magnifyCapture.onCursorChange = (mode) => this.cursorManager.setMagnifyMode(mode);
     this.undoManager = new UndoManager(this.doc.getStrokesArray());
 
     this.fpsCounter = new FpsCounter();
@@ -194,13 +205,23 @@ export class CanvasApp {
     // Toolbar
     this.toolbar = new Toolbar({
       onBrushSelect: (brush) => {
+        // Deactivate pan/magnify mode if switching from those tools
+        const currentTool = this.toolManager.getTool();
+        if (currentTool === "pan") {
+          this.cameraController.panToolActive = false;
+        }
+        if (currentTool === "magnify") {
+          this.magnifyCapture.setEnabled(false);
+        }
         this.toolManager.setTool("brush");
         this.toolManager.setBrush(brush);
         this.shapeCapture.setEnabled(false);
+        this.magnifyCapture.setEnabled(false);
         this.strokeCapture.setEnabled(true);
         this.strokeCapture.setTool("brush");
         this.strokeCapture.setBrushConfig(this.toolManager.getBrush());
         this.toolbar.setToolUI("brush");
+        this.toolbar.setBrushSize(this.toolManager.getBrush().baseWidth);
         this.cursorManager.setTool("brush");
         this.cursorManager.setBrushWidth(this.toolManager.getBrush().baseWidth);
       },
@@ -214,12 +235,39 @@ export class CanvasApp {
       },
       onUndo: () => this.doUndo(),
       onRedo: () => this.doRedo(),
-      onBrushSizeChange: () => {},
+      onBrushSizeChange: (size) => {
+        const brush = this.toolManager.getBrush();
+        brush.baseWidth = size;
+        this.strokeCapture.setBrushConfig(brush);
+        this.shapeCapture.setConfig({ strokeWidth: brush.baseWidth });
+        this.cursorManager.setBrushWidth(brush.baseWidth);
+      },
+      onOpacityChange: (opacity) => {
+        this.toolManager.setOpacity(opacity);
+        this.applyOpacityToBrush();
+        this.shapeCapture.setConfig({ opacity });
+      },
+      onGridStyleChange: (style) => {
+        this.gridStyle = style;
+        this.renderer.setGridStyle(style);
+        this.persistGridStyle(style);
+      },
       onHome: () => this.callbacks.onGoHome?.(),
       onRenameDrawing: (name) => {
         this.callbacks.onRenameDrawing?.(this.drawingId, name);
       },
+      onExport: (options: ExportDialogResult) => this.handleExport(options),
       onCheatSheet: () => this.cheatSheet.toggle(),
+      onZoomIn: () => {
+        const [vw, vh] = this.camera.getViewportSize();
+        this.cameraAnimator.animateZoomTo(this.camera.zoom * 1.5, vw / 2, vh / 2);
+      },
+      onZoomOut: () => {
+        const [vw, vh] = this.camera.getViewportSize();
+        this.cameraAnimator.animateZoomTo(this.camera.zoom / 1.5, vw / 2, vh / 2);
+      },
+      onZoomReset: () => this.cameraAnimator.animateZoomCentered(1),
+      onFitAll: () => this.fitAllContent(),
       onBackgroundColorChange: (color) => {
         this.doc.setBackgroundColor(color);
       },
@@ -231,7 +279,7 @@ export class CanvasApp {
             strokeColor: this.toolManager.getColor(),
             strokeWidth: this.toolManager.getBrush().baseWidth,
             fillColor: this.toolManager.getShapeConfig().fillColor,
-            opacity: 1.0,
+            opacity: this.toolManager.getOpacity(),
             sides: this.toolManager.getShapeConfig().sides,
             starInnerRadius: this.toolManager.getShapeConfig().starInnerRadius,
           });
@@ -240,12 +288,13 @@ export class CanvasApp {
     });
 
     this.toolbar.setShapeConfig(this.toolManager.getShapeConfig());
-    this.toolbar.setBackgroundColorUI(this.doc.getBackgroundColor());
+    this.toolbar.setGridStyle(this.gridStyle);
 
     if (userPreferences.defaultBrush >= 0 && userPreferences.defaultBrush < BRUSH_PRESETS.length) {
       this.toolbar.selectBrush(userPreferences.defaultBrush);
     }
     this.toolbar.setColorUI(userPreferences.defaultColor);
+    this.toolbar.setBackgroundColorUI(this.doc.getBackgroundColor());
 
     // Connection panel
     this.connectionPanel = new ConnectionPanel(this.syncManager, {
@@ -261,6 +310,7 @@ export class CanvasApp {
       onSave: (profile, preferences) => {
         userProfile = profile;
         userPreferences = preferences;
+        this.userPreferences = preferences;
         this.syncManager.setUser(profile);
         if (preferences.defaultBrush >= 0 && preferences.defaultBrush < BRUSH_PRESETS.length) {
           this.toolManager.setBrush(BRUSH_PRESETS[preferences.defaultBrush]);
@@ -273,6 +323,8 @@ export class CanvasApp {
         this.shapeCapture.setConfig({ strokeColor: preferences.defaultColor });
         this.toolbar.setColorUI(preferences.defaultColor);
         this.renderer.setGridStyle(preferences.gridStyle ?? "dots");
+        this.gridStyle = preferences.gridStyle ?? "dots";
+        this.toolbar.setGridStyle(this.gridStyle);
         this.updateUserColorIndicator(userProfile);
       },
     });
@@ -286,14 +338,14 @@ export class CanvasApp {
     this.settingsButton = document.createElement("button");
     this.settingsButton.className = "toolbar-btn settings-btn";
     this.settingsButton.title = "Settings (Ctrl+,)";
-    this.settingsButton.textContent = "\u2699";
+    this.settingsButton.innerHTML = ICONS.settings;
     this.settingsButton.addEventListener("pointerdown", (e) => {
       e.stopPropagation();
       this.settingsPanel.toggle();
     });
-    const toolbarEl = document.getElementById("toolbar");
-    if (toolbarEl) {
-      toolbarEl.appendChild(this.settingsButton);
+    const panelsGroup = this.toolbar.getGroup("panels");
+    if (panelsGroup) {
+      panelsGroup.appendChild(this.settingsButton);
     }
 
     // User color indicator
@@ -302,8 +354,8 @@ export class CanvasApp {
     this.userColorIndicator.style.display = "none";
     this.userColorIndicator.style.backgroundColor = userProfile.color;
     this.userColorIndicator.title = userProfile.name;
-    if (toolbarEl) {
-      toolbarEl.appendChild(this.userColorIndicator);
+    if (panelsGroup) {
+      panelsGroup.appendChild(this.userColorIndicator);
     }
 
     this.connectionStateUnsubscribe = this.syncManager.onConnectionStateChange((state) => {
@@ -451,6 +503,7 @@ export class CanvasApp {
     // Clean up input
     this.strokeCapture.destroy();
     this.shapeCapture.destroy();
+    this.magnifyCapture.destroy();
     this.cameraController.destroy();
 
     // Clean up resize observer
@@ -481,18 +534,38 @@ export class CanvasApp {
   }
 
   private switchTool(tool: ToolType): void {
+    // Deactivate pan tool if switching away from it
+    if (this.toolManager.getTool() === "pan" && tool !== "pan") {
+      this.cameraController.panToolActive = false;
+    }
+
     this.toolManager.setTool(tool);
 
-    if (isShapeTool(tool)) {
+    if (tool === "magnify") {
+      this.strokeCapture.setEnabled(false);
+      this.shapeCapture.setEnabled(false);
+      this.magnifyCapture.setEnabled(true);
+      this.cameraController.panToolActive = false;
+      this.toolbar.setToolUI(tool);
+      this.cursorManager.setTool("magnify");
+    } else if (tool === "pan") {
+      this.strokeCapture.setEnabled(false);
+      this.shapeCapture.setEnabled(false);
+      this.magnifyCapture.setEnabled(false);
+      this.cameraController.panToolActive = true;
+      this.toolbar.setToolUI(tool);
+      this.cursorManager.setTool("pan");
+    } else if (isShapeTool(tool)) {
       this.strokeCapture.setTool("brush");
       this.strokeCapture.setEnabled(false);
       this.shapeCapture.setEnabled(true);
+      this.magnifyCapture.setEnabled(false);
       this.shapeCapture.setConfig({
         shapeType: tool,
         strokeColor: this.toolManager.getColor(),
         strokeWidth: this.toolManager.getBrush().baseWidth,
         fillColor: this.toolManager.getShapeConfig().fillColor,
-        opacity: 1.0,
+        opacity: this.toolManager.getOpacity(),
         sides: this.toolManager.getShapeConfig().sides,
         starInnerRadius: this.toolManager.getShapeConfig().starInnerRadius,
       });
@@ -500,6 +573,7 @@ export class CanvasApp {
       this.cursorManager.setTool("brush");
     } else {
       this.shapeCapture.setEnabled(false);
+      this.magnifyCapture.setEnabled(false);
       this.strokeCapture.setEnabled(true);
       this.strokeCapture.setTool(tool as "brush" | "eraser");
       this.toolbar.setToolUI(tool);
@@ -533,6 +607,81 @@ export class CanvasApp {
     this.toolbar.updateUndoRedo(this.undoManager.canUndo(), this.undoManager.canRedo());
   }
 
+  /** Apply the current opacity multiplier to the active brush's opacityCurve and update StrokeCapture. */
+  private applyOpacityToBrush(): void {
+    const brush = this.toolManager.getBrush();
+    const userOpacity = this.toolManager.getOpacity();
+    const presetIndex = this.toolbar.getActiveBrushIndex();
+    const originalCurve = BRUSH_PRESETS[presetIndex].opacityCurve;
+    brush.opacityCurve = (p: number) => originalCurve(p) * userOpacity;
+    this.strokeCapture.setBrushConfig(brush);
+  }
+
+  private toggleGrid(): void {
+    if (this.gridStyle === "none") {
+      this.gridStyle = this.toolbar.getLastNonNoneGridStyle();
+    } else {
+      this.gridStyle = "none";
+    }
+    this.renderer.setGridStyle(this.gridStyle);
+    this.toolbar.setGridStyle(this.gridStyle);
+    this.persistGridStyle(this.gridStyle);
+  }
+
+  private persistGridStyle(style: GridStyle): void {
+    if (this.userPreferences) {
+      this.userPreferences.gridStyle = style;
+      savePreferences(this.userPreferences);
+    }
+  }
+
+  private fitAllContent(): void {
+    const strokes = this.doc.getStrokes();
+    const shapes = this.doc.getShapes ? this.doc.getShapes() : [];
+    if (strokes.length === 0 && shapes.length === 0) return;
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const stroke of strokes) {
+      for (const pt of stroke.points) {
+        if (pt.x < minX) minX = pt.x;
+        if (pt.y < minY) minY = pt.y;
+        if (pt.x > maxX) maxX = pt.x;
+        if (pt.y > maxY) maxY = pt.y;
+      }
+    }
+    for (const shape of shapes) {
+      if (shape.x < minX) minX = shape.x;
+      if (shape.y < minY) minY = shape.y;
+      if (shape.x + shape.width > maxX) maxX = shape.x + shape.width;
+      if (shape.y + shape.height > maxY) maxY = shape.y + shape.height;
+    }
+
+    if (minX === Infinity) return;
+    this.cameraAnimator.animateToFit(minX, minY, maxX, maxY);
+  }
+
+  private handleExport(options: ExportDialogResult): void {
+    const strokes = this.doc.getStrokes();
+    const shapes = this.doc.getShapes ? this.doc.getShapes() : [];
+
+    const canvas = renderExport(strokes, shapes, {
+      scope: options.scope,
+      scale: options.scale,
+      includeBackground: options.includeBackground,
+      viewportBounds: this.camera.getViewportBounds(),
+      viewportMatrix: this.camera.getTransformMatrix(),
+      viewportSize: this.camera.getViewportSize(),
+    });
+
+    if (!canvas) {
+      console.warn("Export: nothing to export");
+      return;
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    downloadCanvas(canvas, `drawfinity-${timestamp}.png`);
+  }
+
   private updateUserColorIndicator(profile: { color: string; name: string }): void {
     this.userColorIndicator.style.backgroundColor = profile.color;
     this.userColorIndicator.title = profile.name;
@@ -548,6 +697,14 @@ export class CanvasApp {
     r.register({ id: "tool-ellipse", label: "Ellipse", shortcut: "O", category: "Tools", execute: () => this.switchTool("ellipse") });
     r.register({ id: "tool-polygon", label: "Polygon", shortcut: "P", category: "Tools", execute: () => this.switchTool("polygon") });
     r.register({ id: "tool-star", label: "Star", shortcut: "S", category: "Tools", execute: () => this.switchTool("star") });
+    r.register({ id: "tool-pan", label: "Pan/Zoom", shortcut: "G", category: "Tools", execute: () => {
+      if (this.toolManager.getTool() === "pan") {
+        this.switchTool(this.toolbar.getPreviousTool());
+      } else {
+        this.switchTool("pan");
+      }
+    }});
+    r.register({ id: "tool-magnify", label: "Magnify", shortcut: "Z", category: "Tools", execute: () => this.switchTool("magnify") });
 
     // Drawing
     r.register({ id: "brush-preset-1", label: "Pen preset", shortcut: "1", category: "Drawing", execute: () => this.switchBrush(0) });
@@ -560,6 +717,7 @@ export class CanvasApp {
       this.strokeCapture.setBrushConfig(brush);
       this.shapeCapture.setConfig({ strokeWidth: brush.baseWidth });
       this.cursorManager.setBrushWidth(brush.baseWidth);
+      this.toolbar.setBrushSize(brush.baseWidth);
     }});
     r.register({ id: "brush-size-up", label: "Increase brush size", shortcut: "]", category: "Drawing", execute: () => {
       const brush = this.toolManager.getBrush();
@@ -567,6 +725,7 @@ export class CanvasApp {
       this.strokeCapture.setBrushConfig(brush);
       this.shapeCapture.setConfig({ strokeWidth: brush.baseWidth });
       this.cursorManager.setBrushWidth(brush.baseWidth);
+      this.toolbar.setBrushSize(brush.baseWidth);
     }});
     r.register({ id: "undo", label: "Undo", shortcut: "Ctrl+Z", category: "Drawing", execute: () => this.doUndo() });
     r.register({ id: "redo", label: "Redo", shortcut: "Ctrl+Shift+Z", category: "Drawing", execute: () => this.doRedo() });
@@ -581,13 +740,20 @@ export class CanvasApp {
       this.cameraAnimator.animateZoomTo(this.camera.zoom / 1.5, vw / 2, vh / 2);
     }});
     r.register({ id: "zoom-reset", label: "Reset zoom", shortcut: "Ctrl+0", category: "Navigation", execute: () => this.cameraAnimator.animateZoomCentered(1) });
+    r.register({ id: "fit-all", label: "Fit all content", shortcut: "", category: "Navigation", execute: () => this.fitAllContent() });
     r.register({ id: "go-home", label: "Go home", shortcut: "Escape", category: "Navigation", execute: () => this.callbacks.onGoHome?.() });
 
     // Panels
     r.register({ id: "toggle-connection", label: "Connection panel", shortcut: "Ctrl+K", category: "Panels", execute: () => this.connectionPanel.toggle() });
     r.register({ id: "toggle-settings", label: "Settings", shortcut: "Ctrl+,", category: "Panels", execute: () => this.settingsPanel.toggle() });
     r.register({ id: "toggle-cheatsheet", label: "Keyboard shortcuts", shortcut: "Ctrl+?", category: "Panels", execute: () => this.cheatSheet.toggle() });
+    r.register({ id: "toggle-grid", label: "Toggle grid", shortcut: "Ctrl+'", category: "Navigation", execute: () => this.toggleGrid() });
     r.register({ id: "toggle-fps", label: "FPS counter", shortcut: "F3", category: "Panels", execute: () => this.fpsCounter.toggle() });
+
+    // Export
+    r.register({ id: "export", label: "Export PNG", shortcut: "Ctrl+Shift+E", category: "Drawing", execute: () => {
+      this.handleExport({ scope: "fitAll", scale: 1, includeBackground: true });
+    }});
   }
 
   private handleKeydown(e: KeyboardEvent): void {
@@ -622,9 +788,21 @@ export class CanvasApp {
       return;
     }
 
+    if (mod && e.key === "'") {
+      e.preventDefault();
+      this.toggleGrid();
+      return;
+    }
+
     if (mod && (e.key === "?" || (e.key === "/" && e.shiftKey))) {
       e.preventDefault();
       this.cheatSheet.toggle();
+      return;
+    }
+
+    if (mod && e.shiftKey && (e.key === "e" || e.key === "E")) {
+      e.preventDefault();
+      this.handleExport({ scope: "fitAll", scale: 1, includeBackground: true });
       return;
     }
 
@@ -653,6 +831,14 @@ export class CanvasApp {
       this.switchTool("polygon");
     } else if (e.key === "s" || e.key === "S") {
       this.switchTool("star");
+    } else if (e.key === "g" || e.key === "G") {
+      if (this.toolManager.getTool() === "pan") {
+        this.switchTool(this.toolbar.getPreviousTool());
+      } else {
+        this.switchTool("pan");
+      }
+    } else if (e.key === "z" || e.key === "Z") {
+      this.switchTool("magnify");
     }
 
     if (e.key >= "1" && e.key <= "4") {
@@ -665,12 +851,14 @@ export class CanvasApp {
       this.strokeCapture.setBrushConfig(brush);
       this.shapeCapture.setConfig({ strokeWidth: brush.baseWidth });
       this.cursorManager.setBrushWidth(brush.baseWidth);
+      this.toolbar.setBrushSize(brush.baseWidth);
     } else if (e.key === "]") {
       const brush = this.toolManager.getBrush();
       brush.baseWidth = Math.min(64, brush.baseWidth + 1);
       this.strokeCapture.setBrushConfig(brush);
       this.shapeCapture.setConfig({ strokeWidth: brush.baseWidth });
       this.cursorManager.setBrushWidth(brush.baseWidth);
+      this.toolbar.setBrushSize(brush.baseWidth);
     }
   }
 }

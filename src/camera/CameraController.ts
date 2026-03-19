@@ -26,6 +26,9 @@ export class CameraController {
   // Space-to-pan mode
   private spaceHeld = false;
 
+  // Pan tool mode (activated via toolbar button)
+  private _panToolActive = false;
+
   // Pointer-based pinch state (replaces TouchEvent API)
   private pointerCache = new Map<number, { x: number; y: number }>();
   private pinchStartDist = 0;
@@ -67,7 +70,22 @@ export class CameraController {
 
   /** True when the controller is actively panning or space is held (input gating). */
   get panning(): boolean {
-    return this.isPanning || this.spaceHeld || this.isPinching;
+    return this.isPanning || this.spaceHeld || this.isPinching || this._panToolActive;
+  }
+
+  /** Enable/disable pan tool mode (left-click pans, cursor shows grab). */
+  set panToolActive(active: boolean) {
+    this._panToolActive = active;
+    if (active) {
+      this.canvas.style.cursor = "grab";
+    } else {
+      this.canvas.style.cursor = "";
+    }
+    if (this.onPanStateChange) this.onPanStateChange(active);
+  }
+
+  get panToolActive(): boolean {
+    return this._panToolActive;
   }
 
   // ── Pointer events ─────────────────────────────────────────────
@@ -82,11 +100,12 @@ export class CameraController {
       return;
     }
 
-    // Middle mouse, Ctrl+left, or Space+left → start pan
+    // Middle mouse, Ctrl+left, Space+left, or pan tool+left → start pan
     const shouldPan =
       e.button === 1 ||
       (e.button === 0 && e.ctrlKey) ||
-      (e.button === 0 && this.spaceHeld);
+      (e.button === 0 && this.spaceHeld) ||
+      (e.button === 0 && this._panToolActive);
 
     if (shouldPan) {
       this.isPanning = true;
@@ -96,6 +115,7 @@ export class CameraController {
       this.panVelocityY = 0;
       this.animator.interruptMomentum();
       this.canvas.setPointerCapture(e.pointerId);
+      if (this._panToolActive) this.canvas.style.cursor = "grabbing";
       e.preventDefault();
     }
   }
@@ -136,6 +156,7 @@ export class CameraController {
     if (this.isPanning) {
       this.isPanning = false;
       this.canvas.releasePointerCapture(e.pointerId);
+      if (this._panToolActive) this.canvas.style.cursor = "grab";
 
       // Hand off velocity to animator for momentum
       if (

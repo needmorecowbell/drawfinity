@@ -101,6 +101,16 @@ export class HomeScreen {
     });
     titleRow.appendChild(newBtn);
 
+    const helpBtn = document.createElement("button");
+    helpBtn.className = "home-btn home-btn-secondary home-help-btn";
+    helpBtn.textContent = "?";
+    helpBtn.title = "Keyboard shortcuts (Ctrl+?)";
+    helpBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.cheatSheet.toggle();
+    });
+    titleRow.appendChild(helpBtn);
+
     header.appendChild(titleRow);
 
     // Tab bar
@@ -335,7 +345,7 @@ export class HomeScreen {
 
   private handleKeydown(e: KeyboardEvent): void {
     const mod = e.ctrlKey || e.metaKey;
-    if (mod && e.key === "?") {
+    if (mod && (e.key === "?" || (e.key === "/" && e.shiftKey))) {
       e.preventDefault();
       this.cheatSheet.toggle();
     }

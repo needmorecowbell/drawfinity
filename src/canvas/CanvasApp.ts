@@ -604,7 +604,7 @@ export class CanvasApp {
       return;
     }
 
-    if (mod && e.key === "?") {
+    if (mod && (e.key === "?" || (e.key === "/" && e.shiftKey))) {
       e.preventDefault();
       this.cheatSheet.toggle();
       return;

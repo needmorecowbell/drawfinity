@@ -48,7 +48,7 @@ describe("WebGLContext", () => {
     expect(ctx.gl).toBe(mockGl);
   });
 
-  it("sets clear color to off-white #FAFAF8", () => {
+  it("sets clear color to off-white #FAFAF8 by default", () => {
     const { canvas, mockGl } = createMockCanvas();
     new WebGLContext(canvas);
     expect(mockGl.clearColor).toHaveBeenCalledWith(
@@ -57,6 +57,24 @@ describe("WebGLContext", () => {
       248 / 255,
       1.0,
     );
+  });
+
+  it("setClearColor parses hex and updates gl.clearColor", () => {
+    const { canvas, mockGl } = createMockCanvas();
+    const ctx = new WebGLContext(canvas);
+    mockGl.clearColor.mockClear();
+
+    ctx.setClearColor("#FF8000");
+    expect(mockGl.clearColor).toHaveBeenCalledWith(1.0, 128 / 255, 0.0, 1.0);
+  });
+
+  it("setClearColor handles black", () => {
+    const { canvas, mockGl } = createMockCanvas();
+    const ctx = new WebGLContext(canvas);
+    mockGl.clearColor.mockClear();
+
+    ctx.setClearColor("#000000");
+    expect(mockGl.clearColor).toHaveBeenCalledWith(0.0, 0.0, 0.0, 1.0);
   });
 
   it("throws if WebGL2 is not supported", () => {

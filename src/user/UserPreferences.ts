@@ -1,8 +1,11 @@
 import { readConfigFile, writeConfigFile } from "./ConfigFile";
 
+export type GridStyle = "dots" | "lines" | "none";
+
 export interface UserPreferences {
   defaultBrush: number;
   defaultColor: string;
+  gridStyle?: GridStyle;
   saveDirectory?: string;
   serverUrl?: string;
   lastRoomId?: string;

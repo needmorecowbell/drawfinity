@@ -1,8 +1,10 @@
 import { WebGLContext } from "./WebGLContext";
 import { StrokeRenderer, StrokePoint } from "./StrokeRenderer";
-import { DotGridRenderer } from "./DotGridRenderer";
+import { DotGridRenderer, autoContrastDotColor } from "./DotGridRenderer";
+import { LineGridRenderer } from "./LineGridRenderer";
 import { StrokeVertexCache } from "./StrokeVertexCache";
 import { ShapeVertexCache } from "./ShapeVertexCache";
+import type { GridStyle } from "../user/UserPreferences";
 
 /**
  * Top-level renderer that owns the WebGL context, shaders, and stroke/shape renderers.
@@ -12,6 +14,8 @@ export class Renderer {
   private context: WebGLContext;
   private strokeRenderer: StrokeRenderer;
   private dotGridRenderer: DotGridRenderer;
+  private lineGridRenderer: LineGridRenderer;
+  private gridStyle: GridStyle = "dots";
   readonly vertexCache: StrokeVertexCache;
   readonly shapeVertexCache: ShapeVertexCache;
 
@@ -19,6 +23,7 @@ export class Renderer {
     this.context = new WebGLContext(canvas);
     this.strokeRenderer = new StrokeRenderer(this.context.gl);
     this.dotGridRenderer = new DotGridRenderer(this.context.gl);
+    this.lineGridRenderer = new LineGridRenderer(this.context.gl);
     this.vertexCache = new StrokeVertexCache();
     this.shapeVertexCache = new ShapeVertexCache();
   }
@@ -31,6 +36,16 @@ export class Renderer {
     return this.context.canvas;
   }
 
+  setBackgroundColor(hex: string): void {
+    this.context.setClearColor(hex);
+    this.dotGridRenderer.setDotColor(autoContrastDotColor(hex));
+    this.lineGridRenderer.setAutoContrastColor(hex);
+  }
+
+  setGridStyle(style: GridStyle): void {
+    this.gridStyle = style;
+  }
+
   clear(): void {
     this.context.resize(); // Ensure viewport is current
     this.context.clear();
@@ -40,12 +55,17 @@ export class Renderer {
     this.strokeRenderer.setCameraMatrix(matrix);
   }
 
-  drawDotGrid(
+  drawGrid(
     cameraMatrix: Float32Array,
     viewportBounds: { minX: number; minY: number; maxX: number; maxY: number },
     zoom: number,
   ): void {
-    this.dotGridRenderer.draw(cameraMatrix, viewportBounds, zoom);
+    if (this.gridStyle === "dots") {
+      this.dotGridRenderer.draw(cameraMatrix, viewportBounds, zoom);
+    } else if (this.gridStyle === "lines") {
+      this.lineGridRenderer.draw(cameraMatrix, viewportBounds, zoom);
+    }
+    // "none" — skip drawing
   }
 
   drawStroke(
@@ -82,6 +102,7 @@ export class Renderer {
   destroy(): void {
     this.strokeRenderer.destroy();
     this.dotGridRenderer.destroy();
+    this.lineGridRenderer.destroy();
     this.context.destroy();
   }
 }

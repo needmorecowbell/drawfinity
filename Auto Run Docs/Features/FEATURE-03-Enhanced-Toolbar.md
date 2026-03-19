@@ -23,7 +23,7 @@ Expand the toolbar to surface key drawing and navigation features that are curre
 
 ## Tasks
 
-- [ ] Refactor toolbar layout:
+- [x] Refactor toolbar layout:
   - Organize buttons into logical groups with subtle dividers:
     - **Tools:** Brush (hold → presets), Shapes (hold → rect/ellipse/polygon/star), Eraser, Pan/Zoom
     - **Properties:** Color, Fill color, Brush size, Opacity
@@ -32,7 +32,7 @@ Expand the toolbar to surface key drawing and navigation features that are curre
     - **Panels:** Home, Bookmarks, Turtle, Connection, Settings
   - Add CSS for group dividers (thin vertical line or gap)
 
-- [ ] Hold-to-select sub-tooling:
+- [x] Hold-to-select sub-tooling:
   - Create `src/ui/SubToolPicker.ts`:
     - A small popover that appears on long-press (~300ms) of a tool button
     - Shows sub-options in a grid or vertical list
@@ -42,14 +42,15 @@ Expand the toolbar to surface key drawing and navigation features that are curre
     - The button icon updates to reflect the last-used sub-tool
   - Implement hold detection: `pointerdown` starts a timer, `pointerup` before 300ms = quick click, after 300ms = show picker
 
-- [ ] Pan/Zoom tool button:
+- [x] Pan/Zoom tool button:
   - Add a hand/grab icon button to the tools group
   - Click activates pan mode: sets `CameraController` to pan-only mode, changes cursor to grab/grabbing
   - Click again (or press another tool) exits pan mode
   - While pan tool is active, scroll wheel zooms (already works), left-click drags to pan
   - Show active state highlight when pan mode is on
+  - Added "G" keyboard shortcut to toggle pan tool (registered in ActionRegistry + CheatSheet)
 
-- [ ] Brush size slider:
+- [x] Brush size slider:
   - Add a brush-size button (shows current size as text, e.g., "2")
   - On click, show a popover with:
     - Horizontal slider (range 0.5 to 64)
@@ -58,19 +59,21 @@ Expand the toolbar to surface key drawing and navigation features that are curre
   - Changes update `ToolManager`, `StrokeCapture`, and `CursorManager` in real time
   - The slider should respond to pointer drag (Wacom-friendly)
 
-- [ ] Opacity slider:
+- [x] Opacity slider:
   - Add an opacity button (shows current opacity, e.g., "100%")
   - On click, show a popover with a slider (0-100%)
   - Changes update the active brush's opacity curve
   - Consider: opacity affects new strokes only, not existing ones
+  - Implemented: `OpacitySlider` component in `src/ui/OpacitySlider.ts` with popover, slider, preset buttons (25/50/75/100%), and dismiss-on-click-outside. Opacity stored in `ToolManager` and applied as a multiplier on the brush's `opacityCurve`. Shape opacity also updated. 24 new tests added.
 
-- [ ] Grid toggle:
+- [x] Grid toggle:
   - Add a grid icon button
   - Click toggles the dot grid background on/off
   - Visual indicator: button appears pressed/highlighted when grid is on
   - Store grid visibility preference in UserPreferences
+  - Implemented: Trigram icon (☷) button in navigation group with `.active` highlight when grid is on. `Ctrl+'` keyboard shortcut registered in ActionRegistry. `gridVisible` field added to `UserPreferences` (persisted to localStorage/config). Conditional `drawDotGrid()` call in render loop. 7 new tests added.
 
-- [ ] Export:
+- [x] Export:
   - Add an export/download button (arrow-down icon)
   - On click, show a dialog with options:
     - Scope: "Current viewport" or "Fit all content"
@@ -79,12 +82,14 @@ Expand the toolbar to surface key drawing and navigation features that are curre
     - Background: include background color (yes/no)
   - Implementation: render to an offscreen canvas at the chosen resolution, then trigger a download via `<a download>` or Tauri save dialog
   - In browser mode, use `canvas.toBlob()` → `URL.createObjectURL()` → download link
+  - Implemented: `ExportDialog` component in `src/ui/ExportDialog.ts` with popover containing scope, resolution, and background options. `ExportRenderer` in `src/ui/ExportRenderer.ts` handles offscreen WebGL2 rendering (based on ThumbnailGenerator pattern) with `computeContentBounds` for fit-all and viewport matrix pass-through for current-view export. `downloadCanvas` uses blob URL + anchor download pattern. `Ctrl+Shift+E` keyboard shortcut registered. 36 new tests added (22 ExportDialog + 14 ExportRenderer).
 
-- [ ] Zoom controls:
+- [x] Zoom controls:
   - Add zoom in (+) and zoom out (-) buttons
   - Add a "fit all" button (magnifying glass with arrows) — computes bounds of all content and animates camera to fit
   - The existing zoom percentage display stays and is clickable → reset to 100%
   - All zoom actions use `CameraAnimator` for smooth transitions
+  - Implemented: Zoom out (−), zoom display (clickable → reset), zoom in (+), and fit-all (⤢) buttons in navigation group. All use `CameraAnimator` for smooth animated transitions. Fit-all computes content bounds from strokes and shapes. Registered `fit-all` action in ActionRegistry. 9 new tests added.
 
 - [ ] Tooltip system:
   - Show tooltips on hover for all toolbar buttons

@@ -14,20 +14,20 @@ Allow users to set a background color for each canvas. In collaborative sessions
 
 ## Tasks
 
-- [ ] Add document metadata to CRDT layer:
+- [x] Add document metadata to CRDT layer:
   - Add a `Y.Map<string>` named `"meta"` to `DrawfinityDoc`
   - `getBackgroundColor(): string` — reads from meta map, defaults to `"#FAFAF8"` (current off-white)
   - `setBackgroundColor(color: string): void` — writes to meta map in a transaction
   - `onMetaChanged(callback): void` — observe the meta map for changes
   - Ensure undo/redo does NOT affect background color changes (exclude meta map from UndoManager scope)
 
-- [ ] Update renderer for dynamic background:
+- [x] Update renderer for dynamic background:
   - `WebGLContext.setClearColor(hex: string)` — parse hex and call `gl.clearColor()`
   - Update `DotGridRenderer` to accept a foreground color parameter
   - Auto-compute dot grid color: if background luminance > 0.5 use dark dots (`rgba(0,0,0,0.15)`), otherwise light dots (`rgba(255,255,255,0.2)`)
   - Wire `onMetaChanged` in CanvasApp render loop to update clear color and dot grid when background changes
 
-- [ ] Add background color UI to toolbar:
+- [x] Add background color UI to toolbar:
   - Add a background color button/swatch to the toolbar (distinct from stroke color)
   - On click, show a dropdown with:
     - Preset palette: white, off-white, light gray, dark gray, black, cream, light blue, light green, light pink, light yellow, navy, dark green, dark red, dark purple, slate, warm gray
@@ -35,15 +35,16 @@ Allow users to set a background color for each canvas. In collaborative sessions
   - Selecting a color calls `doc.setBackgroundColor()`
   - The swatch should display the current background color
 
-- [ ] Sync background color in collaboration:
+- [x] Sync background color in collaboration:
   - Background color changes propagate automatically via Yjs (shared map)
   - On initial sync (joining a room), read and apply the existing background color
   - Verify: two clients in the same room see background change in real time
 
-- [ ] Persist background color:
+- [x] Persist background color:
   - Tauri mode: background color is part of the Yjs doc state, already persisted by AutoSave
   - Browser mode: same — stored in the base64-encoded Yjs state in localStorage
   - No additional persistence logic needed beyond what exists
+  - ✅ Verified: meta Y.Map is part of Y.Doc; AutoSave's `doc.on("update")` handler and browser localStorage fallback both use `Y.encodeStateAsUpdate()` which includes the meta map automatically
 
 - [ ] Tests:
   - Unit tests for `getBackgroundColor`/`setBackgroundColor` on DrawfinityDoc

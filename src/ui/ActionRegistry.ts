@@ -16,6 +16,9 @@ export const ACTION_CATEGORIES: readonly ActionCategory[] = [
   "File",
 ];
 
+// Future: action IDs can serve as slash-command names (e.g., /export, /turtle).
+// The search() method already matches against action.id, and get()/execute()
+// support direct ID lookup, providing the foundation for a command-line interface.
 export class ActionRegistry {
   private actions: Map<string, Action> = new Map();
 

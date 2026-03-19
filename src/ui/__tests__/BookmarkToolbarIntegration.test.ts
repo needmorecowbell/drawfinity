@@ -54,8 +54,19 @@ describe("Bookmark Toolbar Integration", () => {
   });
 
   describe("Ctrl+D quick-add behavior", () => {
-    it("addBookmark() captures current camera position", () => {
+    it("addBookmark() shows inline input pre-filled with default label", () => {
       panel.addBookmark();
+
+      const input = document.querySelector(".bm-edit-input") as HTMLInputElement;
+      expect(input).not.toBeNull();
+      expect(input.value).toBe("Bookmark 1");
+    });
+
+    it("addBookmark() captures current camera position on confirm", () => {
+      panel.addBookmark();
+
+      const input = document.querySelector(".bm-edit-input") as HTMLInputElement;
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
 
       const bookmarks = doc.getBookmarks();
       expect(bookmarks.length).toBe(1);
@@ -65,9 +76,10 @@ describe("Bookmark Toolbar Integration", () => {
     });
 
     it("addBookmark() uses auto-incrementing default label", () => {
-      panel.addBookmark();
-      panel.addBookmark();
-      panel.addBookmark();
+      // Add three bookmarks by confirming each input
+      panel.addBookmark("Bookmark 1");
+      panel.addBookmark("Bookmark 2");
+      panel.addBookmark("Bookmark 3");
 
       const bookmarks = doc.getBookmarks();
       expect(bookmarks[0].label).toBe("Bookmark 1");
@@ -87,11 +99,13 @@ describe("Bookmark Toolbar Integration", () => {
       expect(panel.isVisible()).toBe(true);
     });
 
-    it("addBookmark() with custom label uses that label", () => {
+    it("addBookmark() with custom label creates immediately without input", () => {
       panel.addBookmark("My Custom View");
 
       const bookmarks = doc.getBookmarks();
       expect(bookmarks[0].label).toBe("My Custom View");
+      // No input should be shown
+      expect(document.querySelector(".bm-adding")).toBeNull();
     });
   });
 
@@ -177,7 +191,7 @@ describe("Bookmark Toolbar Integration", () => {
       document.removeEventListener("keydown", handler);
     });
 
-    it("simulated Ctrl+D dispatches addBookmark", () => {
+    it("simulated Ctrl+D dispatches addBookmark and shows input", () => {
       const handler = (e: KeyboardEvent) => {
         const mod = e.ctrlKey || e.metaKey;
         if (mod && (e.key === "d" || e.key === "D") && !e.shiftKey) {
@@ -192,8 +206,13 @@ describe("Bookmark Toolbar Integration", () => {
         ctrlKey: true,
         bubbles: true,
       }));
-      expect(doc.getBookmarks().length).toBe(1);
       expect(panel.isVisible()).toBe(true);
+      // Input is shown for naming
+      const input = document.querySelector(".bm-edit-input") as HTMLInputElement;
+      expect(input).not.toBeNull();
+      // Confirm to create the bookmark
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      expect(doc.getBookmarks().length).toBe(1);
 
       document.removeEventListener("keydown", handler);
     });

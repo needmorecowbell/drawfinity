@@ -19,6 +19,7 @@ export class BookmarkPanel {
   private camera: Camera;
   private callbacks: BookmarkPanelCallbacks;
   private editingId: string | null = null;
+  private pendingAdd = false;
 
   constructor(
     doc: DrawfinityDoc,
@@ -71,7 +72,11 @@ export class BookmarkPanel {
     this.listEl.innerHTML = "";
     const bookmarks = this.doc.getBookmarks();
 
-    if (bookmarks.length === 0) {
+    if (this.pendingAdd) {
+      this.listEl.appendChild(this.createAddInput(bookmarks.length));
+    }
+
+    if (bookmarks.length === 0 && !this.pendingAdd) {
       const empty = document.createElement("div");
       empty.className = "bm-empty";
       empty.textContent = "No bookmarks yet \u2014 click + to save your current view";
@@ -165,10 +170,44 @@ export class BookmarkPanel {
     return item;
   }
 
-  addBookmark(label?: string): void {
-    const bookmarks = this.doc.getBookmarks();
-    const nextNum = bookmarks.length + 1;
-    const finalLabel = label ?? `Bookmark ${nextNum}`;
+  private createAddInput(existingCount: number): HTMLElement {
+    const item = document.createElement("div");
+    item.className = "bm-item bm-adding";
+
+    const input = document.createElement("input");
+    input.className = "bm-edit-input";
+    input.type = "text";
+    input.value = `Bookmark ${existingCount + 1}`;
+    input.placeholder = "Bookmark name";
+    input.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+      if (e.key === "Enter") {
+        this.confirmAdd(input.value.trim());
+      } else if (e.key === "Escape") {
+        this.cancelAdd();
+      }
+    });
+    input.addEventListener("blur", () => {
+      // Only confirm on blur if we're still in pending state
+      if (this.pendingAdd) {
+        this.confirmAdd(input.value.trim());
+      }
+    });
+    item.appendChild(input);
+
+    requestAnimationFrame(() => {
+      input.focus();
+      input.select();
+    });
+
+    return item;
+  }
+
+  private confirmAdd(label: string): void {
+    if (!this.pendingAdd) return;
+    this.pendingAdd = false;
+
+    const finalLabel = label || `Bookmark ${this.doc.getBookmarks().length + 1}`;
 
     const bookmark: CameraBookmark = {
       id: generateBookmarkId(),
@@ -182,9 +221,37 @@ export class BookmarkPanel {
     };
 
     this.doc.addBookmark(bookmark);
+    // renderList will be triggered by onBookmarksChanged
+  }
 
+  private cancelAdd(): void {
+    if (!this.pendingAdd) return;
+    this.pendingAdd = false;
+    this.renderList();
+  }
+
+  addBookmark(label?: string): void {
     if (!this.visible) {
       this.show();
+    }
+
+    if (label) {
+      // Direct add with specified label (no input needed)
+      const bookmark: CameraBookmark = {
+        id: generateBookmarkId(),
+        label,
+        x: this.camera.x,
+        y: this.camera.y,
+        zoom: this.camera.zoom,
+        createdBy: this.callbacks.getUserId?.() ?? "local",
+        createdByName: this.callbacks.getUserName?.(),
+        createdAt: Date.now(),
+      };
+      this.doc.addBookmark(bookmark);
+    } else {
+      // Show inline input for label entry
+      this.pendingAdd = true;
+      this.renderList();
     }
   }
 

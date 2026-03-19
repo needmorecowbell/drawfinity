@@ -137,7 +137,7 @@ export class CanvasApp {
       };
     }
 
-    // Apply initial background color from document metadata
+    // Apply initial background color and grid style from document/preferences
     this.renderer.setBackgroundColor(this.doc.getBackgroundColor());
 
     // React to background color changes (from local or remote edits)
@@ -171,6 +171,7 @@ export class CanvasApp {
       this.toolManager.setBrush(BRUSH_PRESETS[userPreferences.defaultBrush]);
     }
     this.toolManager.setColor(userPreferences.defaultColor);
+    this.renderer.setGridStyle(userPreferences.gridStyle ?? "dots");
 
     this.strokeCapture = new StrokeCapture(this.camera, this.cameraController, this.doc, canvas);
     this.strokeCapture.setBrushConfig(this.toolManager.getBrush());
@@ -271,6 +272,7 @@ export class CanvasApp {
         this.strokeCapture.setColor(preferences.defaultColor);
         this.shapeCapture.setConfig({ strokeColor: preferences.defaultColor });
         this.toolbar.setColorUI(preferences.defaultColor);
+        this.renderer.setGridStyle(preferences.gridStyle ?? "dots");
         this.updateUserColorIndicator(userProfile);
       },
     });
@@ -353,7 +355,7 @@ export class CanvasApp {
       this.remoteCursors.updatePositions();
 
       const viewportBounds = this.camera.getViewportBounds();
-      this.renderer.drawDotGrid(cameraMatrix, viewportBounds, this.camera.zoom);
+      this.renderer.drawGrid(cameraMatrix, viewportBounds, this.camera.zoom);
 
       const allStrokes = this.doc.getStrokes();
       const visibleStrokes = this.spatialIndex.query(viewportBounds);

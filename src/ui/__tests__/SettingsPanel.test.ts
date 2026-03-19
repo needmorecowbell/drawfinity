@@ -260,4 +260,66 @@ describe("SettingsPanel", () => {
     input.dispatchEvent(event);
     expect(stopSpy).toHaveBeenCalled();
   });
+
+  it("renders grid style dropdown with default 'dots'", () => {
+    panel.show();
+    const select = document.querySelector(".settings-select") as HTMLSelectElement;
+    expect(select).not.toBeNull();
+    expect(select.value).toBe("dots");
+    expect(select.options.length).toBe(3);
+  });
+
+  it("grid style dropdown has correct options", () => {
+    panel.show();
+    const select = document.querySelector(".settings-select") as HTMLSelectElement;
+    const values = Array.from(select.options).map((o) => o.value);
+    expect(values).toEqual(["dots", "lines", "none"]);
+    const labels = Array.from(select.options).map((o) => o.textContent);
+    expect(labels).toEqual(["Dot Grid", "Line Grid", "None"]);
+  });
+
+  it("saving with grid style includes it in preferences", () => {
+    panel.show();
+    const select = document.querySelector(".settings-select") as HTMLSelectElement;
+    select.value = "lines";
+    select.dispatchEvent(new Event("change"));
+
+    const saveBtn = document.querySelector(".settings-btn-primary") as HTMLButtonElement;
+    saveBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+    const [, savedPrefs] = (vi.mocked(onSaveSpy)).mock.calls[0];
+    expect(savedPrefs.gridStyle).toBe("lines");
+  });
+
+  it("saving with grid style 'none' persists correctly", () => {
+    panel.show();
+    const select = document.querySelector(".settings-select") as HTMLSelectElement;
+    select.value = "none";
+    select.dispatchEvent(new Event("change"));
+
+    const saveBtn = document.querySelector(".settings-btn-primary") as HTMLButtonElement;
+    saveBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+    const [, savedPrefs] = (vi.mocked(onSaveSpy)).mock.calls[0];
+    expect(savedPrefs.gridStyle).toBe("none");
+  });
+
+  it("updatePreferences updates grid style select", () => {
+    panel.show();
+    panel.updatePreferences({ defaultBrush: 0, defaultColor: "#000000", gridStyle: "lines" });
+
+    const select = document.querySelector(".settings-select") as HTMLSelectElement;
+    expect(select.value).toBe("lines");
+  });
+
+  it("grid style initialized from preferences", () => {
+    panel.destroy();
+    const prefs = makePreferences();
+    prefs.gridStyle = "none";
+    panel = new SettingsPanel(makeProfile(), prefs, callbacks);
+    panel.show();
+
+    const select = document.querySelector(".settings-select") as HTMLSelectElement;
+    expect(select.value).toBe("none");
+  });
 });

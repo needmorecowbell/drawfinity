@@ -649,6 +649,23 @@ html, body {
   border-color: #0066FF;
 }
 
+.settings-select {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: system-ui, -apple-system, sans-serif;
+  outline: none;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.settings-select:focus {
+  border-color: #0066FF;
+}
+
 .settings-color-row {
   display: flex;
   gap: 6px;

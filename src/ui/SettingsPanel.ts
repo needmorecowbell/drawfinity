@@ -1,5 +1,6 @@
 import { UserProfile } from "../user/UserProfile";
 import { UserPreferences } from "../user/UserPreferences";
+import type { GridStyle } from "../user/UserPreferences";
 import { USER_COLORS, saveProfile } from "../user/UserStore";
 import { savePreferences } from "../user/UserPreferences";
 import { BRUSH_PRESETS } from "../tools/BrushPresets";
@@ -17,6 +18,7 @@ export class SettingsPanel {
   private colorSwatches: HTMLButtonElement[] = [];
   private brushPresetButtons: HTMLButtonElement[] = [];
   private serverUrlInput!: HTMLInputElement;
+  private gridStyleSelect!: HTMLSelectElement;
   private saveDirectoryDisplay!: HTMLSpanElement;
   private saveDirectoryContainer!: HTMLDivElement;
 
@@ -26,6 +28,7 @@ export class SettingsPanel {
 
   private selectedColor: string;
   private selectedBrushIndex: number;
+  private selectedGridStyle: GridStyle;
 
   constructor(
     profile: UserProfile,
@@ -37,6 +40,7 @@ export class SettingsPanel {
     this.callbacks = callbacks;
     this.selectedColor = profile.color;
     this.selectedBrushIndex = preferences.defaultBrush;
+    this.selectedGridStyle = preferences.gridStyle ?? "dots";
 
     this.overlay = document.createElement("div");
     this.overlay.id = "settings-overlay";
@@ -117,6 +121,32 @@ export class SettingsPanel {
       this.brushPresetButtons.push(btn);
     }
     this.panel.appendChild(brushRow);
+
+    // Grid style dropdown
+    const gridLabel = document.createElement("label");
+    gridLabel.className = "settings-label";
+    gridLabel.textContent = "Grid Style";
+    this.panel.appendChild(gridLabel);
+
+    this.gridStyleSelect = document.createElement("select");
+    this.gridStyleSelect.className = "settings-select";
+    const gridOptions: { value: GridStyle; label: string }[] = [
+      { value: "dots", label: "Dot Grid" },
+      { value: "lines", label: "Line Grid" },
+      { value: "none", label: "None" },
+    ];
+    for (const opt of gridOptions) {
+      const option = document.createElement("option");
+      option.value = opt.value;
+      option.textContent = opt.label;
+      this.gridStyleSelect.appendChild(option);
+    }
+    this.gridStyleSelect.value = this.selectedGridStyle;
+    this.gridStyleSelect.addEventListener("change", () => {
+      this.selectedGridStyle = this.gridStyleSelect.value as GridStyle;
+    });
+    this.gridStyleSelect.addEventListener("pointerdown", (e) => e.stopPropagation());
+    this.panel.appendChild(this.gridStyleSelect);
 
     // Server URL
     const serverLabel = document.createElement("label");
@@ -206,6 +236,7 @@ export class SettingsPanel {
     const updatedPreferences: UserPreferences = {
       ...this.preferences,
       defaultBrush: this.selectedBrushIndex,
+      gridStyle: this.selectedGridStyle,
       serverUrl,
     };
 
@@ -231,6 +262,10 @@ export class SettingsPanel {
   updatePreferences(preferences: UserPreferences): void {
     this.preferences = { ...preferences };
     this.selectedBrushIndex = preferences.defaultBrush;
+    this.selectedGridStyle = preferences.gridStyle ?? "dots";
+    if (this.gridStyleSelect) {
+      this.gridStyleSelect.value = this.selectedGridStyle;
+    }
     if (this.serverUrlInput) {
       this.serverUrlInput.value = preferences.serverUrl ?? "";
     }

@@ -29,3 +29,5 @@ export type { ExportScope, ExportOptions } from "./ExportRenderer";
 export { ToolbarOverflow } from "./ToolbarOverflow";
 export type { ToolbarOverflowConfig } from "./ToolbarOverflow";
 export { ICONS } from "./ToolbarIcons";
+export { BookmarkPanel } from "./BookmarkPanel";
+export type { BookmarkPanelCallbacks } from "./BookmarkPanel";

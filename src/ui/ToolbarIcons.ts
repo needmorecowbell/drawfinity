@@ -91,4 +91,13 @@ export const ICONS = {
 
   /** Highlighter preset — angled broad tip */
   highlighter: svg('<path d="M18 2l4 4-9.5 9.5-4-4z" fill="currentColor" opacity="0.25"/><path d="M12.5 15.5L8.5 11.5 2 22l10.5-6.5z"/>'),
+
+  /** Bookmark / flag icon */
+  bookmark: svg('<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>'),
+
+  /** Small pencil for inline edit */
+  pencilSmall: svg('<path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/>'),
+
+  /** Small trash can for delete */
+  trashSmall: svg('<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'),
 } as const;

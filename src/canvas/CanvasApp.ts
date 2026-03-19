@@ -137,6 +137,14 @@ export class CanvasApp {
       };
     }
 
+    // Apply initial background color from document metadata
+    this.renderer.setBackgroundColor(this.doc.getBackgroundColor());
+
+    // React to background color changes (from local or remote edits)
+    this.doc.onMetaChanged(() => {
+      this.renderer.setBackgroundColor(this.doc.getBackgroundColor());
+    });
+
     this.spatialIndex = new SpatialIndex();
     this.spatialIndex.rebuildAll(this.doc.getStrokes(), this.doc.getShapes());
 

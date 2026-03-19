@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { DotGridRenderer } from "../DotGridRenderer";
+import { DotGridRenderer, hexLuminance, autoContrastDotColor } from "../DotGridRenderer";
 
 function createMockGL(): WebGL2RenderingContext {
   const gl = {
@@ -90,11 +90,72 @@ describe("DotGridRenderer", () => {
     expect(gl.drawArrays).toHaveBeenCalled();
   });
 
+  it("setDotColor updates the dot color used in draw calls", () => {
+    const newColor: [number, number, number, number] = [1.0, 1.0, 1.0, 0.2];
+    renderer.setDotColor(newColor);
+
+    const cameraMatrix = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
+    const bounds = { minX: -100, minY: -100, maxX: 100, maxY: 100 };
+    renderer.draw(cameraMatrix, bounds, 1);
+
+    // The uniform4fv call should use the new color
+    expect(gl.uniform4fv).toHaveBeenCalledWith(expect.anything(), newColor);
+  });
+
   it("cleans up GL resources on destroy", () => {
     renderer.destroy();
 
     expect(gl.deleteBuffer).toHaveBeenCalled();
     expect(gl.deleteVertexArray).toHaveBeenCalled();
     expect(gl.deleteProgram).toHaveBeenCalled();
+  });
+});
+
+describe("hexLuminance", () => {
+  it("returns ~1 for white", () => {
+    expect(hexLuminance("#FFFFFF")).toBeCloseTo(1.0, 2);
+  });
+
+  it("returns 0 for black", () => {
+    expect(hexLuminance("#000000")).toBeCloseTo(0.0, 2);
+  });
+
+  it("returns higher luminance for light colors", () => {
+    expect(hexLuminance("#FAFAF8")).toBeGreaterThan(0.5);
+  });
+
+  it("returns lower luminance for dark colors", () => {
+    expect(hexLuminance("#1A1A2E")).toBeLessThan(0.5);
+  });
+
+  it("handles hex without #", () => {
+    expect(hexLuminance("FF0000")).toBeGreaterThan(0);
+  });
+});
+
+describe("autoContrastDotColor", () => {
+  it("returns dark dots for light backgrounds", () => {
+    const color = autoContrastDotColor("#FFFFFF");
+    expect(color).toEqual([0.0, 0.0, 0.0, 0.15]);
+  });
+
+  it("returns dark dots for off-white background", () => {
+    const color = autoContrastDotColor("#FAFAF8");
+    expect(color).toEqual([0.0, 0.0, 0.0, 0.15]);
+  });
+
+  it("returns light dots for black background", () => {
+    const color = autoContrastDotColor("#000000");
+    expect(color).toEqual([1.0, 1.0, 1.0, 0.2]);
+  });
+
+  it("returns light dots for dark navy background", () => {
+    const color = autoContrastDotColor("#1A1A2E");
+    expect(color).toEqual([1.0, 1.0, 1.0, 0.2]);
+  });
+
+  it("returns dark dots for light blue background", () => {
+    const color = autoContrastDotColor("#ADD8E6");
+    expect(color).toEqual([0.0, 0.0, 0.0, 0.15]);
   });
 });

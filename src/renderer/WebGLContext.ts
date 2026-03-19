@@ -17,8 +17,8 @@ export class WebGLContext {
     }
     this.gl = gl;
 
-    // Off-white clear color: #FAFAF8
-    this.gl.clearColor(250 / 255, 250 / 255, 248 / 255, 1.0);
+    // Default off-white clear color: #FAFAF8
+    this.setClearColor("#FAFAF8");
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(canvas);
@@ -37,6 +37,14 @@ export class WebGLContext {
       this.canvas.height = drawHeight;
       this.gl.viewport(0, 0, drawWidth, drawHeight);
     }
+  }
+
+  setClearColor(hex: string): void {
+    const h = hex.replace("#", "");
+    const r = parseInt(h.substring(0, 2), 16) / 255;
+    const g = parseInt(h.substring(2, 4), 16) / 255;
+    const b = parseInt(h.substring(4, 6), 16) / 255;
+    this.gl.clearColor(r, g, b, 1.0);
   }
 
   clear(): void {

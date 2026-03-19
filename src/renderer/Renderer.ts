@@ -1,6 +1,6 @@
 import { WebGLContext } from "./WebGLContext";
 import { StrokeRenderer, StrokePoint } from "./StrokeRenderer";
-import { DotGridRenderer } from "./DotGridRenderer";
+import { DotGridRenderer, autoContrastDotColor } from "./DotGridRenderer";
 import { StrokeVertexCache } from "./StrokeVertexCache";
 import { ShapeVertexCache } from "./ShapeVertexCache";
 
@@ -29,6 +29,11 @@ export class Renderer {
 
   get canvas(): HTMLCanvasElement {
     return this.context.canvas;
+  }
+
+  setBackgroundColor(hex: string): void {
+    this.context.setClearColor(hex);
+    this.dotGridRenderer.setDotColor(autoContrastDotColor(hex));
   }
 
   clear(): void {

@@ -355,7 +355,7 @@ describe("Toolbar", () => {
     toolbar.destroy();
     toolbar = new Toolbar(callbacks);
     const helpBtn = document.querySelector(".help-btn") as HTMLButtonElement;
-    helpBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    helpBtn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(callbacks.onCheatSheet).toHaveBeenCalled();
   });
 

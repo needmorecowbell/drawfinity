@@ -300,7 +300,7 @@ export class Toolbar {
     this.helpButton.className = "toolbar-btn help-btn";
     this.helpButton.title = "Keyboard shortcuts (Ctrl+?)";
     this.helpButton.textContent = "?";
-    this.helpButton.addEventListener("pointerdown", (e) => {
+    this.helpButton.addEventListener("click", (e) => {
       e.stopPropagation();
       this.callbacks.onCheatSheet?.();
     });

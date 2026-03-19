@@ -46,8 +46,9 @@ Allow users to set a background color for each canvas. In collaborative sessions
   - No additional persistence logic needed beyond what exists
   - ✅ Verified: meta Y.Map is part of Y.Doc; AutoSave's `doc.on("update")` handler and browser localStorage fallback both use `Y.encodeStateAsUpdate()` which includes the meta map automatically
 
-- [ ] Tests:
+- [x] Tests:
   - Unit tests for `getBackgroundColor`/`setBackgroundColor` on DrawfinityDoc
   - Unit test for auto-contrast dot grid color computation
   - Unit test for toolbar background color UI
   - Integration test: set background in one client, verify it appears in another (via shared Y.Doc)
+  - ✅ Verified: All 77 background-color tests pass across 3 test files (DrawfinityDocMeta: 21, DotGridRenderer: 20, Toolbar: 46 incl. 12 bg-specific). Full suite: 795/795 passing.

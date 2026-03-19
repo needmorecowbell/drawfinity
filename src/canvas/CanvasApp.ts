@@ -9,6 +9,8 @@ import { StrokeCapture, ShapeCapture } from "../input";
 import { ToolManager, BRUSH_PRESETS, isShapeTool } from "../tools";
 import type { ToolType } from "../tools";
 import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel } from "../ui";
+import { ActionRegistry } from "../ui/ActionRegistry";
+import { CheatSheet } from "../ui/CheatSheet";
 import { CursorManager } from "../ui/CursorManager";
 import { FpsCounter } from "../ui/FpsCounter";
 import { SyncManager } from "../sync";
@@ -46,6 +48,8 @@ export class CanvasApp {
   private settingsPanel!: SettingsPanel;
   private cursorManager!: CursorManager;
   private fpsCounter!: FpsCounter;
+  private actionRegistry!: ActionRegistry;
+  private cheatSheet!: CheatSheet;
   private autoSave!: { start(): void; stop(): void; saveNow(): Promise<void> | void };
   private canvas!: HTMLCanvasElement;
   private resizeObserver!: ResizeObserver;
@@ -254,6 +258,11 @@ export class CanvasApp {
       },
     });
 
+    // Action registry + cheat sheet
+    this.actionRegistry = new ActionRegistry();
+    this.registerActions();
+    this.cheatSheet = new CheatSheet(this.actionRegistry);
+
     // Settings gear button
     this.settingsButton = document.createElement("button");
     this.settingsButton.className = "toolbar-btn settings-btn";
@@ -410,6 +419,7 @@ export class CanvasApp {
     this.toolbar.destroy();
     this.connectionPanel.destroy();
     this.settingsPanel.destroy();
+    this.cheatSheet.destroy();
     this.fpsCounter.destroy();
     this.settingsButton.remove();
     this.userColorIndicator.remove();
@@ -509,6 +519,58 @@ export class CanvasApp {
     this.userColorIndicator.title = profile.name;
   }
 
+  private registerActions(): void {
+    const r = this.actionRegistry;
+
+    // Tools
+    r.register({ id: "tool-brush", label: "Brush", shortcut: "B", category: "Tools", execute: () => this.switchTool("brush") });
+    r.register({ id: "tool-eraser", label: "Eraser", shortcut: "E", category: "Tools", execute: () => this.switchTool("eraser") });
+    r.register({ id: "tool-rectangle", label: "Rectangle", shortcut: "R", category: "Tools", execute: () => this.switchTool("rectangle") });
+    r.register({ id: "tool-ellipse", label: "Ellipse", shortcut: "O", category: "Tools", execute: () => this.switchTool("ellipse") });
+    r.register({ id: "tool-polygon", label: "Polygon", shortcut: "P", category: "Tools", execute: () => this.switchTool("polygon") });
+    r.register({ id: "tool-star", label: "Star", shortcut: "S", category: "Tools", execute: () => this.switchTool("star") });
+
+    // Drawing
+    r.register({ id: "brush-preset-1", label: "Pen preset", shortcut: "1", category: "Drawing", execute: () => this.switchBrush(0) });
+    r.register({ id: "brush-preset-2", label: "Pencil preset", shortcut: "2", category: "Drawing", execute: () => this.switchBrush(1) });
+    r.register({ id: "brush-preset-3", label: "Marker preset", shortcut: "3", category: "Drawing", execute: () => this.switchBrush(2) });
+    r.register({ id: "brush-preset-4", label: "Highlighter preset", shortcut: "4", category: "Drawing", execute: () => this.switchBrush(3) });
+    r.register({ id: "brush-size-down", label: "Decrease brush size", shortcut: "[", category: "Drawing", execute: () => {
+      const brush = this.toolManager.getBrush();
+      brush.baseWidth = Math.max(0.5, brush.baseWidth - 1);
+      this.strokeCapture.setBrushConfig(brush);
+      this.shapeCapture.setConfig({ strokeWidth: brush.baseWidth });
+      this.cursorManager.setBrushWidth(brush.baseWidth);
+    }});
+    r.register({ id: "brush-size-up", label: "Increase brush size", shortcut: "]", category: "Drawing", execute: () => {
+      const brush = this.toolManager.getBrush();
+      brush.baseWidth = Math.min(64, brush.baseWidth + 1);
+      this.strokeCapture.setBrushConfig(brush);
+      this.shapeCapture.setConfig({ strokeWidth: brush.baseWidth });
+      this.cursorManager.setBrushWidth(brush.baseWidth);
+    }});
+    r.register({ id: "undo", label: "Undo", shortcut: "Ctrl+Z", category: "Drawing", execute: () => this.doUndo() });
+    r.register({ id: "redo", label: "Redo", shortcut: "Ctrl+Shift+Z", category: "Drawing", execute: () => this.doRedo() });
+
+    // Navigation
+    r.register({ id: "zoom-in", label: "Zoom in", shortcut: "Ctrl+=", category: "Navigation", execute: () => {
+      const [vw, vh] = this.camera.getViewportSize();
+      this.cameraAnimator.animateZoomTo(this.camera.zoom * 1.5, vw / 2, vh / 2);
+    }});
+    r.register({ id: "zoom-out", label: "Zoom out", shortcut: "Ctrl+\u2212", category: "Navigation", execute: () => {
+      const [vw, vh] = this.camera.getViewportSize();
+      this.cameraAnimator.animateZoomTo(this.camera.zoom / 1.5, vw / 2, vh / 2);
+    }});
+    r.register({ id: "zoom-reset", label: "Reset zoom", shortcut: "Ctrl+0", category: "Navigation", execute: () => this.cameraAnimator.animateZoomCentered(1) });
+    r.register({ id: "go-home", label: "Go home", shortcut: "Escape", category: "Navigation", execute: () => this.callbacks.onGoHome?.() });
+
+    // Panels
+    r.register({ id: "toggle-connection", label: "Connection panel", shortcut: "Ctrl+K", category: "Panels", execute: () => this.connectionPanel.toggle() });
+    r.register({ id: "toggle-settings", label: "Settings", shortcut: "Ctrl+,", category: "Panels", execute: () => this.settingsPanel.toggle() });
+    r.register({ id: "toggle-cheatsheet", label: "Keyboard shortcuts", shortcut: "Ctrl+?", category: "Panels", execute: () => this.cheatSheet.toggle() });
+    r.register({ id: "toggle-fps", label: "FPS counter", shortcut: "F3", category: "Panels", execute: () => this.fpsCounter.toggle() });
+  }
+
   private handleKeydown(e: KeyboardEvent): void {
     const mod = e.ctrlKey || e.metaKey;
 
@@ -538,6 +600,12 @@ export class CanvasApp {
     if (mod && e.key === ",") {
       e.preventDefault();
       this.settingsPanel.toggle();
+      return;
+    }
+
+    if (mod && e.key === "?") {
+      e.preventDefault();
+      this.cheatSheet.toggle();
       return;
     }
 

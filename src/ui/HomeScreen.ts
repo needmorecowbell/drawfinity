@@ -3,6 +3,8 @@ import type { RoomInfo } from "../sync/ServerApi";
 import { fetchRooms, createRoom, ServerApiError } from "../sync/ServerApi";
 import { loadPreferences, savePreferences } from "../user/UserPreferences";
 import { loadProfile } from "../user/UserStore";
+import { ActionRegistry } from "./ActionRegistry";
+import { CheatSheet } from "./CheatSheet";
 
 export interface HomeScreenCallbacks {
   onOpenDrawing: (id: string) => void;
@@ -64,6 +66,8 @@ export class HomeScreen {
   private sharedStatus: SharedConnectionStatus = "disconnected";
   private lastServerUrl = "";
 
+  private cheatSheet: CheatSheet;
+  private boundKeydown = this.handleKeydown.bind(this);
   private boundCloseContextMenu = this.closeContextMenu.bind(this);
 
   constructor(callbacks: HomeScreenCallbacks) {
@@ -292,6 +296,49 @@ export class HomeScreen {
     }
 
     this.container.appendChild(this.saveDirectoryRow);
+
+    // Cheat sheet (reference-only — shows canvas shortcuts)
+    const registry = new ActionRegistry();
+    this.registerReferenceActions(registry);
+    this.cheatSheet = new CheatSheet(registry);
+  }
+
+  private registerReferenceActions(r: ActionRegistry): void {
+    const noop = () => {};
+    // Tools
+    r.register({ id: "tool-brush", label: "Brush", shortcut: "B", category: "Tools", execute: noop });
+    r.register({ id: "tool-eraser", label: "Eraser", shortcut: "E", category: "Tools", execute: noop });
+    r.register({ id: "tool-rectangle", label: "Rectangle", shortcut: "R", category: "Tools", execute: noop });
+    r.register({ id: "tool-ellipse", label: "Ellipse", shortcut: "O", category: "Tools", execute: noop });
+    r.register({ id: "tool-polygon", label: "Polygon", shortcut: "P", category: "Tools", execute: noop });
+    r.register({ id: "tool-star", label: "Star", shortcut: "S", category: "Tools", execute: noop });
+    // Drawing
+    r.register({ id: "brush-preset-1", label: "Pen preset", shortcut: "1", category: "Drawing", execute: noop });
+    r.register({ id: "brush-preset-2", label: "Pencil preset", shortcut: "2", category: "Drawing", execute: noop });
+    r.register({ id: "brush-preset-3", label: "Marker preset", shortcut: "3", category: "Drawing", execute: noop });
+    r.register({ id: "brush-preset-4", label: "Highlighter preset", shortcut: "4", category: "Drawing", execute: noop });
+    r.register({ id: "brush-size-down", label: "Decrease brush size", shortcut: "[", category: "Drawing", execute: noop });
+    r.register({ id: "brush-size-up", label: "Increase brush size", shortcut: "]", category: "Drawing", execute: noop });
+    r.register({ id: "undo", label: "Undo", shortcut: "Ctrl+Z", category: "Drawing", execute: noop });
+    r.register({ id: "redo", label: "Redo", shortcut: "Ctrl+Shift+Z", category: "Drawing", execute: noop });
+    // Navigation
+    r.register({ id: "zoom-in", label: "Zoom in", shortcut: "Ctrl+=", category: "Navigation", execute: noop });
+    r.register({ id: "zoom-out", label: "Zoom out", shortcut: "Ctrl+\u2212", category: "Navigation", execute: noop });
+    r.register({ id: "zoom-reset", label: "Reset zoom", shortcut: "Ctrl+0", category: "Navigation", execute: noop });
+    r.register({ id: "go-home", label: "Go home", shortcut: "Escape", category: "Navigation", execute: noop });
+    // Panels
+    r.register({ id: "toggle-connection", label: "Connection panel", shortcut: "Ctrl+K", category: "Panels", execute: noop });
+    r.register({ id: "toggle-settings", label: "Settings", shortcut: "Ctrl+,", category: "Panels", execute: noop });
+    r.register({ id: "toggle-cheatsheet", label: "Keyboard shortcuts", shortcut: "Ctrl+?", category: "Panels", execute: () => this.cheatSheet.toggle() });
+    r.register({ id: "toggle-fps", label: "FPS counter", shortcut: "F3", category: "Panels", execute: noop });
+  }
+
+  private handleKeydown(e: KeyboardEvent): void {
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && e.key === "?") {
+      e.preventDefault();
+      this.cheatSheet.toggle();
+    }
   }
 
   setDrawings(drawings: DrawingMetadata[]): void {
@@ -311,6 +358,7 @@ export class HomeScreen {
     }
     this.container.style.display = "flex";
     document.addEventListener("pointerdown", this.boundCloseContextMenu);
+    document.addEventListener("keydown", this.boundKeydown);
   }
 
   hide(): void {
@@ -318,7 +366,9 @@ export class HomeScreen {
     this.visible = false;
     this.container.style.display = "none";
     this.closeContextMenu();
+    this.cheatSheet.hide();
     document.removeEventListener("pointerdown", this.boundCloseContextMenu);
+    document.removeEventListener("keydown", this.boundKeydown);
   }
 
   isVisible(): boolean {
@@ -327,6 +377,7 @@ export class HomeScreen {
 
   destroy(): void {
     this.hide();
+    this.cheatSheet.destroy();
     this.container.innerHTML = "";
   }
 

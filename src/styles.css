@@ -953,6 +953,18 @@ html, body {
   line-height: 1.4;
 }
 
+/* Turtle Indicator */
+.turtle-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  will-change: transform;
+  z-index: 6;
+  line-height: 0;
+  color: #000000;
+}
+
 /* Settings Panel */
 #settings-overlay {
   position: fixed;

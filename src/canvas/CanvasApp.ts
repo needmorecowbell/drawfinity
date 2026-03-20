@@ -8,7 +8,7 @@ import { DrawfinityDoc, UndoManager } from "../crdt";
 import { StrokeCapture, ShapeCapture, MagnifyCapture } from "../input";
 import { ToolManager, BRUSH_PRESETS, isShapeTool } from "../tools";
 import type { ToolType } from "../tools";
-import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel } from "../ui";
+import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel, TurtlePanel } from "../ui";
 import { ICONS } from "../ui/ToolbarIcons";
 import { renderExport, downloadCanvas } from "../ui/ExportRenderer";
 import type { ExportDialogResult } from "../ui/ExportDialog";
@@ -50,6 +50,8 @@ export class CanvasApp {
   private connectionPanel!: ConnectionPanel;
   private remoteCursors!: RemoteCursors;
   private settingsPanel!: SettingsPanel;
+  private turtlePanel!: TurtlePanel;
+  private turtleButton!: HTMLButtonElement;
   private cursorManager!: CursorManager;
   private fpsCounter!: FpsCounter;
   private actionRegistry!: ActionRegistry;
@@ -334,6 +336,26 @@ export class CanvasApp {
     this.registerActions();
     this.cheatSheet = new CheatSheet(this.actionRegistry);
 
+    // Turtle panel
+    this.turtlePanel = new TurtlePanel(drawingId, {
+      onRun: () => this.turtleButton.classList.add("turtle-executing"),
+      onStop: () => this.turtleButton.classList.remove("turtle-executing"),
+    });
+
+    // Turtle toolbar button
+    this.turtleButton = document.createElement("button");
+    this.turtleButton.className = "toolbar-btn turtle-btn";
+    this.turtleButton.title = "Turtle graphics (Ctrl+`)";
+    this.turtleButton.innerHTML = ICONS.turtle;
+    this.turtleButton.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.turtlePanel.toggle();
+    });
+    const panelsGroup = this.toolbar.getGroup("panels");
+    if (panelsGroup) {
+      panelsGroup.appendChild(this.turtleButton);
+    }
+
     // Settings gear button
     this.settingsButton = document.createElement("button");
     this.settingsButton.className = "toolbar-btn settings-btn";
@@ -343,7 +365,6 @@ export class CanvasApp {
       e.stopPropagation();
       this.settingsPanel.toggle();
     });
-    const panelsGroup = this.toolbar.getGroup("panels");
     if (panelsGroup) {
       panelsGroup.appendChild(this.settingsButton);
     }
@@ -490,9 +511,11 @@ export class CanvasApp {
     this.toolbar.destroy();
     this.connectionPanel.destroy();
     this.settingsPanel.destroy();
+    this.turtlePanel.destroy();
     this.cheatSheet.destroy();
     this.fpsCounter.destroy();
     this.settingsButton.remove();
+    this.turtleButton.remove();
     this.userColorIndicator.remove();
 
     if (this.connectionStateUnsubscribe) {
@@ -746,6 +769,7 @@ export class CanvasApp {
     // Panels
     r.register({ id: "toggle-connection", label: "Connection panel", shortcut: "Ctrl+K", category: "Panels", execute: () => this.connectionPanel.toggle() });
     r.register({ id: "toggle-settings", label: "Settings", shortcut: "Ctrl+,", category: "Panels", execute: () => this.settingsPanel.toggle() });
+    r.register({ id: "toggle-turtle", label: "Turtle graphics", shortcut: "Ctrl+`", category: "Panels", execute: () => this.turtlePanel.toggle() });
     r.register({ id: "toggle-cheatsheet", label: "Keyboard shortcuts", shortcut: "Ctrl+?", category: "Panels", execute: () => this.cheatSheet.toggle() });
     r.register({ id: "toggle-grid", label: "Toggle grid", shortcut: "Ctrl+'", category: "Navigation", execute: () => this.toggleGrid() });
     r.register({ id: "toggle-fps", label: "FPS counter", shortcut: "F3", category: "Panels", execute: () => this.fpsCounter.toggle() });
@@ -785,6 +809,12 @@ export class CanvasApp {
     if (mod && e.key === ",") {
       e.preventDefault();
       this.settingsPanel.toggle();
+      return;
+    }
+
+    if (mod && e.key === "`") {
+      e.preventDefault();
+      this.turtlePanel.toggle();
       return;
     }
 

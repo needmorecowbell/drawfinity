@@ -91,4 +91,7 @@ export const ICONS = {
 
   /** Highlighter preset — angled broad tip */
   highlighter: svg('<path d="M18 2l4 4-9.5 9.5-4-4z" fill="currentColor" opacity="0.25"/><path d="M12.5 15.5L8.5 11.5 2 22l10.5-6.5z"/>'),
+
+  /** Turtle — stylized turtle for turtle graphics mode */
+  turtle: svg('<ellipse cx="12" cy="13" rx="7" ry="5"/><circle cx="12" cy="13" r="4" fill="currentColor" opacity="0.15"/><circle cx="19" cy="11" r="2"/><circle cx="8" cy="18" r="1.2"/><circle cx="16" cy="18" r="1.2"/><circle cx="7" cy="9" r="1.2"/><circle cx="17" cy="9" r="1.2"/>'),
 } as const;

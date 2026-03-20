@@ -132,6 +132,7 @@ Each module has an `index.ts` barrel. Import from the barrel (`from "./renderer"
 | `Escape` | Return to home screen |
 | `Ctrl+K` | Toggle connection panel |
 | `Ctrl+,` | Toggle settings panel |
+| `` Ctrl+` `` | Toggle turtle graphics panel |
 | `F3` | Toggle FPS counter |
 | Middle mouse drag | Pan |
 | Scroll wheel | Zoom (discrete steps) |

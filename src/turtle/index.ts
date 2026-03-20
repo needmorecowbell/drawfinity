@@ -8,3 +8,4 @@ export type {
 export { LuaRuntime } from "./LuaRuntime";
 export type { PenState, TurtleSnapshot, MovementSegment } from "./TurtleState";
 export { TurtleState } from "./TurtleState";
+export { TurtleDrawing } from "./TurtleDrawing";

@@ -8,7 +8,8 @@ import { DrawfinityDoc, UndoManager } from "../crdt";
 import { StrokeCapture, ShapeCapture, MagnifyCapture } from "../input";
 import { ToolManager, BRUSH_PRESETS, isShapeTool } from "../tools";
 import type { ToolType } from "../tools";
-import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel } from "../ui";
+import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel, TurtlePanel, BookmarkPanel } from "../ui";
+import { LuaRuntime, TurtleState, TurtleDrawing, TurtleExecutor, TurtleIndicator } from "../turtle";
 import { ICONS } from "../ui/ToolbarIcons";
 import { renderExport, downloadCanvas } from "../ui/ExportRenderer";
 import type { ExportDialogResult } from "../ui/ExportDialog";
@@ -50,6 +51,15 @@ export class CanvasApp {
   private connectionPanel!: ConnectionPanel;
   private remoteCursors!: RemoteCursors;
   private settingsPanel!: SettingsPanel;
+  private turtlePanel!: TurtlePanel;
+  private turtleButton!: HTMLButtonElement;
+  private turtleRuntime!: LuaRuntime;
+  private turtleState!: TurtleState;
+  private turtleDrawing!: TurtleDrawing;
+  private turtleExecutor!: TurtleExecutor;
+  private turtleIndicator!: TurtleIndicator;
+  private turtlePlacing = false;
+  private turtleOriginPlaced = false;
   private cursorManager!: CursorManager;
   private fpsCounter!: FpsCounter;
   private actionRegistry!: ActionRegistry;
@@ -61,6 +71,8 @@ export class CanvasApp {
   private keydownHandler!: (e: KeyboardEvent) => void;
   private pointermoveHandler!: (e: PointerEvent) => void;
   private beforeUnloadHandler!: () => void;
+  private bookmarkPanel!: BookmarkPanel;
+  private bookmarkButton!: HTMLButtonElement;
   private settingsButton!: HTMLButtonElement;
   private userColorIndicator!: HTMLDivElement;
   private connectionStateUnsubscribe: (() => void) | null = null;
@@ -329,10 +341,141 @@ export class CanvasApp {
       },
     });
 
+    // Bookmark panel
+    this.bookmarkPanel = new BookmarkPanel(this.doc, this.camera, {
+      onNavigate: (bm) => {
+        this.cameraAnimator.animateTo(bm.x, bm.y, bm.zoom);
+      },
+      getUserId: () => userProfile.id ?? "local",
+      getUserName: () => userProfile.name,
+      resolveUserName: (userId) => {
+        const remoteUsers = this.syncManager.getRemoteUsers();
+        const found = remoteUsers.find((u) => u.id === userId);
+        return found?.name;
+      },
+      isCollaborating: () => this.syncManager.getConnectionState() === "connected",
+    });
+
+    // Refresh bookmark panel when remote users change (to update creator names)
+    this.syncManager.onRemoteUsersChange(() => {
+      if (this.bookmarkPanel.isVisible()) {
+        this.bookmarkPanel.refreshList();
+      }
+    });
+
     // Action registry + cheat sheet
     this.actionRegistry = new ActionRegistry();
     this.registerActions();
     this.cheatSheet = new CheatSheet(this.actionRegistry);
+
+    // Bookmark toggle button (in navigation group)
+    this.bookmarkButton = document.createElement("button");
+    this.bookmarkButton.className = "toolbar-btn bookmark-btn";
+    this.bookmarkButton.title = "Bookmarks (Ctrl+B)";
+    this.bookmarkButton.innerHTML = ICONS.bookmark;
+    this.bookmarkButton.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.bookmarkPanel.toggle();
+    });
+    const navGroup = this.toolbar.getGroup("navigation");
+    if (navGroup) {
+      navGroup.appendChild(this.bookmarkButton);
+    }
+
+    // Turtle graphics pipeline
+    this.turtleRuntime = new LuaRuntime();
+    this.turtleState = new TurtleState();
+    this.turtleDrawing = new TurtleDrawing(this.doc);
+    this.turtleIndicator = new TurtleIndicator(canvas.parentElement!, this.camera, this.turtleState);
+    this.turtleExecutor = new TurtleExecutor(this.turtleRuntime, this.turtleState, this.turtleDrawing, {
+      onPrint: (msg) => this.turtlePanel.appendConsole(msg, "output"),
+      onStart: () => {
+        this.turtlePanel.setRunning(true);
+        this.turtleButton.classList.add("turtle-executing");
+        this.turtleIndicator.show();
+      },
+      onStep: () => {
+        this.turtleIndicator.update();
+      },
+      onComplete: (result) => {
+        this.turtlePanel.setRunning(false);
+        this.turtleButton.classList.remove("turtle-executing");
+        this.turtleIndicator.hide();
+        if (!result.success && result.error) {
+          this.turtlePanel.appendConsole(`Error: ${result.error}`, "error");
+        } else {
+          this.turtlePanel.appendConsole("Done.", "info");
+        }
+      },
+    });
+    this.turtleRuntime.init();
+
+    this.turtlePanel = new TurtlePanel(drawingId, {
+      onRun: (script) => {
+        this.turtlePanel.clearConsole();
+        // Only set origin to camera center if not explicitly placed
+        if (!this.turtleOriginPlaced) {
+          this.turtleState.setOrigin(this.camera.x, this.camera.y);
+        }
+        this.turtleExecutor.run(script);
+      },
+      onStop: () => {
+        this.turtleExecutor.stop();
+      },
+      onSpeedChange: (speed) => {
+        this.turtleState.speed = speed;
+      },
+      onPlaceRequest: () => {
+        this.turtlePlacing = !this.turtlePlacing;
+        this.turtlePanel.setPlacing(this.turtlePlacing);
+        if (this.turtlePlacing) {
+          this.turtlePanel.hide();
+          canvas.style.cursor = "crosshair";
+          const clickHandler = (e: PointerEvent) => {
+            if (!this.turtlePlacing) return;
+            const rect = canvas.getBoundingClientRect();
+            const screenX = e.clientX - rect.left;
+            const screenY = e.clientY - rect.top;
+            const [vw, vh] = this.camera.getViewportSize();
+            const worldX = (screenX - vw / 2) / this.camera.zoom + this.camera.x;
+            const worldY = (screenY - vh / 2) / this.camera.zoom + this.camera.y;
+            this.turtleState.setOrigin(worldX, worldY);
+            this.turtleState.x = worldX;
+            this.turtleState.y = worldY;
+            this.turtleOriginPlaced = true;
+            this.turtlePlacing = false;
+            this.turtlePanel.setPlacing(false);
+            canvas.style.cursor = "";
+            this.cursorManager.updateCursor();
+            // Flash the indicator briefly at the placed position
+            this.turtleIndicator.show();
+            setTimeout(() => {
+              if (!this.turtleExecutor.isRunning()) {
+                this.turtleIndicator.hide();
+              }
+            }, 1500);
+            this.turtlePanel.show();
+            this.turtlePanel.appendConsole(`Origin set to (${Math.round(worldX)}, ${Math.round(worldY)})`, "info");
+            canvas.removeEventListener("pointerdown", clickHandler);
+          };
+          canvas.addEventListener("pointerdown", clickHandler);
+        }
+      },
+    });
+
+    // Turtle toolbar button
+    this.turtleButton = document.createElement("button");
+    this.turtleButton.className = "toolbar-btn turtle-btn";
+    this.turtleButton.title = "Turtle graphics (Ctrl+`)";
+    this.turtleButton.innerHTML = ICONS.turtle;
+    this.turtleButton.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.turtlePanel.toggle();
+    });
+    const panelsGroup = this.toolbar.getGroup("panels");
+    if (panelsGroup) {
+      panelsGroup.appendChild(this.turtleButton);
+    }
 
     // Settings gear button
     this.settingsButton = document.createElement("button");
@@ -343,7 +486,6 @@ export class CanvasApp {
       e.stopPropagation();
       this.settingsPanel.toggle();
     });
-    const panelsGroup = this.toolbar.getGroup("panels");
     if (panelsGroup) {
       panelsGroup.appendChild(this.settingsButton);
     }
@@ -490,9 +632,15 @@ export class CanvasApp {
     this.toolbar.destroy();
     this.connectionPanel.destroy();
     this.settingsPanel.destroy();
+    this.bookmarkPanel.destroy();
+    this.turtlePanel.destroy();
+    this.turtleIndicator.destroy();
+    this.turtleRuntime.close();
     this.cheatSheet.destroy();
     this.fpsCounter.destroy();
+    this.bookmarkButton.remove();
     this.settingsButton.remove();
+    this.turtleButton.remove();
     this.userColorIndicator.remove();
 
     if (this.connectionStateUnsubscribe) {
@@ -744,8 +892,11 @@ export class CanvasApp {
     r.register({ id: "go-home", label: "Go home", shortcut: "Escape", category: "Navigation", execute: () => this.callbacks.onGoHome?.() });
 
     // Panels
+    r.register({ id: "toggle-bookmarks", label: "Bookmarks panel", shortcut: "Ctrl+B", category: "Panels", execute: () => this.bookmarkPanel.toggle() });
+    r.register({ id: "quick-add-bookmark", label: "Add bookmark", shortcut: "Ctrl+D", category: "Panels", execute: () => this.bookmarkPanel.addBookmark() });
     r.register({ id: "toggle-connection", label: "Connection panel", shortcut: "Ctrl+K", category: "Panels", execute: () => this.connectionPanel.toggle() });
     r.register({ id: "toggle-settings", label: "Settings", shortcut: "Ctrl+,", category: "Panels", execute: () => this.settingsPanel.toggle() });
+    r.register({ id: "toggle-turtle", label: "Turtle graphics", shortcut: "Ctrl+`", category: "Panels", execute: () => this.turtlePanel.toggle() });
     r.register({ id: "toggle-cheatsheet", label: "Keyboard shortcuts", shortcut: "Ctrl+?", category: "Panels", execute: () => this.cheatSheet.toggle() });
     r.register({ id: "toggle-grid", label: "Toggle grid", shortcut: "Ctrl+'", category: "Navigation", execute: () => this.toggleGrid() });
     r.register({ id: "toggle-fps", label: "FPS counter", shortcut: "F3", category: "Panels", execute: () => this.fpsCounter.toggle() });
@@ -776,6 +927,18 @@ export class CanvasApp {
       return;
     }
 
+    if (mod && (e.key === "b" || e.key === "B") && !e.shiftKey) {
+      e.preventDefault();
+      this.bookmarkPanel.toggle();
+      return;
+    }
+
+    if (mod && (e.key === "d" || e.key === "D") && !e.shiftKey) {
+      e.preventDefault();
+      this.bookmarkPanel.addBookmark();
+      return;
+    }
+
     if (mod && e.key === "k") {
       e.preventDefault();
       this.connectionPanel.toggle();
@@ -785,6 +948,12 @@ export class CanvasApp {
     if (mod && e.key === ",") {
       e.preventDefault();
       this.settingsPanel.toggle();
+      return;
+    }
+
+    if (mod && e.key === "`") {
+      e.preventDefault();
+      this.turtlePanel.toggle();
       return;
     }
 

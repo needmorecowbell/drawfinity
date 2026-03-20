@@ -14,6 +14,18 @@ export class CameraAnimator {
   // Animated transition target (null = no active animation)
   private target: { x: number; y: number; zoom: number } | null = null;
 
+  // Time-based animation state (null = no timed animation)
+  private timedAnim: {
+    startX: number;
+    startY: number;
+    startLogZoom: number;
+    endX: number;
+    endY: number;
+    endLogZoom: number;
+    startTime: number;
+    duration: number;
+  } | null = null;
+
   // Momentum pan state (world-space velocity per frame)
   private momentumVx = 0;
   private momentumVy = 0;
@@ -25,13 +37,18 @@ export class CameraAnimator {
   private readonly snapPosThreshold = 0.01;
   private readonly minMomentum = 0.05;
 
-  constructor(camera: Camera) {
+  // Injectable time source for testing
+  private now: () => number;
+
+  constructor(camera: Camera, now?: () => number) {
     this.camera = camera;
+    this.now = now ?? (() => performance.now());
   }
 
   /** Stop all running animations (call when user begins direct manipulation). */
   interrupt(): void {
     this.target = null;
+    this.timedAnim = null;
     this.momentumVx = 0;
     this.momentumVy = 0;
   }
@@ -84,6 +101,30 @@ export class CameraAnimator {
   }
 
   /**
+   * Animate the camera to an exact position and zoom over a fixed duration.
+   * Uses ease-in-out timing, log-space zoom interpolation, and linear pan.
+   * Interruptible — any user pan/zoom cancels the animation.
+   */
+  animateTo(x: number, y: number, zoom: number, durationMs = 500): void {
+    const clampedZoom = Math.min(
+      Camera.MAX_ZOOM,
+      Math.max(Camera.MIN_ZOOM, zoom),
+    );
+    // Clear any lerp-based target so they don't fight
+    this.target = null;
+    this.timedAnim = {
+      startX: this.camera.x,
+      startY: this.camera.y,
+      startLogZoom: Math.log(this.camera.zoom),
+      endX: x,
+      endY: y,
+      endLogZoom: Math.log(clampedZoom),
+      startTime: this.now(),
+      duration: Math.max(1, durationMs),
+    };
+  }
+
+  /**
    * Animate to fit a world-space bounding box within the viewport,
    * with optional pixel padding around the edges.
    */
@@ -117,9 +158,15 @@ export class CameraAnimator {
   get isAnimating(): boolean {
     return (
       this.target !== null ||
+      this.timedAnim !== null ||
       Math.abs(this.momentumVx) > this.minMomentum ||
       Math.abs(this.momentumVy) > this.minMomentum
     );
+  }
+
+  /** Cubic ease-in-out: smooth acceleration and deceleration. */
+  private static easeInOut(t: number): number {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
   }
 
   /**
@@ -142,6 +189,29 @@ export class CameraAnimator {
     } else {
       this.momentumVx = 0;
       this.momentumVy = 0;
+    }
+
+    // --- Time-based animation (animateTo) ---
+    if (this.timedAnim) {
+      const a = this.timedAnim;
+      const elapsed = this.now() - a.startTime;
+      const rawT = Math.min(1, elapsed / a.duration);
+      const t = CameraAnimator.easeInOut(rawT);
+
+      this.camera.x = a.startX + (a.endX - a.startX) * t;
+      this.camera.y = a.startY + (a.endY - a.startY) * t;
+      this.camera.zoom = Math.exp(
+        a.startLogZoom + (a.endLogZoom - a.startLogZoom) * t,
+      );
+
+      if (rawT >= 1) {
+        // Snap to exact final values
+        this.camera.x = a.endX;
+        this.camera.y = a.endY;
+        this.camera.zoom = Math.exp(a.endLogZoom);
+        this.timedAnim = null;
+      }
+      moved = true;
     }
 
     // --- Animated zoom + position transition ---

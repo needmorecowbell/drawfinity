@@ -72,7 +72,7 @@ describe("TurtleExecutor", () => {
   beforeEach(() => {
     doc = new MockDocument();
     state = new TurtleState();
-    drawing = new TurtleDrawing(doc, 1);
+    drawing = new TurtleDrawing(doc);
     runtime = new FakeLuaRuntime();
     vi.useFakeTimers();
   });

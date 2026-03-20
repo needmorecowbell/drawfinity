@@ -11,8 +11,6 @@ import type { TurtleState } from "./TurtleState";
  */
 export class TurtleIndicator {
   private container: HTMLElement;
-  private svgEl: SVGSVGElement;
-  private pathEl: SVGPathElement;
   private camera: Camera;
   private state: TurtleState;
   private visible = false;
@@ -30,8 +28,6 @@ export class TurtleIndicator {
     svg.setAttribute("height", "24");
     svg.setAttribute("viewBox", "0 0 24 24");
     svg.style.overflow = "visible";
-    this.svgEl = svg;
-
     // Triangle pointing up: tip at (12,2), base at (4,22) and (20,22)
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", "M12 2L4 22L12 17L20 22Z");
@@ -39,7 +35,6 @@ export class TurtleIndicator {
     path.setAttribute("stroke", "white");
     path.setAttribute("stroke-width", "1.5");
     path.setAttribute("stroke-linejoin", "round");
-    this.pathEl = path;
 
     svg.appendChild(path);
     this.container.appendChild(svg);

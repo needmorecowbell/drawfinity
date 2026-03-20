@@ -9,6 +9,7 @@ import { StrokeCapture, ShapeCapture, MagnifyCapture } from "../input";
 import { ToolManager, BRUSH_PRESETS, isShapeTool } from "../tools";
 import type { ToolType } from "../tools";
 import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel, TurtlePanel, BookmarkPanel } from "../ui";
+import { LuaRuntime, TurtleState, TurtleDrawing, TurtleExecutor, TurtleIndicator } from "../turtle";
 import { ICONS } from "../ui/ToolbarIcons";
 import { renderExport, downloadCanvas } from "../ui/ExportRenderer";
 import type { ExportDialogResult } from "../ui/ExportDialog";
@@ -52,6 +53,13 @@ export class CanvasApp {
   private settingsPanel!: SettingsPanel;
   private turtlePanel!: TurtlePanel;
   private turtleButton!: HTMLButtonElement;
+  private turtleRuntime!: LuaRuntime;
+  private turtleState!: TurtleState;
+  private turtleDrawing!: TurtleDrawing;
+  private turtleExecutor!: TurtleExecutor;
+  private turtleIndicator!: TurtleIndicator;
+  private turtlePlacing = false;
+  private turtleOriginPlaced = false;
   private cursorManager!: CursorManager;
   private fpsCounter!: FpsCounter;
   private actionRegistry!: ActionRegistry;
@@ -374,10 +382,85 @@ export class CanvasApp {
       navGroup.appendChild(this.bookmarkButton);
     }
 
-    // Turtle panel
+    // Turtle graphics pipeline
+    this.turtleRuntime = new LuaRuntime();
+    this.turtleState = new TurtleState();
+    this.turtleDrawing = new TurtleDrawing(this.doc);
+    this.turtleIndicator = new TurtleIndicator(canvas.parentElement!, this.camera, this.turtleState);
+    this.turtleExecutor = new TurtleExecutor(this.turtleRuntime, this.turtleState, this.turtleDrawing, {
+      onPrint: (msg) => this.turtlePanel.appendConsole(msg, "output"),
+      onStart: () => {
+        this.turtlePanel.setRunning(true);
+        this.turtleButton.classList.add("turtle-executing");
+        this.turtleIndicator.show();
+      },
+      onStep: () => {
+        this.turtleIndicator.update();
+      },
+      onComplete: (result) => {
+        this.turtlePanel.setRunning(false);
+        this.turtleButton.classList.remove("turtle-executing");
+        this.turtleIndicator.hide();
+        if (!result.success && result.error) {
+          this.turtlePanel.appendConsole(`Error: ${result.error}`, "error");
+        } else {
+          this.turtlePanel.appendConsole("Done.", "info");
+        }
+      },
+    });
+    this.turtleRuntime.init();
+
     this.turtlePanel = new TurtlePanel(drawingId, {
-      onRun: () => this.turtleButton.classList.add("turtle-executing"),
-      onStop: () => this.turtleButton.classList.remove("turtle-executing"),
+      onRun: (script) => {
+        this.turtlePanel.clearConsole();
+        // Only set origin to camera center if not explicitly placed
+        if (!this.turtleOriginPlaced) {
+          this.turtleState.setOrigin(this.camera.x, this.camera.y);
+        }
+        this.turtleExecutor.run(script);
+      },
+      onStop: () => {
+        this.turtleExecutor.stop();
+      },
+      onSpeedChange: (speed) => {
+        this.turtleState.speed = speed;
+      },
+      onPlaceRequest: () => {
+        this.turtlePlacing = !this.turtlePlacing;
+        this.turtlePanel.setPlacing(this.turtlePlacing);
+        if (this.turtlePlacing) {
+          this.turtlePanel.hide();
+          canvas.style.cursor = "crosshair";
+          const clickHandler = (e: PointerEvent) => {
+            if (!this.turtlePlacing) return;
+            const rect = canvas.getBoundingClientRect();
+            const screenX = e.clientX - rect.left;
+            const screenY = e.clientY - rect.top;
+            const [vw, vh] = this.camera.getViewportSize();
+            const worldX = (screenX - vw / 2) / this.camera.zoom + this.camera.x;
+            const worldY = (screenY - vh / 2) / this.camera.zoom + this.camera.y;
+            this.turtleState.setOrigin(worldX, worldY);
+            this.turtleState.x = worldX;
+            this.turtleState.y = worldY;
+            this.turtleOriginPlaced = true;
+            this.turtlePlacing = false;
+            this.turtlePanel.setPlacing(false);
+            canvas.style.cursor = "";
+            this.cursorManager.updateCursor();
+            // Flash the indicator briefly at the placed position
+            this.turtleIndicator.show();
+            setTimeout(() => {
+              if (!this.turtleExecutor.isRunning()) {
+                this.turtleIndicator.hide();
+              }
+            }, 1500);
+            this.turtlePanel.show();
+            this.turtlePanel.appendConsole(`Origin set to (${Math.round(worldX)}, ${Math.round(worldY)})`, "info");
+            canvas.removeEventListener("pointerdown", clickHandler);
+          };
+          canvas.addEventListener("pointerdown", clickHandler);
+        }
+      },
     });
 
     // Turtle toolbar button
@@ -551,6 +634,8 @@ export class CanvasApp {
     this.settingsPanel.destroy();
     this.bookmarkPanel.destroy();
     this.turtlePanel.destroy();
+    this.turtleIndicator.destroy();
+    this.turtleRuntime.close();
     this.cheatSheet.destroy();
     this.fpsCounter.destroy();
     this.bookmarkButton.remove();

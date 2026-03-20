@@ -37,7 +37,7 @@ describe("Turtle Integration", () => {
     await runtime.init();
     state = new TurtleState();
     doc = new MockDocument();
-    drawing = new TurtleDrawing(doc, 1.0);
+    drawing = new TurtleDrawing(doc);
   });
 
   afterEach(() => {

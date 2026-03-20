@@ -43,7 +43,7 @@ describe("TurtleDrawing", () => {
 
   beforeEach(() => {
     doc = new MockDocument();
-    drawing = new TurtleDrawing(doc, 1.0);
+    drawing = new TurtleDrawing(doc);
   });
 
   describe("single segment (no batching)", () => {
@@ -72,12 +72,11 @@ describe("TurtleDrawing", () => {
       expect(stroke.opacity).toBe(0.7);
     });
 
-    it("divides pen width by zoom", () => {
-      drawing.setZoom(2.0);
+    it("uses pen width directly as world units", () => {
       const seg = makeSegment(0, 0, 10, 10, { width: 6 });
       drawing.addSegment(seg, false);
 
-      expect(doc.strokes[0].width).toBe(3); // 6 / 2
+      expect(doc.strokes[0].width).toBe(6);
     });
 
     it("each non-batched segment creates a separate stroke", () => {
@@ -214,26 +213,6 @@ describe("TurtleDrawing", () => {
       const ids = drawing.getStrokeIds();
       ids.push("fake");
       expect(drawing.getStrokeIds()).toHaveLength(1);
-    });
-  });
-
-  describe("zoom interaction", () => {
-    it("applies zoom at the time of stroke creation", () => {
-      drawing.setZoom(1.0);
-      drawing.addSegment(makeSegment(0, 0, 10, 0, { width: 4 }), true);
-
-      drawing.setZoom(2.0);
-      drawing.flush();
-
-      // Width should use zoom=2.0 (the zoom at flush time)
-      expect(doc.strokes[0].width).toBe(2); // 4 / 2
-    });
-
-    it("non-batched segment uses current zoom", () => {
-      drawing.setZoom(4.0);
-      drawing.addSegment(makeSegment(0, 0, 10, 0, { width: 8 }), false);
-
-      expect(doc.strokes[0].width).toBe(2); // 8 / 4
     });
   });
 

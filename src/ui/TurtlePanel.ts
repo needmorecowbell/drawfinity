@@ -7,6 +7,8 @@ export interface TurtlePanelCallbacks {
   onStop?: () => void;
   /** Called when the speed slider changes. */
   onSpeedChange?: (speed: number) => void;
+  /** Called when the user wants to place the turtle on the canvas. */
+  onPlaceRequest?: () => void;
 }
 
 const STORAGE_KEY_PREFIX = "drawfinity:turtle-script:";
@@ -28,6 +30,7 @@ export class TurtlePanel {
   private stopBtn!: HTMLButtonElement;
   private speedSlider!: HTMLInputElement;
   private speedLabel!: HTMLSpanElement;
+  private placeBtn!: HTMLButtonElement;
   private clearConsoleBtn!: HTMLButtonElement;
   private callbacks: TurtlePanelCallbacks;
   private drawingId: string;
@@ -185,6 +188,17 @@ export class TurtlePanel {
     });
     bottomBar.appendChild(this.stopBtn);
 
+    // Place button — click to place turtle origin on canvas
+    this.placeBtn = document.createElement("button");
+    this.placeBtn.className = "turtle-btn turtle-btn-secondary";
+    this.placeBtn.textContent = "\u{1F4CD} Place";
+    this.placeBtn.title = "Click on canvas to set turtle starting position";
+    this.placeBtn.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.callbacks.onPlaceRequest?.();
+    });
+    bottomBar.appendChild(this.placeBtn);
+
     // Examples dropdown
     const examplesWrap = document.createElement("div");
     examplesWrap.className = "turtle-examples-wrap";
@@ -301,6 +315,12 @@ export class TurtlePanel {
     } else {
       this.runBtn.textContent = "\u25b6 Run";
     }
+  }
+
+  /** Update UI to reflect placement mode state. */
+  setPlacing(placing: boolean): void {
+    this.placeBtn.classList.toggle("active", placing);
+    this.placeBtn.textContent = placing ? "\u{1F4CD} Click canvas..." : "\u{1F4CD} Place";
   }
 
   /** Get current speed slider value. */

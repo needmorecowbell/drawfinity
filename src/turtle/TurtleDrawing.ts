@@ -8,20 +8,13 @@ import { MovementSegment, PenState } from "./TurtleState";
  */
 export class TurtleDrawing {
   private doc: DocumentModel;
-  private zoom: number;
   /** IDs of all strokes created by this turtle session. */
   private strokeIds: string[] = [];
   /** Pending segments being batched into a single stroke. */
   private pendingSegments: MovementSegment[] = [];
 
-  constructor(doc: DocumentModel, zoom: number) {
+  constructor(doc: DocumentModel) {
     this.doc = doc;
-    this.zoom = zoom;
-  }
-
-  /** Update the current zoom level (affects pen width scaling). */
-  setZoom(zoom: number): void {
-    this.zoom = zoom;
   }
 
   /**
@@ -88,7 +81,7 @@ export class TurtleDrawing {
       id: generateStrokeId(),
       points,
       color: pen.color,
-      width: pen.width / this.zoom,
+      width: pen.width,
       opacity: pen.opacity,
       timestamp: Date.now(),
     };

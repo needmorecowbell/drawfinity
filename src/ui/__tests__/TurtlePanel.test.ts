@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { TurtlePanel } from "../TurtlePanel";
+import { TURTLE_EXAMPLES } from "../../turtle";
 
 const storageMap = new Map<string, string>();
 beforeEach(() => {
@@ -220,7 +221,12 @@ describe("TurtlePanel", () => {
     panel.appendConsole("test");
     expect(document.querySelectorAll(".turtle-console-line").length).toBe(1);
 
-    const clearBtn = document.querySelector(".turtle-btn-secondary") as HTMLButtonElement;
+    // Find the Clear Console button specifically (last .turtle-btn-secondary)
+    const secondaryBtns = document.querySelectorAll(".turtle-btn-secondary");
+    const clearBtn = Array.from(secondaryBtns).find(
+      (btn) => btn.textContent === "Clear Console",
+    ) as HTMLButtonElement;
+    expect(clearBtn).not.toBeNull();
     clearBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
     expect(document.querySelectorAll(".turtle-console-line").length).toBe(0);
   });
@@ -229,5 +235,86 @@ describe("TurtlePanel", () => {
     panel.show();
     const handle = document.querySelector(".turtle-resize-handle");
     expect(handle).not.toBeNull();
+  });
+
+  describe("Examples dropdown", () => {
+    it("renders an Examples button", () => {
+      panel.show();
+      const btns = Array.from(document.querySelectorAll(".turtle-btn-secondary"));
+      const exBtn = btns.find((b) => b.textContent?.includes("Examples"));
+      expect(exBtn).not.toBeUndefined();
+    });
+
+    it("examples menu is hidden by default", () => {
+      panel.show();
+      const menu = document.querySelector(".turtle-examples-menu") as HTMLElement;
+      expect(menu).not.toBeNull();
+      expect(menu.style.display).toBe("none");
+    });
+
+    it("clicking Examples button toggles the menu", () => {
+      panel.show();
+      const btns = Array.from(document.querySelectorAll(".turtle-btn-secondary"));
+      const exBtn = btns.find((b) => b.textContent?.includes("Examples")) as HTMLButtonElement;
+      const menu = document.querySelector(".turtle-examples-menu") as HTMLElement;
+
+      exBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: false }));
+      expect(menu.style.display).toBe("flex");
+
+      exBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: false }));
+      expect(menu.style.display).toBe("none");
+    });
+
+    it("renders all example items in the menu", () => {
+      panel.show();
+      const items = document.querySelectorAll(".turtle-examples-item");
+      expect(items.length).toBe(TURTLE_EXAMPLES.length);
+    });
+
+    it("each item shows the example name", () => {
+      panel.show();
+      const names = document.querySelectorAll(".turtle-examples-item-name");
+      const nameTexts = Array.from(names).map((n) => n.textContent);
+      for (const example of TURTLE_EXAMPLES) {
+        expect(nameTexts).toContain(example.name);
+      }
+    });
+
+    it("clicking an example populates the editor with its script", () => {
+      panel.show();
+      const items = document.querySelectorAll(".turtle-examples-item");
+      const firstItem = items[0] as HTMLButtonElement;
+      firstItem.dispatchEvent(new PointerEvent("pointerdown", { bubbles: false }));
+      expect(panel.getScript()).toBe(TURTLE_EXAMPLES[0].script);
+    });
+
+    it("clicking an example closes the menu", () => {
+      panel.show();
+      const btns = Array.from(document.querySelectorAll(".turtle-btn-secondary"));
+      const exBtn = btns.find((b) => b.textContent?.includes("Examples")) as HTMLButtonElement;
+      const menu = document.querySelector(".turtle-examples-menu") as HTMLElement;
+
+      // Open menu first
+      exBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: false }));
+      expect(menu.style.display).toBe("flex");
+
+      // Click an example
+      const items = document.querySelectorAll(".turtle-examples-item");
+      (items[0] as HTMLButtonElement).dispatchEvent(
+        new PointerEvent("pointerdown", { bubbles: false }),
+      );
+      expect(menu.style.display).toBe("none");
+    });
+
+    it("selecting an example saves to localStorage", () => {
+      panel.show();
+      const items = document.querySelectorAll(".turtle-examples-item");
+      (items[0] as HTMLButtonElement).dispatchEvent(
+        new PointerEvent("pointerdown", { bubbles: false }),
+      );
+      expect(storageMap.get("drawfinity:turtle-script:test-drawing")).toBe(
+        TURTLE_EXAMPLES[0].script,
+      );
+    });
   });
 });

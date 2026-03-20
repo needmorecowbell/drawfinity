@@ -12,3 +12,5 @@ export { TurtleDrawing } from "./TurtleDrawing";
 export type { TurtleExecutorEvents } from "./TurtleExecutor";
 export { TurtleExecutor } from "./TurtleExecutor";
 export { TurtleIndicator } from "./TurtleIndicator";
+export type { TurtleExample } from "./TurtleExamples";
+export { TURTLE_EXAMPLES } from "./TurtleExamples";

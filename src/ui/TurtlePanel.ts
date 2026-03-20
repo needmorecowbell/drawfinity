@@ -1,3 +1,5 @@
+import { TURTLE_EXAMPLES } from "../turtle";
+
 export interface TurtlePanelCallbacks {
   /** Called when the user clicks Run. Receives the script text. */
   onRun?: (script: string) => void;
@@ -182,6 +184,46 @@ export class TurtlePanel {
       this.callbacks.onStop?.();
     });
     bottomBar.appendChild(this.stopBtn);
+
+    // Examples dropdown
+    const examplesWrap = document.createElement("div");
+    examplesWrap.className = "turtle-examples-wrap";
+
+    const examplesBtn = document.createElement("button");
+    examplesBtn.className = "turtle-btn turtle-btn-secondary";
+    examplesBtn.textContent = "Examples ▾";
+    examplesBtn.title = "Load an example script";
+
+    const examplesMenu = document.createElement("div");
+    examplesMenu.className = "turtle-examples-menu";
+    examplesMenu.style.display = "none";
+
+    for (const example of TURTLE_EXAMPLES) {
+      const item = document.createElement("button");
+      item.className = "turtle-examples-item";
+      item.innerHTML = `<span class="turtle-examples-item-name">${example.name}</span><span class="turtle-examples-item-desc">${example.description}</span>`;
+      item.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        this.setScript(example.script);
+        examplesMenu.style.display = "none";
+      });
+      examplesMenu.appendChild(item);
+    }
+
+    examplesBtn.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      const isOpen = examplesMenu.style.display !== "none";
+      examplesMenu.style.display = isOpen ? "none" : "flex";
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener("pointerdown", () => {
+      examplesMenu.style.display = "none";
+    });
+
+    examplesWrap.appendChild(examplesBtn);
+    examplesWrap.appendChild(examplesMenu);
+    bottomBar.appendChild(examplesWrap);
 
     // Speed control
     const speedWrap = document.createElement("div");

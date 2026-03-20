@@ -1889,6 +1889,55 @@ html, body {
   background: #45475a;
 }
 
+.turtle-examples-wrap {
+  position: relative;
+}
+
+.turtle-examples-menu {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 4px;
+  background: #1e1e2e;
+  border: 1px solid #45475a;
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 220px;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.4);
+  z-index: 10;
+}
+
+.turtle-examples-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.turtle-examples-item:hover {
+  background: #313244;
+}
+
+.turtle-examples-item-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #cdd6f4;
+}
+
+.turtle-examples-item-desc {
+  font-size: 11px;
+  color: #6c7086;
+}
+
 .turtle-speed-wrap {
   display: flex;
   align-items: center;

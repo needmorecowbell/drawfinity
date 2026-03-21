@@ -17,7 +17,15 @@ const LOD_BRACKETS: { maxZoom: number; tolerance: number }[] = [
 
 /**
  * Returns the LOD bracket index for a given zoom level.
- * Returns -1 for full detail (no simplification needed).
+ *
+ * Maps a camera zoom level to one of the predefined LOD brackets, each
+ * associated with a simplification tolerance. Lower brackets (0) correspond
+ * to far-out zoom levels with aggressive simplification, while higher
+ * brackets use finer tolerances.
+ *
+ * @param zoom - Current camera zoom level (e.g., 0.1 = zoomed out, 1.0 = 100%)
+ * @returns The bracket index (0–{@link LOD_BRACKET_COUNT}-1), or -1 if the
+ *   zoom level exceeds all brackets (full detail, no simplification needed)
  */
 export function getLODBracket(zoom: number): number {
   for (let i = 0; i < LOD_BRACKETS.length; i++) {

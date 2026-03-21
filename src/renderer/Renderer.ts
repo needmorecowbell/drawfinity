@@ -168,6 +168,13 @@ export class Renderer {
     this.strokeRenderer.drawStrokeBatch(strips);
   }
 
+  /**
+   * Releases all WebGL resources held by this renderer, including the stroke renderer,
+   * grid renderers, and the underlying WebGL context. Call this when the canvas is being
+   * removed from the DOM or the application is shutting down to avoid GPU memory leaks.
+   *
+   * After calling destroy(), this Renderer instance must not be used again.
+   */
   destroy(): void {
     this.strokeRenderer.destroy();
     this.dotGridRenderer.destroy();

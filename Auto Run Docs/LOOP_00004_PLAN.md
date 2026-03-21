@@ -15,7 +15,8 @@ related:
 
 ## Summary
 - **Total Gaps:** 108
-- **Auto-Document (PENDING):** 52
+- **Auto-Document (PENDING):** 0
+- **Auto-Document (IMPLEMENTED):** 52
 - **Needs Context:** 0
 - **Won't Do:** 56
 
@@ -30,7 +31,8 @@ related:
 ### renderer/ — Core Rendering Pipeline
 
 ### DOC-001: Renderer.setBackgroundColor
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00005
 - **File:** `src/renderer/Renderer.ts`
 - **Gap ID:** GAP-003
 - **Type:** Method
@@ -40,15 +42,16 @@ related:
   ```
   setBackgroundColor(color: string): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Sets the canvas background color
-  - [ ] Parameters: color (hex string)
-  - [ ] Returns: void
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Sets the canvas background color and adjusts grid colors for contrast
+  - [x] Parameters: hex (CSS hex color string)
+  - [x] Returns: void
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### DOC-002: Renderer.setGridStyle
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00005
 - **File:** `src/renderer/Renderer.ts`
 - **Gap ID:** GAP-004
 - **Type:** Method
@@ -58,15 +61,16 @@ related:
   ```
   setGridStyle(style: GridStyle): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Sets the grid rendering style
-  - [ ] Parameters: style (GridStyle enum)
-  - [ ] Returns: void
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Sets the grid rendering style
+  - [x] Parameters: style (GridStyle enum)
+  - [x] Returns: void
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### DOC-003: Renderer.clear
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00005
 - **File:** `src/renderer/Renderer.ts`
 - **Gap ID:** GAP-005
 - **Type:** Method
@@ -76,14 +80,15 @@ related:
   ```
   clear(): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Clears the rendering canvas
-  - [ ] Returns: void
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Clears the rendering canvas
+  - [x] Returns: void
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### DOC-004: Renderer.setCameraMatrix
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00005
 - **File:** `src/renderer/Renderer.ts`
 - **Gap ID:** GAP-006
 - **Type:** Method
@@ -93,15 +98,16 @@ related:
   ```
   setCameraMatrix(matrix: Float32Array): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Sets the camera transform matrix for rendering
-  - [ ] Parameters: matrix (3x3 Float32Array)
-  - [ ] Returns: void
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Sets the camera transform matrix for rendering
+  - [x] Parameters: matrix (3x3 Float32Array)
+  - [x] Returns: void
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### DOC-005: Renderer.drawGrid
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00006
 - **File:** `src/renderer/Renderer.ts`
 - **Gap ID:** GAP-007
 - **Type:** Method
@@ -109,17 +115,18 @@ related:
 - **Importance:** HIGH
 - **Signature:**
   ```
-  drawGrid(width: number, height: number, zoom: number, panX: number, panY: number): void
+  drawGrid(cameraMatrix: Float32Array, viewportBounds: { minX: number; minY: number; maxX: number; maxY: number }, zoom: number): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Renders the background grid
-  - [ ] Parameters: viewport dimensions, zoom level, pan offsets
-  - [ ] Returns: void
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Renders the background grid overlay using the configured GridStyle
+  - [x] Parameters: cameraMatrix, viewportBounds (with sub-properties), zoom
+  - [x] Returns: void
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### DOC-006: Renderer.drawStroke
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00006
 - **File:** `src/renderer/Renderer.ts`
 - **Gap ID:** GAP-008
 - **Type:** Method
@@ -129,15 +136,16 @@ related:
   ```
   drawStroke(...): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Renders a single stroke to the canvas
-  - [ ] Parameters: stroke data, vertex data
-  - [ ] Returns: void
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Renders a single stroke to the canvas as triangle strip geometry
+  - [x] Parameters: points (readonly StrokePoint[]), color (RGBA tuple), width (base world-space units)
+  - [x] Returns: void
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### DOC-007: Renderer.destroy
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00006
 - **File:** `src/renderer/Renderer.ts`
 - **Gap ID:** GAP-009
 - **Type:** Method
@@ -147,16 +155,17 @@ related:
   ```
   destroy(): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Cleans up WebGL resources
-  - [ ] Returns: void
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Cleans up WebGL resources
+  - [x] Returns: void
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### renderer/ — Spatial Index
 
 ### DOC-008: StrokePoint (interface)
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00006
 - **File:** `src/renderer/StrokeRenderer.ts`
 - **Gap ID:** GAP-020
 - **Type:** Interface
@@ -166,14 +175,15 @@ related:
   ```
   export interface StrokePoint { x, y, pressure }
   ```
-- **Documentation Plan:**
-  - [ ] Description: Point in a stroke with position and pressure
-  - [ ] Parameters: x, y, pressure fields
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Renderer-local stroke point with position and optional pressure
+  - [x] Parameters: x, y, pressure fields documented
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### DOC-009: AABB (interface)
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00006
 - **File:** `src/renderer/SpatialIndex.ts`
 - **Gap ID:** GAP-023
 - **Type:** Interface
@@ -183,14 +193,15 @@ related:
   ```
   export interface AABB { minX, minY, maxX, maxY }
   ```
-- **Documentation Plan:**
-  - [ ] Description: Axis-aligned bounding box for spatial queries
-  - [ ] Parameters: minX, minY, maxX, maxY fields
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Axis-aligned bounding box for spatial queries and viewport culling
+  - [x] Parameters: minX, minY, maxX, maxY fields documented with descriptions
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### DOC-010: computeStrokeBounds
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/renderer/SpatialIndex.ts`
 - **Gap ID:** GAP-024
 - **Type:** Function
@@ -200,15 +211,16 @@ related:
   ```
   export function computeStrokeBounds(stroke: Stroke): AABB
   ```
-- **Documentation Plan:**
-  - [ ] Description: Computes bounding box for a stroke
-  - [ ] Parameters: stroke
-  - [ ] Returns: AABB
+- **Documentation Added:**
+  - [x] Description: Computes bounding box for a stroke, expanding by stroke width
+  - [x] Parameters: stroke documented with edge-case note
+  - [x] Returns: AABB
   - [ ] Examples: No
   - [ ] Errors: No
 
 ### DOC-011: computeShapeBounds
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/renderer/SpatialIndex.ts`
 - **Gap ID:** GAP-025
 - **Type:** Function
@@ -218,15 +230,16 @@ related:
   ```
   export function computeShapeBounds(shape: Shape): AABB
   ```
-- **Documentation Plan:**
-  - [ ] Description: Computes bounding box for a shape
-  - [ ] Parameters: shape
-  - [ ] Returns: AABB
+- **Documentation Added:**
+  - [x] Description: Computes bounding box for a shape
+  - [x] Parameters: shape documented with rotation/stroke detail
+  - [x] Returns: AABB
   - [ ] Examples: No
   - [ ] Errors: No
 
 ### DOC-012: SpatialIndex.add
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/renderer/SpatialIndex.ts`
 - **Gap ID:** GAP-026
 - **Type:** Method
@@ -234,17 +247,18 @@ related:
 - **Importance:** HIGH
 - **Signature:**
   ```
-  add(id: string, stroke: Stroke): void
+  add(stroke: Stroke): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Adds a stroke to the spatial index
-  - [ ] Parameters: id, stroke
-  - [ ] Returns: void
+- **Documentation Added:**
+  - [x] Description: Adds a stroke to the spatial index for viewport culling
+  - [x] Parameters: stroke (1 param, not 2 — plan had incorrect signature)
+  - [x] Returns: void
   - [ ] Examples: No
   - [ ] Errors: No
 
 ### DOC-013: SpatialIndex.addShape
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00009
 - **File:** `src/renderer/SpatialIndex.ts`
 - **Gap ID:** GAP-027
 - **Type:** Method
@@ -254,15 +268,16 @@ related:
   ```
   addShape(id: string, shape: Shape): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Adds a shape to the spatial index
-  - [ ] Parameters: id, shape
-  - [ ] Returns: void
+- **Documentation Added:**
+  - [x] Description: Adds a shape to the spatial index for viewport culling
+  - [x] Parameters: shape
+  - [x] Returns: void
   - [ ] Examples: No
   - [ ] Errors: No
 
 ### DOC-014: SpatialIndex.remove
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00010
 - **File:** `src/renderer/SpatialIndex.ts`
 - **Gap ID:** GAP-028
 - **Type:** Method
@@ -272,15 +287,16 @@ related:
   ```
   remove(id: string): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Removes a stroke from the spatial index
-  - [ ] Parameters: id
-  - [ ] Returns: void
+- **Documentation Added:**
+  - [x] Description: Removes a stroke from the spatial index by its unique identifier
+  - [x] Parameters: strokeId
+  - [x] Returns: void
   - [ ] Examples: No
   - [ ] Errors: No
 
 ### DOC-015: SpatialIndex.removeShape
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/renderer/SpatialIndex.ts`
 - **Gap ID:** GAP-029
 - **Type:** Method
@@ -290,15 +306,16 @@ related:
   ```
   removeShape(id: string): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Removes a shape from the spatial index
-  - [ ] Parameters: id
-  - [ ] Returns: void
+- **Documentation Added:**
+  - [x] Description: Removes a shape from the spatial index by its unique identifier
+  - [x] Parameters: shapeId
+  - [x] Returns: void
   - [ ] Examples: No
   - [ ] Errors: No
 
 ### DOC-016: SpatialIndex.clear
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00008
 - **File:** `src/renderer/SpatialIndex.ts`
 - **Gap ID:** GAP-030
 - **Type:** Method
@@ -308,14 +325,15 @@ related:
   ```
   clear(): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Removes all entries from the spatial index
-  - [ ] Returns: void
+- **Documentation Added:**
+  - [x] Description: Removes all strokes and shapes from the spatial index
+  - [x] Returns: void
   - [ ] Examples: No
   - [ ] Errors: No
 
 ### DOC-017: SpatialIndex.query
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00009
 - **File:** `src/renderer/SpatialIndex.ts`
 - **Gap ID:** GAP-033
 - **Type:** Method
@@ -323,17 +341,18 @@ related:
 - **Importance:** CRITICAL
 - **Signature:**
   ```
-  query(viewport: AABB): string[]
+  query(viewport: AABB): Stroke[]
   ```
-- **Documentation Plan:**
-  - [ ] Description: Returns stroke IDs intersecting the viewport
-  - [ ] Parameters: viewport AABB
-  - [ ] Returns: array of stroke IDs
+- **Documentation Added:**
+  - [x] Description: Queries spatial index for strokes intersecting viewport
+  - [x] Parameters: viewport AABB
+  - [x] Returns: Deduplicated Stroke[] sorted by timestamp
   - [ ] Examples: No
   - [ ] Errors: No
 
 ### DOC-018: SpatialIndex.queryShapes
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00010
 - **File:** `src/renderer/SpatialIndex.ts`
 - **Gap ID:** GAP-034
 - **Type:** Method
@@ -341,19 +360,20 @@ related:
 - **Importance:** CRITICAL
 - **Signature:**
   ```
-  queryShapes(viewport: AABB): string[]
+  queryShapes(viewport: AABB): Shape[]
   ```
-- **Documentation Plan:**
-  - [ ] Description: Returns shape IDs intersecting the viewport
-  - [ ] Parameters: viewport AABB
-  - [ ] Returns: array of shape IDs
+- **Documentation Added:**
+  - [x] Description: Queries spatial index for shapes intersecting viewport
+  - [x] Parameters: viewport AABB
+  - [x] Returns: Deduplicated Shape[] sorted by timestamp
   - [ ] Examples: No
   - [ ] Errors: No
 
 ### renderer/ — LOD System
 
 ### DOC-019: generateTriangleStrip
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/renderer/StrokeMesh.ts`
 - **Gap ID:** GAP-022
 - **Type:** Function
@@ -363,15 +383,16 @@ related:
   ```
   export function generateTriangleStrip(...): Float32Array
   ```
-- **Documentation Plan:**
-  - [ ] Description: Converts stroke points into triangle strip vertex data
-  - [ ] Parameters: points, color, width, opacity
-  - [ ] Returns: Float32Array of vertex data
+- **Documentation Added:**
+  - [x] Description: Converts stroke points into triangle strip vertex data with miter joins
+  - [x] Parameters: points, width, color (3 params documented with details)
+  - [x] Returns: Float32Array of interleaved vertex data or null
   - [ ] Examples: No
   - [ ] Errors: No
 
 ### DOC-020: getLODBracket
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00012
 - **File:** `src/renderer/StrokeLOD.ts`
 - **Gap ID:** GAP-039
 - **Type:** Function
@@ -381,15 +402,16 @@ related:
   ```
   export function getLODBracket(zoom: number): number
   ```
-- **Documentation Plan:**
-  - [ ] Description: Returns the LOD bracket index for a given zoom level
-  - [ ] Parameters: zoom
-  - [ ] Returns: bracket index
+- **Documentation Added:**
+  - [x] Description: Maps camera zoom level to LOD bracket for simplification tolerance
+  - [x] Parameters: zoom (1 param documented)
+  - [x] Returns: bracket index or -1 for full detail
   - [ ] Examples: No
   - [ ] Errors: No
 
 ### DOC-021: douglasPeucker
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/renderer/StrokeLOD.ts`
 - **Gap ID:** GAP-040
 - **Type:** Function
@@ -399,15 +421,16 @@ related:
   ```
   export function douglasPeucker(points: StrokePoint[], epsilon: number): StrokePoint[]
   ```
-- **Documentation Plan:**
-  - [ ] Description: Douglas-Peucker line simplification algorithm
-  - [ ] Parameters: points array, epsilon tolerance
-  - [ ] Returns: simplified points array
+- **Documentation Added:**
+  - [x] Description: Douglas-Peucker recursive polyline simplification algorithm
+  - [x] Parameters: points array (2 params documented)
+  - [x] Returns: simplified points array with endpoints preserved
   - [ ] Examples: No
   - [ ] Errors: No
 
 ### DOC-022: getStrokeLOD
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/renderer/StrokeLOD.ts`
 - **Gap ID:** GAP-041
 - **Type:** Function
@@ -415,17 +438,18 @@ related:
 - **Importance:** CRITICAL
 - **Signature:**
   ```
-  export function getStrokeLOD(stroke: Stroke, zoom: number): StrokePoint[]
+  export function getStrokeLOD(strokeId: string, points: readonly StrokePoint[], zoom: number): readonly StrokePoint[]
   ```
-- **Documentation Plan:**
-  - [ ] Description: Returns LOD-simplified points for a stroke at given zoom
-  - [ ] Parameters: stroke, zoom
-  - [ ] Returns: simplified StrokePoint array
+- **Documentation Added:**
+  - [x] Description: Returns LOD-simplified points for a stroke at given zoom
+  - [x] Parameters: strokeId, points, zoom (3 params documented)
+  - [x] Returns: simplified StrokePoint array
   - [ ] Examples: No
   - [ ] Errors: No
 
 ### DOC-023: invalidateStrokeLOD
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/renderer/StrokeLOD.ts`
 - **Gap ID:** GAP-042
 - **Type:** Function
@@ -435,15 +459,16 @@ related:
   ```
   export function invalidateStrokeLOD(strokeId: string): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Invalidates cached LOD data for a stroke
-  - [ ] Parameters: strokeId
-  - [ ] Returns: void
+- **Documentation Added:**
+  - [x] Description: Invalidates cached LOD and subdivision data for a stroke
+  - [x] Parameters: strokeId (1 param documented)
+  - [x] Returns: void
   - [ ] Examples: No
   - [ ] Errors: No
 
 ### DOC-024: clearLODCache
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00008
 - **File:** `src/renderer/StrokeLOD.ts`
 - **Gap ID:** GAP-043
 - **Type:** Function
@@ -453,14 +478,15 @@ related:
   ```
   export function clearLODCache(): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Clears all cached LOD data
-  - [ ] Returns: void
+- **Documentation Added:**
+  - [x] Description: Clears all cached LOD simplification and subdivision data for every stroke
+  - [x] Returns: void
   - [ ] Examples: No
   - [ ] Errors: No
 
 ### DOC-025: generateShapeVertices
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00009
 - **File:** `src/renderer/ShapeMesh.ts`
 - **Gap ID:** GAP-062
 - **Type:** Function
@@ -470,34 +496,36 @@ related:
   ```
   export function generateShapeVertices(shape: Shape): ShapeVertexData
   ```
-- **Documentation Plan:**
-  - [ ] Description: Generates vertex data for any shape type
-  - [ ] Parameters: shape
-  - [ ] Returns: ShapeVertexData
+- **Documentation Added:**
+  - [x] Description: Generates WebGL vertex data for rendering any supported shape type
+  - [x] Parameters: shape, ellipseSegments
+  - [x] Returns: ShapeVertexData
   - [ ] Examples: No
   - [ ] Errors: No
 
 ### DOC-026: ShapeVertexData (interface)
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
 - **File:** `src/renderer/ShapeMesh.ts`
 - **Gap ID:** GAP-057
 - **Type:** Interface
 - **Visibility:** INTERNAL
 - **Importance:** HIGH
+- **Implemented In:** Loop 00010
 - **Signature:**
   ```
   export interface ShapeVertexData
   ```
-- **Documentation Plan:**
-  - [ ] Description: Vertex data output from shape mesh generation
-  - [ ] Parameters: Document fields
+- **Documentation Added:**
+  - [x] Description: Vertex data output from shape mesh generation with outline/fill buffers
+  - [x] Parameters: Document fields (outline, fill with types and nullability)
   - [ ] Examples: No
   - [ ] Errors: No
 
 ### renderer/ — Internal methods (HIGH importance)
 
 ### DOC-027: WebGLContext.resize
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/renderer/WebGLContext.ts`
 - **Gap ID:** GAP-010
 - **Type:** Method
@@ -507,15 +535,16 @@ related:
   ```
   resize(width: number, height: number): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Resizes the WebGL viewport and canvas
-  - [ ] Parameters: width, height
-  - [ ] Returns: void
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Synchronizes canvas buffer with CSS layout size for high-DPI rendering
+  - [x] Parameters: N/A (parameterless method)
+  - [x] Returns: void
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### DOC-028: StrokeRenderer.setCameraMatrix
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00012
 - **File:** `src/renderer/StrokeRenderer.ts`
 - **Gap ID:** GAP-021
 - **Type:** Method
@@ -525,15 +554,16 @@ related:
   ```
   setCameraMatrix(matrix: Float32Array): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Sets camera transform on the stroke shader
-  - [ ] Parameters: matrix
-  - [ ] Returns: void
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Sets camera transform on the stroke shader
+  - [x] Parameters: matrix
+  - [x] Returns: void
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### DOC-029: SpatialIndex.rebuild
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00013
 - **File:** `src/renderer/SpatialIndex.ts`
 - **Gap ID:** GAP-031
 - **Type:** Method
@@ -541,17 +571,18 @@ related:
 - **Importance:** HIGH
 - **Signature:**
   ```
-  rebuild(id: string, stroke: Stroke): void
+  rebuild(strokes: Stroke[]): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Rebuilds spatial index entry for a modified stroke
-  - [ ] Parameters: id, stroke
-  - [ ] Returns: void
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Rebuilds entire spatial index from a complete stroke set
+  - [x] Parameters: strokes (1)
+  - [x] Returns: void
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### DOC-030: SpatialIndex.rebuildAll
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/renderer/SpatialIndex.ts`
 - **Gap ID:** GAP-032
 - **Type:** Method
@@ -559,17 +590,18 @@ related:
 - **Importance:** HIGH
 - **Signature:**
   ```
-  rebuildAll(strokes: Map<string, Stroke>, shapes: Map<string, Shape>): void
+  rebuildAll(strokes: Stroke[], shapes: Shape[]): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Rebuilds the entire spatial index from scratch
-  - [ ] Parameters: strokes map, shapes map
-  - [ ] Returns: void
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Clears and re-indexes both strokes and shapes from scratch
+  - [x] Parameters: strokes (1), shapes (1)
+  - [x] Returns: void
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### DOC-031: DotGridRenderer.getEffectiveSpacing
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/renderer/DotGridRenderer.ts`
 - **Gap ID:** GAP-047
 - **Type:** Method
@@ -577,16 +609,17 @@ related:
 - **Importance:** HIGH
 - **Signature:**
   ```
-  getEffectiveSpacing(): number
+  getEffectiveSpacing(zoom: number): number
   ```
-- **Documentation Plan:**
-  - [ ] Description: Calculates the effective grid spacing accounting for zoom
-  - [ ] Returns: spacing in pixels
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Calculates the effective grid spacing accounting for zoom
+  - [x] Returns: world-space distance between dots, always a power of 2
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### DOC-032: LineGridRenderer.getEffectiveSpacing
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00016
 - **File:** `src/renderer/LineGridRenderer.ts`
 - **Gap ID:** GAP-050
 - **Type:** Method
@@ -594,16 +627,17 @@ related:
 - **Importance:** HIGH
 - **Signature:**
   ```
-  getEffectiveSpacing(): number
+  getEffectiveSpacing(zoom: number): number
   ```
-- **Documentation Plan:**
-  - [ ] Description: Calculates the effective line grid spacing accounting for zoom
-  - [ ] Returns: spacing in pixels
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Computes effective world-space grid spacing using power-of-2 scaling
+  - [x] Returns: world-space distance between adjacent grid lines, always a power of 2
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### DOC-033: generateRectangleVertices
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00017
 - **File:** `src/renderer/ShapeMesh.ts`
 - **Gap ID:** GAP-058
 - **Type:** Function
@@ -613,15 +647,16 @@ related:
   ```
   export function generateRectangleVertices(...): ShapeVertexData
   ```
-- **Documentation Plan:**
-  - [ ] Description: Generates vertex data for rectangle shapes
-  - [ ] Parameters: shape parameters
-  - [ ] Returns: ShapeVertexData
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Generates WebGL vertex data for rendering a rectangle shape
+  - [x] Parameters: shape (1 param documented)
+  - [x] Returns: ShapeVertexData with outline/fill buffers
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### DOC-034: generateEllipseVertices
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00018
 - **File:** `src/renderer/ShapeMesh.ts`
 - **Gap ID:** GAP-059
 - **Type:** Function
@@ -631,15 +666,16 @@ related:
   ```
   export function generateEllipseVertices(...): ShapeVertexData
   ```
-- **Documentation Plan:**
-  - [ ] Description: Generates vertex data for ellipse shapes
-  - [ ] Parameters: shape parameters
-  - [ ] Returns: ShapeVertexData
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Generates WebGL vertex data for rendering an ellipse shape
+  - [x] Parameters: shape, segments (2 params documented)
+  - [x] Returns: ShapeVertexData with outline/fill buffers
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### DOC-035: generatePolygonVertices
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/renderer/ShapeMesh.ts`
 - **Gap ID:** GAP-060
 - **Type:** Function
@@ -649,15 +685,16 @@ related:
   ```
   export function generatePolygonVertices(...): ShapeVertexData
   ```
-- **Documentation Plan:**
-  - [ ] Description: Generates vertex data for regular polygon shapes
-  - [ ] Parameters: shape parameters
-  - [ ] Returns: ShapeVertexData
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Generates vertex data for regular polygon shapes
+  - [x] Parameters: shape (1 param documented)
+  - [x] Returns: ShapeVertexData with outline/fill buffers
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### DOC-036: generateStarVertices
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/renderer/ShapeMesh.ts`
 - **Gap ID:** GAP-061
 - **Type:** Function
@@ -667,17 +704,18 @@ related:
   ```
   export function generateStarVertices(...): ShapeVertexData
   ```
-- **Documentation Plan:**
-  - [ ] Description: Generates vertex data for star shapes
-  - [ ] Parameters: shape parameters
-  - [ ] Returns: ShapeVertexData
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Generates vertex data for star shapes
+  - [x] Parameters: shape (1 param documented)
+  - [x] Returns: ShapeVertexData with outline/fill buffers
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### ui/ — CheatSheet
 
 ### DOC-037: CheatSheet (class)
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/ui/CheatSheet.ts`
 - **Gap ID:** GAP-067
 - **Type:** Class
@@ -687,14 +725,15 @@ related:
   ```
   export class CheatSheet
   ```
-- **Documentation Plan:**
-  - [ ] Description: Keyboard shortcuts cheat sheet overlay panel
-  - [ ] Constructor: container element
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Keyboard shortcuts cheat sheet overlay panel
+  - [x] Constructor: registry parameter
+  - [x] Examples: Yes
+  - [x] Errors: No
 
 ### DOC-038: CheatSheet.show
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00022
 - **File:** `src/ui/CheatSheet.ts`
 - **Gap ID:** GAP-068
 - **Type:** Method
@@ -704,14 +743,15 @@ related:
   ```
   show(): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Shows the cheat sheet overlay
-  - [ ] Returns: void
-  - [ ] Examples: No
-  - [ ] Errors: No
+- **Documentation Added:**
+  - [x] Description: Shows the cheat sheet overlay
+  - [x] Returns: void
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### DOC-039: CheatSheet.hide
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/ui/CheatSheet.ts`
 - **Gap ID:** GAP-069
 - **Type:** Method
@@ -721,12 +761,13 @@ related:
   ```
   hide(): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Hides the cheat sheet overlay
-  - [ ] Returns: void
+- **Documentation Added:**
+  - [x] Description: Closes the cheat sheet overlay and removes it from the DOM
+  - [x] Returns: void
 
 ### DOC-040: CheatSheet.toggle
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/ui/CheatSheet.ts`
 - **Gap ID:** GAP-070
 - **Type:** Method
@@ -736,11 +777,12 @@ related:
   ```
   toggle(): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Toggles cheat sheet visibility
+- **Documentation Added:**
+  - [x] Description: Toggles cheat sheet overlay between visible and hidden states, delegating to show/hide
 
 ### DOC-041: CheatSheet.isVisible
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/ui/CheatSheet.ts`
 - **Gap ID:** GAP-071
 - **Type:** Method
@@ -750,11 +792,13 @@ related:
   ```
   isVisible(): boolean
   ```
-- **Documentation Plan:**
-  - [ ] Description: Returns whether the cheat sheet is currently shown
+- **Documentation Added:**
+  - [x] Description: Returns whether the cheat sheet overlay is currently visible
+  - [x] Returns: boolean indicating visibility state
 
 ### DOC-042: CheatSheet.destroy
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/ui/CheatSheet.ts`
 - **Gap ID:** GAP-072
 - **Type:** Method
@@ -764,13 +808,14 @@ related:
   ```
   destroy(): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Removes the cheat sheet from the DOM and cleans up
+- **Documentation Added:**
+  - [x] Description: Tears down the cheat sheet by hiding the overlay and removing it from the DOM
 
 ### ui/ — ViewManager
 
 ### DOC-043: ViewName (type)
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/ui/ViewManager.ts`
 - **Gap ID:** GAP-073
 - **Type:** Type
@@ -780,11 +825,12 @@ related:
   ```
   export type ViewName = "home" | "canvas"
   ```
-- **Documentation Plan:**
-  - [ ] Description: Union type for application view states
+- **Documentation Added:**
+  - [x] Description: Union type representing the two top-level application view states (home and canvas)
 
 ### DOC-044: ViewManagerDeps (interface)
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/ui/ViewManager.ts`
 - **Gap ID:** GAP-074
 - **Type:** Interface
@@ -794,12 +840,13 @@ related:
   ```
   export interface ViewManagerDeps
   ```
-- **Documentation Plan:**
-  - [ ] Description: Dependencies injected into ViewManager
-  - [ ] Parameters: Document fields
+- **Documentation Added:**
+  - [x] Description: Dependencies injected into ViewManager
+  - [x] Parameters: Document fields
 
 ### DOC-045: ViewManager (class)
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/ui/ViewManager.ts`
 - **Gap ID:** GAP-075
 - **Type:** Class
@@ -809,13 +856,14 @@ related:
   ```
   export class ViewManager
   ```
-- **Documentation Plan:**
-  - [ ] Description: Manages transitions between home and canvas views
-  - [ ] Constructor: deps parameter
-  - [ ] Examples: No
+- **Documentation Added:**
+  - [x] Description: Manages transitions between home and canvas views
+  - [x] Constructor: deps parameter
+  - [x] Examples: Yes
 
 ### DOC-046: ViewManager.showHome
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/ui/ViewManager.ts`
 - **Gap ID:** GAP-076
 - **Type:** Method
@@ -825,11 +873,13 @@ related:
   ```
   async showHome(): Promise<void>
   ```
-- **Documentation Plan:**
-  - [ ] Description: Transitions to the home screen view
+- **Documentation Added:**
+  - [x] Description: Transitions to the home screen view, destroys active CanvasApp, refreshes drawing list
+  - [x] Returns: Promise<void>
 
 ### DOC-047: ViewManager.showCanvas
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/ui/ViewManager.ts`
 - **Gap ID:** GAP-077
 - **Type:** Method
@@ -839,12 +889,14 @@ related:
   ```
   async showCanvas(drawingId: string): Promise<void>
   ```
-- **Documentation Plan:**
-  - [ ] Description: Opens a drawing in the canvas view
-  - [ ] Parameters: drawingId
+- **Documentation Added:**
+  - [x] Description: Transitions the application to the canvas view for a specific drawing
+  - [x] Parameters: drawingId (1)
+  - [x] Returns: Promise<void>
 
 ### DOC-048: ViewManager.getCurrentView
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/ui/ViewManager.ts`
 - **Gap ID:** GAP-078
 - **Type:** Method
@@ -854,11 +906,13 @@ related:
   ```
   getCurrentView(): ViewName
   ```
-- **Documentation Plan:**
-  - [ ] Description: Returns the current active view name
+- **Documentation Added:**
+  - [x] Description: Returns the name of the currently active view
+  - [x] Returns: ViewName
 
 ### DOC-049: ViewManager.destroy
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/ui/ViewManager.ts`
 - **Gap ID:** GAP-081
 - **Type:** Method
@@ -868,13 +922,17 @@ related:
   ```
   async destroy(): Promise<void>
   ```
-- **Documentation Plan:**
-  - [ ] Description: Cleans up both views and releases resources
+- **Documentation Added:**
+  - [x] Description: Tears down ViewManager by destroying active CanvasApp and HomeScreen, releasing all resources
+  - [x] Returns: Promise<void>
+  - [x] Examples: No
+  - [x] Errors: No
 
 ### ui/ — Toolbar
 
 ### DOC-050: ToolbarCallbacks (interface)
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/ui/Toolbar.ts`
 - **Gap ID:** GAP-094
 - **Type:** Interface
@@ -884,12 +942,13 @@ related:
   ```
   export interface ToolbarCallbacks
   ```
-- **Documentation Plan:**
-  - [ ] Description: Callback interface for toolbar user interactions
-  - [ ] Parameters: Document callback fields
+- **Documentation Added:**
+  - [x] Description: Callback interface for toolbar user interactions
+  - [x] Parameters: All 18 callback fields documented with @property tags
 
 ### DOC-051: Toolbar (class)
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/ui/Toolbar.ts`
 - **Gap ID:** GAP-095
 - **Type:** Class
@@ -899,15 +958,16 @@ related:
   ```
   export class Toolbar
   ```
-- **Documentation Plan:**
-  - [ ] Description: Main toolbar UI component for tool selection and settings
-  - [ ] Constructor: callbacks, container
-  - [ ] Examples: No
+- **Documentation Added:**
+  - [x] Description: Main toolbar UI component for tool selection, color picking, brush settings, zoom controls, and canvas actions
+  - [x] Constructor: callbacks (ToolbarCallbacks)
+  - [x] Examples: Yes
 
 ### ui/ — UserStore
 
 ### DOC-052: loadProfile
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00007
 - **File:** `src/user/UserStore.ts`
 - **Gap ID:** GAP-105
 - **Type:** Function
@@ -917,13 +977,13 @@ related:
   ```
   export function loadProfile(): UserProfile
   ```
-- **Documentation Plan:**
-  - [ ] Description: Loads user profile from localStorage
-  - [ ] Returns: UserProfile
-  - [ ] Examples: No
+- **Documentation Added:**
+  - [x] Description: Loads user profile from localStorage, creating a default if none exists
+  - [x] Returns: UserProfile
+  - [x] Examples: No
 
 ### DOC-053: saveProfile
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
 - **File:** `src/user/UserStore.ts`
 - **Gap ID:** GAP-106
 - **Type:** Function
@@ -933,13 +993,14 @@ related:
   ```
   export function saveProfile(profile: UserProfile): void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Persists user profile to localStorage
-  - [ ] Parameters: profile
-  - [ ] Returns: void
+- **Implemented In:** Loop 00007
+- **Documentation Added:**
+  - [x] Description: Persists user profile to localStorage and Tauri config file, notifies listeners
+  - [x] Parameters: profile
+  - [x] Returns: void
 
 ### DOC-054: onProfileChange
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
 - **File:** `src/user/UserStore.ts`
 - **Gap ID:** GAP-107
 - **Type:** Function
@@ -949,10 +1010,12 @@ related:
   ```
   export function onProfileChange(callback: (profile: UserProfile) => void): () => void
   ```
-- **Documentation Plan:**
-  - [ ] Description: Subscribes to profile change events
-  - [ ] Parameters: callback
-  - [ ] Returns: unsubscribe function
+- **Implemented In:** Loop 00007
+- **Documentation Added:**
+  - [x] Description: Subscribes to profile change events triggered by saveProfile
+  - [x] Parameters: callback
+  - [x] Returns: unsubscribe function
+  - [x] Example: subscribe/unsubscribe pattern
 
 ---
 

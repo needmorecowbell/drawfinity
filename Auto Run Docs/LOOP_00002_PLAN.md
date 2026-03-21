@@ -29,51 +29,44 @@ related:
 ## PENDING - Ready for Auto-Documentation
 
 ### DOC-001: GridStyle
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
 - **File:** `src/user/UserPreferences.ts`
 - **Gap ID:** GAP-011
 - **Type:** Type alias
 - **Visibility:** PUBLIC
 - **Importance:** HIGH
-- **Signature:**
-  ```ts
-  export type GridStyle = "dot" | "line" | "none";
-  ```
-- **Documentation Plan:**
-  - [ ] Description: Canvas background grid style options
+- **Implemented In:** Loop 00003
+- **Documentation Added:**
+  - [x] Description: Canvas background grid rendering style with variant explanations
+  - [x] Cross-references to UserPreferences and Renderer
 
 ### DOC-002: UserPreferences
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
 - **File:** `src/user/UserPreferences.ts`
 - **Gap ID:** GAP-012
 - **Type:** Interface
 - **Visibility:** PUBLIC
 - **Importance:** HIGH
-- **Signature:**
-  ```ts
-  export interface UserPreferences { ... }
-  ```
-- **Documentation Plan:**
-  - [ ] Description: Core user settings persisted to disk
-  - [ ] Fields: All fields with default values
+- **Implemented In:** Loop 00003
+- **Documentation Added:**
+  - [x] Description: Core user settings persisted to localStorage and Tauri config file
+  - [x] Fields: All 6 fields with types, defaults, and purpose
+  - [x] Example: Load/modify/save flow
 
 ### DOC-003: loadPreferences / savePreferences
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
 - **File:** `src/user/UserPreferences.ts`
 - **Gap ID:** GAP-013
 - **Type:** Functions
 - **Visibility:** PUBLIC
 - **Importance:** HIGH
-- **Signature:**
-  ```ts
-  export async function loadPreferences(): Promise<UserPreferences>
-  export async function savePreferences(prefs: UserPreferences): Promise<void>
-  ```
-- **Documentation Plan:**
-  - [ ] Descriptions: Load/save user settings from/to config file
-  - [ ] Parameters: prefs parameter for save
-  - [ ] Returns: UserPreferences with defaults for missing fields
-  - [ ] Errors: File I/O error handling behavior
+- **Implemented In:** Loop 00003
+- **Documentation Added:**
+  - [x] Descriptions: Load/save user settings from/to localStorage and Tauri config file
+  - [x] Parameters: prefs parameter for save with merge guidance
+  - [x] Returns: UserPreferences with defaults for missing fields
+  - [x] Errors: Silent handling of invalid JSON and Tauri file I/O failures
+  - [x] Also documented loadPreferencesAsync with fallback behavior
 
 ### DOC-004: UserProfile
 - **Status:** `PENDING`

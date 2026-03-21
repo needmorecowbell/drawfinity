@@ -16,7 +16,7 @@ related:
 
 ## Summary
 - **Total Gaps:** 268
-- **Auto-Document (PENDING):** 40
+- **Auto-Document (PENDING):** 36
 - **Needs Context:** 3
 - **Won't Do:** 217
 
@@ -356,7 +356,8 @@ related:
   - [x] Note: Already documented as part of DOC-010 Shape work
 
 ### DOC-017: ToolType
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/tools/ToolManager.ts`
 - **Gap ID:** GAP-022
 - **Type:** Type Alias
@@ -366,15 +367,17 @@ related:
   ```ts
   export type ToolType
   ```
-- **Documentation Plan:**
-  - [ ] Description: Available drawing tool types
-  - [ ] Parameters: N/A
-  - [ ] Returns: N/A
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Available drawing tool types with descriptions of all 8 variants (brush, eraser, rectangle, ellipse, polygon, star, pan, magnify)
+  - [x] Parameters: N/A
+  - [x] Returns: N/A
+  - [x] Examples: No
+  - [x] Errors: N/A
+  - [x] Note: Already documented as part of DOC-005 ToolManager work
 
 ### DOC-018: CanvasAppCallbacks
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00001
 - **File:** `src/canvas/CanvasApp.ts`
 - **Gap ID:** GAP-024
 - **Type:** Interface
@@ -384,15 +387,17 @@ related:
   ```ts
   export interface CanvasAppCallbacks
   ```
-- **Documentation Plan:**
-  - [ ] Description: Callback hooks for CanvasApp lifecycle events
-  - [ ] Parameters: All callback fields
-  - [ ] Returns: N/A
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Callback hooks for CanvasApp lifecycle events
+  - [x] Parameters: All callback fields (onGoHome, onRenameDrawing)
+  - [x] Returns: N/A
+  - [x] Examples: No
+  - [x] Errors: N/A
+  - [x] Note: Already documented as part of DOC-001 CanvasApp work
 
 ### DOC-019: Action
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00001
 - **File:** `src/ui/ActionRegistry.ts`
 - **Gap ID:** (from interfaces table)
 - **Type:** Interface
@@ -402,15 +407,17 @@ related:
   ```ts
   export interface Action
   ```
-- **Documentation Plan:**
-  - [ ] Description: Registered keyboard action with shortcut, category, and handler
-  - [ ] Parameters: All fields
-  - [ ] Returns: N/A
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Registered keyboard action with shortcut, category, and handler
+  - [x] Parameters: All fields (id, label, shortcut, category, execute)
+  - [x] Returns: N/A
+  - [x] Examples: No
+  - [x] Errors: N/A
+  - [x] Note: Already documented as part of DOC-006 ActionRegistry work
 
 ### DOC-020: ActionCategory
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00001
 - **File:** `src/ui/ActionRegistry.ts`
 - **Gap ID:** (from type aliases table)
 - **Type:** Type Alias
@@ -420,15 +427,17 @@ related:
   ```ts
   export type ActionCategory
   ```
-- **Documentation Plan:**
-  - [ ] Description: Category groupings for actions in the cheat sheet
-  - [ ] Parameters: N/A
-  - [ ] Returns: N/A
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Category groupings for actions in the cheat sheet
+  - [x] Parameters: N/A
+  - [x] Returns: N/A
+  - [x] Examples: No
+  - [x] Errors: N/A
+  - [x] Note: Already documented as part of DOC-006 ActionRegistry work
 
 ### DOC-021: BRUSH_PRESETS
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/tools/BrushPresets.ts`
 - **Gap ID:** (from constants table)
 - **Type:** Constant
@@ -438,12 +447,12 @@ related:
   ```ts
   export const BRUSH_PRESETS: BrushConfig[]
   ```
-- **Documentation Plan:**
-  - [ ] Description: Built-in brush configurations (Pen, Pencil, Marker, Highlighter)
-  - [ ] Parameters: N/A
-  - [ ] Returns: N/A
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Built-in brush preset configurations with keyboard shortcut mapping and use-case descriptions
+  - [x] Parameters: N/A
+  - [x] Returns: N/A
+  - [x] Examples: No
+  - [x] Errors: N/A
 
 ### DOC-022: bookmarkToYMap
 - **Status:** `IMPLEMENTED`
@@ -715,7 +724,8 @@ related:
   - [x] Also documented: `ShapeDocumentModel` interface, `ShapeToolConfig` interface (7 properties), public methods (`setEnabled`, `isEnabled`, `setConfig`, `getConfig`, `getPreviewShape`, `destroy`)
 
 ### DOC-036: ThumbnailGenerator
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/persistence/ThumbnailGenerator.ts`
 - **Gap ID:** (from classes table)
 - **Type:** Class
@@ -725,15 +735,17 @@ related:
   ```ts
   export class ThumbnailGenerator
   ```
-- **Documentation Plan:**
-  - [ ] Description: Generates drawing thumbnails for the home screen
-  - [ ] Parameters: Constructor dependencies
-  - [ ] Returns: N/A
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Class-level JSDoc explaining offscreen WebGL2 rendering and throttle behavior
+  - [x] Parameters: N/A (no constructor params)
+  - [x] Returns: N/A (class)
+  - [x] Examples: Yes (usage with markActivity/shouldGenerate/generate)
+  - [x] Errors: N/A
+  - [x] Also documented: `markActivity`, `shouldGenerate`, `forceGenerate`, `generate` methods, `THUMBNAIL_WIDTH`, `THUMBNAIL_HEIGHT`, `GENERATION_INTERVAL_MS` constants
 
 ### DOC-037: BookmarkPanel
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/ui/BookmarkPanel.ts`
 - **Gap ID:** (from classes table)
 - **Type:** Class
@@ -743,15 +755,17 @@ related:
   ```ts
   export class BookmarkPanel
   ```
-- **Documentation Plan:**
-  - [ ] Description: UI panel for managing camera bookmarks
-  - [ ] Parameters: Constructor dependencies
-  - [ ] Returns: N/A
+- **Documentation Added:**
+  - [x] Description: UI panel for managing camera bookmarks with CRDT sync
+  - [x] Parameters: Constructor dependencies (doc, camera, callbacks)
+  - [x] Returns: N/A
+  - [x] Also documented: `BookmarkPanelCallbacks` interface (5 properties), `addBookmark`, `refreshList`, `show`, `hide`, `toggle`, `isVisible`, `destroy` methods
   - [ ] Examples: No
   - [ ] Errors: N/A
 
 ### DOC-038: ConnectionPanel
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/ui/ConnectionPanel.ts`
 - **Gap ID:** (from classes table)
 - **Type:** Class
@@ -761,15 +775,17 @@ related:
   ```ts
   export class ConnectionPanel
   ```
-- **Documentation Plan:**
-  - [ ] Description: UI panel for WebSocket collaboration connection
-  - [ ] Parameters: Constructor dependencies
-  - [ ] Returns: N/A
-  - [ ] Examples: No
+- **Documentation Added:**
+  - [x] Description: Modal UI panel for managing WebSocket collaboration connections
+  - [x] Parameters: Constructor dependencies (syncManager, callbacks)
+  - [x] Returns: N/A
+  - [x] Also documented: `ConnectionPanelCallbacks` interface (1 property), `setRoomInfo`, `show`, `hide`, `toggle`, `isVisible`, `destroy` methods
+  - [x] Examples: Yes (class instantiation)
   - [ ] Errors: N/A
 
 ### DOC-039: SettingsPanel
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/ui/SettingsPanel.ts`
 - **Gap ID:** (from classes table)
 - **Type:** Class
@@ -779,15 +795,16 @@ related:
   ```ts
   export class SettingsPanel
   ```
-- **Documentation Plan:**
-  - [ ] Description: UI panel for application settings
-  - [ ] Parameters: Constructor dependencies
-  - [ ] Returns: N/A
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Modal panel for user profile and app preferences
+  - [x] Parameters: Constructor dependencies (profile, preferences, callbacks)
+  - [x] Returns: N/A
+  - [x] Examples: Yes (class instantiation with onSave callback)
+  - [x] Errors: N/A
 
 ### DOC-040: RemoteCursors
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/ui/RemoteCursors.ts`
 - **Gap ID:** (from classes table)
 - **Type:** Class
@@ -797,12 +814,13 @@ related:
   ```ts
   export class RemoteCursors
   ```
-- **Documentation Plan:**
-  - [ ] Description: Renders remote collaborators' cursor positions on canvas
-  - [ ] Parameters: Constructor dependencies
-  - [ ] Returns: N/A
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Renders remote collaborators' cursor positions on canvas
+  - [x] Parameters: Constructor dependencies (root, camera)
+  - [x] Returns: N/A
+  - [x] Examples: Yes (attach/detach lifecycle)
+  - [x] Errors: N/A
+- **Methods Documented:** `attach`, `detach`, `updatePositions`
 
 ### DOC-041: CanvasItemKind / CanvasItem
 - **Status:** `PENDING`

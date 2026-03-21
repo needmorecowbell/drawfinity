@@ -5,7 +5,7 @@
 - **Agent:** feature-documentation
 - **Project:** /home/adam/Dev/drawfinity_worktree/feature-documentation
 - **Auto Run Folder:** /home/adam/Dev/drawfinity/Auto Run Docs
-- **Loop:** 00005
+- **Loop:** 00007
 
 ## Objective
 
@@ -20,7 +20,7 @@ Evaluate each documentation gap from the discovery phase and assign visibility a
 
 ## Evaluation Checklist
 
-- [x] **Evaluate gaps (or skip if empty)**: *Loop 6: All 57 gaps from LOOP_00004_GAPS.md are already evaluated in LOOP_00004_PLAN.md (108 total gaps, 52 PENDING, 56 WON'T DO). No changes needed.* Read LOOP_00004_GAPS.md. If it contains no gaps OR all gaps have already been evaluated in LOOP_00004_PLAN.md, mark this task complete without changes. Otherwise, rate each gap by VISIBILITY (PUBLIC/INTERNAL/UTILITY/IMPLEMENTATION) and IMPORTANCE (CRITICAL/HIGH/MEDIUM/LOW). Mark PUBLIC or INTERNAL visibility with HIGH or CRITICAL importance as PENDING for auto-documentation. Output to `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00004_PLAN.md`.
+- [x] **Evaluate gaps (or skip if empty)**: *Loop 7: All 56 remaining gaps from LOOP_00004_GAPS.md (updated for loop 7) are already evaluated in LOOP_00004_PLAN.md (108 total gaps, 52 PENDING, 56 WON'T DO). No changes needed.* Read LOOP_00004_GAPS.md. If it contains no gaps OR all gaps have already been evaluated in LOOP_00004_PLAN.md, mark this task complete without changes. Otherwise, rate each gap by VISIBILITY (PUBLIC/INTERNAL/UTILITY/IMPLEMENTATION) and IMPORTANCE (CRITICAL/HIGH/MEDIUM/LOW). Mark PUBLIC or INTERNAL visibility with HIGH or CRITICAL importance as PENDING for auto-documentation. Output to `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00004_PLAN.md`.
 
 ## Rating Criteria
 

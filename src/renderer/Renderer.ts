@@ -64,6 +64,13 @@ export class Renderer {
     this.gridStyle = style;
   }
 
+  /**
+   * Clears the entire rendering canvas, removing all drawn content.
+   *
+   * Resizes the viewport to match the current canvas dimensions before clearing,
+   * ensuring the clear operation covers the full display area. Call this at the
+   * start of each render frame before redrawing strokes and grid overlays.
+   */
   clear(): void {
     this.context.resize(); // Ensure viewport is current
     this.context.clear();

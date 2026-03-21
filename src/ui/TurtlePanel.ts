@@ -1,5 +1,10 @@
-import { TURTLE_EXAMPLES, ExchangeClient } from "../turtle";
-import type { ExchangeScriptEntry } from "../turtle";
+import { ExchangeClient, ExchangeCache } from "../turtle";
+import type {
+  ExchangeScriptEntry,
+  UpdateCheckResult,
+  ExchangeSnapshot,
+} from "../turtle";
+import snapshotData from "../turtle/exchange/exchange-snapshot.json";
 
 export interface TurtlePanelCallbacks {
   /** Called when the user clicks Run. Receives the script text. */
@@ -40,8 +45,11 @@ export class TurtlePanel {
   private panelHeight = 300;
   private startY = 0;
   private startHeight = 0;
-  private exchangeClient = new ExchangeClient();
+  private exchangeCache = new ExchangeCache();
+  private exchangeClient = new ExchangeClient(undefined, this.exchangeCache);
   private exchangeOverlay: HTMLElement | null = null;
+  private updateResult: UpdateCheckResult | null = null;
+  private scriptsBtnBadge: HTMLElement | null = null;
 
   constructor(drawingId: string, callbacks?: TurtlePanelCallbacks) {
     this.callbacks = callbacks ?? {};
@@ -202,56 +210,27 @@ export class TurtlePanel {
     });
     bottomBar.appendChild(this.placeBtn);
 
-    // Examples dropdown
-    const examplesWrap = document.createElement("div");
-    examplesWrap.className = "turtle-examples-wrap";
+    // Unified script browser button
+    const scriptsBtnWrap = document.createElement("div");
+    scriptsBtnWrap.className = "turtle-scripts-btn-wrap";
 
-    const examplesBtn = document.createElement("button");
-    examplesBtn.className = "turtle-btn turtle-btn-secondary";
-    examplesBtn.textContent = "Examples ▾";
-    examplesBtn.title = "Load an example script";
-
-    const examplesMenu = document.createElement("div");
-    examplesMenu.className = "turtle-examples-menu";
-    examplesMenu.style.display = "none";
-
-    for (const example of TURTLE_EXAMPLES) {
-      const item = document.createElement("button");
-      item.className = "turtle-examples-item";
-      item.innerHTML = `<span class="turtle-examples-item-name">${example.name}</span><span class="turtle-examples-item-desc">${example.description}</span>`;
-      item.addEventListener("pointerdown", (e) => {
-        e.stopPropagation();
-        this.setScript(example.script);
-        examplesMenu.style.display = "none";
-      });
-      examplesMenu.appendChild(item);
-    }
-
-    examplesBtn.addEventListener("pointerdown", (e) => {
-      e.stopPropagation();
-      const isOpen = examplesMenu.style.display !== "none";
-      examplesMenu.style.display = isOpen ? "none" : "flex";
-    });
-
-    // Close menu when clicking outside
-    document.addEventListener("pointerdown", () => {
-      examplesMenu.style.display = "none";
-    });
-
-    examplesWrap.appendChild(examplesBtn);
-    examplesWrap.appendChild(examplesMenu);
-    bottomBar.appendChild(examplesWrap);
-
-    // Community scripts button
-    const communityBtn = document.createElement("button");
-    communityBtn.className = "turtle-btn turtle-btn-secondary";
-    communityBtn.textContent = "Community";
-    communityBtn.title = "Browse community turtle scripts";
-    communityBtn.addEventListener("pointerdown", (e) => {
+    const scriptsBtn = document.createElement("button");
+    scriptsBtn.className = "turtle-btn turtle-btn-secondary";
+    scriptsBtn.textContent = "Scripts";
+    scriptsBtn.title = "Browse turtle scripts";
+    scriptsBtn.addEventListener("pointerdown", (e) => {
       e.stopPropagation();
       this.openExchangeBrowser();
     });
-    bottomBar.appendChild(communityBtn);
+
+    const badge = document.createElement("span");
+    badge.className = "turtle-scripts-badge";
+    badge.style.display = "none";
+    this.scriptsBtnBadge = badge;
+    scriptsBtn.appendChild(badge);
+
+    scriptsBtnWrap.appendChild(scriptsBtn);
+    bottomBar.appendChild(scriptsBtnWrap);
 
     // Speed control
     const speedWrap = document.createElement("div");
@@ -398,6 +377,49 @@ export class TurtlePanel {
     }
   }
 
+  /** Determine the status of a script relative to the local cache and update results. */
+  private getScriptStatus(
+    entry: ExchangeScriptEntry,
+  ): "installed" | "update-available" | "available" {
+    // Check update result first for update-available status
+    if (this.updateResult) {
+      const isUpdated = this.updateResult.updatedScripts.some(
+        (u) => u.entry.id === entry.id,
+      );
+      if (isUpdated) return "update-available";
+    }
+    const cached = this.exchangeCache.getCachedScript(entry.id);
+    if (cached) return "installed";
+    return "available";
+  }
+
+  /** Get scripts from cache or snapshot as fallback. */
+  private getScriptsFromCacheOrSnapshot(): ExchangeScriptEntry[] {
+    // Try cached index first
+    const cachedIndex = this.exchangeCache.getCachedIndex();
+    if (cachedIndex && cachedIndex.scripts.length > 0) {
+      return cachedIndex.scripts;
+    }
+    // Fall back to bundled snapshot
+    const snapshot = snapshotData as ExchangeSnapshot;
+    return snapshot.scripts;
+  }
+
+  /** Notify the panel of update check results and show badge if updates exist. */
+  setUpdateResult(result: UpdateCheckResult): void {
+    this.updateResult = result;
+    if (this.scriptsBtnBadge) {
+      const count =
+        result.newScripts.length + result.updatedScripts.length;
+      if (count > 0) {
+        this.scriptsBtnBadge.textContent = String(count);
+        this.scriptsBtnBadge.style.display = "";
+      } else {
+        this.scriptsBtnBadge.style.display = "none";
+      }
+    }
+  }
+
   private openExchangeBrowser(): void {
     if (this.exchangeOverlay) return;
 
@@ -414,8 +436,15 @@ export class TurtlePanel {
 
     const titleEl = document.createElement("span");
     titleEl.className = "turtle-exchange-title";
-    titleEl.textContent = "Community Scripts";
+    titleEl.textContent = "Turtle Scripts";
     header.appendChild(titleEl);
+
+    // Update All button (shown only when updates exist)
+    const updateAllBtn = document.createElement("button");
+    updateAllBtn.className = "turtle-btn turtle-btn-run turtle-exchange-update-all-btn";
+    updateAllBtn.textContent = "Update All";
+    updateAllBtn.style.display = "none";
+    header.appendChild(updateAllBtn);
 
     const closeBtn = document.createElement("button");
     closeBtn.className = "turtle-close-btn";
@@ -453,7 +482,7 @@ export class TurtlePanel {
 
     // State
     let allScripts: ExchangeScriptEntry[] = [];
-    let activeTags = new Set<string>();
+    const activeTags = new Set<string>();
 
     const renderScripts = (scripts: ExchangeScriptEntry[]) => {
       scriptList.innerHTML = "";
@@ -464,7 +493,13 @@ export class TurtlePanel {
         scriptList.appendChild(empty);
         return;
       }
+
+      let hasUpdates = false;
+
       for (const entry of scripts) {
+        const status = this.getScriptStatus(entry);
+        if (status === "update-available") hasUpdates = true;
+
         const item = document.createElement("div");
         item.className = "turtle-exchange-item";
 
@@ -473,7 +508,24 @@ export class TurtlePanel {
 
         const titleLine = document.createElement("div");
         titleLine.className = "turtle-exchange-item-title";
-        titleLine.textContent = entry.title;
+
+        const titleText = document.createElement("span");
+        titleText.textContent = entry.title;
+        titleLine.appendChild(titleText);
+
+        // Status badge
+        const statusBadge = document.createElement("span");
+        statusBadge.className = `turtle-exchange-status turtle-exchange-status-${status}`;
+        if (status === "installed") {
+          statusBadge.textContent = "Installed";
+        } else if (status === "update-available") {
+          statusBadge.textContent = "Update Available";
+        }
+        // "available" scripts show no badge — they just show "Import"
+        if (status !== "available") {
+          titleLine.appendChild(statusBadge);
+        }
+
         info.appendChild(titleLine);
 
         const desc = document.createElement("div");
@@ -488,27 +540,41 @@ export class TurtlePanel {
         authorSpan.textContent = `by ${entry.author}`;
         meta.appendChild(authorSpan);
         for (const tag of entry.tags) {
-          const badge = document.createElement("span");
-          badge.className = "turtle-exchange-tag-badge";
-          badge.textContent = tag;
-          meta.appendChild(badge);
+          const tagBadge = document.createElement("span");
+          tagBadge.className = "turtle-exchange-tag-badge";
+          tagBadge.textContent = tag;
+          meta.appendChild(tagBadge);
         }
         info.appendChild(meta);
 
         item.appendChild(info);
 
-        const importBtn = document.createElement("button");
-        importBtn.className = "turtle-btn turtle-btn-run turtle-exchange-import-btn";
-        importBtn.textContent = "Import";
-        importBtn.addEventListener("pointerdown", (e) => {
+        // Action button depends on status
+        const actionBtn = document.createElement("button");
+        actionBtn.className = "turtle-btn turtle-exchange-import-btn";
+        if (status === "update-available") {
+          actionBtn.className += " turtle-btn-update";
+          actionBtn.textContent = "Update";
+        } else if (status === "installed") {
+          actionBtn.className += " turtle-btn-secondary";
+          actionBtn.textContent = "Import";
+        } else {
+          actionBtn.className += " turtle-btn-run";
+          actionBtn.textContent = "Import";
+        }
+        actionBtn.addEventListener("pointerdown", (e) => {
           e.stopPropagation();
-          this.importExchangeScript(entry, importBtn);
+          this.importExchangeScript(entry, actionBtn, renderAfterFilter);
         });
-        item.appendChild(importBtn);
+        item.appendChild(actionBtn);
 
         scriptList.appendChild(item);
       }
+
+      updateAllBtn.style.display = hasUpdates ? "" : "none";
     };
+
+    const renderAfterFilter = () => filterScripts();
 
     const filterScripts = () => {
       const q = searchInput.value.toLowerCase();
@@ -555,26 +621,42 @@ export class TurtlePanel {
 
     searchInput.addEventListener("input", () => filterScripts());
 
-    // Loading state
-    scriptList.innerHTML =
-      '<div class="turtle-exchange-loading">Loading community scripts\u2026</div>';
+    // Update All handler
+    updateAllBtn.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.updateAllScripts(renderAfterFilter);
+    });
 
-    // Fetch
+    // Start with cached/snapshot data immediately, then try fetching fresh
+    const fallbackScripts = this.getScriptsFromCacheOrSnapshot();
+
+    if (fallbackScripts.length > 0) {
+      allScripts = fallbackScripts;
+      renderTags(allScripts);
+      renderScripts(allScripts);
+    } else {
+      scriptList.innerHTML =
+        '<div class="turtle-exchange-loading">Loading scripts\u2026</div>';
+    }
+
+    // Fetch fresh data in background
     this.exchangeClient
       .fetchIndex()
       .then((index) => {
         allScripts = index.scripts;
         renderTags(allScripts);
-        renderScripts(allScripts);
+        filterScripts();
       })
       .catch((err) => {
+        // If we already have fallback data, just silently use it
+        if (fallbackScripts.length > 0) return;
         scriptList.innerHTML = "";
         const errorDiv = document.createElement("div");
         errorDiv.className = "turtle-exchange-error";
 
         const msg = document.createElement("div");
         msg.textContent =
-          err instanceof Error ? err.message : "Failed to load community scripts";
+          err instanceof Error ? err.message : "Failed to load scripts";
         errorDiv.appendChild(msg);
 
         const retryBtn = document.createElement("button");
@@ -593,22 +675,82 @@ export class TurtlePanel {
   private async importExchangeScript(
     entry: ExchangeScriptEntry,
     btn: HTMLButtonElement,
+    onUpdate?: () => void,
   ): Promise<void> {
     const origText = btn.textContent;
     btn.textContent = "Loading\u2026";
     btn.disabled = true;
 
     try {
+      // Try network fetch first
       const code = await this.exchangeClient.fetchScript(entry);
       this.setScript(code);
+
+      // If this was an update, remove from update result and re-render
+      if (this.updateResult) {
+        this.updateResult.updatedScripts = this.updateResult.updatedScripts.filter(
+          (u) => u.entry.id !== entry.id,
+        );
+        this.updateResult.newScripts = this.updateResult.newScripts.filter(
+          (s) => s.id !== entry.id,
+        );
+        this.updateResult.hasUpdates =
+          this.updateResult.updatedScripts.length > 0 ||
+          this.updateResult.newScripts.length > 0;
+        this.setUpdateResult(this.updateResult);
+      }
+      onUpdate?.();
       this.closeExchangeBrowser();
-    } catch (err) {
+    } catch {
+      // Fallback: try loading from snapshot if network fails
+      const snapshot = snapshotData as ExchangeSnapshot;
+      const snapshotScript = snapshot.scripts.find((s) => s.id === entry.id);
+      if (snapshotScript) {
+        this.setScript(snapshotScript.code);
+        // Cache it from snapshot
+        this.exchangeCache.setCachedScript({ ...entry, code: snapshotScript.code });
+        this.closeExchangeBrowser();
+        return;
+      }
+
+      // Also try local cache
+      const cached = this.exchangeCache.getCachedScript(entry.id);
+      if (cached) {
+        this.setScript(cached.code);
+        this.closeExchangeBrowser();
+        return;
+      }
+
       btn.textContent = "Error";
       btn.disabled = false;
       setTimeout(() => {
         btn.textContent = origText;
       }, 2000);
     }
+  }
+
+  private async updateAllScripts(onUpdate?: () => void): Promise<void> {
+    if (!this.updateResult) return;
+    const toUpdate = [
+      ...this.updateResult.updatedScripts.map((u) => u.entry),
+      ...this.updateResult.newScripts,
+    ];
+    for (const entry of toUpdate) {
+      try {
+        await this.exchangeClient.fetchScript(entry);
+      } catch {
+        // Skip failed scripts silently
+      }
+    }
+    // Clear update state
+    this.updateResult = {
+      hasUpdates: false,
+      newScripts: [],
+      updatedScripts: [],
+      remoteIndex: this.updateResult.remoteIndex,
+    };
+    this.setUpdateResult(this.updateResult);
+    onUpdate?.();
   }
 
   private closeExchangeBrowser(): void {

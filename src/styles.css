@@ -2122,6 +2122,68 @@ html, body {
   color: #f38ba8;
 }
 
+/* Unified script browser: status badges */
+.turtle-exchange-status {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.turtle-exchange-status-installed {
+  background: #313244;
+  color: #a6e3a1;
+}
+
+.turtle-exchange-status-update-available {
+  background: #fab38726;
+  color: #fab387;
+}
+
+/* Update button style */
+.turtle-btn-update {
+  background: #fab387;
+  color: #1e1e2e;
+  font-weight: 600;
+}
+
+.turtle-btn-update:hover:not(:disabled) {
+  background: #f9c97c;
+}
+
+/* Scripts button badge (update count) */
+.turtle-scripts-btn-wrap {
+  position: relative;
+}
+
+.turtle-scripts-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #fab387;
+  color: #1e1e2e;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Update All button in exchange header */
+.turtle-exchange-update-all-btn {
+  padding: 4px 12px;
+  font-size: 11px;
+  margin-left: auto;
+  margin-right: 8px;
+}
+
 @media (max-width: 600px) {
   .turtle-content {
     flex-direction: column;

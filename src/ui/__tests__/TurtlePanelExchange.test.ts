@@ -44,12 +44,17 @@ beforeEach(() => {
     setItem: (key: string, value: string) => storageMap.set(key, value),
     removeItem: (key: string) => storageMap.delete(key),
     clear: () => storageMap.clear(),
-    length: 0,
-    key: () => null,
+    get length() {
+      return storageMap.size;
+    },
+    key: (index: number) => {
+      const keys = [...storageMap.keys()];
+      return keys[index] ?? null;
+    },
   });
 });
 
-describe("TurtlePanel Exchange UI", () => {
+describe("TurtlePanel Unified Script Browser", () => {
   let panel: TurtlePanel;
 
   beforeEach(() => {
@@ -62,36 +67,158 @@ describe("TurtlePanel Exchange UI", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders a Community button in the bottom bar", () => {
+  it("renders a Scripts button in the bottom bar (no Community or Examples buttons)", () => {
     const buttons = document.querySelectorAll(".turtle-btn-secondary");
+    const scriptsBtn = Array.from(buttons).find(
+      (b) => b.textContent?.startsWith("Scripts"),
+    );
+    expect(scriptsBtn).toBeTruthy();
+
+    // No Community or Examples buttons
     const communityBtn = Array.from(buttons).find(
       (b) => b.textContent === "Community",
     );
-    expect(communityBtn).toBeTruthy();
+    expect(communityBtn).toBeFalsy();
+
+    const examplesBtn = Array.from(buttons).find(
+      (b) => b.textContent?.includes("Examples"),
+    );
+    expect(examplesBtn).toBeFalsy();
   });
 
-  it("opens exchange overlay and renders script list from fetched index", async () => {
-    const fetchMock = mockFetchOk(MOCK_INDEX);
-    vi.stubGlobal("fetch", fetchMock);
+  it("opens exchange overlay and renders scripts from snapshot immediately", () => {
+    // Mock fetch to be slow/fail — we should still see snapshot scripts
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("offline")),
+    );
 
-    // Click the Community button
+    // Click the Scripts button
     const buttons = document.querySelectorAll(".turtle-btn-secondary");
-    const communityBtn = Array.from(buttons).find(
-      (b) => b.textContent === "Community",
+    const scriptsBtn = Array.from(buttons).find(
+      (b) => b.textContent?.startsWith("Scripts"),
     ) as HTMLButtonElement;
-    communityBtn.dispatchEvent(
+    scriptsBtn.dispatchEvent(
       new PointerEvent("pointerdown", { bubbles: true }),
     );
 
-    // Wait for async fetch
+    // Scripts from snapshot should appear immediately (no loading state)
+    const items = document.querySelectorAll(".turtle-exchange-item");
+    expect(items.length).toBeGreaterThan(0);
+
+    // Title should be "Turtle Scripts"
+    const title = document.querySelector(".turtle-exchange-title");
+    expect(title?.textContent).toBe("Turtle Scripts");
+  });
+
+  it("updates script list when fresh index is fetched", async () => {
+    const fetchMock = mockFetchOk(MOCK_INDEX);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const buttons = document.querySelectorAll(".turtle-btn-secondary");
+    const scriptsBtn = Array.from(buttons).find(
+      (b) => b.textContent?.startsWith("Scripts"),
+    ) as HTMLButtonElement;
+    scriptsBtn.dispatchEvent(
+      new PointerEvent("pointerdown", { bubbles: true }),
+    );
+
+    // Wait for async fetch to update the list
     await vi.waitFor(() => {
-      const items = document.querySelectorAll(".turtle-exchange-item");
-      expect(items.length).toBe(2);
+      const titles = document.querySelectorAll(".turtle-exchange-item-title");
+      const titleTexts = Array.from(titles).map((t) => t.textContent);
+      // Should eventually show the mock index scripts
+      expect(titleTexts.some((t) => t?.includes("Spiral"))).toBe(true);
+      expect(titleTexts.some((t) => t?.includes("Tree"))).toBe(true);
+    });
+  });
+
+  it("shows status badges for installed and update-available scripts", () => {
+    // Pre-populate cache with one script
+    storageMap.set(
+      "drawfinity:exchange:script:spiral",
+      JSON.stringify({
+        id: "spiral",
+        title: "Spiral",
+        description: "A cool spiral",
+        author: "alice",
+        tags: ["pattern"],
+        path: "scripts/spiral",
+        version: "1.0.0",
+        code: "forward(100)",
+        cachedAt: Date.now(),
+      }),
+    );
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("offline")),
+    );
+
+    // Set update result: tree has an update
+    panel.setUpdateResult({
+      hasUpdates: true,
+      newScripts: [],
+      updatedScripts: [
+        {
+          entry: MOCK_INDEX.scripts[1],
+          currentVersion: "1.0.0",
+          newVersion: "2.0.0",
+        },
+      ],
+      remoteIndex: MOCK_INDEX,
     });
 
-    const titles = document.querySelectorAll(".turtle-exchange-item-title");
-    expect(titles[0].textContent).toBe("Spiral");
-    expect(titles[1].textContent).toBe("Tree");
+    // Open browser — need to use cached index for these scripts to show
+    storageMap.set(
+      "drawfinity:exchange:index",
+      JSON.stringify({ ...MOCK_INDEX, cachedAt: Date.now() }),
+    );
+
+    const buttons = document.querySelectorAll(".turtle-btn-secondary");
+    const scriptsBtn = Array.from(buttons).find(
+      (b) => b.textContent?.startsWith("Scripts"),
+    ) as HTMLButtonElement;
+    scriptsBtn.dispatchEvent(
+      new PointerEvent("pointerdown", { bubbles: true }),
+    );
+
+    const statusBadges = document.querySelectorAll(".turtle-exchange-status");
+    const statuses = Array.from(statusBadges).map((b) => b.textContent);
+    expect(statuses).toContain("Installed");
+    expect(statuses).toContain("Update Available");
+  });
+
+  it("shows update badge on Scripts button when updates exist", () => {
+    panel.setUpdateResult({
+      hasUpdates: true,
+      newScripts: [MOCK_INDEX.scripts[0]],
+      updatedScripts: [
+        {
+          entry: MOCK_INDEX.scripts[1],
+          currentVersion: "1.0.0",
+          newVersion: "2.0.0",
+        },
+      ],
+      remoteIndex: MOCK_INDEX,
+    });
+
+    const badge = document.querySelector(".turtle-scripts-badge") as HTMLElement;
+    expect(badge).toBeTruthy();
+    expect(badge.style.display).not.toBe("none");
+    expect(badge.textContent).toBe("2");
+  });
+
+  it("hides update badge when no updates", () => {
+    panel.setUpdateResult({
+      hasUpdates: false,
+      newScripts: [],
+      updatedScripts: [],
+      remoteIndex: MOCK_INDEX,
+    });
+
+    const badge = document.querySelector(".turtle-scripts-badge") as HTMLElement;
+    expect(badge.style.display).toBe("none");
   });
 
   it("imports a script into the editor on Import click", async () => {
@@ -122,16 +249,17 @@ describe("TurtlePanel Exchange UI", () => {
 
     // Open exchange
     const buttons = document.querySelectorAll(".turtle-btn-secondary");
-    const communityBtn = Array.from(buttons).find(
-      (b) => b.textContent === "Community",
+    const scriptsBtn = Array.from(buttons).find(
+      (b) => b.textContent?.startsWith("Scripts"),
     ) as HTMLButtonElement;
-    communityBtn.dispatchEvent(
+    scriptsBtn.dispatchEvent(
       new PointerEvent("pointerdown", { bubbles: true }),
     );
 
-    // Wait for script list
+    // Wait for script list to update from fetch
     await vi.waitFor(() => {
-      expect(document.querySelectorAll(".turtle-exchange-item").length).toBe(2);
+      const items = document.querySelectorAll(".turtle-exchange-item");
+      expect(items.length).toBe(2);
     });
 
     // Click Import on first script
@@ -149,5 +277,60 @@ describe("TurtlePanel Exchange UI", () => {
 
     // Editor should contain the imported code
     expect(panel.getScript()).toBe(luaCode);
+  });
+
+  it("shows Update button for scripts with update-available status", () => {
+    // Set up cached index and update result
+    storageMap.set(
+      "drawfinity:exchange:index",
+      JSON.stringify({ ...MOCK_INDEX, cachedAt: Date.now() }),
+    );
+    storageMap.set(
+      "drawfinity:exchange:script:spiral",
+      JSON.stringify({
+        id: "spiral",
+        title: "Spiral",
+        description: "A cool spiral",
+        author: "alice",
+        tags: ["pattern"],
+        path: "scripts/spiral",
+        version: "1.0.0",
+        code: "forward(100)",
+        cachedAt: Date.now(),
+      }),
+    );
+
+    panel.setUpdateResult({
+      hasUpdates: true,
+      newScripts: [],
+      updatedScripts: [
+        {
+          entry: MOCK_INDEX.scripts[0],
+          currentVersion: "1.0.0",
+          newVersion: "2.0.0",
+        },
+      ],
+      remoteIndex: MOCK_INDEX,
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("offline")),
+    );
+
+    const buttons = document.querySelectorAll(".turtle-btn-secondary");
+    const scriptsBtn = Array.from(buttons).find(
+      (b) => b.textContent?.startsWith("Scripts"),
+    ) as HTMLButtonElement;
+    scriptsBtn.dispatchEvent(
+      new PointerEvent("pointerdown", { bubbles: true }),
+    );
+
+    const actionBtns = document.querySelectorAll(".turtle-exchange-import-btn");
+    const updateBtn = Array.from(actionBtns).find(
+      (b) => b.textContent === "Update",
+    );
+    expect(updateBtn).toBeTruthy();
+    expect(updateBtn?.classList.contains("turtle-btn-update")).toBe(true);
   });
 });

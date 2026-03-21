@@ -149,6 +149,12 @@ export class CheatSheet {
     this.overlay.remove();
   }
 
+  /**
+   * Toggles the cheat sheet overlay between visible and hidden states.
+   *
+   * If the overlay is currently hidden, delegates to {@link show} to open it.
+   * If the overlay is currently visible, delegates to {@link hide} to close it.
+   */
   toggle(): void {
     if (this.visible) {
       this.hide();

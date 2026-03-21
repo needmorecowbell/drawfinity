@@ -14,3 +14,9 @@ export { TurtleExecutor } from "./TurtleExecutor";
 export { TurtleIndicator } from "./TurtleIndicator";
 export type { TurtleExample } from "./TurtleExamples";
 export { TURTLE_EXAMPLES } from "./TurtleExamples";
+export type {
+  ExchangeScriptEntry,
+  ExchangeIndex,
+  ExchangeScript,
+} from "./exchange";
+export { ExchangeClient, ExchangeError } from "./exchange";

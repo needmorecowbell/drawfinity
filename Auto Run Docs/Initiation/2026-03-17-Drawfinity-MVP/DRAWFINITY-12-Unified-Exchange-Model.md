@@ -101,7 +101,8 @@ Per-script `version` fields enable granular update detection (user can see which
 
 ### Remove Built-in Examples
 
-- [ ] Delete `src/turtle/TurtleExamples.ts`. Remove its export from `src/turtle/index.ts`. Remove any imports of `TURTLE_EXAMPLES` across the codebase (likely `TurtlePanel.ts` and any tests that reference it). The exchange snapshot and cache now serve this role entirely
+- [x] Delete `src/turtle/TurtleExamples.ts`. Remove its export from `src/turtle/index.ts`. Remove any imports of `TURTLE_EXAMPLES` across the codebase (likely `TurtlePanel.ts` and any tests that reference it). The exchange snapshot and cache now serve this role entirely
+  - *Completed: `TurtleExamples.ts` deleted, all exports/imports removed from barrel files and TurtlePanel. All tests pass.*
 
 ### Startup Integration (`src/canvas/CanvasApp.ts` or `src/main.ts`)
 
@@ -121,7 +122,8 @@ Per-script `version` fields enable granular update detection (user can see which
 
 ### Cleanup
 
-- [ ] Remove any remaining references to `TurtleExamples` in `CLAUDE.md`, phase docs, or comments. Update `CLAUDE.md` keyboard shortcuts or architecture sections if they reference built-in examples
+- [x] Remove any remaining references to `TurtleExamples` in `CLAUDE.md`, phase docs, or comments. Update `CLAUDE.md` keyboard shortcuts or architecture sections if they reference built-in examples
+  - *Completed: Updated `docs/turtle-graphics.md` panel controls table (Examples → Scripts with exchange link). Verified CLAUDE.md has no TurtleExamples references. Phase docs (FEATURE-05, DRAWFINITY-11, DRAWFINITY-12) all updated to reflect the unified exchange model.*
 
 ## Design Decisions
 

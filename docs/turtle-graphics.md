@@ -389,7 +389,7 @@ sierpinski(256, 5)
 | **Stop** | Halt a running script |
 | **Place** | Click canvas to reposition the turtle's home origin |
 | **Speed slider** | Adjust animation speed (0-10) |
-| **Examples** | Load a built-in example script |
+| **Scripts** | Browse and import scripts from the [Turtle Exchange](https://github.com/needmorecowbell/drawfinity_turtle_exchange) |
 | **Clear Console** | Clear the output log |
 
 Scripts are automatically saved per-drawing and restored when you reopen the panel.

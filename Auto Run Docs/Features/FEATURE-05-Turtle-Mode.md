@@ -112,14 +112,12 @@ repeat_n(n, fn)         -- Call fn() n times (convenience for loops)
   - Click toggles the turtle panel
   - When turtle is actively executing, show an animated indicator on the button (e.g., pulsing border)
 
-- [ ] Example scripts (bundled):
-  - Provide a dropdown or "Examples" button in the panel with pre-built scripts:
-    - Spiral: `for i = 1, 200 do forward(i) right(91) end`
-    - Square fractal: recursive Koch curve
-    - Star: `for i = 1, 36 do forward(100) right(170) end`
-    - Tree: recursive branching fractal
-    - Sierpinski triangle
-  - Selecting an example populates the code editor
+- [x] Script access (via Turtle Exchange):
+  - A unified "Scripts" button in the panel opens the exchange browser
+  - Scripts are sourced from the `drawfinity_turtle_exchange` repo (GitHub raw CDN)
+  - Cached locally with snapshot fallback for offline access
+  - Selecting a script populates the code editor
+  - See Phase 12 (DRAWFINITY-12-Unified-Exchange-Model.md) for implementation details
 
 - [ ] Tests:
   - Unit tests for TurtleState (movement, heading, pen state)

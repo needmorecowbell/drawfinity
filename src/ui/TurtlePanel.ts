@@ -494,6 +494,13 @@ export class TurtlePanel {
     scriptList.className = "turtle-exchange-list";
     container.appendChild(scriptList);
 
+    // Footer with repo link
+    const footer = document.createElement("div");
+    footer.className = "turtle-exchange-footer";
+    footer.innerHTML =
+      'Browse the full collection and contribute scripts at <a href="https://github.com/needmorecowbell/drawfinity_turtle_exchange" target="_blank" rel="noopener noreferrer">needmorecowbell/drawfinity_turtle_exchange</a>';
+    container.appendChild(footer);
+
     overlay.appendChild(container);
     this.panel.appendChild(overlay);
 

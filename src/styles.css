@@ -2073,6 +2073,23 @@ html, body {
   color: #f38ba8;
 }
 
+.turtle-exchange-footer {
+  padding: 10px 16px;
+  font-size: 12px;
+  color: #6c7086;
+  text-align: center;
+  border-top: 1px solid #313244;
+}
+
+.turtle-exchange-footer a {
+  color: #89b4fa;
+  text-decoration: none;
+}
+
+.turtle-exchange-footer a:hover {
+  text-decoration: underline;
+}
+
 /* Unified script browser: status badges */
 .turtle-exchange-status {
   display: inline-block;

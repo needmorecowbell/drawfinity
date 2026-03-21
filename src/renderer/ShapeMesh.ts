@@ -1,11 +1,18 @@
 import type { Shape } from "../model/Shape";
 
 /**
- * Generates triangle strip geometry for shape outlines and triangle-list
- * geometry for shape fills. Vertex format matches StrokeMesh:
- * interleaved [x, y, r, g, b, a] (stride 6) per vertex.
+ * Vertex data output from shape mesh generation, containing separate
+ * geometry buffers for the shape's outline and fill. Produced by
+ * {@link generateShapeVertices} and consumed by the WebGL renderer.
+ *
+ * Both buffers use the same interleaved vertex format as StrokeMesh:
+ * `[x, y, r, g, b, a]` with a stride of 6 floats per vertex.
+ *
+ * @property outline - `GL_TRIANGLE_STRIP` vertices for the shape outline
+ *   (stroke border). `null` when the shape has no stroke (`strokeWidth <= 0`).
+ * @property fill - `GL_TRIANGLES` vertices for the shape interior.
+ *   `null` when the shape has no fill color.
  */
-
 export interface ShapeVertexData {
   /** Triangle strip vertices for the shape outline (stroke), or null if strokeWidth <= 0 */
   outline: Float32Array | null;

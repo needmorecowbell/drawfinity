@@ -102,9 +102,16 @@ export class DotGridRenderer {
   }
 
   /**
-   * Compute the grid spacing that looks good at the current zoom level.
-   * As the user zooms out, the spacing increases (fewer dots visible);
-   * as they zoom in, the spacing decreases to maintain density.
+   * Computes the effective world-space grid spacing for the current zoom level.
+   *
+   * Uses power-of-2 scaling so the grid snaps cleanly between density levels:
+   * as the user zooms out, spacing doubles (fewer dots visible); as they zoom in,
+   * spacing halves to maintain visual density. The result is always a power of 2,
+   * derived from {@link baseSpacing} divided by the zoom factor.
+   *
+   * @param zoom - Current camera zoom level (1.0 = 100%). Values greater than 1
+   *   mean zoomed in; values less than 1 mean zoomed out.
+   * @returns The world-space distance between adjacent grid dots, always a power of 2.
    */
   getEffectiveSpacing(zoom: number): number {
     // Use power-of-2 scaling so the grid snaps cleanly between levels

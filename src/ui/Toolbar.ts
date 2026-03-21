@@ -83,6 +83,38 @@ const SHAPE_TOOLS: { type: ToolType; label: string; title: string; shortcut: str
 /** Toolbar group identifiers for logical organization. */
 export type ToolbarGroup = "tools" | "properties" | "actions" | "navigation" | "panels";
 
+/**
+ * Main toolbar UI component that provides drawing tool selection, color picking,
+ * brush settings, zoom controls, and other canvas actions.
+ *
+ * The toolbar renders as a fixed panel in the DOM and delegates all user interactions
+ * to the provided {@link ToolbarCallbacks}. It manages sub-tool pickers (brush presets,
+ * shape tools, grid styles), sliders for brush size and opacity, color swatches,
+ * background color selection, shape options, zoom controls, and overflow handling
+ * for narrow viewports.
+ *
+ * @param callbacks - Callback handlers for all toolbar interactions. See {@link ToolbarCallbacks}.
+ *
+ * @example
+ * ```ts
+ * const toolbar = new Toolbar({
+ *   onBrushSelect: (brush) => toolManager.setBrush(brush),
+ *   onColorChange: (color) => toolManager.setColor(color),
+ *   onToolChange: (tool) => toolManager.setActiveTool(tool),
+ *   onUndo: () => undoManager.undo(),
+ *   onRedo: () => undoManager.redo(),
+ *   onBrushSizeChange: (size) => toolManager.setBrushSize(size),
+ *   onOpacityChange: (opacity) => toolManager.setOpacity(opacity),
+ * });
+ *
+ * // Update toolbar state to reflect external changes
+ * toolbar.setActiveTool("eraser");
+ * toolbar.setZoomLevel(1.5);
+ *
+ * // Clean up when done
+ * toolbar.destroy();
+ * ```
+ */
 export class Toolbar {
   private container: HTMLElement;
   private callbacks: ToolbarCallbacks;

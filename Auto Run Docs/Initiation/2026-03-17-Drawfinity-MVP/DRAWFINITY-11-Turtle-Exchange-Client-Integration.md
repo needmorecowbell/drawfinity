@@ -113,9 +113,9 @@ The client depends on the following structure in the exchange repo:
 
 ### Exchange UI in TurtlePanel (`src/ui/TurtlePanel.ts`)
 
-- [ ] Add "Community Scripts" button in the turtle panel control bar (alongside existing Examples dropdown):
-  - Button opens an exchange browse overlay/panel within the turtle panel area
-  - Uses a browse icon or label like "Community" or "Exchange"
+- [x] Add unified "Scripts" button in the turtle panel control bar (replaces the former Examples dropdown — see Phase 12):
+  - Button opens the exchange browser within the turtle panel area
+  - All scripts (community and previously built-in) are served from the exchange repo
 
 - [ ] Build the exchange browse view:
   - On open, fetch `index.json` via `ExchangeClient.fetchIndex()`
@@ -172,6 +172,6 @@ The client depends on the following structure in the exchange repo:
 - **PR-based contributions** — community scripts are submitted as pull requests to the exchange repo, providing natural code review and curation
 - **Client-side filtering** — the script catalog will be small enough (tens to low hundreds) that filtering in the browser is simpler and faster than any server-side solution
 - **In-memory caching with TTL** — avoids hammering GitHub on every panel open, while ensuring new scripts appear within minutes of being merged
-- **Graceful degradation** — if GitHub is unreachable, the exchange UI shows an error but the existing turtle system (local scripts, built-in examples) works perfectly fine
+- **Graceful degradation** — if GitHub is unreachable, the exchange UI falls back to a bundled snapshot cache so scripts remain available offline
 - **Single index fetch** — one request gets the full catalog; individual `.lua` files are fetched only when the user explicitly imports a script
-- **Separate from built-in examples** — the exchange supplements the existing Examples dropdown, not replace it. Built-in examples remain bundled in the app for offline availability
+- **Unified exchange model** — the exchange is the single source of truth for all scripts (Phase 12). The former built-in Examples dropdown has been removed; offline availability is handled by the snapshot fallback in ExchangeCache

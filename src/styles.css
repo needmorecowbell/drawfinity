@@ -1885,55 +1885,6 @@ html, body {
   background: #45475a;
 }
 
-.turtle-examples-wrap {
-  position: relative;
-}
-
-.turtle-examples-menu {
-  display: flex;
-  flex-direction: column;
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  margin-bottom: 4px;
-  background: #1e1e2e;
-  border: 1px solid #45475a;
-  border-radius: 8px;
-  padding: 4px;
-  min-width: 220px;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.4);
-  z-index: 10;
-}
-
-.turtle-examples-item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  cursor: pointer;
-  text-align: left;
-  width: 100%;
-}
-
-.turtle-examples-item:hover {
-  background: #313244;
-}
-
-.turtle-examples-item-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: #cdd6f4;
-}
-
-.turtle-examples-item-desc {
-  font-size: 11px;
-  color: #6c7086;
-}
-
 .turtle-speed-wrap {
   display: flex;
   align-items: center;
@@ -1955,6 +1906,250 @@ html, body {
   font-size: 12px;
   color: #cdd6f4;
   min-width: 40px;
+}
+
+/* Turtle Exchange browse overlay */
+.turtle-exchange-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 17, 27, 0.92);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+}
+
+.turtle-exchange-container {
+  width: 100%;
+  max-width: 600px;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.turtle-exchange-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.turtle-exchange-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #cdd6f4;
+}
+
+.turtle-exchange-search-bar {
+  display: flex;
+}
+
+.turtle-exchange-search-input {
+  flex: 1;
+  padding: 7px 12px;
+  border: 1px solid #45475a;
+  border-radius: 6px;
+  background: #1e1e2e;
+  color: #cdd6f4;
+  font-size: 13px;
+  outline: none;
+}
+
+.turtle-exchange-search-input:focus {
+  border-color: #89b4fa;
+}
+
+.turtle-exchange-tag-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.turtle-exchange-tag-filter {
+  padding: 3px 10px;
+  border: 1px solid #45475a;
+  border-radius: 12px;
+  background: transparent;
+  color: #a6adc8;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.turtle-exchange-tag-filter:hover {
+  background: #313244;
+}
+
+.turtle-exchange-tag-filter.active {
+  background: #89b4fa;
+  color: #1e1e2e;
+  border-color: #89b4fa;
+}
+
+.turtle-exchange-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.turtle-exchange-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #1e1e2e;
+  border: 1px solid #313244;
+  transition: border-color 0.15s;
+}
+
+.turtle-exchange-item:hover {
+  border-color: #45475a;
+}
+
+.turtle-exchange-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.turtle-exchange-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #cdd6f4;
+}
+
+.turtle-exchange-item-desc {
+  font-size: 12px;
+  color: #a6adc8;
+  margin-top: 2px;
+}
+
+.turtle-exchange-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+  align-items: center;
+}
+
+.turtle-exchange-item-author {
+  font-size: 11px;
+  color: #6c7086;
+}
+
+.turtle-exchange-tag-badge {
+  padding: 1px 7px;
+  border-radius: 8px;
+  background: #313244;
+  color: #a6adc8;
+  font-size: 10px;
+}
+
+.turtle-exchange-import-btn {
+  flex-shrink: 0;
+  padding: 5px 14px;
+  font-size: 12px;
+}
+
+.turtle-exchange-loading,
+.turtle-exchange-empty,
+.turtle-exchange-error {
+  padding: 24px;
+  text-align: center;
+  color: #6c7086;
+  font-size: 13px;
+}
+
+.turtle-exchange-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: #f38ba8;
+}
+
+.turtle-exchange-footer {
+  padding: 10px 16px;
+  font-size: 12px;
+  color: #6c7086;
+  text-align: center;
+  border-top: 1px solid #313244;
+}
+
+.turtle-exchange-footer a {
+  color: #89b4fa;
+  text-decoration: none;
+}
+
+.turtle-exchange-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Unified script browser: status badges */
+.turtle-exchange-status {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.turtle-exchange-status-installed {
+  background: #313244;
+  color: #a6e3a1;
+}
+
+.turtle-exchange-status-update-available {
+  background: #fab38726;
+  color: #fab387;
+}
+
+/* Update button style */
+.turtle-btn-update {
+  background: #fab387;
+  color: #1e1e2e;
+  font-weight: 600;
+}
+
+.turtle-btn-update:hover:not(:disabled) {
+  background: #f9c97c;
+}
+
+/* Scripts button badge (update count) */
+.turtle-scripts-btn-wrap {
+  position: relative;
+}
+
+.turtle-scripts-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #fab387;
+  color: #1e1e2e;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Update All button in exchange header */
+.turtle-exchange-update-all-btn {
+  padding: 4px 12px;
+  font-size: 11px;
+  margin-left: auto;
+  margin-right: 8px;
 }
 
 @media (max-width: 600px) {
@@ -2350,54 +2545,6 @@ html, body {
   color: #a6e3a1;
 }
 
-.turtle-examples-wrap {
-  position: relative;
-}
-
-.turtle-examples-menu {
-  display: flex;
-  flex-direction: column;
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  margin-bottom: 4px;
-  background: #1e1e2e;
-  border: 1px solid #45475a;
-  border-radius: 8px;
-  padding: 4px;
-  min-width: 220px;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.4);
-  z-index: 10;
-}
-
-.turtle-examples-item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  cursor: pointer;
-  text-align: left;
-  width: 100%;
-}
-
-.turtle-examples-item:hover {
-  background: #313244;
-}
-
-.turtle-examples-item-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: #cdd6f4;
-}
-
-.turtle-examples-item-desc {
-  font-size: 11px;
-  color: #6c7086;
-}
 .turtle-speed-wrap {
   display: flex;
   align-items: center;

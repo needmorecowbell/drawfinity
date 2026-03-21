@@ -12,5 +12,13 @@ export { TurtleDrawing } from "./TurtleDrawing";
 export type { TurtleExecutorEvents } from "./TurtleExecutor";
 export { TurtleExecutor } from "./TurtleExecutor";
 export { TurtleIndicator } from "./TurtleIndicator";
-export type { TurtleExample } from "./TurtleExamples";
-export { TURTLE_EXAMPLES } from "./TurtleExamples";
+export type {
+  ExchangeScriptEntry,
+  ExchangeIndex,
+  ExchangeScript,
+  CachedScript,
+  ExchangeSnapshot,
+  CachedExchangeIndex,
+  UpdateCheckResult,
+} from "./exchange";
+export { ExchangeClient, ExchangeError, ExchangeCache } from "./exchange";

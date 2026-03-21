@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { TurtlePanel } from "../TurtlePanel";
-import { TURTLE_EXAMPLES } from "../../turtle";
 
 const storageMap = new Map<string, string>();
 beforeEach(() => {
@@ -237,84 +236,56 @@ describe("TurtlePanel", () => {
     expect(handle).not.toBeNull();
   });
 
-  describe("Examples dropdown", () => {
-    it("renders an Examples button", () => {
+  describe("Scripts button (unified browser)", () => {
+    it("renders a Scripts button", () => {
+      panel.show();
+      const btns = Array.from(document.querySelectorAll(".turtle-btn-secondary"));
+      const scriptsBtn = btns.find((b) => b.textContent?.startsWith("Scripts"));
+      expect(scriptsBtn).toBeTruthy();
+    });
+
+    it("does not render Examples or Community buttons", () => {
       panel.show();
       const btns = Array.from(document.querySelectorAll(".turtle-btn-secondary"));
       const exBtn = btns.find((b) => b.textContent?.includes("Examples"));
-      expect(exBtn).not.toBeUndefined();
+      const communityBtn = btns.find((b) => b.textContent === "Community");
+      expect(exBtn).toBeUndefined();
+      expect(communityBtn).toBeUndefined();
     });
 
-    it("examples menu is hidden by default", () => {
+    it("clicking Scripts button opens the exchange overlay", () => {
       panel.show();
-      const menu = document.querySelector(".turtle-examples-menu") as HTMLElement;
-      expect(menu).not.toBeNull();
-      expect(menu.style.display).toBe("none");
-    });
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockRejectedValue(new Error("offline")),
+      );
 
-    it("clicking Examples button toggles the menu", () => {
-      panel.show();
       const btns = Array.from(document.querySelectorAll(".turtle-btn-secondary"));
-      const exBtn = btns.find((b) => b.textContent?.includes("Examples")) as HTMLButtonElement;
-      const menu = document.querySelector(".turtle-examples-menu") as HTMLElement;
+      const scriptsBtn = btns.find((b) =>
+        b.textContent?.startsWith("Scripts"),
+      ) as HTMLButtonElement;
+      scriptsBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
 
-      exBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: false }));
-      expect(menu.style.display).toBe("flex");
-
-      exBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: false }));
-      expect(menu.style.display).toBe("none");
+      const overlay = document.querySelector(".turtle-exchange-overlay");
+      expect(overlay).not.toBeNull();
     });
 
-    it("renders all example items in the menu", () => {
+    it("exchange overlay shows scripts from bundled snapshot", () => {
       panel.show();
-      const items = document.querySelectorAll(".turtle-examples-item");
-      expect(items.length).toBe(TURTLE_EXAMPLES.length);
-    });
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockRejectedValue(new Error("offline")),
+      );
 
-    it("each item shows the example name", () => {
-      panel.show();
-      const names = document.querySelectorAll(".turtle-examples-item-name");
-      const nameTexts = Array.from(names).map((n) => n.textContent);
-      for (const example of TURTLE_EXAMPLES) {
-        expect(nameTexts).toContain(example.name);
-      }
-    });
-
-    it("clicking an example populates the editor with its script", () => {
-      panel.show();
-      const items = document.querySelectorAll(".turtle-examples-item");
-      const firstItem = items[0] as HTMLButtonElement;
-      firstItem.dispatchEvent(new PointerEvent("pointerdown", { bubbles: false }));
-      expect(panel.getScript()).toBe(TURTLE_EXAMPLES[0].script);
-    });
-
-    it("clicking an example closes the menu", () => {
-      panel.show();
       const btns = Array.from(document.querySelectorAll(".turtle-btn-secondary"));
-      const exBtn = btns.find((b) => b.textContent?.includes("Examples")) as HTMLButtonElement;
-      const menu = document.querySelector(".turtle-examples-menu") as HTMLElement;
+      const scriptsBtn = btns.find((b) =>
+        b.textContent?.startsWith("Scripts"),
+      ) as HTMLButtonElement;
+      scriptsBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
 
-      // Open menu first
-      exBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: false }));
-      expect(menu.style.display).toBe("flex");
-
-      // Click an example
-      const items = document.querySelectorAll(".turtle-examples-item");
-      (items[0] as HTMLButtonElement).dispatchEvent(
-        new PointerEvent("pointerdown", { bubbles: false }),
-      );
-      expect(menu.style.display).toBe("none");
-    });
-
-    it("selecting an example saves to localStorage", () => {
-      panel.show();
-      const items = document.querySelectorAll(".turtle-examples-item");
-      (items[0] as HTMLButtonElement).dispatchEvent(
-        new PointerEvent("pointerdown", { bubbles: false }),
-      );
-      expect(storageMap.get("drawfinity:turtle-script:test-drawing")).toBe(
-        TURTLE_EXAMPLES[0].script,
-      );
+      const items = document.querySelectorAll(".turtle-exchange-item");
+      // Snapshot has 5 scripts
+      expect(items.length).toBe(5);
     });
   });
 });

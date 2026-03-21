@@ -129,7 +129,8 @@ Per-script `version` fields enable granular update detection (user can see which
 
 ### Cleanup
 
-- [ ] Remove any remaining references to `TurtleExamples` in `CLAUDE.md`, phase docs, or comments. Update `CLAUDE.md` keyboard shortcuts or architecture sections if they reference built-in examples
+- [x] Remove any remaining references to `TurtleExamples` in `CLAUDE.md`, phase docs, or comments. Update `CLAUDE.md` keyboard shortcuts or architecture sections if they reference built-in examples
+  - *Completed: Updated `docs/turtle-graphics.md` panel controls table (Examples → Scripts with exchange link). Verified CLAUDE.md has no TurtleExamples references. Phase docs (FEATURE-05, DRAWFINITY-11, DRAWFINITY-12) all updated to reflect the unified exchange model.*
 
 ## Design Decisions
 

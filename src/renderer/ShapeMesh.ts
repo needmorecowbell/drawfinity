@@ -291,7 +291,23 @@ export function generateEllipseVertices(shape: Shape, segments = 48): ShapeVerte
   return generateShapeFromPerimeter(shape, generatePerimeterPoints(shape, segments));
 }
 
-/** Generate outline vertices for a regular polygon shape. */
+/**
+ * Generates WebGL vertex data for rendering a regular polygon shape.
+ *
+ * Produces triangle-strip outline and triangle-list fill geometry for a
+ * regular polygon with a configurable number of sides (via {@link Shape.sides},
+ * default 5). The first vertex is placed at the top of the shape (−π/2) so
+ * that the polygon appears upright. Position, rotation, colors, and stroke
+ * width are all read from the shape's properties.
+ *
+ * @param shape - The polygon shape to generate vertices for. Uses `sides`
+ *   (default 5) to determine vertex count, and reads `width`, `height`,
+ *   `x`, `y`, `rotation`, `strokeColor`, `strokeWidth`, `fillColor`, and
+ *   `opacity` for geometry and color.
+ * @returns Vertex data with interleaved `[x, y, r, g, b, a]` buffers.
+ *   `outline` is `null` when `strokeWidth <= 0`; `fill` is `null` when
+ *   `fillColor` is `null`.
+ */
 export function generatePolygonVertices(shape: Shape): ShapeVertexData {
   return generateShapeFromPerimeter(shape, generatePerimeterPoints(shape));
 }

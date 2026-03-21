@@ -1,6 +1,6 @@
 ---
 type: report
-title: Documentation Gaps - Loop 00004 (Updated Loop 6)
+title: Documentation Gaps - Loop 00004 (Updated Loop 7)
 created: 2026-03-20
 tags:
   - documentation
@@ -10,29 +10,44 @@ related:
   - '[[LOOP_00004_PLAN]]'
 ---
 
-# Documentation Gaps - Loop 00004 (Updated Loop 6)
+# Documentation Gaps - Loop 00004 (Updated Loop 7)
 
 ## Summary
-- **Overall Coverage:** 80.9% (target: 90%)
-- **Total Gaps Found:** 57
-- **By Type:** 3 Functions, 4 Classes, 2 Interfaces, 1 Constant, 47 Methods
-- **By Visibility:** 12 Public API, 35 Internal API, 10 Utility
+- **Report Coverage:** 80.9% (target: 90%)
+- **Estimated Current Coverage:** ~83% (12 items documented since report)
+- **Total Remaining Gaps:** 56
+- **By Type:** 3 Functions, 2 Classes, 1 Interface, 2 Constants, 48 Methods
+- **By Visibility:** 10 Public API, 36 Internal API, 10 Utility
+
+## Changes Since Loop 6
+
+### Resolved Gaps (documented since last update)
+- ~~GAP-011: StrokePoint interface~~ — JSDoc added (commit a8bab32)
+- ~~GAP-014: StrokeRenderer.drawStrokeBatch~~ — JSDoc added
+- ~~GAP-017: Renderer.drawGrid~~ — JSDoc added (commit bb2e540)
+- ~~GAP-018: Renderer.drawStroke~~ — JSDoc added (commit 419aa99)
+- ~~MagnifyCapture class~~ — JSDoc added
+- ~~MagnifyCapture.onCursorChange~~ — JSDoc added
+
+Also documented since the coverage report was generated (already excluded from gap list in loop 6):
+- Renderer.setBackgroundColor, setGridStyle, clear, setCameraMatrix, destroy — all documented
+- AABB interface (SpatialIndex) — documented (commit 51ff515)
 
 ## Gaps by Module
 
 | Module | Gap Count | Types |
 |--------|-----------|-------|
-| `src/renderer/` | 18 | 4 Methods (WebGLContext), 6 Methods+Constants (ShaderProgram), 1 Interface + 5 Methods (StrokeRenderer), 2 Methods (Renderer) |
-| `src/ui/` | 35 | 2 Classes + 1 Interface + 32 Methods |
+| `src/renderer/` | 14 | 4 Methods (WebGLContext), 6 Methods+Constants (ShaderProgram), 4 Methods (StrokeRenderer) |
+| `src/ui/` | 36 | 2 Classes + 1 Interface + 33 Methods |
 | `src/model/` | 4 | 1 Class + 3 Methods |
-| `src/input/` | 4 | 1 Class + 2 Methods + 1 Property |
+| `src/input/` | 2 | 2 Methods |
 | `src/user/` | 4 | 3 Functions + 1 Constant |
 
 ---
 
 ## Gap List
 
-### renderer/ Module (63% coverage — 54/86)
+### renderer/ Module (14 remaining gaps)
 
 #### GAP-001: WebGLContext.resize
 - **File:** `src/renderer/WebGLContext.ts:28`
@@ -104,65 +119,37 @@ related:
 - **Complexity:** SIMPLE
 - **Signature:** `export const STROKE_FRAGMENT_SHADER`
 
-#### GAP-011: StrokePoint
-- **File:** `src/renderer/StrokeRenderer.ts:8`
-- **Type:** Interface
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Signature:** `export interface StrokePoint { x: number; y: number; pressure?: number; }`
-
 #### GAP-012: StrokeRenderer.setCameraMatrix
-- **File:** `src/renderer/StrokeRenderer.ts:77`
+- **File:** `src/renderer/StrokeRenderer.ts:90`
 - **Type:** Method
 - **Visibility:** INTERNAL API
 - **Complexity:** SIMPLE
 - **Signature:** `setCameraMatrix(matrix: Float32Array): void`
 
 #### GAP-013: StrokeRenderer.drawStroke
-- **File:** `src/renderer/StrokeRenderer.ts:84`
+- **File:** `src/renderer/StrokeRenderer.ts:97`
 - **Type:** Method
 - **Visibility:** INTERNAL API
 - **Complexity:** MODERATE
 - **Signature:** `drawStroke(points: readonly StrokePoint[], color: [number, number, number, number], width: number): void`
 
-#### GAP-014: StrokeRenderer.drawStrokeBatch
-- **File:** `src/renderer/StrokeRenderer.ts:114`
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** MODERATE
-- **Signature:** `drawStrokeBatch(strips: Float32Array[]): void`
-
 #### GAP-015: StrokeRenderer.drawTriangleBatch
-- **File:** `src/renderer/StrokeRenderer.ts:184`
+- **File:** `src/renderer/StrokeRenderer.ts:197`
 - **Type:** Method
 - **Visibility:** INTERNAL API
 - **Complexity:** MODERATE
 - **Signature:** `drawTriangleBatch(triangleArrays: Float32Array[]): void`
 
 #### GAP-016: StrokeRenderer.destroy
-- **File:** `src/renderer/StrokeRenderer.ts:221`
+- **File:** `src/renderer/StrokeRenderer.ts:234`
 - **Type:** Method
 - **Visibility:** INTERNAL API
 - **Complexity:** SIMPLE
 - **Signature:** `destroy(): void`
 
-#### GAP-017: Renderer.drawGrid
-- **File:** `src/renderer/Renderer.ts:95`
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** COMPLEX
-- **Signature:** `drawGrid(cameraMatrix: Float32Array, viewportBounds: {...}, zoom: number): void`
-
-#### GAP-018: Renderer.drawStroke
-- **File:** `src/renderer/Renderer.ts:108`
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** MODERATE
-- **Signature:** `drawStroke(points: readonly StrokePoint[], color: [number, number, number, number], width: number): void`
-
 ---
 
-### ui/ Module (73% coverage — 146/201)
+### ui/ Module (36 remaining gaps)
 
 #### GAP-019: CheatSheet (class)
 - **File:** `src/ui/CheatSheet.ts:4`
@@ -319,7 +306,7 @@ related:
 
 ---
 
-### model/ Module (73% coverage — 11/15)
+### model/ Module (4 remaining gaps)
 
 #### GAP-055: DrawDocument (class + 3 methods)
 - **File:** `src/model/Document.ts:3`
@@ -330,18 +317,21 @@ related:
 
 ---
 
-### input/ Module (82% coverage — 23/28)
+### input/ Module (2 remaining gaps)
 
-#### GAP-056: MagnifyCapture (class + methods)
-- **File:** `src/input/MagnifyCapture.ts:11`
-- **Type:** Class
+#### GAP-056: MagnifyCapture methods
+- **File:** `src/input/MagnifyCapture.ts`
+- **Type:** Methods
 - **Visibility:** INTERNAL API
-- **Complexity:** MODERATE
-- **Undocumented:** class (line 11), onCursorChange property (line 28), setEnabled (line 55), isEnabled (line 62)
+- **Complexity:** SIMPLE
+- **Items:**
+  - `setEnabled(enabled: boolean)` (line 55) — enables/disables magnify capture
+  - `isEnabled()` (line 62) — returns current enabled state
+- **Note:** Class-level JSDoc and onCursorChange property are now documented (loop 7 verification)
 
 ---
 
-### user/ Module (82% coverage — 9/11)
+### user/ Module (4 remaining gaps)
 
 #### GAP-057: UserStore exports
 - **File:** `src/user/UserStore.ts`
@@ -357,18 +347,17 @@ related:
 
 ## Priority Order
 
-1. **ViewManager** — core app coordinator, PUBLIC API, entirely undocumented
-2. **Toolbar + ToolbarCallbacks** — primary user interface, PUBLIC API
-3. **UserStore exports** — PUBLIC API, user-facing persistence
-4. **StrokePoint + StrokeRenderer** — PUBLIC API interface + core rendering
-5. **CheatSheet** — entirely undocumented class
-6. **DrawDocument** — PUBLIC API, simple but undocumented
-7. **MagnifyCapture** — input handling
-8. **Renderer.drawGrid/drawStroke** — high-level render methods
-9. **WebGLContext methods** — internal GL wrapper
-10. **CursorManager setters** — simple internal setters
-11. **Lifecycle methods** (FpsCounter, TurtlePanel) — simple show/hide/toggle
-12. **ShaderProgram methods + constants** — thin GL wrappers, lowest priority
+1. **ViewManager** — core app coordinator, PUBLIC API, entirely undocumented (7 items)
+2. **Toolbar + ToolbarCallbacks** — primary user interface, PUBLIC API (10 items)
+3. **UserStore exports** — PUBLIC API, user-facing persistence (4 items)
+4. **CheatSheet** — entirely undocumented class (6 items)
+5. **DrawDocument** — PUBLIC API, simple but undocumented (4 items)
+6. **StrokeRenderer methods** — core rendering (4 items)
+7. **WebGLContext methods** — internal GL wrapper (4 items)
+8. **CursorManager setters** — simple internal setters (6 items)
+9. **MagnifyCapture methods** — input handling (2 items)
+10. **Lifecycle methods** (FpsCounter, TurtlePanel) — simple show/hide/toggle (7 items)
+11. **ShaderProgram methods + constants** — thin GL wrappers, lowest priority (6 items)
 
 ## Related Exports
 
@@ -378,7 +367,7 @@ Exports that should be documented together:
 - **Group B:** `ViewManager` class + all methods — complete class documentation
 - **Group C:** `Toolbar` + `ToolbarCallbacks` — interface and implementation together
 - **Group D:** `WebGLContext` methods — all 4 undocumented methods
-- **Group E:** `StrokeRenderer` + `StrokePoint` — interface and renderer together
+- **Group E:** `StrokeRenderer` methods — setCameraMatrix, drawStroke, drawTriangleBatch, destroy
 - **Group F:** `UserStore` exports — `loadProfile`, `saveProfile`, `onProfileChange`, `USER_COLORS`
 - **Group G:** `DrawDocument` class + all methods
-- **Group H:** `MagnifyCapture` class + methods
+- **Group H:** `MagnifyCapture` methods — setEnabled, isEnabled

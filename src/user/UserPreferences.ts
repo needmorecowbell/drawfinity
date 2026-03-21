@@ -12,12 +12,32 @@ import { readConfigFile, writeConfigFile } from "./ConfigFile";
  */
 export type GridStyle = "dots" | "lines" | "none";
 
+/**
+ * Core user settings persisted to localStorage and (when available) to a Tauri config file.
+ *
+ * All optional fields default to `undefined` and are filled with sensible defaults
+ * by {@link loadPreferences} when missing. The interface is serialized as JSON, so
+ * all values must be JSON-compatible primitives.
+ *
+ * @example
+ * ```ts
+ * const prefs = loadPreferences();
+ * prefs.gridStyle = "lines";
+ * savePreferences(prefs);
+ * ```
+ */
 export interface UserPreferences {
+  /** Index into {@link BRUSH_PRESETS} selecting the default brush on app start (default: `0` — Pen). */
   defaultBrush: number;
+  /** CSS hex color string used as the initial stroke color (default: `"#000000"`). */
   defaultColor: string;
+  /** Background grid rendering style. When omitted, the renderer uses its own default. */
   gridStyle?: GridStyle;
+  /** Filesystem directory path for saving drawings (Tauri only). */
   saveDirectory?: string;
+  /** WebSocket URL of the collaboration server (e.g. `"ws://localhost:3030"`). */
   serverUrl?: string;
+  /** ID of the last joined collaboration room, used for quick-reconnect. */
   lastRoomId?: string;
 }
 

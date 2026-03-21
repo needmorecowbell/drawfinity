@@ -52,6 +52,17 @@ export async function saveDocument(
   await writeFile(filePath, update);
 }
 
+/**
+ * Loads a Yjs document from a `.drawfinity` binary file on the local filesystem.
+ *
+ * Reads the binary state from `filePath` and applies it to a fresh {@link Y.Doc}
+ * instance using {@link Y.applyUpdate}. Returns `null` if the file does not exist,
+ * allowing callers to distinguish between a missing file and an empty document.
+ *
+ * @param filePath - Absolute path to the `.drawfinity` file to load.
+ * @returns A hydrated Yjs document, or `null` if the file does not exist.
+ * @throws If the file exists but cannot be read (e.g., permission denied, corrupt data).
+ */
 export async function loadDocument(filePath: string): Promise<Y.Doc | null> {
   const fileExists = await exists(filePath);
   if (!fileExists) {

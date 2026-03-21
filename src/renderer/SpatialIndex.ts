@@ -353,8 +353,17 @@ export class SpatialIndex {
   }
 
   /**
-   * Query all shapes whose bounding boxes intersect the given viewport AABB.
-   * Returns a deduplicated array of shapes.
+   * Queries the spatial index for all shapes whose bounding boxes intersect
+   * the given viewport rectangle. Shapes that span multiple grid cells are
+   * deduplicated so each shape appears at most once in the result.
+   *
+   * The returned array is sorted by document order (ascending timestamp)
+   * so that newer shapes render on top of older ones.
+   *
+   * @param viewport - The axis-aligned bounding box defining the visible area to query.
+   * @returns A deduplicated array of {@link Shape} objects intersecting the viewport,
+   *          sorted by timestamp in ascending order. Returns an empty array when no
+   *          shapes fall within the viewport.
    */
   queryShapes(viewport: AABB): Shape[] {
     const range = this.getCellRange(viewport);

@@ -261,7 +261,18 @@ export function invalidateStrokeLOD(strokeId: string): void {
 }
 
 /**
- * Clear the entire LOD cache.
+ * Clears all cached LOD simplification and subdivision data for every stroke.
+ *
+ * Use this when a bulk change invalidates the entire cache — for example,
+ * when loading a new document, performing a full document reset, or when
+ * the LOD bracket configuration changes. For invalidating a single stroke,
+ * prefer {@link invalidateStrokeLOD} instead.
+ *
+ * After calling this, the next {@link getStrokeLOD} call for any stroke
+ * will recompute its simplified points from scratch.
+ *
+ * @see {@link invalidateStrokeLOD} — invalidates cache for a single stroke.
+ * @see {@link getStrokeLOD} — the function whose cache this clears.
  */
 export function clearLODCache(): void {
   lodCache.clear();

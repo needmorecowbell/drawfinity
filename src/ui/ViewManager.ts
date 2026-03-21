@@ -244,6 +244,15 @@ export class ViewManager {
     return this.homeScreen;
   }
 
+  /**
+   * Tears down the ViewManager by destroying the active {@link CanvasApp}
+   * (if any) and the {@link HomeScreen}, releasing all associated resources
+   * such as WebGL contexts, event listeners, and DOM elements.
+   *
+   * After this method resolves the ViewManager instance should not be reused.
+   *
+   * @returns A promise that resolves once all cleanup is complete.
+   */
   async destroy(): Promise<void> {
     if (this.canvasApp) {
       await this.canvasApp.destroy();

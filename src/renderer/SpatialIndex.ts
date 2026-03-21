@@ -55,7 +55,18 @@ export function computeStrokeBounds(stroke: Stroke): AABB {
 }
 
 /**
- * Computes the axis-aligned bounding box of a shape, accounting for rotation and stroke width.
+ * Computes the axis-aligned bounding box (AABB) of a shape, accounting for
+ * rotation and stroke width.
+ *
+ * For unrotated shapes the bounds are computed directly from the shape's
+ * center, dimensions, and stroke width. For rotated shapes the four corners
+ * of the bounding rectangle are projected through the rotation and the
+ * enclosing axis-aligned box is returned instead.
+ *
+ * @param shape - The shape whose bounding box should be computed. Uses `x`,
+ *   `y` (center), `width`, `height`, `strokeWidth`, and `rotation` (radians).
+ * @returns An {@link AABB} that fully encloses the shape, including its
+ *   stroke outline.
  */
 export function computeShapeBounds(shape: Shape): AABB {
   const hw = shape.width / 2;

@@ -16,7 +16,7 @@ related:
 
 ## Summary
 - **Total Gaps:** 268
-- **Auto-Document (PENDING):** 48
+- **Auto-Document (PENDING):** 44
 - **Needs Context:** 3
 - **Won't Do:** 217
 
@@ -33,7 +33,8 @@ related:
 ## PENDING - Ready for Auto-Documentation
 
 ### DOC-001: CanvasApp
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00001
 - **File:** `src/canvas/CanvasApp.ts`
 - **Gap ID:** GAP-001
 - **Type:** Class
@@ -43,16 +44,18 @@ related:
   ```ts
   export class CanvasApp
   ```
-- **Documentation Plan:**
-  - [ ] Description: Central application orchestrator managing all drawing subsystems
-  - [ ] Parameters: Constructor params
-  - [ ] Returns: N/A (class)
-  - [ ] Examples: Yes — initialization and lifecycle
-  - [ ] Errors: Async init failure modes
-- **Methods to Document:** `init`, `destroy`, `getCurrentDrawingId`, `getDoc`, `setDrawingName`, `connectToRoom`
+- **Documentation Added:**
+  - [x] Description: Central application orchestrator managing all drawing subsystems
+  - [x] Parameters: Constructor params (N/A — uses async init pattern)
+  - [x] Returns: N/A (class)
+  - [x] Examples: Yes — initialization, collaboration, and lifecycle
+  - [x] Errors: Documents `init` throwing when canvas element not found
+- **Methods Documented:** `init`, `destroy`, `getCurrentDrawingId`, `getDoc`, `setDrawingName`, `connectToRoom`
+- **Also Documented:** `CanvasAppCallbacks` interface
 
 ### DOC-002: DrawfinityDoc
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00001
 - **File:** `src/crdt/DrawfinityDoc.ts`
 - **Gap ID:** GAP-002
 - **Type:** Class
@@ -62,16 +65,18 @@ related:
   ```ts
   export class DrawfinityDoc implements DocumentModel
   ```
-- **Documentation Plan:**
-  - [ ] Description: Yjs CRDT document wrapper — single source of truth for all drawing data
-  - [ ] Parameters: Optional Y.Doc instance
-  - [ ] Returns: N/A (class)
-  - [ ] Examples: Yes — CRDT transactions, observation callbacks
-  - [ ] Errors: CRDT conflict resolution behavior
-- **Methods to Document:** `constructor`, `addStroke`, `removeStroke`, `replaceStroke`, `addShape`, `removeShape`, `getShapes`, `onStrokesChanged`, `getDoc`, `getStrokesArray`, `getBackgroundColor`, `setBackgroundColor`, `onMetaChanged`, `getMetaMap`, `addBookmark`, `removeBookmark`, `getBookmarks`, `updateBookmark`, `onBookmarksChanged`, `getBookmarksArray`
+- **Documentation Added:**
+  - [x] Description: Yjs CRDT document wrapper — single source of truth for all drawing data
+  - [x] Parameters: Optional Y.Doc instance
+  - [x] Returns: N/A (class)
+  - [x] Examples: Yes — CRDT transactions, observation callbacks
+  - [x] Errors: CRDT conflict resolution behavior
+- **Methods Documented:** `constructor`, `addStroke`, `removeStroke`, `replaceStroke`, `addShape`, `removeShape`, `getShapes`, `onStrokesChanged`, `getDoc`, `getStrokesArray`, `getBackgroundColor`, `setBackgroundColor`, `onMetaChanged`, `getMetaMap`, `addBookmark`, `removeBookmark`, `getBookmarks`, `updateBookmark`, `onBookmarksChanged`, `getBookmarksArray`
+- **Also Documented:** `DEFAULT_BACKGROUND_COLOR` constant, `getAllItems` method
 
 ### DOC-003: SyncManager
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00001
 - **File:** `src/sync/SyncManager.ts`
 - **Gap ID:** GAP-003
 - **Type:** Class
@@ -81,16 +86,18 @@ related:
   ```ts
   export class SyncManager
   ```
-- **Documentation Plan:**
-  - [ ] Description: WebSocket collaboration engine with reconnection and cursor sync
-  - [ ] Parameters: Y.Doc, optional ReconnectConfig
-  - [ ] Returns: N/A (class)
-  - [ ] Examples: Yes — connect/disconnect lifecycle
-  - [ ] Errors: Connection state machine, reconnection behavior
-- **Methods to Document:** `constructor`, `setUser`, `connect`, `disconnect`, `getConnectionState`, `getReconnectAttempts`, `onStatusChange`, `updateCursorPosition`, `getRemoteUsers`, `onRemoteUsersChange`, `onConnectionStateChange`, `destroy`
+- **Documentation Added:**
+  - [x] Description: WebSocket collaboration engine with reconnection and cursor sync
+  - [x] Parameters: Y.Doc, optional ReconnectConfig
+  - [x] Returns: N/A (class)
+  - [x] Examples: Yes — connect/disconnect lifecycle
+  - [x] Errors: Connection state machine, reconnection behavior
+- **Methods Documented:** `constructor`, `setUser`, `connect`, `disconnect`, `getConnectionState`, `getReconnectAttempts`, `onStatusChange`, `updateCursorPosition`, `getRemoteUsers`, `onRemoteUsersChange`, `onConnectionStateChange`, `destroy`
+- **Also Documented:** `ConnectionState` type, `ReconnectConfig` interface, `RemoteUser` interface
 
 ### DOC-004: DrawingManager
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00001
 - **File:** `src/persistence/DrawingManager.ts`
 - **Gap ID:** GAP-004
 - **Type:** Class
@@ -100,16 +107,18 @@ related:
   ```ts
   export class DrawingManager
   ```
-- **Documentation Plan:**
-  - [ ] Description: File persistence manager — CRUD operations for drawings via Tauri filesystem APIs
-  - [ ] Parameters: N/A
-  - [ ] Returns: N/A (class)
-  - [ ] Examples: Yes — create, open, save, delete flows
-  - [ ] Errors: Filesystem I/O failures, missing files
-- **Methods to Document:** `getDefaultSaveDirectory`, `getSaveDirectory`, `setSaveDirectory`, `listDrawings`, `getDrawingName`, `createDrawing`, `openDrawing`, `saveDrawing`, `deleteDrawing`, `renameDrawing`, `duplicateDrawing`, `updateThumbnail`, `getDrawingFilePath`
+- **Documentation Added:**
+  - [x] Description: File persistence manager — CRUD operations for drawings via Tauri filesystem APIs
+  - [x] Parameters: N/A (class)
+  - [x] Returns: N/A (class)
+  - [x] Examples: Yes — create, open, save, delete lifecycle
+  - [x] Errors: Throws on missing drawing IDs; documents graceful handling for missing files
+- **Methods Documented:** `getDefaultSaveDirectory`, `getSaveDirectory`, `setSaveDirectory`, `listDrawings`, `getDrawingName`, `createDrawing`, `openDrawing`, `saveDrawing`, `deleteDrawing`, `renameDrawing`, `duplicateDrawing`, `updateThumbnail`, `getDrawingFilePath`
+- **Also Documented:** `migrateFromSingleFile` (pre-existing JSDoc retained)
 
 ### DOC-005: ToolManager
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00001
 - **File:** `src/tools/ToolManager.ts`
 - **Gap ID:** GAP-005
 - **Type:** Class
@@ -119,16 +128,18 @@ related:
   ```ts
   export class ToolManager
   ```
-- **Documentation Plan:**
-  - [ ] Description: Central tool state management — active tool, brush config, color, opacity
-  - [ ] Parameters: N/A
-  - [ ] Returns: N/A (class)
-  - [ ] Examples: No — straightforward API
-  - [ ] Errors: N/A
-- **Methods to Document:** `setTool`, `getTool`, `setBrush`, `getBrush`, `setColor`, `getColor`, `setOpacity`, `getOpacity`, `setShapeConfig`, `getShapeConfig`, `getActiveConfig`
+- **Documentation Added:**
+  - [x] Description: Central tool state management — active tool, brush config, color, opacity
+  - [x] Parameters: N/A (class)
+  - [x] Returns: N/A (class)
+  - [x] Examples: Yes — basic usage in class JSDoc
+  - [x] Errors: N/A
+- **Methods Documented:** `setTool`, `getTool`, `setBrush`, `getBrush`, `setColor`, `getColor`, `setOpacity`, `getOpacity`, `setShapeConfig`, `getShapeConfig`, `getActiveConfig`
+- **Also Documented:** `ToolType` type, `ShapeToolConfig` interface, `isShapeTool` function
 
 ### DOC-006: ActionRegistry
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00001
 - **File:** `src/ui/ActionRegistry.ts`
 - **Gap ID:** GAP-006
 - **Type:** Class
@@ -138,16 +149,18 @@ related:
   ```ts
   export class ActionRegistry
   ```
-- **Documentation Plan:**
-  - [ ] Description: Keyboard shortcut and action dispatch system
-  - [ ] Parameters: N/A
-  - [ ] Returns: N/A (class)
-  - [ ] Examples: Yes — registering and executing actions
-  - [ ] Errors: Unknown action ID behavior
-- **Methods to Document:** `register`, `getAll`, `get`, `getByCategory`, `search`, `execute`
+- **Documentation Added:**
+  - [x] Description: Keyboard shortcut and action dispatch system
+  - [x] Parameters: N/A (class)
+  - [x] Returns: N/A (class)
+  - [x] Examples: Yes — registering and executing actions
+  - [x] Errors: execute() returns false for unknown action IDs
+- **Methods Documented:** `register`, `getAll`, `get`, `getByCategory`, `search`, `execute`
+- **Also Documented:** `Action` interface, `ActionCategory` type, `ACTION_CATEGORIES` constant
 
 ### DOC-007: AutoSave
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00001
 - **File:** `src/persistence/AutoSave.ts`
 - **Gap ID:** GAP-007
 - **Type:** Class
@@ -157,16 +170,18 @@ related:
   ```ts
   export class AutoSave
   ```
-- **Documentation Plan:**
-  - [ ] Description: Auto-save lifecycle management — debounced persistence of CRDT state
-  - [ ] Parameters: Overloaded constructor (file-based vs DrawingManager-based)
-  - [ ] Returns: N/A (class)
-  - [ ] Examples: Yes — start/stop lifecycle, debounce behavior
-  - [ ] Errors: Save failure handling
-- **Methods to Document:** `constructor`, `start`, `stop`, `setFilePath`, `getFilePath`, `setDrawingId`, `getDrawingId`, `setDrawingManager`, `saveNow`
+- **Documentation Added:**
+  - [x] Description: Auto-save lifecycle management — debounced persistence of CRDT state
+  - [x] Parameters: Overloaded constructor (file-based vs DrawingManager-based)
+  - [x] Returns: N/A (class)
+  - [x] Examples: Yes — start/stop lifecycle, debounce behavior
+  - [x] Errors: Save failure handling (logged to console, does not throw)
+- **Methods Documented:** `constructor`, `start`, `stop`, `setFilePath`, `getFilePath`, `setDrawingId`, `getDrawingId`, `setDrawingManager`, `saveNow`
+- **Also Documented:** `DEFAULT_DEBOUNCE_MS` constant
 
 ### DOC-008: StrokePoint
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00001
 - **File:** `src/model/Stroke.ts`
 - **Gap ID:** GAP-010
 - **Type:** Interface
@@ -176,15 +191,16 @@ related:
   ```ts
   export interface StrokePoint
   ```
-- **Documentation Plan:**
-  - [ ] Description: Single point in a stroke with position, pressure, and timestamp
-  - [ ] Parameters: All fields
-  - [ ] Returns: N/A (interface)
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Single point in a stroke with position, pressure, and timestamp
+  - [x] Parameters: All 3 fields (x, y, pressure) documented with types and semantics
+  - [x] Returns: N/A (interface)
+  - [x] Examples: No
+  - [x] Errors: N/A
 
 ### DOC-009: Stroke
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00001
 - **File:** `src/model/Stroke.ts`
 - **Gap ID:** GAP-011
 - **Type:** Interface
@@ -194,15 +210,16 @@ related:
   ```ts
   export interface Stroke
   ```
-- **Documentation Plan:**
-  - [ ] Description: Complete stroke with points, color, width, opacity, and metadata
-  - [ ] Parameters: All fields including optional opacity
-  - [ ] Returns: N/A (interface)
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Complete stroke with points, color, width, opacity, and metadata
+  - [x] Parameters: All 6 fields (id, points, color, width, opacity, timestamp) documented with types and semantics
+  - [x] Returns: N/A (interface)
+  - [x] Examples: No
+  - [x] Errors: N/A
 
 ### DOC-010: Shape
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00001
 - **File:** `src/model/Shape.ts`
 - **Gap ID:** GAP-014
 - **Type:** Interface
@@ -212,15 +229,16 @@ related:
   ```ts
   export interface Shape
   ```
-- **Documentation Plan:**
-  - [ ] Description: Geometric shape (rectangle, ellipse, polygon, star) on the canvas
-  - [ ] Parameters: All fields
-  - [ ] Returns: N/A (interface)
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Geometric shape (rectangle, ellipse, polygon, star) on the canvas
+  - [x] Parameters: All 13 fields (id, type, x, y, width, height, rotation, strokeColor, strokeWidth, fillColor, opacity, sides, starInnerRadius, timestamp) documented with types and semantics
+  - [x] Returns: N/A (interface)
+  - [x] Examples: No
+  - [x] Errors: N/A
 
 ### DOC-011: BrushConfig
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00001
 - **File:** `src/tools/Brush.ts`
 - **Gap ID:** GAP-021
 - **Type:** Interface
@@ -230,33 +248,36 @@ related:
   ```ts
   export interface BrushConfig
   ```
-- **Documentation Plan:**
-  - [ ] Description: Brush configuration with pressure/opacity curves and rendering parameters
-  - [ ] Parameters: All fields, especially pressureCurve and opacityCurve semantics
-  - [ ] Returns: N/A (interface)
-  - [ ] Examples: Yes — explain curve functions
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Brush configuration with pressure/opacity curves and rendering parameters
+  - [x] Parameters: All 6 fields (name, baseWidth, pressureCurve, opacityCurve, color, smoothing) documented with types and semantics
+  - [x] Returns: N/A (interface)
+  - [x] Examples: Yes — custom airbrush example demonstrating curve functions
+  - [x] Errors: N/A
 
 ### DOC-012: HomeScreen
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
 - **File:** `src/ui/HomeScreen.ts`
 - **Gap ID:** (from classes table)
 - **Type:** Class
 - **Visibility:** PUBLIC
 - **Importance:** HIGH
+- **Implemented In:** Loop 00001
 - **Signature:**
   ```ts
   export class HomeScreen
   ```
-- **Documentation Plan:**
-  - [ ] Description: Main menu screen for creating/opening/managing drawings
-  - [ ] Parameters: Constructor dependencies
-  - [ ] Returns: N/A (class)
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Main menu UI for browsing, creating, and managing drawings with two-tab interface
+  - [x] Parameters: Constructor `callbacks` param documented with full `HomeScreenCallbacks` interface (7 callback properties)
+  - [x] Returns: N/A (class)
+  - [x] Examples: Yes — instantiation with callbacks and typical usage
+  - [x] Errors: N/A
+  - [x] Also documented: `HomeScreenCallbacks` interface, `TabName` type, `SharedConnectionStatus` type, and 12 public methods (`setDrawings`, `setSaveDirectory`, `show`, `hide`, `isVisible`, `destroy`, `getContainer`, `getActiveTab`, `getSharedConnectionStatus`, `getRooms`, `switchTab`)
 
 ### DOC-013: CameraBookmark
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00001
 - **File:** `src/model/Bookmark.ts`
 - **Gap ID:** GAP-008
 - **Type:** Interface
@@ -266,15 +287,17 @@ related:
   ```ts
   export interface CameraBookmark
   ```
-- **Documentation Plan:**
-  - [ ] Description: Saved camera position/zoom for quick navigation
-  - [ ] Parameters: All fields
-  - [ ] Returns: N/A (interface)
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Saved camera position/zoom for quick navigation on the infinite canvas, stored in CRDT and synced across collaborators
+  - [x] Parameters: All 8 fields documented (`id`, `label`, `x`, `y`, `zoom`, `createdBy`, `createdByName`, `createdAt`)
+  - [x] Returns: N/A (interface)
+  - [x] Examples: No
+  - [x] Errors: N/A
+  - [x] Also documented: `generateBookmarkId` function with return format description
 
 ### DOC-014: ConnectionState
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00001
 - **File:** `src/sync/SyncManager.ts`
 - **Gap ID:** GAP-018
 - **Type:** Type Alias
@@ -284,12 +307,13 @@ related:
   ```ts
   export type ConnectionState
   ```
-- **Documentation Plan:**
-  - [ ] Description: WebSocket connection state machine values
-  - [ ] Parameters: N/A
-  - [ ] Returns: N/A
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: WebSocket connection state machine values with full state transition lifecycle
+  - [x] Parameters: N/A (type alias)
+  - [x] Returns: N/A
+  - [x] Examples: No
+  - [x] Errors: N/A
+  - [x] Note: Already documented as part of DOC-003 SyncManager work
 
 ### DOC-015: RemoteUser
 - **Status:** `PENDING`

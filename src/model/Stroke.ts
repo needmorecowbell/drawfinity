@@ -1,3 +1,16 @@
+/**
+ * A single point within a stroke, representing one sampled position from pointer input.
+ *
+ * Each point captures the world-space coordinates and stylus/pointer pressure at the
+ * moment it was recorded. Points are collected during stroke capture and stored in
+ * order to reconstruct the stroke path for rendering.
+ *
+ * @property x - Horizontal position in world-space coordinates.
+ * @property y - Vertical position in world-space coordinates.
+ * @property pressure - Normalized pressure value from 0 (no pressure) to 1 (maximum pressure).
+ *   For devices without pressure sensitivity (e.g. mouse), this is typically 0.5.
+ *   Pressure affects stroke width during rendering via {@link StrokeMesh}.
+ */
 export interface StrokePoint {
   x: number;
   y: number;

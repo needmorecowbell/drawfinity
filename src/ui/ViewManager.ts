@@ -226,6 +226,12 @@ export class ViewManager {
     }
   }
 
+  /**
+   * Returns the name of the currently active view.
+   *
+   * @returns The current view state — `"home"` when the drawing list is displayed,
+   *   or `"canvas"` when a drawing is open for editing.
+   */
   getCurrentView(): ViewName {
     return this.currentView;
   }

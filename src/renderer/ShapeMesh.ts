@@ -269,7 +269,24 @@ export function generateRectangleVertices(shape: Shape): ShapeVertexData {
   return generateShapeFromPerimeter(shape, generatePerimeterPoints(shape));
 }
 
-/** Generate outline vertices for an ellipse shape. */
+/**
+ * Generates WebGL vertex data for rendering an ellipse shape.
+ *
+ * Produces both outline (triangle strip) and fill (triangle fan) geometry
+ * by approximating the ellipse as a regular polygon with the given number
+ * of segments. Higher segment counts yield smoother curves at the cost of
+ * more vertices.
+ *
+ * @param shape - The ellipse shape to generate vertices for. Uses `x`, `y`
+ *   for center position, `width`/`height` for radii, `rotation` for
+ *   orientation, `strokeColor`/`strokeWidth` for the outline, and `fillColor`
+ *   for the interior. Only shapes with `type: "ellipse"` produce correct geometry.
+ * @param segments - Number of line segments used to approximate the ellipse
+ *   perimeter (default: 48). Higher values produce smoother curves.
+ * @returns Vertex data with interleaved `[x, y, r, g, b, a]` buffers.
+ *   `outline` is `null` when `strokeWidth <= 0`; `fill` is `null` when
+ *   `fillColor` is `null`.
+ */
 export function generateEllipseVertices(shape: Shape, segments = 48): ShapeVertexData {
   return generateShapeFromPerimeter(shape, generatePerimeterPoints(shape, segments));
 }

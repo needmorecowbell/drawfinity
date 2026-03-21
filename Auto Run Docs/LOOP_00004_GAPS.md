@@ -1,1061 +1,384 @@
 ---
-type: analysis
-title: Documentation Gaps - Loop 00004
+type: report
+title: Documentation Gaps - Loop 00004 (Updated Loop 6)
 created: 2026-03-20
 tags:
   - documentation
   - gaps
 related:
   - '[[LOOP_00004_DOC_REPORT]]'
-  - '[[2_FIND_GAPS]]'
+  - '[[LOOP_00004_PLAN]]'
 ---
 
-# Documentation Gaps - Loop 00004
+# Documentation Gaps - Loop 00004 (Updated Loop 6)
 
 ## Summary
 - **Overall Coverage:** 80.9% (target: 90%)
-- **Total Gaps Found:** 102
-- **By Type:** 18 Functions, 9 Classes, 10 Interfaces/Types, 5 Constants, 60 Methods
-- **By Visibility:** 25 Public API, 52 Internal API, 25 Utility
-
-## Gap List
-
-### renderer/ — 63% coverage (32 gaps identified in report, 54 total found)
-
-### GAP-001: Renderer.gl (getter)
-- **File:** `src/renderer/Renderer.ts`
-- **Line:** 31
-- **Type:** Method (getter)
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `get gl(): WebGLRenderingContext`
-
-### GAP-002: Renderer.canvas (getter)
-- **File:** `src/renderer/Renderer.ts`
-- **Line:** 35
-- **Type:** Method (getter)
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `get canvas(): HTMLCanvasElement`
-
-### GAP-003: Renderer.setBackgroundColor
-- **File:** `src/renderer/Renderer.ts`
-- **Line:** 39
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `setBackgroundColor(color: string): void`
-
-### GAP-004: Renderer.setGridStyle
-- **File:** `src/renderer/Renderer.ts`
-- **Line:** 45
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `setGridStyle(style: GridStyle): void`
-
-### GAP-005: Renderer.clear
-- **File:** `src/renderer/Renderer.ts`
-- **Line:** 49
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `clear(): void`
-
-### GAP-006: Renderer.setCameraMatrix
-- **File:** `src/renderer/Renderer.ts`
-- **Line:** 54
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `setCameraMatrix(matrix: Float32Array): void`
-
-### GAP-007: Renderer.drawGrid
-- **File:** `src/renderer/Renderer.ts`
-- **Line:** 58
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `drawGrid(width: number, height: number, zoom: number, panX: number, panY: number): void`
-
-### GAP-008: Renderer.drawStroke
-- **File:** `src/renderer/Renderer.ts`
-- **Line:** 71
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** COMPLEX
-- **Current State:** No docs
-- **Signature:** `drawStroke(...): void`
-
-### GAP-009: Renderer.destroy
-- **File:** `src/renderer/Renderer.ts`
-- **Line:** 102
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `destroy(): void`
-
-### GAP-010: WebGLContext.resize
-- **File:** `src/renderer/WebGLContext.ts`
-- **Line:** 28
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `resize(width: number, height: number): void`
-
-### GAP-011: WebGLContext.setClearColor
-- **File:** `src/renderer/WebGLContext.ts`
-- **Line:** 42
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `setClearColor(r: number, g: number, b: number, a: number): void`
-
-### GAP-012: WebGLContext.clear
-- **File:** `src/renderer/WebGLContext.ts`
-- **Line:** 50
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `clear(): void`
-
-### GAP-013: WebGLContext.destroy
-- **File:** `src/renderer/WebGLContext.ts`
-- **Line:** 54
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `destroy(): void`
-
-### GAP-014: ShaderProgram.use
-- **File:** `src/renderer/ShaderProgram.ts`
-- **Line:** 37
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `use(): void`
-
-### GAP-015: ShaderProgram.getUniformLocation
-- **File:** `src/renderer/ShaderProgram.ts`
-- **Line:** 41
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `getUniformLocation(name: string): WebGLUniformLocation | null`
-
-### GAP-016: ShaderProgram.getAttribLocation
-- **File:** `src/renderer/ShaderProgram.ts`
-- **Line:** 45
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `getAttribLocation(name: string): number`
-
-### GAP-017: ShaderProgram.destroy
-- **File:** `src/renderer/ShaderProgram.ts`
-- **Line:** 49
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `destroy(): void`
-
-### GAP-018: STROKE_VERTEX_SHADER
-- **File:** `src/renderer/ShaderProgram.ts`
-- **Line:** 70
-- **Type:** Constant
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `export const STROKE_VERTEX_SHADER: string`
-
-### GAP-019: STROKE_FRAGMENT_SHADER
-- **File:** `src/renderer/ShaderProgram.ts`
-- **Line:** 87
-- **Type:** Constant
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `export const STROKE_FRAGMENT_SHADER: string`
-
-### GAP-020: StrokePoint (interface)
-- **File:** `src/renderer/StrokeRenderer.ts`
-- **Line:** 8
-- **Type:** Interface
-- **Visibility:** PUBLIC API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `export interface StrokePoint { x, y, pressure }`
-
-### GAP-021: StrokeRenderer.setCameraMatrix
-- **File:** `src/renderer/StrokeRenderer.ts`
-- **Line:** 77
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `setCameraMatrix(matrix: Float32Array): void`
-
-### GAP-022: generateTriangleStrip
-- **File:** `src/renderer/StrokeMesh.ts`
-- **Line:** 19
-- **Type:** Function
-- **Visibility:** INTERNAL API
-- **Complexity:** COMPLEX
-- **Current State:** No docs
-- **Signature:** `export function generateTriangleStrip(...): Float32Array`
-
-### GAP-023: AABB (interface)
-- **File:** `src/renderer/SpatialIndex.ts`
-- **Line:** 4
-- **Type:** Interface
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `export interface AABB { minX, minY, maxX, maxY }`
-
-### GAP-024: computeStrokeBounds
-- **File:** `src/renderer/SpatialIndex.ts`
-- **Line:** 14
-- **Type:** Function
-- **Visibility:** PUBLIC API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `export function computeStrokeBounds(stroke: Stroke): AABB`
-
-### GAP-025: computeShapeBounds
-- **File:** `src/renderer/SpatialIndex.ts`
-- **Line:** 37
-- **Type:** Function
-- **Visibility:** PUBLIC API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `export function computeShapeBounds(shape: Shape): AABB`
-
-### GAP-026: SpatialIndex.add
-- **File:** `src/renderer/SpatialIndex.ts`
-- **Line:** 108
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `add(id: string, stroke: Stroke): void`
-
-### GAP-027: SpatialIndex.addShape
-- **File:** `src/renderer/SpatialIndex.ts`
-- **Line:** 129
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `addShape(id: string, shape: Shape): void`
-
-### GAP-028: SpatialIndex.remove
-- **File:** `src/renderer/SpatialIndex.ts`
-- **Line:** 150
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `remove(id: string): void`
-
-### GAP-029: SpatialIndex.removeShape
-- **File:** `src/renderer/SpatialIndex.ts`
-- **Line:** 174
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `removeShape(id: string): void`
-
-### GAP-030: SpatialIndex.clear
-- **File:** `src/renderer/SpatialIndex.ts`
-- **Line:** 198
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `clear(): void`
-
-### GAP-031: SpatialIndex.rebuild
-- **File:** `src/renderer/SpatialIndex.ts`
-- **Line:** 208
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `rebuild(id: string, stroke: Stroke): void`
-
-### GAP-032: SpatialIndex.rebuildAll
-- **File:** `src/renderer/SpatialIndex.ts`
-- **Line:** 216
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `rebuildAll(strokes: Map<string, Stroke>, shapes: Map<string, Shape>): void`
-
-### GAP-033: SpatialIndex.query
-- **File:** `src/renderer/SpatialIndex.ts`
-- **Line:** 230
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** COMPLEX
-- **Current State:** No docs
-- **Signature:** `query(viewport: AABB): string[]`
-
-### GAP-034: SpatialIndex.queryShapes
-- **File:** `src/renderer/SpatialIndex.ts`
-- **Line:** 264
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** COMPLEX
-- **Current State:** No docs
-- **Signature:** `queryShapes(viewport: AABB): string[]`
-
-### GAP-035: SpatialIndex.size (getter)
-- **File:** `src/renderer/SpatialIndex.ts`
-- **Line:** 293
-- **Type:** Method (getter)
-- **Visibility:** UTILITY
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `get size(): number`
-
-### GAP-036: SpatialIndex.shapeSize (getter)
-- **File:** `src/renderer/SpatialIndex.ts`
-- **Line:** 298
-- **Type:** Method (getter)
-- **Visibility:** UTILITY
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `get shapeSize(): number`
-
-### GAP-037: SpatialIndex.has
-- **File:** `src/renderer/SpatialIndex.ts`
-- **Line:** 303
-- **Type:** Method
-- **Visibility:** UTILITY
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `has(id: string): boolean`
-
-### GAP-038: SpatialIndex.hasShape
-- **File:** `src/renderer/SpatialIndex.ts`
-- **Line:** 308
-- **Type:** Method
-- **Visibility:** UTILITY
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `hasShape(id: string): boolean`
-
-### GAP-039: getLODBracket
-- **File:** `src/renderer/StrokeLOD.ts`
-- **Line:** 22
-- **Type:** Function
-- **Visibility:** INTERNAL API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `export function getLODBracket(zoom: number): number`
-
-### GAP-040: douglasPeucker
-- **File:** `src/renderer/StrokeLOD.ts`
-- **Line:** 37
-- **Type:** Function
-- **Visibility:** INTERNAL API
-- **Complexity:** COMPLEX
-- **Current State:** No docs
-- **Signature:** `export function douglasPeucker(points: StrokePoint[], epsilon: number): StrokePoint[]`
-
-### GAP-041: getStrokeLOD
-- **File:** `src/renderer/StrokeLOD.ts`
-- **Line:** 103
-- **Type:** Function
-- **Visibility:** PUBLIC API
-- **Complexity:** COMPLEX
-- **Current State:** No docs
-- **Signature:** `export function getStrokeLOD(stroke: Stroke, zoom: number): StrokePoint[]`
-
-### GAP-042: invalidateStrokeLOD
-- **File:** `src/renderer/StrokeLOD.ts`
-- **Line:** 207
-- **Type:** Function
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `export function invalidateStrokeLOD(strokeId: string): void`
-
-### GAP-043: clearLODCache
-- **File:** `src/renderer/StrokeLOD.ts`
-- **Line:** 215
-- **Type:** Function
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `export function clearLODCache(): void`
-
-### GAP-044: LOD_BRACKET_COUNT
-- **File:** `src/renderer/StrokeLOD.ts`
-- **Line:** 221
-- **Type:** Constant
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `export const LOD_BRACKET_COUNT: number`
-
-### GAP-045: hexLuminance
-- **File:** `src/renderer/DotGridRenderer.ts`
-- **Line:** 7
-- **Type:** Function
-- **Visibility:** UTILITY
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `export function hexLuminance(hex: string): number`
-
-### GAP-046: autoContrastDotColor
-- **File:** `src/renderer/DotGridRenderer.ts`
-- **Line:** 21
-- **Type:** Function
-- **Visibility:** UTILITY
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `export function autoContrastDotColor(bgHex: string): string`
-
-### GAP-047: DotGridRenderer.getEffectiveSpacing
-- **File:** `src/renderer/DotGridRenderer.ts`
-- **Line:** 109
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `getEffectiveSpacing(): number`
-
-### GAP-048: DotGridRenderer.setDotColor
-- **File:** `src/renderer/DotGridRenderer.ts`
-- **Line:** 171
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `setDotColor(color: string): void`
-
-### GAP-049: DotGridRenderer.destroy
-- **File:** `src/renderer/DotGridRenderer.ts`
-- **Line:** 175
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `destroy(): void`
-
-### GAP-050: LineGridRenderer.getEffectiveSpacing
-- **File:** `src/renderer/LineGridRenderer.ts`
-- **Line:** 75
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `getEffectiveSpacing(): number`
-
-### GAP-051: LineGridRenderer.setLineColor
-- **File:** `src/renderer/LineGridRenderer.ts`
-- **Line:** 141
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `setLineColor(color: string): void`
-
-### GAP-052: LineGridRenderer.destroy
-- **File:** `src/renderer/LineGridRenderer.ts`
-- **Line:** 154
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `destroy(): void`
-
-### GAP-053: StrokeVertexCache.get
-- **File:** `src/renderer/StrokeVertexCache.ts`
-- **Line:** 21
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `get(strokeId: string, stroke: Stroke, zoom: number): Float32Array`
-
-### GAP-054: StrokeVertexCache.invalidate
-- **File:** `src/renderer/StrokeVertexCache.ts`
-- **Line:** 43
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `invalidate(strokeId: string): void`
-
-### GAP-055: StrokeVertexCache.clear
-- **File:** `src/renderer/StrokeVertexCache.ts`
-- **Line:** 48
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `clear(): void`
-
-### GAP-056: StrokeVertexCache.size (getter)
-- **File:** `src/renderer/StrokeVertexCache.ts`
-- **Line:** 52
-- **Type:** Method (getter)
-- **Visibility:** UTILITY
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `get size(): number`
-
-### GAP-057: ShapeVertexData (interface)
-- **File:** `src/renderer/ShapeMesh.ts`
-- **Line:** 9
-- **Type:** Interface
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `export interface ShapeVertexData`
-
-### GAP-058: generateRectangleVertices
-- **File:** `src/renderer/ShapeMesh.ts`
-- **Line:** 247
-- **Type:** Function
-- **Visibility:** INTERNAL API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `export function generateRectangleVertices(...): ShapeVertexData`
-
-### GAP-059: generateEllipseVertices
-- **File:** `src/renderer/ShapeMesh.ts`
-- **Line:** 252
-- **Type:** Function
-- **Visibility:** INTERNAL API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `export function generateEllipseVertices(...): ShapeVertexData`
-
-### GAP-060: generatePolygonVertices
-- **File:** `src/renderer/ShapeMesh.ts`
-- **Line:** 257
-- **Type:** Function
-- **Visibility:** INTERNAL API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `export function generatePolygonVertices(...): ShapeVertexData`
-
-### GAP-061: generateStarVertices
-- **File:** `src/renderer/ShapeMesh.ts`
-- **Line:** 262
-- **Type:** Function
-- **Visibility:** INTERNAL API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `export function generateStarVertices(...): ShapeVertexData`
-
-### GAP-062: generateShapeVertices
-- **File:** `src/renderer/ShapeMesh.ts`
-- **Line:** 267
-- **Type:** Function
-- **Visibility:** PUBLIC API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `export function generateShapeVertices(shape: Shape): ShapeVertexData`
-
-### GAP-063: ShapeVertexCache.get
-- **File:** `src/renderer/ShapeVertexCache.ts`
-- **Line:** 17
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `get(shapeId: string, shape: Shape): ShapeVertexData`
-
-### GAP-064: ShapeVertexCache.invalidate
-- **File:** `src/renderer/ShapeVertexCache.ts`
-- **Line:** 27
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `invalidate(shapeId: string): void`
-
-### GAP-065: ShapeVertexCache.clear
-- **File:** `src/renderer/ShapeVertexCache.ts`
-- **Line:** 32
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `clear(): void`
-
-### GAP-066: ShapeVertexCache.size (getter)
-- **File:** `src/renderer/ShapeVertexCache.ts`
-- **Line:** 36
-- **Type:** Method (getter)
-- **Visibility:** UTILITY
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `get size(): number`
-
----
-
-### ui/ — 73% coverage (55 gaps identified)
-
-### GAP-067: CheatSheet (class)
-- **File:** `src/ui/CheatSheet.ts`
-- **Line:** 4
-- **Type:** Class
-- **Visibility:** PUBLIC API
-- **Complexity:** MODERATE
-- **Current State:** No docs (entire class undocumented)
-- **Signature:** `export class CheatSheet`
-
-### GAP-068: CheatSheet.show
-- **File:** `src/ui/CheatSheet.ts`
-- **Line:** 107
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `show(): void`
-
-### GAP-069: CheatSheet.hide
-- **File:** `src/ui/CheatSheet.ts`
-- **Line:** 116
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `hide(): void`
-
-### GAP-070: CheatSheet.toggle
-- **File:** `src/ui/CheatSheet.ts`
-- **Line:** 122
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `toggle(): void`
-
-### GAP-071: CheatSheet.isVisible
-- **File:** `src/ui/CheatSheet.ts`
-- **Line:** 130
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `isVisible(): boolean`
-
-### GAP-072: CheatSheet.destroy
-- **File:** `src/ui/CheatSheet.ts`
-- **Line:** 134
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `destroy(): void`
-
-### GAP-073: ViewName (type)
-- **File:** `src/ui/ViewManager.ts`
-- **Line:** 5
-- **Type:** Type
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `export type ViewName = "home" | "canvas"`
-
-### GAP-074: ViewManagerDeps (interface)
-- **File:** `src/ui/ViewManager.ts`
-- **Line:** 7
-- **Type:** Interface
-- **Visibility:** PUBLIC API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `export interface ViewManagerDeps`
-
-### GAP-075: ViewManager (class)
-- **File:** `src/ui/ViewManager.ts`
-- **Line:** 18
-- **Type:** Class
-- **Visibility:** PUBLIC API
-- **Complexity:** COMPLEX
-- **Current State:** No docs (entire class undocumented)
-- **Signature:** `export class ViewManager`
-
-### GAP-076: ViewManager.showHome
-- **File:** `src/ui/ViewManager.ts`
-- **Line:** 51
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `async showHome(): Promise<void>`
-
-### GAP-077: ViewManager.showCanvas
-- **File:** `src/ui/ViewManager.ts`
-- **Line:** 79
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** COMPLEX
-- **Current State:** No docs
-- **Signature:** `async showCanvas(drawingId: string): Promise<void>`
-
-### GAP-078: ViewManager.getCurrentView
-- **File:** `src/ui/ViewManager.ts`
-- **Line:** 149
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `getCurrentView(): ViewName`
-
-### GAP-079: ViewManager.getCanvasApp
-- **File:** `src/ui/ViewManager.ts`
-- **Line:** 153
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `getCanvasApp(): CanvasApp | null`
-
-### GAP-080: ViewManager.getHomeScreen
-- **File:** `src/ui/ViewManager.ts`
-- **Line:** 157
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `getHomeScreen(): HomeScreen`
-
-### GAP-081: ViewManager.destroy
-- **File:** `src/ui/ViewManager.ts`
-- **Line:** 161
-- **Type:** Method
-- **Visibility:** PUBLIC API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `async destroy(): Promise<void>`
-
-### GAP-082: CursorManager (class)
-- **File:** `src/ui/CursorManager.ts`
-- **Line:** 11
-- **Type:** Class
-- **Visibility:** INTERNAL API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `export class CursorManager`
-
-### GAP-083: CursorManager.setTool
-- **File:** `src/ui/CursorManager.ts`
-- **Line:** 24
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `setTool(tool: ToolType): void`
-
-### GAP-084: CursorManager.setBrushWidth
-- **File:** `src/ui/CursorManager.ts`
-- **Line:** 29
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `setBrushWidth(width: number): void`
-
-### GAP-085: CursorManager.setEraserRadius
-- **File:** `src/ui/CursorManager.ts`
-- **Line:** 34
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `setEraserRadius(radius: number): void`
-
-### GAP-086: CursorManager.setZoom
-- **File:** `src/ui/CursorManager.ts`
-- **Line:** 39
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `setZoom(zoom: number): void`
-
-### GAP-087: CursorManager.setPanning
-- **File:** `src/ui/CursorManager.ts`
-- **Line:** 43
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `setPanning(panning: boolean): void`
-
-### GAP-088: CursorManager.setMagnifyMode
-- **File:** `src/ui/CursorManager.ts`
-- **Line:** 48
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `setMagnifyMode(mode: "default" | "in" | "out"): void`
-
-### GAP-089: CursorManager.updateCursor
-- **File:** `src/ui/CursorManager.ts`
-- **Line:** 111
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `updateCursor(): void`
-
-### GAP-090: FpsCounter (class)
-- **File:** `src/ui/FpsCounter.ts`
-- **Line:** 5
-- **Type:** Class
-- **Visibility:** UTILITY
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `export class FpsCounter`
-
-### GAP-091: FpsCounter.toggle
-- **File:** `src/ui/FpsCounter.ts`
-- **Line:** 32
-- **Type:** Method
-- **Visibility:** UTILITY
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `toggle(): void`
-
-### GAP-092: FpsCounter.isVisible
-- **File:** `src/ui/FpsCounter.ts`
-- **Line:** 41
-- **Type:** Method
-- **Visibility:** UTILITY
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `isVisible(): boolean`
-
-### GAP-093: FpsCounter.destroy
-- **File:** `src/ui/FpsCounter.ts`
-- **Line:** 69
-- **Type:** Method
-- **Visibility:** UTILITY
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `destroy(): void`
-
-### GAP-094: ToolbarCallbacks (interface)
-- **File:** `src/ui/Toolbar.ts`
-- **Line:** 14
-- **Type:** Interface
-- **Visibility:** PUBLIC API
-- **Complexity:** COMPLEX
-- **Current State:** No docs
-- **Signature:** `export interface ToolbarCallbacks`
-
-### GAP-095: Toolbar (class)
-- **File:** `src/ui/Toolbar.ts`
-- **Line:** 59
-- **Type:** Class
-- **Visibility:** PUBLIC API
-- **Complexity:** COMPLEX
-- **Current State:** No docs
-- **Signature:** `export class Toolbar`
-
-### GAP-096: TurtlePanelCallbacks (interface)
-- **File:** `src/ui/TurtlePanel.ts`
-- **Line:** 3
-- **Type:** Interface
-- **Visibility:** INTERNAL API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `export interface TurtlePanelCallbacks`
-
-### GAP-097: TurtlePanel (class)
-- **File:** `src/ui/TurtlePanel.ts`
-- **Line:** 24
-- **Type:** Class
-- **Visibility:** INTERNAL API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `export class TurtlePanel`
-
----
-
-### model/ — 73% coverage (4 gaps)
-
-### GAP-098: DrawDocument (class)
-- **File:** `src/model/Document.ts`
-- **Line:** 3
-- **Type:** Class
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `export class DrawDocument implements DocumentModel`
-
-### GAP-099: DrawDocument.addStroke
-- **File:** `src/model/Document.ts`
-- **Line:** 6
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `addStroke(stroke: Stroke): void`
-
-### GAP-100: DrawDocument.getStrokes
-- **File:** `src/model/Document.ts`
-- **Line:** 10
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `getStrokes(): Stroke[]`
-
-### GAP-101: DrawDocument.clear
-- **File:** `src/model/Document.ts`
-- **Line:** 14
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `clear(): void`
-
----
-
-### input/ — 82% coverage (4 gaps)
-
-### GAP-102: MagnifyCapture.setEnabled
-- **File:** `src/input/MagnifyCapture.ts`
-- **Line:** 55
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `setEnabled(enabled: boolean): void`
-
-### GAP-103: MagnifyCapture.isEnabled
-- **File:** `src/input/MagnifyCapture.ts`
-- **Line:** 62
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `isEnabled(): boolean`
-
-### GAP-104: MagnifyCapture.destroy
-- **File:** `src/input/MagnifyCapture.ts`
-- **Line:** 133
-- **Type:** Method
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `destroy(): void`
-
----
-
-### user/ — 82% coverage (2 gaps on exported items)
-
-### GAP-105: loadProfile
-- **File:** `src/user/UserStore.ts`
-- **Line:** 28
-- **Type:** Function
-- **Visibility:** PUBLIC API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `export function loadProfile(): UserProfile`
-
-### GAP-106: saveProfile
-- **File:** `src/user/UserStore.ts`
-- **Line:** 45
-- **Type:** Function
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `export function saveProfile(profile: UserProfile): void`
-
-### GAP-107: onProfileChange
-- **File:** `src/user/UserStore.ts`
-- **Line:** 71
-- **Type:** Function
-- **Visibility:** PUBLIC API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Signature:** `export function onProfileChange(callback: (profile: UserProfile) => void): () => void`
-
-### GAP-108: USER_COLORS
-- **File:** `src/user/UserStore.ts`
-- **Line:** 78
-- **Type:** Constant
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-- **Signature:** `export { USER_COLORS }`
-
----
+- **Total Gaps Found:** 57
+- **By Type:** 3 Functions, 4 Classes, 2 Interfaces, 1 Constant, 47 Methods
+- **By Visibility:** 12 Public API, 35 Internal API, 10 Utility
 
 ## Gaps by Module
 
 | Module | Gap Count | Types |
 |--------|-----------|-------|
-| `src/renderer/` | 66 | 14 Functions, 2 Interfaces, 3 Constants, 47 Methods |
-| `src/ui/` | 31 | 6 Classes, 3 Interfaces/Types, 22 Methods |
-| `src/model/` | 4 | 1 Class, 3 Methods |
-| `src/input/` | 3 | 3 Methods |
-| `src/user/` | 4 | 3 Functions, 1 Constant |
+| `src/renderer/` | 18 | 4 Methods (WebGLContext), 6 Methods+Constants (ShaderProgram), 1 Interface + 5 Methods (StrokeRenderer), 2 Methods (Renderer) |
+| `src/ui/` | 35 | 2 Classes + 1 Interface + 32 Methods |
+| `src/model/` | 4 | 1 Class + 3 Methods |
+| `src/input/` | 4 | 1 Class + 2 Methods + 1 Property |
+| `src/user/` | 4 | 3 Functions + 1 Constant |
 
-## Gaps by Priority
+---
 
-### Quick Wins (simple, high coverage impact)
-- GAP-067–072: CheatSheet (entire class, 6 items)
-- GAP-073–081: ViewManager (entire class, 9 items)
-- GAP-090–093: FpsCounter (4 items)
-- GAP-098–101: DrawDocument (4 items)
-- GAP-105–108: UserStore functions (4 items)
+## Gap List
 
-### High Priority (complex, heavily used)
-- GAP-001–009: Renderer class methods (9 items, core rendering pipeline)
-- GAP-023–038: SpatialIndex (16 items, core spatial query system)
-- GAP-094–095: Toolbar + ToolbarCallbacks (main UI component)
-- GAP-039–044: StrokeLOD functions (6 items, performance-critical)
+### renderer/ Module (63% coverage — 54/86)
 
-### Medium Priority
-- GAP-010–013: WebGLContext (4 items)
-- GAP-082–089: CursorManager (8 items)
-- GAP-096–097: TurtlePanel + callbacks (2 items)
-- GAP-045–052: Grid renderer methods (8 items)
+#### GAP-001: WebGLContext.resize
+- **File:** `src/renderer/WebGLContext.ts:28`
+- **Type:** Method
+- **Visibility:** INTERNAL API
+- **Complexity:** MODERATE
+- **Signature:** `resize(): void`
 
-### Low Priority (thin wrappers, self-evident)
-- GAP-014–019: ShaderProgram methods + constants (6 items)
-- GAP-053–056: StrokeVertexCache (4 items)
-- GAP-063–066: ShapeVertexCache (4 items)
+#### GAP-002: WebGLContext.setClearColor
+- **File:** `src/renderer/WebGLContext.ts:42`
+- **Type:** Method
+- **Visibility:** INTERNAL API
+- **Complexity:** SIMPLE
+- **Signature:** `setClearColor(hex: string): void`
+
+#### GAP-003: WebGLContext.clear
+- **File:** `src/renderer/WebGLContext.ts:50`
+- **Type:** Method
+- **Visibility:** INTERNAL API
+- **Complexity:** SIMPLE
+- **Signature:** `clear(): void`
+
+#### GAP-004: WebGLContext.destroy
+- **File:** `src/renderer/WebGLContext.ts:54`
+- **Type:** Method
+- **Visibility:** INTERNAL API
+- **Complexity:** SIMPLE
+- **Signature:** `destroy(): void`
+
+#### GAP-005: ShaderProgram.use
+- **File:** `src/renderer/ShaderProgram.ts:37`
+- **Type:** Method
+- **Visibility:** INTERNAL API
+- **Complexity:** SIMPLE
+- **Signature:** `use(): void`
+
+#### GAP-006: ShaderProgram.getUniformLocation
+- **File:** `src/renderer/ShaderProgram.ts:41`
+- **Type:** Method
+- **Visibility:** INTERNAL API
+- **Complexity:** SIMPLE
+- **Signature:** `getUniformLocation(name: string): WebGLUniformLocation | null`
+
+#### GAP-007: ShaderProgram.getAttribLocation
+- **File:** `src/renderer/ShaderProgram.ts:45`
+- **Type:** Method
+- **Visibility:** INTERNAL API
+- **Complexity:** SIMPLE
+- **Signature:** `getAttribLocation(name: string): number`
+
+#### GAP-008: ShaderProgram.destroy
+- **File:** `src/renderer/ShaderProgram.ts:49`
+- **Type:** Method
+- **Visibility:** INTERNAL API
+- **Complexity:** SIMPLE
+- **Signature:** `destroy(): void`
+
+#### GAP-009: STROKE_VERTEX_SHADER
+- **File:** `src/renderer/ShaderProgram.ts:70`
+- **Type:** Constant
+- **Visibility:** INTERNAL API
+- **Complexity:** SIMPLE
+- **Signature:** `export const STROKE_VERTEX_SHADER`
+
+#### GAP-010: STROKE_FRAGMENT_SHADER
+- **File:** `src/renderer/ShaderProgram.ts:87`
+- **Type:** Constant
+- **Visibility:** INTERNAL API
+- **Complexity:** SIMPLE
+- **Signature:** `export const STROKE_FRAGMENT_SHADER`
+
+#### GAP-011: StrokePoint
+- **File:** `src/renderer/StrokeRenderer.ts:8`
+- **Type:** Interface
+- **Visibility:** PUBLIC API
+- **Complexity:** SIMPLE
+- **Signature:** `export interface StrokePoint { x: number; y: number; pressure?: number; }`
+
+#### GAP-012: StrokeRenderer.setCameraMatrix
+- **File:** `src/renderer/StrokeRenderer.ts:77`
+- **Type:** Method
+- **Visibility:** INTERNAL API
+- **Complexity:** SIMPLE
+- **Signature:** `setCameraMatrix(matrix: Float32Array): void`
+
+#### GAP-013: StrokeRenderer.drawStroke
+- **File:** `src/renderer/StrokeRenderer.ts:84`
+- **Type:** Method
+- **Visibility:** INTERNAL API
+- **Complexity:** MODERATE
+- **Signature:** `drawStroke(points: readonly StrokePoint[], color: [number, number, number, number], width: number): void`
+
+#### GAP-014: StrokeRenderer.drawStrokeBatch
+- **File:** `src/renderer/StrokeRenderer.ts:114`
+- **Type:** Method
+- **Visibility:** INTERNAL API
+- **Complexity:** MODERATE
+- **Signature:** `drawStrokeBatch(strips: Float32Array[]): void`
+
+#### GAP-015: StrokeRenderer.drawTriangleBatch
+- **File:** `src/renderer/StrokeRenderer.ts:184`
+- **Type:** Method
+- **Visibility:** INTERNAL API
+- **Complexity:** MODERATE
+- **Signature:** `drawTriangleBatch(triangleArrays: Float32Array[]): void`
+
+#### GAP-016: StrokeRenderer.destroy
+- **File:** `src/renderer/StrokeRenderer.ts:221`
+- **Type:** Method
+- **Visibility:** INTERNAL API
+- **Complexity:** SIMPLE
+- **Signature:** `destroy(): void`
+
+#### GAP-017: Renderer.drawGrid
+- **File:** `src/renderer/Renderer.ts:95`
+- **Type:** Method
+- **Visibility:** PUBLIC API
+- **Complexity:** COMPLEX
+- **Signature:** `drawGrid(cameraMatrix: Float32Array, viewportBounds: {...}, zoom: number): void`
+
+#### GAP-018: Renderer.drawStroke
+- **File:** `src/renderer/Renderer.ts:108`
+- **Type:** Method
+- **Visibility:** PUBLIC API
+- **Complexity:** MODERATE
+- **Signature:** `drawStroke(points: readonly StrokePoint[], color: [number, number, number, number], width: number): void`
+
+---
+
+### ui/ Module (73% coverage — 146/201)
+
+#### GAP-019: CheatSheet (class)
+- **File:** `src/ui/CheatSheet.ts:4`
+- **Type:** Class (entirely undocumented)
+- **Visibility:** INTERNAL API
+- **Complexity:** MODERATE
+
+#### GAP-020: CheatSheet.show
+- **File:** `src/ui/CheatSheet.ts:107`
+- **Type:** Method — **Signature:** `show(): void`
+
+#### GAP-021: CheatSheet.hide
+- **File:** `src/ui/CheatSheet.ts:116`
+- **Type:** Method — **Signature:** `hide(): void`
+
+#### GAP-022: CheatSheet.toggle
+- **File:** `src/ui/CheatSheet.ts:122`
+- **Type:** Method — **Signature:** `toggle(): void`
+
+#### GAP-023: CheatSheet.isVisible
+- **File:** `src/ui/CheatSheet.ts:130`
+- **Type:** Method — **Signature:** `isVisible(): boolean`
+
+#### GAP-024: CheatSheet.destroy
+- **File:** `src/ui/CheatSheet.ts:134`
+- **Type:** Method — **Signature:** `destroy(): void`
+
+#### GAP-025: ViewManager (class)
+- **File:** `src/ui/ViewManager.ts:18`
+- **Type:** Class (entirely undocumented)
+- **Visibility:** PUBLIC API
+- **Complexity:** COMPLEX
+
+#### GAP-026: ViewManager.showHome
+- **File:** `src/ui/ViewManager.ts:51`
+- **Type:** Method — **Signature:** `async showHome(): Promise<void>`
+
+#### GAP-027: ViewManager.showCanvas
+- **File:** `src/ui/ViewManager.ts:79`
+- **Type:** Method — **Signature:** `async showCanvas(drawingId: string): Promise<void>`
+- **Complexity:** COMPLEX (async, error handling, view transitions)
+
+#### GAP-028: ViewManager.getCurrentView
+- **File:** `src/ui/ViewManager.ts:149`
+- **Type:** Method — **Signature:** `getCurrentView(): ViewName`
+
+#### GAP-029: ViewManager.getCanvasApp
+- **File:** `src/ui/ViewManager.ts:153`
+- **Type:** Method — **Signature:** `getCanvasApp(): CanvasApp | null`
+
+#### GAP-030: ViewManager.getHomeScreen
+- **File:** `src/ui/ViewManager.ts:157`
+- **Type:** Method — **Signature:** `getHomeScreen(): HomeScreen`
+
+#### GAP-031: ViewManager.destroy
+- **File:** `src/ui/ViewManager.ts:161`
+- **Type:** Method — **Signature:** `async destroy(): Promise<void>`
+
+#### GAP-032: CursorManager.setTool
+- **File:** `src/ui/CursorManager.ts:24`
+- **Type:** Method — **Signature:** `setTool(tool: ToolType): void`
+
+#### GAP-033: CursorManager.setBrushWidth
+- **File:** `src/ui/CursorManager.ts:29`
+- **Type:** Method — **Signature:** `setBrushWidth(width: number): void`
+
+#### GAP-034: CursorManager.setEraserRadius
+- **File:** `src/ui/CursorManager.ts:34`
+- **Type:** Method — **Signature:** `setEraserRadius(radius: number): void`
+
+#### GAP-035: CursorManager.setZoom
+- **File:** `src/ui/CursorManager.ts:39`
+- **Type:** Method — **Signature:** `setZoom(zoom: number): void`
+
+#### GAP-036: CursorManager.setPanning
+- **File:** `src/ui/CursorManager.ts:43`
+- **Type:** Method — **Signature:** `setPanning(panning: boolean): void`
+
+#### GAP-037: CursorManager.setMagnifyMode
+- **File:** `src/ui/CursorManager.ts:48`
+- **Type:** Method — **Signature:** `setMagnifyMode(mode: "default" | "in" | "out"): void`
+
+#### GAP-038: FpsCounter.toggle
+- **File:** `src/ui/FpsCounter.ts:32`
+- **Type:** Method — **Signature:** `toggle(): void`
+
+#### GAP-039: FpsCounter.isVisible
+- **File:** `src/ui/FpsCounter.ts:41`
+- **Type:** Method — **Signature:** `isVisible(): boolean`
+
+#### GAP-040: ToolbarCallbacks
+- **File:** `src/ui/Toolbar.ts:14`
+- **Type:** Interface
+- **Visibility:** PUBLIC API
+- **Complexity:** MODERATE
+
+#### GAP-041: Toolbar (class)
+- **File:** `src/ui/Toolbar.ts:59`
+- **Type:** Class
+- **Visibility:** PUBLIC API
+- **Complexity:** COMPLEX
+
+#### GAP-042: Toolbar.selectBrush
+- **File:** `src/ui/Toolbar.ts:570`
+- **Type:** Method — **Signature:** `selectBrush(index: number): void`
+
+#### GAP-043: Toolbar.setTool
+- **File:** `src/ui/Toolbar.ts:578`
+- **Type:** Method — **Signature:** `setTool(tool: ToolType): void`
+
+#### GAP-044: Toolbar.setColor
+- **File:** `src/ui/Toolbar.ts:610`
+- **Type:** Method — **Signature:** `setColor(color: string): void`
+
+#### GAP-045: Toolbar.updateUndoRedo
+- **File:** `src/ui/Toolbar.ts:630`
+- **Type:** Method — **Signature:** `updateUndoRedo(canUndo: boolean, canRedo: boolean): void`
+
+#### GAP-046: Toolbar.updateZoom
+- **File:** `src/ui/Toolbar.ts:635`
+- **Type:** Method — **Signature:** `updateZoom(zoomPercent: number): void`
+
+#### GAP-047: Toolbar.getActiveBrushIndex
+- **File:** `src/ui/Toolbar.ts:639`
+- **Type:** Method — **Signature:** `getActiveBrushIndex(): number`
+
+#### GAP-048: Toolbar.setDrawingName
+- **File:** `src/ui/Toolbar.ts:712`
+- **Type:** Method — **Signature:** `setDrawingName(name: string): void`
+
+#### GAP-049: Toolbar.destroy
+- **File:** `src/ui/Toolbar.ts:837`
+- **Type:** Method — **Signature:** `destroy(): void`
+
+#### GAP-050: TurtlePanel.setRunning
+- **File:** `src/ui/TurtlePanel.ts:310`
+- **Type:** Method — **Signature:** `setRunning(running: boolean): void`
+
+#### GAP-051: TurtlePanel.setPlacing
+- **File:** `src/ui/TurtlePanel.ts:321`
+- **Type:** Method — **Signature:** `setPlacing(placing: boolean): void`
+
+#### GAP-052: TurtlePanel.show
+- **File:** `src/ui/TurtlePanel.ts:348`
+- **Type:** Method — **Signature:** `show(): void`
+
+#### GAP-053: TurtlePanel.hide
+- **File:** `src/ui/TurtlePanel.ts:356`
+- **Type:** Method — **Signature:** `hide(): void`
+
+#### GAP-054: TurtlePanel.toggle
+- **File:** `src/ui/TurtlePanel.ts:362`
+- **Type:** Method — **Signature:** `toggle(): void`
+
+---
+
+### model/ Module (73% coverage — 11/15)
+
+#### GAP-055: DrawDocument (class + 3 methods)
+- **File:** `src/model/Document.ts:3`
+- **Type:** Class
+- **Visibility:** PUBLIC API
+- **Complexity:** SIMPLE
+- **Methods:** addStroke (line 6), getStrokes (line 10), clear (line 14)
+
+---
+
+### input/ Module (82% coverage — 23/28)
+
+#### GAP-056: MagnifyCapture (class + methods)
+- **File:** `src/input/MagnifyCapture.ts:11`
+- **Type:** Class
+- **Visibility:** INTERNAL API
+- **Complexity:** MODERATE
+- **Undocumented:** class (line 11), onCursorChange property (line 28), setEnabled (line 55), isEnabled (line 62)
+
+---
+
+### user/ Module (82% coverage — 9/11)
+
+#### GAP-057: UserStore exports
+- **File:** `src/user/UserStore.ts`
+- **Type:** 3 Functions + 1 Constant
+- **Visibility:** PUBLIC API
+- **Items:**
+  - `USER_COLORS` (line 7) — constant array of hex color strings
+  - `loadProfile()` (line 28) — loads user profile from localStorage
+  - `saveProfile(profile)` (line 45) — saves user profile to localStorage
+  - `onProfileChange(callback)` (line 71) — registers change listener, returns unsubscribe
+
+---
+
+## Priority Order
+
+1. **ViewManager** — core app coordinator, PUBLIC API, entirely undocumented
+2. **Toolbar + ToolbarCallbacks** — primary user interface, PUBLIC API
+3. **UserStore exports** — PUBLIC API, user-facing persistence
+4. **StrokePoint + StrokeRenderer** — PUBLIC API interface + core rendering
+5. **CheatSheet** — entirely undocumented class
+6. **DrawDocument** — PUBLIC API, simple but undocumented
+7. **MagnifyCapture** — input handling
+8. **Renderer.drawGrid/drawStroke** — high-level render methods
+9. **WebGLContext methods** — internal GL wrapper
+10. **CursorManager setters** — simple internal setters
+11. **Lifecycle methods** (FpsCounter, TurtlePanel) — simple show/hide/toggle
+12. **ShaderProgram methods + constants** — thin GL wrappers, lowest priority
 
 ## Related Exports
 
 Exports that should be documented together:
 
-- **Group A:** `Renderer`, `WebGLContext`, `ShaderProgram`, `StrokeRenderer` — core rendering pipeline
-- **Group B:** `SpatialIndex`, `AABB`, `computeStrokeBounds`, `computeShapeBounds` — spatial query system
-- **Group C:** `StrokeLOD`, `getLODBracket`, `douglasPeucker`, `getStrokeLOD`, `invalidateStrokeLOD`, `clearLODCache` — LOD system
-- **Group D:** `CheatSheet`, `ViewManager`, `FpsCounter` — standalone UI components
-- **Group E:** `Toolbar`, `ToolbarCallbacks`, `CursorManager` — toolbar ecosystem
-- **Group F:** `StrokeVertexCache`, `ShapeVertexCache`, `StrokeMesh`, `ShapeMesh` — vertex/mesh pipeline
-- **Group G:** `loadProfile`, `saveProfile`, `onProfileChange`, `USER_COLORS` — user store
+- **Group A:** `CheatSheet` class + all methods — complete class documentation
+- **Group B:** `ViewManager` class + all methods — complete class documentation
+- **Group C:** `Toolbar` + `ToolbarCallbacks` — interface and implementation together
+- **Group D:** `WebGLContext` methods — all 4 undocumented methods
+- **Group E:** `StrokeRenderer` + `StrokePoint` — interface and renderer together
+- **Group F:** `UserStore` exports — `loadProfile`, `saveProfile`, `onProfileChange`, `USER_COLORS`
+- **Group G:** `DrawDocument` class + all methods
+- **Group H:** `MagnifyCapture` class + methods

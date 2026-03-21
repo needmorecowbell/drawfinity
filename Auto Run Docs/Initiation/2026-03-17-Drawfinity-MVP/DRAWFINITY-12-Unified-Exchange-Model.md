@@ -73,7 +73,8 @@ Per-script `version` fields enable granular update detection (user can see which
 
 ### Type Updates (`src/turtle/exchange/ExchangeTypes.ts`)
 
-- [ ] Add `version` field to `ExchangeScriptEntry` interface. Add `ExchangeIndex.version` (string, ISO timestamp). Add `CachedScript` interface to represent a locally stored script: extends `ExchangeScript` with `cachedAt: number` (Unix ms timestamp) and `version: string`. Add `ExchangeSnapshot` type alias for the bundled build-time data (same shape as `ExchangeIndex` but with `code` included per entry)
+- [x] Add `version` field to `ExchangeScriptEntry` interface. Add `ExchangeIndex.version` (string, ISO timestamp). Add `CachedScript` interface to represent a locally stored script: extends `ExchangeScript` with `cachedAt: number` (Unix ms timestamp) and `version: string`. Add `ExchangeSnapshot` type alias for the bundled build-time data (same shape as `ExchangeIndex` but with `code` included per entry)
+  - *Completed: All types already implemented in `src/turtle/exchange/ExchangeTypes.ts` — `ExchangeScriptEntry.version`, `ExchangeIndex.version`, `CachedScript` (extends `ExchangeScript` with `cachedAt`), `ExchangeSnapshot` type alias, and `UpdateCheckResult` interface. Exported via barrel in `src/turtle/exchange/index.ts`.*
 
 ### Build-time Snapshot Generator
 

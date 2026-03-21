@@ -1,0 +1,171 @@
+# Documentation Gap Evaluation - Prioritize What to Document
+
+## Context
+- **Playbook:** Documentation
+- **Agent:** feature-documentation
+- **Project:** /home/adam/Dev/drawfinity_worktree/feature-documentation
+- **Auto Run Folder:** /home/adam/Dev/drawfinity/Auto Run Docs
+- **Loop:** 00001
+
+## Objective
+
+Evaluate each documentation gap from the discovery phase and assign visibility and importance ratings. This prioritization ensures we document the most important and visible code first.
+
+## Instructions
+
+1. **Read the gaps list** from `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00001_GAPS.md`
+2. **Rate each gap** for visibility and importance
+3. **Assign status** based on ratings
+4. **Output prioritized plan** to `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00001_PLAN.md`
+
+## Evaluation Checklist
+
+- [x] **Evaluate gaps (or skip if empty)**: Read LOOP_00001_GAPS.md. If it contains no gaps OR all gaps have already been evaluated in LOOP_00001_PLAN.md, mark this task complete without changes. Otherwise, rate each gap by VISIBILITY (PUBLIC/INTERNAL/UTILITY/IMPLEMENTATION) and IMPORTANCE (CRITICAL/HIGH/MEDIUM/LOW). Mark PUBLIC or INTERNAL visibility with HIGH or CRITICAL importance as PENDING for auto-documentation. Output to `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00001_PLAN.md`.
+  - **Completed 2026-03-20:** Evaluated all 268 gaps → 48 PENDING for auto-doc, 3 NEEDS CONTEXT, 217 WON'T DO. Estimated coverage improvement: 50% → 59%.
+
+## Rating Criteria
+
+### Visibility Levels
+
+| Level | Criteria | Examples |
+|-------|----------|----------|
+| **PUBLIC** | Exported for external consumers, part of public API | SDK functions, library exports, API handlers |
+| **INTERNAL** | Used across modules within the project | Shared utilities, internal services |
+| **UTILITY** | Helper functions, used in limited scope | Format helpers, validation utils |
+| **IMPLEMENTATION** | Private/internal details | Internal state, private methods |
+
+### Importance Levels
+
+| Level | Criteria | Examples |
+|-------|----------|----------|
+| **CRITICAL** | Core functionality, widely used, error-prone | Main entry points, complex algorithms |
+| **HIGH** | Frequently used, non-obvious behavior | Common utilities, configuration handlers |
+| **MEDIUM** | Moderately used, mostly straightforward | Supporting functions, helpers |
+| **LOW** | Rarely used, self-explanatory | One-off utilities, simple getters |
+
+### Auto-Documentation Criteria
+
+Gaps will be auto-documented if:
+- **Visibility:** PUBLIC or INTERNAL
+- **Importance:** CRITICAL or HIGH
+
+Gaps marked `PENDING - NEEDS CONTEXT` if:
+- Complex behavior that needs domain knowledge
+- Unclear purpose without maintainer input
+
+Gaps marked `WON'T DO` if:
+- **Visibility:** IMPLEMENTATION (private/internal)
+- **Importance:** LOW with simple, obvious behavior
+- Deprecated code slated for removal
+- Auto-generated code
+
+## Output Format
+
+Create/update `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00001_PLAN.md` with:
+
+```markdown
+# Documentation Plan - Loop 00001
+
+## Summary
+- **Total Gaps:** [count]
+- **Auto-Document (PENDING):** [count]
+- **Needs Context:** [count]
+- **Won't Do:** [count]
+
+## Current Coverage: [XX.X%]
+## Target Coverage: 90%
+## Estimated Post-Loop Coverage: [XX.X%]
+
+---
+
+## PENDING - Ready for Auto-Documentation
+
+### DOC-001: [Export Name]
+- **Status:** `PENDING`
+- **File:** `[path/to/file]`
+- **Gap ID:** GAP-XXX
+- **Type:** [Function | Class | Interface | etc.]
+- **Visibility:** [PUBLIC | INTERNAL]
+- **Importance:** [CRITICAL | HIGH]
+- **Signature:**
+  ```
+  function name(params) -> ReturnType
+  ```
+- **Documentation Plan:**
+  - [ ] Description: [What it does]
+  - [ ] Parameters: [List params to document]
+  - [ ] Returns: [Return value description]
+  - [ ] Examples: [Yes/No - include example?]
+  - [ ] Errors: [Throws to document]
+
+### DOC-002: [Export Name]
+- **Status:** `PENDING`
+...
+
+---
+
+## PENDING - NEEDS CONTEXT
+
+### DOC-XXX: [Export Name]
+- **Status:** `PENDING - NEEDS CONTEXT`
+- **File:** `[path/to/file]`
+- **Gap ID:** GAP-XXX
+- **Visibility:** [level]
+- **Importance:** [level]
+- **Questions:**
+  - [What needs clarification?]
+  - [What domain knowledge is needed?]
+
+---
+
+## WON'T DO
+
+### DOC-XXX: [Export Name]
+- **Status:** `WON'T DO`
+- **File:** `[path/to/file]`
+- **Gap ID:** GAP-XXX
+- **Reason:** [Why skipping - private, deprecated, self-explanatory, etc.]
+
+---
+
+## Documentation Order
+
+Recommended sequence based on visibility and dependencies:
+
+1. **DOC-001** - [name] (PUBLIC, entry point)
+2. **DOC-002** - [name] (PUBLIC, depends on DOC-001)
+3. **DOC-003** - [name] (INTERNAL, widely used)
+...
+
+## Related Documentation
+
+Exports that should be documented together for consistency:
+
+- **Group A:** DOC-001, DOC-003, DOC-007 - All part of [feature] API
+- **Group B:** DOC-002, DOC-005 - Related utilities
+```
+
+## Guidelines
+
+- **Document public APIs first**: External consumers need docs most
+- **Group related exports**: Document together for consistency
+- **Consider dependencies**: Document base types before functions using them
+- **Match existing style**: Be consistent with codebase conventions
+- **Skip obvious code**: Not everything needs documentation
+
+## How to Know You're Done
+
+This task is complete when ONE of the following is true:
+
+**Option A - Evaluated gaps:**
+1. You've read all gaps from `LOOP_00001_GAPS.md`
+2. You've rated each gap for VISIBILITY and IMPORTANCE
+3. You've assigned statuses (PENDING, PENDING - NEEDS CONTEXT, or WON'T DO)
+4. You've written the prioritized plan to `LOOP_00001_PLAN.md`
+
+**Option B - No gaps to evaluate:**
+1. `LOOP_00001_GAPS.md` contains no gaps, OR
+2. All gaps have already been evaluated in `LOOP_00001_PLAN.md`
+3. Mark this task complete without making changes
+
+This graceful handling of empty states prevents the pipeline from stalling when coverage is already at target or no gaps were found.

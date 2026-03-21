@@ -263,7 +263,25 @@ export function generateStarVertices(shape: Shape): ShapeVertexData {
   return generateShapeFromPerimeter(shape, generatePerimeterPoints(shape));
 }
 
-/** Dispatcher — generate vertices for any shape type. */
+/**
+ * Generates WebGL vertex data for rendering any supported shape type.
+ *
+ * Acts as a dispatcher that delegates to shape-specific vertex generators
+ * ({@link generateRectangleVertices}, {@link generateEllipseVertices},
+ * {@link generatePolygonVertices}, {@link generateStarVertices}) based on
+ * {@link Shape.type}. The returned vertex data contains interleaved
+ * `[x, y, r, g, b, a]` arrays suitable for direct upload to a WebGL buffer.
+ *
+ * @param shape - The shape to generate vertices for. The shape's `type` field
+ *   determines which geometry generator is used. Position, rotation, colors,
+ *   and dimensions are all read from the shape's properties.
+ * @param ellipseSegments - Number of line segments used to approximate ellipse
+ *   curves. Higher values produce smoother circles at the cost of more vertices.
+ *   Only used when `shape.type` is `"ellipse"`. (default: 48)
+ * @returns Vertex data containing separate outline (triangle strip) and fill
+ *   (triangle list) geometry. Either field may be `null` if the shape has no
+ *   stroke width or no fill color, respectively.
+ */
 export function generateShapeVertices(shape: Shape, ellipseSegments = 48): ShapeVertexData {
   switch (shape.type) {
     case "rectangle":

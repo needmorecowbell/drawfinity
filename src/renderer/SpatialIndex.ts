@@ -235,7 +235,17 @@ export class SpatialIndex {
     this.strokeMap.delete(strokeId);
   }
 
-  /** Remove a shape from the index by ID. */
+  /**
+   * Removes a shape from the spatial index by its unique identifier.
+   *
+   * Looks up the shape's previously computed bounding box, iterates over
+   * all grid cells that the bounding box overlaps, and filters the shape
+   * out of each cell's entry list. Empty cells are deleted to free memory.
+   * If the shape ID is not found in the index, this method is a no-op.
+   *
+   * @param shapeId - The unique identifier of the shape to remove
+   *   (matches `shape.id` passed to {@link addShape}).
+   */
   removeShape(shapeId: string): void {
     const bounds = this.shapeBoundsMap.get(shapeId);
     if (!bounds) return;

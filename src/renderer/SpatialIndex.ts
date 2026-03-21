@@ -138,7 +138,17 @@ export class SpatialIndex {
     };
   }
 
-  /** Add a stroke to the index. */
+  /**
+   * Adds a stroke to the spatial index for viewport culling queries.
+   *
+   * Computes the stroke's axis-aligned bounding box via {@link computeStrokeBounds},
+   * then maps the stroke into every grid cell that its bounding box overlaps.
+   * If the stroke already exists in the index (same `stroke.id`), a duplicate
+   * entry will be created — call {@link remove} first to update an existing stroke.
+   *
+   * @param stroke - The stroke to index. Uses `stroke.id` as the unique key,
+   *   `stroke.points` for spatial extent, and `stroke.width` for bounds expansion.
+   */
   add(stroke: Stroke): void {
     const bounds = computeStrokeBounds(stroke);
     this.strokeBounds.set(stroke.id, bounds);

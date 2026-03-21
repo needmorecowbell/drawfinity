@@ -27,6 +27,18 @@ export function strokeToYMap(stroke: Stroke): Y.Map<unknown> {
   return yMap;
 }
 
+/**
+ * Deserializes a Yjs Map back into a plain {@link Stroke} object.
+ *
+ * Reads the keys written by {@link strokeToYMap} (`id`, `color`, `width`,
+ * `opacity`, `timestamp`, `points`) and reconstructs the corresponding
+ * `Stroke`. If `opacity` is missing from the map it defaults to `1.0`.
+ *
+ * @param yMap - A `Y.Map` containing the serialized stroke data produced by
+ *   {@link strokeToYMap}.
+ * @returns The deserialized {@link Stroke} with all points and visual
+ *   properties restored.
+ */
 export function yMapToStroke(yMap: Y.Map<unknown>): Stroke {
   const yPoints = yMap.get("points") as Y.Array<Y.Map<number>>;
   const points: StrokePoint[] = yPoints.toArray().map((yPt) => ({

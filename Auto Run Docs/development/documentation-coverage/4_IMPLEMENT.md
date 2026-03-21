@@ -5,7 +5,7 @@
 - **Agent:** feature-documentation
 - **Project:** /home/adam/Dev/drawfinity_worktree/feature-documentation
 - **Auto Run Folder:** /home/adam/Dev/drawfinity/Auto Run Docs
-- **Loop:** 00002
+- **Loop:** 00003
 
 ## Objective
 
@@ -13,7 +13,7 @@ Write documentation for `PENDING` gaps from the evaluation phase. Create high-qu
 
 ## Instructions
 
-1. **Read the plan** from `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00002_PLAN.md`
+1. **Read the plan** from `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00003_PLAN.md`
 2. **Find all `PENDING` items** (not `IMPLEMENTED`, `WON'T DO`, or `PENDING - NEEDS CONTEXT`)
 3. **Write documentation** for each PENDING item
 4. **Update status** to `IMPLEMENTED` in the plan file
@@ -21,7 +21,7 @@ Write documentation for `PENDING` gaps from the evaluation phase. Create high-qu
 
 ## Implementation Checklist
 
-- [ ] **Write documentation (or skip if none)**: Read /home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00002_PLAN.md. If the file doesn't exist OR contains no items with status exactly `PENDING`, mark this task complete without changes. Otherwise, write documentation for ONE `PENDING` item with PUBLIC/INTERNAL visibility and HIGH/CRITICAL importance. Follow project documentation conventions. Update status to `IMPLEMENTED` in the plan. Log to DOC_LOG. Only document ONE export per task.
+- [ ] **Write documentation (or skip if none)**: Read /home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00003_PLAN.md. If the file doesn't exist OR contains no items with status exactly `PENDING`, mark this task complete without changes. Otherwise, write documentation for ONE `PENDING` item with PUBLIC/INTERNAL visibility and HIGH/CRITICAL importance. Follow project documentation conventions. Update status to `IMPLEMENTED` in the plan. Log to DOC_LOG. Only document ONE export per task.
 
 ## Documentation Structure
 
@@ -107,7 +107,7 @@ Before marking as IMPLEMENTED:
 
 ## Update Plan Status
 
-After documenting each export, update `LOOP_00002_PLAN.md`:
+After documenting each export, update `LOOP_00003_PLAN.md`:
 
 ```markdown
 ### DOC-001: [Export Name]
@@ -155,12 +155,12 @@ Append to `/home/adam/Dev/drawfinity/Auto Run Docs/DOC_LOG_feature-documentation
 This task is complete when ONE of the following is true:
 
 **Option A - Documented an export:**
-1. You've written documentation for exactly ONE export from `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00002_PLAN.md`
+1. You've written documentation for exactly ONE export from `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00003_PLAN.md`
 2. You've appended the change details to `/home/adam/Dev/drawfinity/Auto Run Docs/DOC_LOG_feature-documentation_2026-03-21.md`
-3. You've updated the item status in `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00002_PLAN.md` to `IMPLEMENTED`
+3. You've updated the item status in `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00003_PLAN.md` to `IMPLEMENTED`
 
 **Option B - No PENDING items available:**
-1. `LOOP_00002_PLAN.md` doesn't exist, OR
+1. `LOOP_00003_PLAN.md` doesn't exist, OR
 2. It contains no items with status exactly `PENDING`
 3. Mark this task complete without making changes
 

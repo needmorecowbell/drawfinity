@@ -113,13 +113,31 @@ export function douglasPeucker(
 const lodCache = new Map<string, (StrokePoint[] | undefined)[]>();
 
 /**
- * Returns simplified points for a stroke at the given zoom level.
- * Results are cached per stroke per LOD bracket.
+ * Returns LOD-simplified points for a stroke at the given zoom level.
  *
- * @param strokeId - Unique stroke identifier for caching
- * @param points - Original stroke points
- * @param zoom - Current camera zoom level
- * @returns Simplified (or original) point array
+ * Selects a simplification tolerance based on the camera zoom (via
+ * {@link getLODBracket}), applies {@link douglasPeucker} to reduce the
+ * point count, and caches the result per stroke per LOD bracket so
+ * repeated calls at the same zoom range are essentially free.
+ *
+ * When the zoom level is high enough that no simplification is needed
+ * (bracket === -1), the original points array is returned directly
+ * without copying or caching.
+ *
+ * @param strokeId - Unique stroke identifier used as the cache key.
+ *   Must match across calls for the same stroke so the cache is effective.
+ * @param points - The original, full-detail stroke points to simplify.
+ * @param zoom - Current camera zoom level (e.g., 0.1 = zoomed out,
+ *   1.0 = 100%, >1.0 = zoomed in). Determines which LOD bracket and
+ *   tolerance to use.
+ * @returns A read-only array of simplified {@link StrokePoint}s. At high
+ *   zoom (>1.0) returns the original `points` unchanged. At lower zoom
+ *   levels returns a cached, Douglas-Peucker-simplified copy.
+ *
+ * @see {@link invalidateStrokeLOD} — call when a stroke is modified to
+ *   clear its cached LOD data.
+ * @see {@link getLODBracket} — maps zoom to an LOD bracket index.
+ * @see {@link douglasPeucker} — the simplification algorithm used.
  */
 export function getStrokeLOD(
   strokeId: string,

@@ -35,12 +35,25 @@ export function getLODBracket(zoom: number): number {
 }
 
 /**
- * Douglas-Peucker polyline simplification.
- * Reduces the number of points in a polyline while preserving shape.
+ * Simplifies a polyline using the Douglas-Peucker algorithm, reducing point
+ * count while preserving the overall shape within a specified tolerance.
  *
- * @param points - Input polyline
- * @param tolerance - Maximum perpendicular distance for a point to be discarded
- * @returns Simplified point array (always includes first and last points)
+ * Recursively finds the point farthest from the line between the first and
+ * last points. If that distance exceeds `tolerance`, the polyline is split
+ * at that point and each half is simplified independently. Otherwise, all
+ * interior points are discarded and only the endpoints are kept.
+ *
+ * @param points - The input polyline as an array of {@link StrokePoint}.
+ *   Arrays with 2 or fewer points are returned as-is (shallow copy).
+ * @param tolerance - Maximum perpendicular distance (in canvas units) a
+ *   point may deviate from the simplified line before it is retained.
+ *   Larger values produce more aggressive simplification.
+ * @returns A new array containing the simplified points. The first and last
+ *   points of the input are always preserved.
+ *
+ * @see {@link getStrokeLOD} — higher-level entry point that selects tolerance
+ *   from the current zoom level and caches results per stroke.
+ * @see {@link getLODBracket} — maps zoom to an LOD bracket / tolerance.
  */
 export function douglasPeucker(
   points: readonly StrokePoint[],

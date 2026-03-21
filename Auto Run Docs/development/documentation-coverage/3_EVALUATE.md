@@ -20,7 +20,7 @@ Evaluate each documentation gap from the discovery phase and assign visibility a
 
 ## Evaluation Checklist
 
-- [ ] **Evaluate gaps (or skip if empty)**: Read LOOP_00003_GAPS.md. If it contains no gaps OR all gaps have already been evaluated in LOOP_00003_PLAN.md, mark this task complete without changes. Otherwise, rate each gap by VISIBILITY (PUBLIC/INTERNAL/UTILITY/IMPLEMENTATION) and IMPORTANCE (CRITICAL/HIGH/MEDIUM/LOW). Mark PUBLIC or INTERNAL visibility with HIGH or CRITICAL importance as PENDING for auto-documentation. Output to `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00003_PLAN.md`.
+- [x] **Evaluate gaps (or skip if empty)**: Read LOOP_00003_GAPS.md. If it contains no gaps OR all gaps have already been evaluated in LOOP_00003_PLAN.md, mark this task complete without changes. Otherwise, rate each gap by VISIBILITY (PUBLIC/INTERNAL/UTILITY/IMPLEMENTATION) and IMPORTANCE (CRITICAL/HIGH/MEDIUM/LOW). Mark PUBLIC or INTERNAL visibility with HIGH or CRITICAL importance as PENDING for auto-documentation. Output to `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00003_PLAN.md`.
 
 ## Rating Criteria
 

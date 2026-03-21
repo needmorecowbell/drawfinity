@@ -87,6 +87,18 @@ export class StrokeRenderer {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   }
 
+  /**
+   * Sets the camera transformation matrix on the stroke shader program.
+   *
+   * Activates the stroke shader and uploads a 3×3 homogeneous transformation
+   * matrix as the `u_camera` uniform. This matrix converts world-space stroke
+   * vertex positions into clip-space coordinates, accounting for pan, zoom,
+   * and viewport aspect ratio. Call this once per frame before any draw calls.
+   *
+   * @param matrix - A 3×3 column-major transformation matrix stored as 9
+   *   consecutive floats. Typically produced by {@link Camera} to encode the
+   *   current pan offset and zoom level.
+   */
   setCameraMatrix(matrix: Float32Array): void {
     this.shader.use();
     if (this.uCameraLoc) {

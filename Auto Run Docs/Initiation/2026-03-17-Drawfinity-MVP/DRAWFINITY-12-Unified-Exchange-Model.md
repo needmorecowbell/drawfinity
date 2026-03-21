@@ -88,7 +88,8 @@ Per-script `version` fields enable granular update detection (user can see which
 
 ### Update Detection (`src/turtle/exchange/ExchangeClient.ts`)
 
-- [ ] Extend `ExchangeClient` with update-awareness. Add `checkForUpdates(): Promise<UpdateCheckResult>` that fetches the remote index and compares against the local cache. `UpdateCheckResult` should contain: `hasUpdates: boolean`, `newScripts: ExchangeScriptEntry[]` (scripts in remote but not in cache), `updatedScripts: Array<{ entry: ExchangeScriptEntry, currentVersion: string, newVersion: string }>` (scripts where remote version > cached version), `remoteIndex: ExchangeIndex`. This method should be called on app load (background, non-blocking). Update `fetchScript()` to write through to `ExchangeCache` after fetching
+- [x] Extend `ExchangeClient` with update-awareness. Add `checkForUpdates(): Promise<UpdateCheckResult>` that fetches the remote index and compares against the local cache. `UpdateCheckResult` should contain: `hasUpdates: boolean`, `newScripts: ExchangeScriptEntry[]` (scripts in remote but not in cache), `updatedScripts: Array<{ entry: ExchangeScriptEntry, currentVersion: string, newVersion: string }>` (scripts where remote version > cached version), `remoteIndex: ExchangeIndex`. This method should be called on app load (background, non-blocking). Update `fetchScript()` to write through to `ExchangeCache` after fetching
+  - *Already completed: `checkForUpdates()` fully implemented with semver comparison via `isNewerVersion()`, cache write-through in `fetchScript()`, and `UpdateCheckResult` interface in `ExchangeTypes.ts`. 17 tests covering empty cache, up-to-date cache, version bumps, mixed new+updated scripts, and error propagation — all passing.*
 
 ### Unified Script Browser UI (`src/ui/TurtlePanel.ts`)
 

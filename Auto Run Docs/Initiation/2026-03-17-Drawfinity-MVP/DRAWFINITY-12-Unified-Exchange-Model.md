@@ -96,7 +96,8 @@ Per-script `version` fields enable granular update detection (user can see which
 - [x] Replace the separate "Examples" dropdown and "Community" button with a single unified script browser. The browser should show all scripts from the exchange (using cached data or snapshot as fallback). Each script entry shows: title, description, author, tags, and status — one of "installed" (in cache, up to date), "update available" (in cache, newer version exists), or "available" (not yet cached). Add an "Updates Available" badge/indicator on the browser toggle button when `checkForUpdates()` finds changes. Do NOT auto-update — user explicitly clicks "Update" per script or "Update All"
   - *Already completed: `TurtlePanel.ts` has unified "Scripts" button with badge, `openExchangeBrowser()` with status badges (installed/update-available/available), Update All, search/tag filtering, and multi-layer fallback (cache → snapshot → network). 37 tests passing across `TurtlePanel.test.ts` and `TurtlePanelExchange.test.ts`.*
 
-- [ ] Remove the `TURTLE_EXAMPLES` import and the Examples dropdown `<select>` element from `TurtlePanel.ts`. The unified browser replaces both entry points. Ensure the "Import" action still populates the editor textarea and saves to localStorage as before
+- [x] Remove the `TURTLE_EXAMPLES` import and the Examples dropdown `<select>` element from `TurtlePanel.ts`. The unified browser replaces both entry points. Ensure the "Import" action still populates the editor textarea and saves to localStorage as before
+  - *Already completed in prior task: `TurtlePanel.ts` has no `TURTLE_EXAMPLES` import and no Examples `<select>`. The unified Scripts browser replaced both. `importExchangeScript()` calls `setScript()` → `saveScript()` which writes to localStorage correctly. 37 TurtlePanel tests passing.*
 
 ### Remove Built-in Examples
 

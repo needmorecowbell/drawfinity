@@ -87,6 +87,27 @@ export async function loadProfileAsync(): Promise<UserProfile> {
 
 const profileListeners = new Set<(profile: UserProfile) => void>();
 
+/**
+ * Subscribes to profile change notifications triggered by {@link saveProfile}.
+ *
+ * The callback fires each time a profile is saved, receiving the updated
+ * profile object. Use the returned unsubscribe function to remove the
+ * listener when it is no longer needed.
+ *
+ * @param callback - Invoked with the updated {@link UserProfile} whenever
+ *   a profile is saved.
+ * @returns A cleanup function that removes the listener when called.
+ *
+ * @example
+ * ```ts
+ * const unsubscribe = onProfileChange((profile) => {
+ *   console.log("Profile changed:", profile.name);
+ * });
+ *
+ * // Later, stop listening:
+ * unsubscribe();
+ * ```
+ */
 export function onProfileChange(callback: (profile: UserProfile) => void): () => void {
   profileListeners.add(callback);
   return () => {

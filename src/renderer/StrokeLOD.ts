@@ -241,7 +241,19 @@ function catmullRomSubdivide(points: StrokePoint[]): StrokePoint[] {
 }
 
 /**
- * Invalidate the LOD cache for a specific stroke (e.g., when it's modified).
+ * Invalidates all cached LOD and subdivision data for a specific stroke.
+ *
+ * Call this whenever a stroke's points are modified (e.g., after an undo,
+ * a CRDT remote update, or any edit that changes the stroke geometry).
+ * The next call to {@link getStrokeLOD} for this stroke will recompute
+ * the simplified points from scratch.
+ *
+ * @param strokeId - Unique identifier of the stroke whose cached LOD
+ *   data should be discarded. If the stroke has no cached data, this
+ *   is a no-op.
+ *
+ * @see {@link clearLODCache} — clears the entire cache for all strokes.
+ * @see {@link getStrokeLOD} — the function whose cache this invalidates.
  */
 export function invalidateStrokeLOD(strokeId: string): void {
   lodCache.delete(strokeId);

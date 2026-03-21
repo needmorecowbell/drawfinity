@@ -2,18 +2,39 @@ import { Camera } from "../camera";
 import { CameraController } from "../camera";
 import { Shape, ShapeType, generateShapeId } from "../model/Shape";
 
-/** Interface for shape document operations (subset of DrawfinityDoc). */
+/**
+ * Minimal document interface for shape persistence.
+ *
+ * Implemented by {@link DrawfinityDoc} — this subset decouples
+ * ShapeCapture from the full CRDT document so it can be tested
+ * or used with any backing store that accepts shapes.
+ */
 export interface ShapeDocumentModel {
+  /** Persist a finalized shape to the document. */
   addShape(shape: Shape): void;
 }
 
+/**
+ * Configuration for the active shape drawing tool.
+ *
+ * Controls which shape type is drawn and the visual properties applied
+ * to newly created shapes. Updated by the toolbar whenever the user
+ * changes shape settings.
+ */
 export interface ShapeToolConfig {
+  /** The geometric primitive to draw (e.g. `"rectangle"`, `"star"`). */
   shapeType: ShapeType;
+  /** CSS color string for the shape outline. */
   strokeColor: string;
+  /** Outline width in world-space units (scaled by zoom at creation time). */
   strokeWidth: number;
+  /** CSS color string for the shape fill, or `null` for no fill. */
   fillColor: string | null;
+  /** Shape opacity from 0 (transparent) to 1 (opaque). */
   opacity: number;
+  /** Number of sides for polygon shapes, or number of points for star shapes. */
   sides: number;
+  /** Inner-to-outer radius ratio for star shapes (0–1). Ignored for non-star types. */
   starInnerRadius: number;
 }
 
@@ -27,6 +48,28 @@ const DEFAULT_CONFIG: ShapeToolConfig = {
   starInnerRadius: 0.4,
 };
 
+/**
+ * Captures pointer-drag gestures on the canvas and converts them into
+ * {@link Shape} objects that are committed to the document.
+ *
+ * Listens for `pointerdown` / `pointermove` / `pointerup` events on
+ * the provided canvas element. While a drag is in progress, call
+ * {@link getPreviewShape} each frame to render a live shape outline.
+ * On pointer-up the finalized shape (if non-zero size) is added to
+ * the document via {@link ShapeDocumentModel.addShape}.
+ *
+ * Modifier keys alter the drag behavior:
+ * - **Shift** — constrains width and height to be equal (square / circle).
+ * - **Alt** — draws from center-out instead of corner-to-corner.
+ *
+ * Enable or disable capture with {@link setEnabled}; when disabled,
+ * pointer events are ignored so brush/eraser tools can operate.
+ *
+ * @param camera - Read-only camera used to convert screen → world coordinates.
+ * @param cameraController - Checked to avoid capturing during a pan gesture.
+ * @param document - Target document that receives finalized shapes.
+ * @param canvas - The `<canvas>` element to attach pointer listeners to.
+ */
 export class ShapeCapture {
   private camera: Camera;
   private cameraController: CameraController;
@@ -80,14 +123,30 @@ export class ShapeCapture {
     }
   }
 
+  /** Returns `true` if shape capture is currently accepting pointer events. */
   isEnabled(): boolean {
     return this.enabled;
   }
 
+  /**
+   * Merges the given partial configuration into the active shape config.
+   *
+   * Only the supplied fields are overwritten; omitted fields retain their
+   * current values. Call this when the user changes shape tool settings
+   * (e.g. switching shape type, changing fill color).
+   *
+   * @param config - Partial config whose defined fields override the current settings.
+   */
   setConfig(config: Partial<ShapeToolConfig>): void {
     Object.assign(this.config, config);
   }
 
+  /**
+   * Returns a shallow copy of the current shape tool configuration.
+   *
+   * The returned object is a snapshot — mutating it does not affect
+   * the internal state. Use {@link setConfig} to apply changes.
+   */
   getConfig(): ShapeToolConfig {
     return { ...this.config };
   }
@@ -196,6 +255,12 @@ export class ShapeCapture {
     return this.computeShape();
   }
 
+  /**
+   * Removes all pointer event listeners from the canvas.
+   *
+   * Call when the ShapeCapture instance is no longer needed (e.g. when
+   * leaving the drawing canvas) to prevent memory leaks.
+   */
   destroy(): void {
     this.canvas.removeEventListener("pointerdown", this.onPointerDown);
     this.canvas.removeEventListener("pointermove", this.onPointerMove);

@@ -1,6 +1,19 @@
 import { Stroke } from "../model/Stroke";
 import { Shape } from "../model/Shape";
 
+/**
+ * Axis-aligned bounding box used for spatial queries and viewport culling.
+ *
+ * Represents a rectangular region in world-space defined by its minimum and
+ * maximum coordinates. Used by {@link SpatialIndex} to determine which strokes
+ * and shapes are visible within a given viewport, and by functions like
+ * {@link computeStrokeBounds} to compute the spatial extent of drawable items.
+ *
+ * @property minX - Left edge of the bounding box (world-space X coordinate)
+ * @property minY - Top edge of the bounding box (world-space Y coordinate)
+ * @property maxX - Right edge of the bounding box (world-space X coordinate)
+ * @property maxY - Bottom edge of the bounding box (world-space Y coordinate)
+ */
 export interface AABB {
   minX: number;
   minY: number;
@@ -10,6 +23,16 @@ export interface AABB {
 
 /**
  * Computes the axis-aligned bounding box of a stroke, accounting for stroke width.
+ *
+ * Iterates over all points in the stroke to find the spatial extent, then
+ * expands the bounds by half the stroke width in each direction to ensure
+ * the full rendered area is enclosed.
+ *
+ * @param stroke - The stroke whose bounding box to compute. Must contain
+ *   at least one point for meaningful results; an empty points array yields
+ *   an inverted (infinite) AABB.
+ * @returns An {@link AABB} that fully encloses the stroke's rendered area,
+ *   including its width.
  */
 export function computeStrokeBounds(stroke: Stroke): AABB {
   let minX = Infinity;
@@ -32,7 +55,18 @@ export function computeStrokeBounds(stroke: Stroke): AABB {
 }
 
 /**
- * Computes the axis-aligned bounding box of a shape, accounting for rotation and stroke width.
+ * Computes the axis-aligned bounding box (AABB) of a shape, accounting for
+ * rotation and stroke width.
+ *
+ * For unrotated shapes the bounds are computed directly from the shape's
+ * center, dimensions, and stroke width. For rotated shapes the four corners
+ * of the bounding rectangle are projected through the rotation and the
+ * enclosing axis-aligned box is returned instead.
+ *
+ * @param shape - The shape whose bounding box should be computed. Uses `x`,
+ *   `y` (center), `width`, `height`, `strokeWidth`, and `rotation` (radians).
+ * @returns An {@link AABB} that fully encloses the shape, including its
+ *   stroke outline.
  */
 export function computeShapeBounds(shape: Shape): AABB {
   const hw = shape.width / 2;
@@ -104,7 +138,17 @@ export class SpatialIndex {
     };
   }
 
-  /** Add a stroke to the index. */
+  /**
+   * Adds a stroke to the spatial index for viewport culling queries.
+   *
+   * Computes the stroke's axis-aligned bounding box via {@link computeStrokeBounds},
+   * then maps the stroke into every grid cell that its bounding box overlaps.
+   * If the stroke already exists in the index (same `stroke.id`), a duplicate
+   * entry will be created — call {@link remove} first to update an existing stroke.
+   *
+   * @param stroke - The stroke to index. Uses `stroke.id` as the unique key,
+   *   `stroke.points` for spatial extent, and `stroke.width` for bounds expansion.
+   */
   add(stroke: Stroke): void {
     const bounds = computeStrokeBounds(stroke);
     this.strokeBounds.set(stroke.id, bounds);
@@ -125,7 +169,18 @@ export class SpatialIndex {
     }
   }
 
-  /** Add a shape to the index. */
+  /**
+   * Adds a shape to the spatial index for viewport culling queries.
+   *
+   * Computes the shape's axis-aligned bounding box via {@link computeShapeBounds},
+   * then maps the shape into every grid cell that its bounding box overlaps.
+   * If the shape already exists in the index (same `shape.id`), a duplicate
+   * entry will be created — call {@link removeShape} first to update an existing shape.
+   *
+   * @param shape - The shape to index. Uses `shape.id` as the unique key,
+   *   and the shape's center, dimensions, rotation, and stroke width for bounds
+   *   computation.
+   */
   addShape(shape: Shape): void {
     const bounds = computeShapeBounds(shape);
     this.shapeBoundsMap.set(shape.id, bounds);
@@ -146,7 +201,17 @@ export class SpatialIndex {
     }
   }
 
-  /** Remove a stroke from the index by ID. */
+  /**
+   * Removes a stroke from the spatial index by its unique identifier.
+   *
+   * Looks up the stroke's previously computed bounding box, iterates over
+   * all grid cells that the bounding box overlaps, and filters the stroke
+   * out of each cell's entry list. Empty cells are deleted to free memory.
+   * If the stroke ID is not found in the index, this method is a no-op.
+   *
+   * @param strokeId - The unique identifier of the stroke to remove
+   *   (matches `stroke.id` passed to {@link add}).
+   */
   remove(strokeId: string): void {
     const bounds = this.strokeBounds.get(strokeId);
     if (!bounds) return;
@@ -170,7 +235,17 @@ export class SpatialIndex {
     this.strokeMap.delete(strokeId);
   }
 
-  /** Remove a shape from the index by ID. */
+  /**
+   * Removes a shape from the spatial index by its unique identifier.
+   *
+   * Looks up the shape's previously computed bounding box, iterates over
+   * all grid cells that the bounding box overlaps, and filters the shape
+   * out of each cell's entry list. Empty cells are deleted to free memory.
+   * If the shape ID is not found in the index, this method is a no-op.
+   *
+   * @param shapeId - The unique identifier of the shape to remove
+   *   (matches `shape.id` passed to {@link addShape}).
+   */
   removeShape(shapeId: string): void {
     const bounds = this.shapeBoundsMap.get(shapeId);
     if (!bounds) return;
@@ -194,7 +269,18 @@ export class SpatialIndex {
     this.shapeMap.delete(shapeId);
   }
 
-  /** Clear all entries. */
+  /**
+   * Removes all strokes and shapes from the spatial index.
+   *
+   * Clears every internal data structure — grid cells, bounding-box caches,
+   * and item lookup maps — for both strokes and shapes. After calling this
+   * method, {@link size} and {@link shapeSize} will both return `0` and all
+   * subsequent {@link query} / {@link queryShapes} calls will return empty
+   * arrays until new items are added.
+   *
+   * This is called internally by {@link rebuild} and {@link rebuildAll}
+   * before re-populating the index.
+   */
   clear(): void {
     this.cells.clear();
     this.strokeBounds.clear();
@@ -204,7 +290,19 @@ export class SpatialIndex {
     this.shapeMap.clear();
   }
 
-  /** Rebuild the index from a full set of strokes. */
+  /**
+   * Rebuilds the entire spatial index from a complete set of strokes.
+   *
+   * Clears all existing index data (strokes, shapes, and grid cells) via
+   * {@link clear}, then re-inserts every stroke. Use this when the stroke
+   * collection has changed in a way that makes incremental updates impractical
+   * (e.g., after a bulk undo/redo or document reload).
+   *
+   * For rebuilding with both strokes and shapes, use {@link rebuildAll} instead.
+   *
+   * @param strokes - The full array of strokes to index. Each stroke's bounding
+   *   box is computed and mapped to the appropriate grid cells.
+   */
   rebuild(strokes: Stroke[]): void {
     this.clear();
     for (const stroke of strokes) {
@@ -212,7 +310,22 @@ export class SpatialIndex {
     }
   }
 
-  /** Rebuild the index from strokes and shapes. */
+  /**
+   * Clears all existing index data and re-indexes both strokes and shapes
+   * from scratch. This is the combined equivalent of calling {@link rebuild}
+   * for strokes followed by re-adding all shapes, but performed in a single
+   * pass after one {@link clear} call.
+   *
+   * Use this after bulk operations that invalidate both stroke and shape
+   * spatial data simultaneously (e.g., full document reload, collaborative
+   * sync merge, or undo/redo of mixed stroke-and-shape operations).
+   *
+   * @param strokes - The complete array of strokes to index. Each stroke's
+   *   bounding box is computed via {@link computeStrokeBounds} and mapped to
+   *   the appropriate grid cells.
+   * @param shapes - The complete array of shapes to index. Each shape is
+   *   inserted via {@link addShape}.
+   */
   rebuildAll(strokes: Stroke[], shapes: Shape[]): void {
     this.clear();
     for (const stroke of strokes) {
@@ -224,8 +337,17 @@ export class SpatialIndex {
   }
 
   /**
-   * Query all strokes whose bounding boxes intersect the given viewport AABB.
-   * Returns a deduplicated array of strokes sorted by document order (timestamp).
+   * Queries the spatial index for all strokes whose bounding boxes intersect
+   * the given viewport rectangle. Strokes that span multiple grid cells are
+   * deduplicated so each stroke appears at most once in the result.
+   *
+   * The returned array is sorted by document order (ascending timestamp)
+   * so that newer strokes render on top of older ones.
+   *
+   * @param viewport - The axis-aligned bounding box defining the visible area to query.
+   * @returns A deduplicated array of {@link Stroke} objects intersecting the viewport,
+   *          sorted by timestamp in ascending order. Returns an empty array when no
+   *          strokes fall within the viewport.
    */
   query(viewport: AABB): Stroke[] {
     const range = this.getCellRange(viewport);
@@ -258,8 +380,17 @@ export class SpatialIndex {
   }
 
   /**
-   * Query all shapes whose bounding boxes intersect the given viewport AABB.
-   * Returns a deduplicated array of shapes.
+   * Queries the spatial index for all shapes whose bounding boxes intersect
+   * the given viewport rectangle. Shapes that span multiple grid cells are
+   * deduplicated so each shape appears at most once in the result.
+   *
+   * The returned array is sorted by document order (ascending timestamp)
+   * so that newer shapes render on top of older ones.
+   *
+   * @param viewport - The axis-aligned bounding box defining the visible area to query.
+   * @returns A deduplicated array of {@link Shape} objects intersecting the viewport,
+   *          sorted by timestamp in ascending order. Returns an empty array when no
+   *          shapes fall within the viewport.
    */
   queryShapes(viewport: AABB): Shape[] {
     const range = this.getCellRange(viewport);

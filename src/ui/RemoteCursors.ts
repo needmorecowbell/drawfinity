@@ -13,9 +13,29 @@ interface CursorEntry {
 }
 
 /**
- * Renders remote user cursors as CSS-positioned HTML overlays on the canvas.
- * Each cursor shows a colored arrow and name label.
- * Cursors fade after 5s of inactivity and are removed when users disconnect.
+ * Renders remote collaborators' cursor positions as CSS-positioned HTML overlays
+ * on top of the drawing canvas.
+ *
+ * Each cursor is displayed as a colored SVG arrow with a name label, matching the
+ * user's assigned collaboration color. Cursors automatically fade out after
+ * {@link IDLE_TIMEOUT_MS | 5 seconds} of inactivity and are removed when users
+ * disconnect from the session.
+ *
+ * Lifecycle: construct with a root element and camera, then call {@link attach} to
+ * begin listening for remote user updates from a {@link SyncManager}. Call
+ * {@link detach} or let the owner clean up to stop rendering and remove DOM elements.
+ *
+ * @example
+ * ```ts
+ * const cursors = new RemoteCursors(canvasContainer, camera);
+ * cursors.attach(syncManager);
+ *
+ * // On camera pan/zoom, reproject cursor positions:
+ * cursors.updatePositions();
+ *
+ * // When leaving the collaborative session:
+ * cursors.detach();
+ * ```
  */
 export class RemoteCursors {
   private cursors: Map<string, CursorEntry> = new Map();
@@ -25,11 +45,28 @@ export class RemoteCursors {
   private animFrameId: number | null = null;
   private lastUsers: RemoteUser[] = [];
 
+  /**
+   * Creates a new RemoteCursors overlay manager.
+   *
+   * @param root - The DOM element to append cursor overlays into (typically the canvas container).
+   * @param camera - The camera used to convert world-space cursor positions to screen coordinates.
+   */
   constructor(root: HTMLElement, camera: Camera) {
     this.root = root;
     this.camera = camera;
   }
 
+  /**
+   * Begins listening for remote user updates from the given sync manager.
+   *
+   * Subscribes to {@link SyncManager.onRemoteUsersChange} to create, update, and
+   * remove cursor overlays as collaborators join, move, or leave. Also starts an
+   * animation loop that handles idle fade-out transitions.
+   *
+   * Calling this while already attached will first {@link detach} the previous subscription.
+   *
+   * @param syncManager - The sync manager providing remote user presence data.
+   */
   attach(syncManager: SyncManager): void {
     this.detach();
     this.unsubscribe = syncManager.onRemoteUsersChange((users) => {
@@ -38,6 +75,12 @@ export class RemoteCursors {
     this.startAnimationLoop();
   }
 
+  /**
+   * Stops listening for remote user updates and removes all cursor overlays from the DOM.
+   *
+   * Cancels the animation loop, unsubscribes from the sync manager, and cleans up
+   * all cursor DOM elements. Safe to call multiple times or when not attached.
+   */
   detach(): void {
     if (this.unsubscribe) {
       this.unsubscribe();
@@ -54,7 +97,13 @@ export class RemoteCursors {
     this.lastUsers = [];
   }
 
-  /** Called on camera change to reposition all cursors */
+  /**
+   * Reprojects all visible cursors from world space to screen space.
+   *
+   * Should be called whenever the camera pans or zooms so that cursor overlays
+   * remain aligned with their world-space positions. Also updates fade state
+   * for idle cursors.
+   */
   updatePositions(): void {
     const now = Date.now();
     for (const user of this.lastUsers) {

@@ -30,6 +30,18 @@ export function shapeToYMap(shape: Shape): Y.Map<unknown> {
   return yMap;
 }
 
+/**
+ * Deserializes a Yjs Map back into a plain {@link Shape} object.
+ *
+ * Reconstructs all required shape properties from the map, defaulting
+ * `fillColor` to `null` and `opacity` to `1.0` when absent. Optional
+ * polygon/star properties (`sides`, `starInnerRadius`) are restored only
+ * if present in the map.
+ *
+ * @param yMap - The Yjs Map containing serialized shape data, as produced
+ *   by {@link shapeToYMap}.
+ * @returns A fully-hydrated {@link Shape} object ready for rendering.
+ */
 export function yMapToShape(yMap: Y.Map<unknown>): Shape {
   const shape: Shape = {
     id: yMap.get("id") as string,

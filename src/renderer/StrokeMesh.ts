@@ -7,14 +7,26 @@ import type { StrokePoint } from "./StrokeRenderer";
  */
 
 /**
- * Generates a triangle strip from a polyline and width.
- * Returns an interleaved Float32Array: [x, y, r, g, b, a] per vertex,
- * ready for GL_TRIANGLE_STRIP rendering.
+ * Converts stroke polyline points into triangle strip vertex data for WebGL rendering.
  *
- * @param points - The polyline points
- * @param width - Stroke width in world-space units
- * @param color - RGBA color tuple [0..1]
- * @returns Float32Array of interleaved vertex data, or null if input is degenerate
+ * Builds filled quad geometry by offsetting each point along its segment normal,
+ * producing left/right vertex pairs. Interior points use miter joins (averaged
+ * adjacent normals scaled by `1 / cos(halfAngle)`) to maintain consistent stroke
+ * width at corners, with a clamp to prevent extreme spikes at sharp angles.
+ * Consecutive duplicate points are deduplicated before processing.
+ *
+ * Each point's `pressure` value (default 0.5) scales the local stroke width,
+ * enabling variable-width strokes from pressure-sensitive input.
+ *
+ * @param points - Ordered polyline points with `x`, `y`, and optional `pressure` (0–1).
+ *   Must contain at least 2 non-duplicate points for valid output.
+ * @param width - Base stroke width in world-space units. Actual per-vertex half-width
+ *   is `(width * pressure) / 2`.
+ * @param color - RGBA color as a 4-element tuple with components in the range [0, 1].
+ *   The alpha component controls stroke opacity.
+ * @returns Interleaved `Float32Array` of vertex data with layout `[x, y, r, g, b, a]`
+ *   per vertex (2 vertices per input point), suitable for `GL_TRIANGLE_STRIP` rendering.
+ *   Returns `null` if fewer than 2 unique points or `width <= 0`.
  */
 export function generateTriangleStrip(
   points: readonly StrokePoint[],

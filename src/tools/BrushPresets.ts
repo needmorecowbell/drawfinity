@@ -40,4 +40,16 @@ export const HIGHLIGHTER: BrushConfig = {
   smoothing: 3,
 };
 
+/**
+ * Built-in brush preset configurations available for selection via keyboard shortcuts `1`–`4`.
+ *
+ * The four presets cover common drawing use-cases:
+ * - **Pen** (`1`) — Firm, uniform strokes for technical drawing
+ * - **Pencil** (`2`) — Pressure-responsive sketching with slight transparency
+ * - **Marker** (`3`) — Wide, bold strokes with high opacity
+ * - **Highlighter** (`4`) — Wide, transparent overlay for marking and annotation
+ *
+ * Each preset defines a complete {@link BrushConfig} including base width,
+ * pressure/opacity response curves, default color, and smoothing level.
+ */
 export const BRUSH_PRESETS: readonly BrushConfig[] = [PEN, PENCIL, MARKER, HIGHLIGHTER];

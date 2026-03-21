@@ -5,6 +5,19 @@ import {
 } from "./ShaderProgram";
 import { generateTriangleStrip } from "./StrokeMesh";
 
+/**
+ * A point within a stroke used for rendering, containing position and optional pressure.
+ *
+ * This is the renderer-local interface for stroke points consumed by
+ * {@link StrokeRenderer} and {@link generateTriangleStrip}. Unlike the model-layer
+ * `StrokePoint` (in `model/Stroke.ts`), pressure is optional here — when omitted,
+ * the renderer treats it as a uniform-width stroke.
+ *
+ * @property x - Horizontal position in world-space coordinates.
+ * @property y - Vertical position in world-space coordinates.
+ * @property pressure - Normalized pressure value (0–1). Optional; when absent,
+ *   the stroke is rendered at uniform width.
+ */
 export interface StrokePoint {
   x: number;
   y: number;
@@ -74,6 +87,18 @@ export class StrokeRenderer {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   }
 
+  /**
+   * Sets the camera transformation matrix on the stroke shader program.
+   *
+   * Activates the stroke shader and uploads a 3×3 homogeneous transformation
+   * matrix as the `u_camera` uniform. This matrix converts world-space stroke
+   * vertex positions into clip-space coordinates, accounting for pan, zoom,
+   * and viewport aspect ratio. Call this once per frame before any draw calls.
+   *
+   * @param matrix - A 3×3 column-major transformation matrix stored as 9
+   *   consecutive floats. Typically produced by {@link Camera} to encode the
+   *   current pan offset and zoom level.
+   */
   setCameraMatrix(matrix: Float32Array): void {
     this.shader.use();
     if (this.uCameraLoc) {

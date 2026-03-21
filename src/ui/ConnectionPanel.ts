@@ -1,9 +1,38 @@
 import { SyncManager, ConnectionState, RemoteUser } from "../sync/SyncManager";
 
+/**
+ * Callbacks for responding to ConnectionPanel user actions.
+ *
+ * @property onLeaveSession - Called when the user clicks "Leave Session",
+ *   after the WebSocket connection has been disconnected and the panel hidden.
+ *   Use this to perform post-disconnect cleanup such as returning to the home screen.
+ */
 export interface ConnectionPanelCallbacks {
   onLeaveSession?: () => void;
 }
 
+/**
+ * Modal UI panel for managing WebSocket collaboration connections.
+ *
+ * Provides a two-state interface: a connection form (server URL + room ID inputs)
+ * when disconnected, and a session info view (room name, participant list, leave button)
+ * when connected. The panel renders as a centered overlay and can be toggled with `Ctrl+K`.
+ *
+ * Subscribes to {@link SyncManager} connection state and remote user changes to keep
+ * the UI in sync. All subscriptions are cleaned up on {@link destroy}.
+ *
+ * @param syncManager - The SyncManager instance used to connect/disconnect and
+ *   observe connection state and remote participants
+ * @param callbacks - Optional callbacks for panel events (e.g. leaving a session)
+ *
+ * @example
+ * ```ts
+ * const panel = new ConnectionPanel(syncManager, {
+ *   onLeaveSession: () => app.returnToHomeScreen(),
+ * });
+ * panel.show(); // opens the overlay
+ * ```
+ */
 export class ConnectionPanel {
   private overlay: HTMLElement;
   private panel: HTMLElement;
@@ -208,6 +237,12 @@ export class ConnectionPanel {
     this.callbacks.onLeaveSession?.();
   }
 
+  /**
+   * Updates the displayed room identification in the connected-state view.
+   *
+   * @param roomId - The unique room identifier
+   * @param roomName - Human-readable room name; defaults to `roomId` if omitted
+   */
   setRoomInfo(roomId: string, roomName?: string): void {
     this.currentRoomId = roomId;
     this.currentRoomName = roomName ?? roomId;
@@ -323,18 +358,27 @@ export class ConnectionPanel {
     return id;
   }
 
+  /**
+   * Shows the connection panel overlay. No-op if already visible.
+   * Appends the overlay element to `document.body`.
+   */
   show(): void {
     if (this.visible) return;
     this.visible = true;
     document.body.appendChild(this.overlay);
   }
 
+  /**
+   * Hides the connection panel overlay. No-op if already hidden.
+   * Removes the overlay element from the DOM.
+   */
   hide(): void {
     if (!this.visible) return;
     this.visible = false;
     this.overlay.remove();
   }
 
+  /** Toggles the panel visibility — shows if hidden, hides if visible. */
   toggle(): void {
     if (this.visible) {
       this.hide();
@@ -343,10 +387,15 @@ export class ConnectionPanel {
     }
   }
 
+  /** Returns `true` if the panel overlay is currently displayed. */
   isVisible(): boolean {
     return this.visible;
   }
 
+  /**
+   * Tears down the panel by unsubscribing from SyncManager events and
+   * removing the overlay from the DOM. Call this when the panel is no longer needed.
+   */
   destroy(): void {
     if (this.unsubscribe) {
       this.unsubscribe();

@@ -1,11 +1,18 @@
 import type { Shape } from "../model/Shape";
 
 /**
- * Generates triangle strip geometry for shape outlines and triangle-list
- * geometry for shape fills. Vertex format matches StrokeMesh:
- * interleaved [x, y, r, g, b, a] (stride 6) per vertex.
+ * Vertex data output from shape mesh generation, containing separate
+ * geometry buffers for the shape's outline and fill. Produced by
+ * {@link generateShapeVertices} and consumed by the WebGL renderer.
+ *
+ * Both buffers use the same interleaved vertex format as StrokeMesh:
+ * `[x, y, r, g, b, a]` with a stride of 6 floats per vertex.
+ *
+ * @property outline - `GL_TRIANGLE_STRIP` vertices for the shape outline
+ *   (stroke border). `null` when the shape has no stroke (`strokeWidth <= 0`).
+ * @property fill - `GL_TRIANGLES` vertices for the shape interior.
+ *   `null` when the shape has no fill color.
  */
-
 export interface ShapeVertexData {
   /** Triangle strip vertices for the shape outline (stroke), or null if strokeWidth <= 0 */
   outline: Float32Array | null;
@@ -243,27 +250,111 @@ function generateFillVertices(
 
 // ── Public API ──────────────────────────────────────────────────────
 
-/** Generate outline vertices for a rectangle shape. */
+/**
+ * Generates WebGL vertex data for rendering a rectangle shape.
+ *
+ * Produces both outline (triangle strip) and fill (triangle list) geometry
+ * from the rectangle's four corner vertices. The outline uses miter joins
+ * at corners, and the fill uses a center-fan triangulation.
+ *
+ * @param shape - The rectangle shape to generate vertices for. Uses `x`, `y`
+ *   for center position, `width`/`height` for dimensions, `rotation` for
+ *   orientation, `strokeColor`/`strokeWidth` for the outline, and `fillColor`
+ *   for the interior. Only shapes with `type: "rectangle"` produce correct geometry.
+ * @returns Vertex data with interleaved `[x, y, r, g, b, a]` buffers.
+ *   `outline` is `null` when `strokeWidth <= 0`; `fill` is `null` when
+ *   `fillColor` is `null`.
+ */
 export function generateRectangleVertices(shape: Shape): ShapeVertexData {
   return generateShapeFromPerimeter(shape, generatePerimeterPoints(shape));
 }
 
-/** Generate outline vertices for an ellipse shape. */
+/**
+ * Generates WebGL vertex data for rendering an ellipse shape.
+ *
+ * Produces both outline (triangle strip) and fill (triangle fan) geometry
+ * by approximating the ellipse as a regular polygon with the given number
+ * of segments. Higher segment counts yield smoother curves at the cost of
+ * more vertices.
+ *
+ * @param shape - The ellipse shape to generate vertices for. Uses `x`, `y`
+ *   for center position, `width`/`height` for radii, `rotation` for
+ *   orientation, `strokeColor`/`strokeWidth` for the outline, and `fillColor`
+ *   for the interior. Only shapes with `type: "ellipse"` produce correct geometry.
+ * @param segments - Number of line segments used to approximate the ellipse
+ *   perimeter (default: 48). Higher values produce smoother curves.
+ * @returns Vertex data with interleaved `[x, y, r, g, b, a]` buffers.
+ *   `outline` is `null` when `strokeWidth <= 0`; `fill` is `null` when
+ *   `fillColor` is `null`.
+ */
 export function generateEllipseVertices(shape: Shape, segments = 48): ShapeVertexData {
   return generateShapeFromPerimeter(shape, generatePerimeterPoints(shape, segments));
 }
 
-/** Generate outline vertices for a regular polygon shape. */
+/**
+ * Generates WebGL vertex data for rendering a regular polygon shape.
+ *
+ * Produces triangle-strip outline and triangle-list fill geometry for a
+ * regular polygon with a configurable number of sides (via {@link Shape.sides},
+ * default 5). The first vertex is placed at the top of the shape (−π/2) so
+ * that the polygon appears upright. Position, rotation, colors, and stroke
+ * width are all read from the shape's properties.
+ *
+ * @param shape - The polygon shape to generate vertices for. Uses `sides`
+ *   (default 5) to determine vertex count, and reads `width`, `height`,
+ *   `x`, `y`, `rotation`, `strokeColor`, `strokeWidth`, `fillColor`, and
+ *   `opacity` for geometry and color.
+ * @returns Vertex data with interleaved `[x, y, r, g, b, a]` buffers.
+ *   `outline` is `null` when `strokeWidth <= 0`; `fill` is `null` when
+ *   `fillColor` is `null`.
+ */
 export function generatePolygonVertices(shape: Shape): ShapeVertexData {
   return generateShapeFromPerimeter(shape, generatePerimeterPoints(shape));
 }
 
-/** Generate outline vertices for a star shape. */
+/**
+ * Generates WebGL vertex data for rendering a star shape.
+ *
+ * Produces triangle-strip outline and triangle-list fill geometry for a star
+ * with a configurable number of points (via {@link Shape.sides}, default 5)
+ * and inner radius ratio (via {@link Shape.starInnerRadius}, default 0.4).
+ * Outer and inner vertices alternate around the perimeter, with the first
+ * outer vertex placed at the top of the shape (−π/2) so that the star
+ * appears upright. Position, rotation, colors, and stroke width are all
+ * read from the shape's properties.
+ *
+ * @param shape - The star shape to generate vertices for. Uses `sides`
+ *   (default 5) to determine the number of points, `starInnerRadius`
+ *   (default 0.4) to control the ratio between inner and outer radii, and
+ *   reads `width`, `height`, `x`, `y`, `rotation`, `strokeColor`,
+ *   `strokeWidth`, `fillColor`, and `opacity` for geometry and color.
+ * @returns Vertex data with interleaved `[x, y, r, g, b, a]` buffers.
+ *   `outline` is `null` when `strokeWidth <= 0`; `fill` is `null` when
+ *   `fillColor` is `null`.
+ */
 export function generateStarVertices(shape: Shape): ShapeVertexData {
   return generateShapeFromPerimeter(shape, generatePerimeterPoints(shape));
 }
 
-/** Dispatcher — generate vertices for any shape type. */
+/**
+ * Generates WebGL vertex data for rendering any supported shape type.
+ *
+ * Acts as a dispatcher that delegates to shape-specific vertex generators
+ * ({@link generateRectangleVertices}, {@link generateEllipseVertices},
+ * {@link generatePolygonVertices}, {@link generateStarVertices}) based on
+ * {@link Shape.type}. The returned vertex data contains interleaved
+ * `[x, y, r, g, b, a]` arrays suitable for direct upload to a WebGL buffer.
+ *
+ * @param shape - The shape to generate vertices for. The shape's `type` field
+ *   determines which geometry generator is used. Position, rotation, colors,
+ *   and dimensions are all read from the shape's properties.
+ * @param ellipseSegments - Number of line segments used to approximate ellipse
+ *   curves. Higher values produce smoother circles at the cost of more vertices.
+ *   Only used when `shape.type` is `"ellipse"`. (default: 48)
+ * @returns Vertex data containing separate outline (triangle strip) and fill
+ *   (triangle list) geometry. Either field may be `null` if the shape has no
+ *   stroke width or no fill color, respectively.
+ */
 export function generateShapeVertices(shape: Shape, ellipseSegments = 48): ShapeVertexData {
   switch (shape.type) {
     case "rectangle":

@@ -17,7 +17,15 @@ const LOD_BRACKETS: { maxZoom: number; tolerance: number }[] = [
 
 /**
  * Returns the LOD bracket index for a given zoom level.
- * Returns -1 for full detail (no simplification needed).
+ *
+ * Maps a camera zoom level to one of the predefined LOD brackets, each
+ * associated with a simplification tolerance. Lower brackets (0) correspond
+ * to far-out zoom levels with aggressive simplification, while higher
+ * brackets use finer tolerances.
+ *
+ * @param zoom - Current camera zoom level (e.g., 0.1 = zoomed out, 1.0 = 100%)
+ * @returns The bracket index (0–{@link LOD_BRACKET_COUNT}-1), or -1 if the
+ *   zoom level exceeds all brackets (full detail, no simplification needed)
  */
 export function getLODBracket(zoom: number): number {
   for (let i = 0; i < LOD_BRACKETS.length; i++) {
@@ -27,12 +35,25 @@ export function getLODBracket(zoom: number): number {
 }
 
 /**
- * Douglas-Peucker polyline simplification.
- * Reduces the number of points in a polyline while preserving shape.
+ * Simplifies a polyline using the Douglas-Peucker algorithm, reducing point
+ * count while preserving the overall shape within a specified tolerance.
  *
- * @param points - Input polyline
- * @param tolerance - Maximum perpendicular distance for a point to be discarded
- * @returns Simplified point array (always includes first and last points)
+ * Recursively finds the point farthest from the line between the first and
+ * last points. If that distance exceeds `tolerance`, the polyline is split
+ * at that point and each half is simplified independently. Otherwise, all
+ * interior points are discarded and only the endpoints are kept.
+ *
+ * @param points - The input polyline as an array of {@link StrokePoint}.
+ *   Arrays with 2 or fewer points are returned as-is (shallow copy).
+ * @param tolerance - Maximum perpendicular distance (in canvas units) a
+ *   point may deviate from the simplified line before it is retained.
+ *   Larger values produce more aggressive simplification.
+ * @returns A new array containing the simplified points. The first and last
+ *   points of the input are always preserved.
+ *
+ * @see {@link getStrokeLOD} — higher-level entry point that selects tolerance
+ *   from the current zoom level and caches results per stroke.
+ * @see {@link getLODBracket} — maps zoom to an LOD bracket / tolerance.
  */
 export function douglasPeucker(
   points: readonly StrokePoint[],
@@ -92,13 +113,31 @@ export function douglasPeucker(
 const lodCache = new Map<string, (StrokePoint[] | undefined)[]>();
 
 /**
- * Returns simplified points for a stroke at the given zoom level.
- * Results are cached per stroke per LOD bracket.
+ * Returns LOD-simplified points for a stroke at the given zoom level.
  *
- * @param strokeId - Unique stroke identifier for caching
- * @param points - Original stroke points
- * @param zoom - Current camera zoom level
- * @returns Simplified (or original) point array
+ * Selects a simplification tolerance based on the camera zoom (via
+ * {@link getLODBracket}), applies {@link douglasPeucker} to reduce the
+ * point count, and caches the result per stroke per LOD bracket so
+ * repeated calls at the same zoom range are essentially free.
+ *
+ * When the zoom level is high enough that no simplification is needed
+ * (bracket === -1), the original points array is returned directly
+ * without copying or caching.
+ *
+ * @param strokeId - Unique stroke identifier used as the cache key.
+ *   Must match across calls for the same stroke so the cache is effective.
+ * @param points - The original, full-detail stroke points to simplify.
+ * @param zoom - Current camera zoom level (e.g., 0.1 = zoomed out,
+ *   1.0 = 100%, >1.0 = zoomed in). Determines which LOD bracket and
+ *   tolerance to use.
+ * @returns A read-only array of simplified {@link StrokePoint}s. At high
+ *   zoom (>1.0) returns the original `points` unchanged. At lower zoom
+ *   levels returns a cached, Douglas-Peucker-simplified copy.
+ *
+ * @see {@link invalidateStrokeLOD} — call when a stroke is modified to
+ *   clear its cached LOD data.
+ * @see {@link getLODBracket} — maps zoom to an LOD bracket index.
+ * @see {@link douglasPeucker} — the simplification algorithm used.
  */
 export function getStrokeLOD(
   strokeId: string,
@@ -202,7 +241,19 @@ function catmullRomSubdivide(points: StrokePoint[]): StrokePoint[] {
 }
 
 /**
- * Invalidate the LOD cache for a specific stroke (e.g., when it's modified).
+ * Invalidates all cached LOD and subdivision data for a specific stroke.
+ *
+ * Call this whenever a stroke's points are modified (e.g., after an undo,
+ * a CRDT remote update, or any edit that changes the stroke geometry).
+ * The next call to {@link getStrokeLOD} for this stroke will recompute
+ * the simplified points from scratch.
+ *
+ * @param strokeId - Unique identifier of the stroke whose cached LOD
+ *   data should be discarded. If the stroke has no cached data, this
+ *   is a no-op.
+ *
+ * @see {@link clearLODCache} — clears the entire cache for all strokes.
+ * @see {@link getStrokeLOD} — the function whose cache this invalidates.
  */
 export function invalidateStrokeLOD(strokeId: string): void {
   lodCache.delete(strokeId);
@@ -210,7 +261,18 @@ export function invalidateStrokeLOD(strokeId: string): void {
 }
 
 /**
- * Clear the entire LOD cache.
+ * Clears all cached LOD simplification and subdivision data for every stroke.
+ *
+ * Use this when a bulk change invalidates the entire cache — for example,
+ * when loading a new document, performing a full document reset, or when
+ * the LOD bracket configuration changes. For invalidating a single stroke,
+ * prefer {@link invalidateStrokeLOD} instead.
+ *
+ * After calling this, the next {@link getStrokeLOD} call for any stroke
+ * will recompute its simplified points from scratch.
+ *
+ * @see {@link invalidateStrokeLOD} — invalidates cache for a single stroke.
+ * @see {@link getStrokeLOD} — the function whose cache this clears.
  */
 export function clearLODCache(): void {
   lodCache.clear();

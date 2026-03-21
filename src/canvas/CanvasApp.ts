@@ -20,6 +20,12 @@ import { FpsCounter } from "../ui/FpsCounter";
 import { SyncManager } from "../sync";
 import { loadProfileAsync, loadPreferencesAsync, savePreferences, type UserPreferences, type GridStyle } from "../user";
 
+/**
+ * Callbacks for CanvasApp lifecycle events, provided by the parent view manager.
+ *
+ * @property onGoHome - Called when the user navigates back to the home screen.
+ * @property onRenameDrawing - Called when the user renames the current drawing.
+ */
 export interface CanvasAppCallbacks {
   onGoHome?: () => void;
   onRenameDrawing?: (id: string, name: string) => void;
@@ -33,6 +39,34 @@ function hexToRgba(hex: string): [number, number, number, number] {
   return [r, g, b, 1.0];
 }
 
+/**
+ * Central application orchestrator that owns and coordinates all drawing subsystems.
+ *
+ * CanvasApp manages the full lifecycle of an infinite-canvas drawing session: WebGL
+ * rendering, camera controls, input capture, CRDT document state, collaboration,
+ * persistence, toolbar UI, and keyboard shortcuts. It is created once per drawing
+ * session and must be explicitly destroyed when the user leaves the canvas.
+ *
+ * Subsystems are initialized lazily in {@link init} rather than in the constructor,
+ * because persistence and user preferences require async loading. The Tauri file-system
+ * APIs are dynamically imported so the app degrades gracefully to localStorage when
+ * running in a browser without the Tauri shell.
+ *
+ * @example
+ * ```ts
+ * const app = new CanvasApp();
+ * await app.init("drawing-123", {
+ *   onGoHome: () => viewManager.showHome(),
+ *   onRenameDrawing: (id, name) => drawingManager.renameDrawing(id, name),
+ * });
+ *
+ * // Later, to join a collaboration session:
+ * app.connectToRoom("ws://localhost:8080", "room-abc", "My Room");
+ *
+ * // When the user leaves the canvas:
+ * await app.destroy();
+ * ```
+ */
 export class CanvasApp {
   private drawingId: string = "";
   private renderer!: Renderer;
@@ -81,6 +115,17 @@ export class CanvasApp {
   private initialized = false;
   private callbacks: CanvasAppCallbacks = {};
 
+  /**
+   * Initializes all subsystems and starts the render loop.
+   *
+   * This must be called exactly once after construction. It loads the persisted
+   * document (or creates a new one), sets up the WebGL renderer, camera, input
+   * handlers, toolbar, collaboration manager, and begins the animation frame loop.
+   *
+   * @param drawingId - Unique identifier for the drawing to open or create.
+   * @param callbacks - Optional lifecycle callbacks for navigation and rename events.
+   * @throws {Error} If the canvas element (`#drawfinity-canvas`) is not found in the DOM.
+   */
   async init(drawingId: string, callbacks?: CanvasAppCallbacks): Promise<void> {
     this.callbacks = callbacks ?? {};
     this.drawingId = drawingId;
@@ -605,6 +650,14 @@ export class CanvasApp {
     console.log("CanvasApp: initialized for drawing", drawingId);
   }
 
+  /**
+   * Tears down all subsystems and releases resources.
+   *
+   * Stops the render loop, flushes pending auto-save data to disk, disconnects
+   * from any active collaboration session, removes all DOM event listeners, and
+   * destroys UI components and the WebGL context. Safe to call if {@link init}
+   * was never called (no-op in that case).
+   */
   async destroy(): Promise<void> {
     if (!this.initialized) return;
 
@@ -664,18 +717,32 @@ export class CanvasApp {
     console.log("CanvasApp: destroyed");
   }
 
+  /** Returns the unique identifier of the currently open drawing. */
   getCurrentDrawingId(): string {
     return this.drawingId;
   }
 
+  /** Returns the Yjs-backed CRDT document that holds all strokes, shapes, and metadata. */
   getDoc(): DrawfinityDoc {
     return this.doc;
   }
 
+  /**
+   * Updates the drawing name displayed in the toolbar title area.
+   *
+   * @param name - The new display name for the drawing.
+   */
   setDrawingName(name: string): void {
     this.toolbar.setDrawingName(name);
   }
 
+  /**
+   * Joins a collaboration room and begins syncing document state with remote peers.
+   *
+   * @param serverUrl - WebSocket server URL (e.g. `"ws://localhost:8080"`).
+   * @param roomId - Unique room identifier used as the sync channel.
+   * @param roomName - Optional human-readable room name shown in the connection panel.
+   */
   connectToRoom(serverUrl: string, roomId: string, roomName?: string): void {
     this.connectionPanel.setRoomInfo(roomId, roomName);
     this.syncManager.connect(serverUrl, roomId);

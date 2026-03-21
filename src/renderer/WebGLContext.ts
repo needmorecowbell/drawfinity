@@ -25,6 +25,17 @@ export class WebGLContext {
     this.resize();
   }
 
+  /**
+   * Synchronizes the canvas drawing buffer size with its CSS layout size,
+   * accounting for the device pixel ratio for crisp rendering on high-DPI displays.
+   *
+   * Updates the WebGL viewport to match the new buffer dimensions. Only performs
+   * the resize when the computed dimensions differ from the current buffer size,
+   * avoiding unnecessary GPU state changes.
+   *
+   * Called automatically via a {@link ResizeObserver} when the canvas element
+   * changes size, and once during construction for initial setup.
+   */
   resize(): void {
     const dpr = window.devicePixelRatio || 1;
     const width = this.canvas.clientWidth;

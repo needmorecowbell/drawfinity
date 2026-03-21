@@ -11,6 +11,33 @@ import { ICONS } from "./ToolbarIcons";
 import { Tooltip } from "./Tooltip";
 import { ToolbarOverflow } from "./ToolbarOverflow";
 
+/**
+ * Callback interface for handling toolbar user interactions.
+ *
+ * Consumers provide implementations for these callbacks when constructing a {@link Toolbar}
+ * to respond to tool selection, color changes, undo/redo actions, and other toolbar events.
+ * Required callbacks must always be provided; optional callbacks (marked with `?`) are
+ * invoked only when the corresponding toolbar feature is used.
+ *
+ * @property onBrushSelect - Called when the user selects a brush preset from the brush picker.
+ * @property onColorChange - Called when the user picks a stroke color from the palette or custom input.
+ * @property onToolChange - Called when the active drawing tool changes (brush, eraser, shape, pan, magnify).
+ * @property onUndo - Called when the user clicks the undo button.
+ * @property onRedo - Called when the user clicks the redo button.
+ * @property onBrushSizeChange - Called when the user adjusts the brush size slider.
+ * @property onOpacityChange - Called when the user adjusts the opacity slider.
+ * @property onGridStyleChange - Called when the user changes the grid style (dots, lines, or none).
+ * @property onShapeConfigChange - Called when shape tool options change (fill color, side count).
+ * @property onBackgroundColorChange - Called when the user picks a new canvas background color.
+ * @property onHome - Called when the user clicks the home button to return to the home screen.
+ * @property onRenameDrawing - Called when the user renames the current drawing via the toolbar.
+ * @property onCheatSheet - Called when the user clicks the help/keyboard shortcuts button.
+ * @property onExport - Called when the user confirms an export from the export dialog.
+ * @property onZoomIn - Called when the user clicks the zoom in button.
+ * @property onZoomOut - Called when the user clicks the zoom out button.
+ * @property onZoomReset - Called when the user clicks the zoom display to reset to 100%.
+ * @property onFitAll - Called when the user clicks the fit-all button to frame all content.
+ */
 export interface ToolbarCallbacks {
   onBrushSelect: (brush: BrushConfig) => void;
   onColorChange: (color: string) => void;
@@ -56,6 +83,38 @@ const SHAPE_TOOLS: { type: ToolType; label: string; title: string; shortcut: str
 /** Toolbar group identifiers for logical organization. */
 export type ToolbarGroup = "tools" | "properties" | "actions" | "navigation" | "panels";
 
+/**
+ * Main toolbar UI component that provides drawing tool selection, color picking,
+ * brush settings, zoom controls, and other canvas actions.
+ *
+ * The toolbar renders as a fixed panel in the DOM and delegates all user interactions
+ * to the provided {@link ToolbarCallbacks}. It manages sub-tool pickers (brush presets,
+ * shape tools, grid styles), sliders for brush size and opacity, color swatches,
+ * background color selection, shape options, zoom controls, and overflow handling
+ * for narrow viewports.
+ *
+ * @param callbacks - Callback handlers for all toolbar interactions. See {@link ToolbarCallbacks}.
+ *
+ * @example
+ * ```ts
+ * const toolbar = new Toolbar({
+ *   onBrushSelect: (brush) => toolManager.setBrush(brush),
+ *   onColorChange: (color) => toolManager.setColor(color),
+ *   onToolChange: (tool) => toolManager.setActiveTool(tool),
+ *   onUndo: () => undoManager.undo(),
+ *   onRedo: () => undoManager.redo(),
+ *   onBrushSizeChange: (size) => toolManager.setBrushSize(size),
+ *   onOpacityChange: (opacity) => toolManager.setOpacity(opacity),
+ * });
+ *
+ * // Update toolbar state to reflect external changes
+ * toolbar.setActiveTool("eraser");
+ * toolbar.setZoomLevel(1.5);
+ *
+ * // Clean up when done
+ * toolbar.destroy();
+ * ```
+ */
 export class Toolbar {
   private container: HTMLElement;
   private callbacks: ToolbarCallbacks;

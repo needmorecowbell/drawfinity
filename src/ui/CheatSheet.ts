@@ -1,6 +1,23 @@
 import { ActionRegistry, ACTION_CATEGORIES } from "./ActionRegistry";
 import type { Action } from "./ActionRegistry";
 
+/**
+ * Keyboard shortcuts and actions cheat sheet overlay panel.
+ *
+ * Displays a searchable, categorized list of all registered actions and their
+ * keyboard shortcuts. Clicking an action row executes it and dismisses the panel.
+ * The overlay can be dismissed by pressing Escape, clicking outside the content
+ * area, or calling {@link hide}.
+ *
+ * @param registry - The {@link ActionRegistry} that supplies the list of available actions
+ *
+ * @example
+ * ```ts
+ * const cheatSheet = new CheatSheet(actionRegistry);
+ * cheatSheet.show();   // Opens the overlay with focus on the search input
+ * cheatSheet.toggle(); // Toggles visibility
+ * ```
+ */
 export class CheatSheet {
   private overlay: HTMLElement;
   private content: HTMLElement;
@@ -104,6 +121,13 @@ export class CheatSheet {
     }
   }
 
+  /**
+   * Opens the cheat sheet overlay and focuses the search input.
+   *
+   * Appends the overlay element to `document.body`, clears any previous search
+   * query, renders the full action list, and moves keyboard focus to the search
+   * field. If the overlay is already visible this method is a no-op.
+   */
   show(): void {
     if (this.visible) return;
     this.visible = true;
@@ -113,12 +137,24 @@ export class CheatSheet {
     this.searchInput.focus();
   }
 
+  /**
+   * Closes the cheat sheet overlay and removes it from the DOM.
+   *
+   * Detaches the overlay element from `document.body` and marks the panel as
+   * hidden. If the overlay is already hidden this method is a no-op.
+   */
   hide(): void {
     if (!this.visible) return;
     this.visible = false;
     this.overlay.remove();
   }
 
+  /**
+   * Toggles the cheat sheet overlay between visible and hidden states.
+   *
+   * If the overlay is currently hidden, delegates to {@link show} to open it.
+   * If the overlay is currently visible, delegates to {@link hide} to close it.
+   */
   toggle(): void {
     if (this.visible) {
       this.hide();
@@ -127,10 +163,22 @@ export class CheatSheet {
     }
   }
 
+  /**
+   * Returns whether the cheat sheet overlay is currently visible.
+   *
+   * @returns `true` if the overlay is attached to the DOM and displayed,
+   *          `false` if it is hidden
+   */
   isVisible(): boolean {
     return this.visible;
   }
 
+  /**
+   * Tears down the cheat sheet by hiding the overlay and removing it from the DOM.
+   *
+   * Call this when the cheat sheet is no longer needed to ensure the overlay
+   * element is detached from `document.body`. Safe to call multiple times.
+   */
   destroy(): void {
     this.hide();
   }

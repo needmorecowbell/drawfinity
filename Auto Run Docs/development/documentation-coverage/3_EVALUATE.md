@@ -5,7 +5,7 @@
 - **Agent:** feature-documentation
 - **Project:** /home/adam/Dev/drawfinity_worktree/feature-documentation
 - **Auto Run Folder:** /home/adam/Dev/drawfinity/Auto Run Docs
-- **Loop:** 00001
+- **Loop:** 00002
 
 ## Objective
 
@@ -13,15 +13,14 @@ Evaluate each documentation gap from the discovery phase and assign visibility a
 
 ## Instructions
 
-1. **Read the gaps list** from `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00001_GAPS.md`
+1. **Read the gaps list** from `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00002_GAPS.md`
 2. **Rate each gap** for visibility and importance
 3. **Assign status** based on ratings
-4. **Output prioritized plan** to `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00001_PLAN.md`
+4. **Output prioritized plan** to `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00002_PLAN.md`
 
 ## Evaluation Checklist
 
-- [x] **Evaluate gaps (or skip if empty)**: Read LOOP_00001_GAPS.md. If it contains no gaps OR all gaps have already been evaluated in LOOP_00001_PLAN.md, mark this task complete without changes. Otherwise, rate each gap by VISIBILITY (PUBLIC/INTERNAL/UTILITY/IMPLEMENTATION) and IMPORTANCE (CRITICAL/HIGH/MEDIUM/LOW). Mark PUBLIC or INTERNAL visibility with HIGH or CRITICAL importance as PENDING for auto-documentation. Output to `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00001_PLAN.md`.
-  - **Completed 2026-03-20:** Evaluated all 268 gaps → 48 PENDING for auto-doc, 3 NEEDS CONTEXT, 217 WON'T DO. Estimated coverage improvement: 50% → 59%.
+- [ ] **Evaluate gaps (or skip if empty)**: Read LOOP_00002_GAPS.md. If it contains no gaps OR all gaps have already been evaluated in LOOP_00002_PLAN.md, mark this task complete without changes. Otherwise, rate each gap by VISIBILITY (PUBLIC/INTERNAL/UTILITY/IMPLEMENTATION) and IMPORTANCE (CRITICAL/HIGH/MEDIUM/LOW). Mark PUBLIC or INTERNAL visibility with HIGH or CRITICAL importance as PENDING for auto-documentation. Output to `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00002_PLAN.md`.
 
 ## Rating Criteria
 
@@ -61,7 +60,7 @@ Gaps marked `WON'T DO` if:
 
 ## Output Format
 
-Create/update `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00001_PLAN.md` with:
+Create/update `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00002_PLAN.md` with:
 
 ```markdown
 # Documentation Plan - Loop 00001
@@ -158,14 +157,14 @@ Exports that should be documented together for consistency:
 This task is complete when ONE of the following is true:
 
 **Option A - Evaluated gaps:**
-1. You've read all gaps from `LOOP_00001_GAPS.md`
+1. You've read all gaps from `LOOP_00002_GAPS.md`
 2. You've rated each gap for VISIBILITY and IMPORTANCE
 3. You've assigned statuses (PENDING, PENDING - NEEDS CONTEXT, or WON'T DO)
-4. You've written the prioritized plan to `LOOP_00001_PLAN.md`
+4. You've written the prioritized plan to `LOOP_00002_PLAN.md`
 
 **Option B - No gaps to evaluate:**
-1. `LOOP_00001_GAPS.md` contains no gaps, OR
-2. All gaps have already been evaluated in `LOOP_00001_PLAN.md`
+1. `LOOP_00002_GAPS.md` contains no gaps, OR
+2. All gaps have already been evaluated in `LOOP_00002_PLAN.md`
 3. Mark this task complete without making changes
 
 This graceful handling of empty states prevents the pipeline from stalling when coverage is already at target or no gaps were found.

@@ -5,7 +5,7 @@
 - **Agent:** feature-documentation
 - **Project:** /home/adam/Dev/drawfinity_worktree/feature-documentation
 - **Auto Run Folder:** /home/adam/Dev/drawfinity/Auto Run Docs
-- **Loop:** 00001
+- **Loop:** 00002
 
 ## Objective
 
@@ -13,15 +13,14 @@ Using the documentation report, identify specific undocumented exports that need
 
 ## Instructions
 
-1. **Read the doc report** from `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00001_DOC_REPORT.md`
+1. **Read the doc report** from `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00002_DOC_REPORT.md`
 2. **Examine low-coverage modules** to find specific undocumented exports
 3. **Document each gap** with location, type, and visibility
-4. **Output findings** to `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00001_GAPS.md`
+4. **Output findings** to `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00002_GAPS.md`
 
 ## Discovery Checklist
 
-- [ ] **Find documentation gaps (or skip if not needed)**: Read `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00001_DOC_REPORT.md`. If the report shows overall coverage of 90% or higher, OR there are no modules with coverage below 90%, mark this task complete without creating a gaps file—the coverage target has been met. Otherwise, examine low-coverage modules, identify specific undocumented functions, classes, and types. List each gap with file path, export name, type, and why documentation is needed. Output to `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00001_GAPS.md`.
-  - **Completed 2026-03-20:** Coverage is 50% (well below 90% target). Identified 268 documentation gaps across all modules. LOOP_00001_GAPS.md contains detailed entries for 7 high-priority complex gaps (CanvasApp, DrawfinityDoc, SyncManager, DrawingManager, ToolManager, ActionRegistry, AutoSave), 17 quick-win gaps, and full summary tables by module/type with a recommended 6-phase documentation order.
+- [ ] **Find documentation gaps (or skip if not needed)**: Read `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00002_DOC_REPORT.md`. If the report shows overall coverage of 90% or higher, OR there are no modules with coverage below 90%, mark this task complete without creating a gaps file—the coverage target has been met. Otherwise, examine low-coverage modules, identify specific undocumented functions, classes, and types. List each gap with file path, export name, type, and why documentation is needed. Output to `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00002_GAPS.md`.
 
 ## What to Look For
 
@@ -68,7 +67,7 @@ Using the documentation report, identify specific undocumented exports that need
 
 ## Output Format
 
-Create/update `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00001_GAPS.md` with:
+Create/update `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00002_GAPS.md` with:
 
 ```markdown
 # Documentation Gaps - Loop 00001
@@ -161,4 +160,4 @@ This task is complete when ONE of the following is true:
 **Option B - Gaps identified:**
 1. The doc report shows coverage below 90%
 2. You've examined low-coverage modules and found undocumented exports
-3. You've created `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00001_GAPS.md` with all findings
+3. You've created `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00002_GAPS.md` with all findings

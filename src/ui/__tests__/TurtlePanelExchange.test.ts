@@ -54,10 +54,80 @@ beforeEach(() => {
   });
 });
 
+describe("TurtlePanel background update check", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("calls checkForUpdates on construction and shows badge when updates exist", async () => {
+    const updatedIndex = {
+      ...MOCK_INDEX,
+      scripts: [
+        { ...MOCK_INDEX.scripts[0], version: "2.0.0" },
+        MOCK_INDEX.scripts[1],
+      ],
+    };
+
+    // Pre-cache spiral at v1 so it shows as updatable
+    storageMap.set(
+      "drawfinity:exchange:script:spiral",
+      JSON.stringify({
+        ...MOCK_INDEX.scripts[0],
+        code: "forward(100)",
+        cachedAt: Date.now(),
+      }),
+    );
+
+    const fetchMock = mockFetchOk(updatedIndex);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const panel = new TurtlePanel("test-drawing");
+    panel.show();
+
+    // Wait for the background check to resolve and update the badge
+    await vi.waitFor(() => {
+      const badge = document.querySelector(
+        ".turtle-scripts-badge",
+      ) as HTMLElement;
+      expect(badge.style.display).not.toBe("none");
+      // 1 updated (spiral v1→v2) + 1 new (tree not in cache)
+      expect(badge.textContent).toBe("2");
+    });
+
+    panel.destroy();
+  });
+
+  it("silently ignores network errors during background update check", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("offline")),
+    );
+
+    const panel = new TurtlePanel("test-drawing");
+    panel.show();
+
+    // Give the promise time to reject
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Badge should remain hidden — no error thrown
+    const badge = document.querySelector(
+      ".turtle-scripts-badge",
+    ) as HTMLElement;
+    expect(badge.style.display).toBe("none");
+
+    panel.destroy();
+  });
+});
+
 describe("TurtlePanel Unified Script Browser", () => {
   let panel: TurtlePanel;
 
   beforeEach(() => {
+    // Stub fetch before creating panel to prevent background check from hitting real network
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("offline")),
+    );
     panel = new TurtlePanel("test-drawing");
     panel.show();
   });

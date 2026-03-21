@@ -68,6 +68,26 @@ export class TurtlePanel {
 
     // Load saved script from localStorage
     this.loadScript();
+
+    // Background update check — fire-and-forget
+    this.checkForUpdatesInBackground();
+  }
+
+  /**
+   * Fire-and-forget background update check.
+   * Silently catches errors (e.g., offline) — the user will still see
+   * cached/snapshot scripts when they open the browser.
+   */
+  private checkForUpdatesInBackground(): void {
+    this.exchangeClient
+      .checkForUpdates()
+      .then((result) => {
+        this.setUpdateResult(result);
+      })
+      .catch(() => {
+        // Offline or network error — silently ignore.
+        // Cached data and snapshot fallback are still available.
+      });
   }
 
   private build(): void {

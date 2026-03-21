@@ -51,6 +51,16 @@ export function loadProfile(): UserProfile {
   return profile;
 }
 
+/**
+ * Persists a user profile to both localStorage and the Tauri config file,
+ * then notifies all registered profile-change listeners.
+ *
+ * The profile is serialized as JSON to localStorage for fast synchronous access,
+ * and written to the config file asynchronously for cross-session persistence
+ * in Tauri environments. Config file write failures are silently ignored.
+ *
+ * @param profile - The user profile to save.
+ */
 export function saveProfile(profile: UserProfile): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
   writeConfigFile(CONFIG_FILENAME, JSON.stringify(profile)).catch(() => {});

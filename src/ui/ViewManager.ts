@@ -39,6 +39,8 @@ export interface ViewManagerDeps {
   getSaveDirectory: () => Promise<string>;
   onChangeSaveDirectory?: () => Promise<string | null>;
   getDrawingName?: (id: string) => Promise<string>;
+  /** When provided, the shared DrawingManager is passed to CanvasApp to avoid stale manifest caches. */
+  drawingManager?: unknown;
 }
 
 /**
@@ -176,6 +178,7 @@ export class ViewManager {
       await this.canvasApp.init(drawingId, {
         onGoHome: () => this.showHome(),
         onRenameDrawing: (id, name) => this.deps.renameDrawing(id, name),
+        drawingManager: this.deps.drawingManager,
       });
 
       // Set drawing name in toolbar
@@ -214,6 +217,7 @@ export class ViewManager {
       await this.canvasApp.init(roomId, {
         onGoHome: () => this.showHome(),
         onRenameDrawing: (id, name) => this.deps.renameDrawing(id, name),
+        drawingManager: this.deps.drawingManager,
       });
 
       // Connect to the room

@@ -29,6 +29,27 @@ import { loadProfileAsync, loadPreferencesAsync, savePreferences, type UserPrefe
 export interface CanvasAppCallbacks {
   onGoHome?: () => void;
   onRenameDrawing?: (id: string, name: string) => void;
+  /** When provided, CanvasApp reuses this DrawingManager instead of creating its own. */
+  drawingManager?: unknown;
+}
+
+/** Encode Uint8Array to base64 without spread operator (safe for large arrays). */
+function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+/** Decode base64 to Uint8Array. */
+function base64ToUint8(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }
 
 function hexToRgba(hex: string): [number, number, number, number] {
@@ -144,59 +165,79 @@ export class CanvasApp {
     // Load persisted document
     try {
       const { loadDocumentById, getDefaultFilePath, AutoSave, DrawingManager } = await import("../persistence");
-      const drawingManager = new DrawingManager();
-      const loadedState = await loadDocumentById(drawingId, drawingManager);
+      // Reuse the DrawingManager from main.ts if provided, otherwise create a new one
+      const drawingManager = (this.callbacks?.drawingManager as InstanceType<typeof DrawingManager>) ?? new DrawingManager();
+      let loadedState = await loadDocumentById(drawingId, drawingManager);
+      // Check localStorage for emergency backup from beforeunload
+      // (async Tauri saves may not have completed before last page unload)
+      if (!loadedState) {
+        const backup = localStorage.getItem(`drawfinity:doc:${drawingId}`);
+        if (backup) {
+          try {
+            const bytes = base64ToUint8(backup);
+            loadedState = new Y.Doc();
+            Y.applyUpdate(loadedState, bytes);
+            console.log("CanvasApp: recovered drawing state from localStorage backup");
+          } catch {
+            loadedState = null;
+          }
+        }
+      }
       this.doc = new DrawfinityDoc(loadedState ?? undefined);
+      console.log(`CanvasApp: Tauri persistence loaded (${this.doc.getStrokes().length} strokes)`);
       const savePath = await getDefaultFilePath();
       this.autoSave = new AutoSave(this.doc.getDoc(), savePath, 2000, drawingId, drawingManager);
       this.autoSave.start();
     } catch (err) {
-      console.warn("CanvasApp: Tauri persistence unavailable, falling back to localStorage", err);
+      console.log("CanvasApp: Tauri persistence unavailable, using localStorage fallback");
 
       // Browser fallback: persist Yjs state to localStorage
       const storageKey = `drawfinity:doc:${drawingId}`;
       const saved = localStorage.getItem(storageKey);
       if (saved) {
+        console.log(`CanvasApp: loading from localStorage key="${storageKey}" (${saved.length} chars)`);
         try {
-          const bytes = Uint8Array.from(atob(saved), c => c.charCodeAt(0));
+          const bytes = base64ToUint8(saved);
           const loadedDoc = new Y.Doc();
           Y.applyUpdate(loadedDoc, bytes);
           this.doc = new DrawfinityDoc(loadedDoc);
-        } catch {
+          console.log(`CanvasApp: restored ${this.doc.getStrokes().length} strokes from localStorage`);
+        } catch (loadErr) {
+          console.error("CanvasApp: failed to restore from localStorage, starting fresh", loadErr);
           this.doc = new DrawfinityDoc();
         }
       } else {
+        console.log(`CanvasApp: no saved state in localStorage for key="${storageKey}"`);
         this.doc = new DrawfinityDoc();
       }
 
+      // Capture doc reference for closures
+      const doc = this.doc;
       let saveTimer: ReturnType<typeof setTimeout> | null = null;
+      const saveToLocalStorage = () => {
+        try {
+          const state = Y.encodeStateAsUpdate(doc.getDoc());
+          const b64 = uint8ToBase64(state);
+          localStorage.setItem(storageKey, b64);
+          console.log(`CanvasApp: saved to localStorage key="${storageKey}" (${b64.length} chars, ${state.length} bytes)`);
+        } catch (saveErr) {
+          console.error("CanvasApp: failed to save to localStorage", saveErr);
+        }
+      };
       const debouncedSave = () => {
         if (saveTimer) clearTimeout(saveTimer);
-        saveTimer = setTimeout(() => {
-          const state = Y.encodeStateAsUpdate(this.doc.getDoc());
-          const b64 = btoa(String.fromCharCode(...state));
-          try { localStorage.setItem(storageKey, b64); } catch { /* quota exceeded */ }
-        }, 2000);
+        saveTimer = setTimeout(saveToLocalStorage, 2000);
       };
-      this.doc.onStrokesChanged(debouncedSave);
+      // Listen to ALL doc changes (strokes, shapes, metadata, bookmarks)
+      doc.getDoc().on("update", debouncedSave);
 
       this.autoSave = {
         start() {},
         stop() { if (saveTimer) clearTimeout(saveTimer); },
         async saveNow() {
           if (saveTimer) clearTimeout(saveTimer);
-          const state = Y.encodeStateAsUpdate(this.doc.getDoc());
-          const b64 = btoa(String.fromCharCode(...state));
-          try { localStorage.setItem(storageKey, b64); } catch { /* quota exceeded */ }
+          saveToLocalStorage();
         },
-      };
-      // Bind saveNow to capture the correct `this.doc`
-      const doc = this.doc;
-      this.autoSave.saveNow = async () => {
-        if (saveTimer) clearTimeout(saveTimer);
-        const state = Y.encodeStateAsUpdate(doc.getDoc());
-        const b64 = btoa(String.fromCharCode(...state));
-        try { localStorage.setItem(storageKey, b64); } catch { /* quota exceeded */ }
       };
     }
 
@@ -578,6 +619,17 @@ export class CanvasApp {
     this.beforeUnloadHandler = () => {
       this.remoteCursors.detach();
       this.syncManager.disconnect();
+      // Synchronously save Yjs state to localStorage as emergency backup.
+      // The async autoSave.saveNow() may not complete before the page unloads
+      // (especially in Tauri mode where saves go through async IPC).
+      try {
+        const state = Y.encodeStateAsUpdate(this.doc.getDoc());
+        const b64 = uint8ToBase64(state);
+        localStorage.setItem(`drawfinity:doc:${this.drawingId}`, b64);
+        console.log(`CanvasApp: beforeunload saved ${state.length} bytes to localStorage`);
+      } catch (e) {
+        console.error("CanvasApp: beforeunload save failed", e);
+      }
       this.autoSave.saveNow();
     };
     window.addEventListener("beforeunload", this.beforeUnloadHandler);

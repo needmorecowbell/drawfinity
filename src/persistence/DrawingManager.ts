@@ -3,6 +3,7 @@ import {
   writeFile,
   exists,
   remove,
+  mkdir,
 } from "@tauri-apps/plugin-fs";
 import { documentDir, join } from "@tauri-apps/api/path";
 import { getDefaultFilePath } from "./LocalStorage";
@@ -137,6 +138,11 @@ export class DrawingManager {
     };
 
     const dir = await this.getSaveDirectory();
+    // Ensure directory exists before writing (first drawing on fresh install)
+    const dirExists = await exists(dir);
+    if (!dirExists) {
+      await mkdir(dir, { recursive: true });
+    }
     const filePath = await join(dir, fileName);
     await writeFile(filePath, new Uint8Array(0));
 

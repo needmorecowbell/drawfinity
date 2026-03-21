@@ -69,7 +69,16 @@ export async function loadManifest(dir: string): Promise<Manifest> {
   }
   const data = await readFile(path);
   const text = new TextDecoder().decode(data);
-  return JSON.parse(text) as Manifest;
+  if (!text.trim()) {
+    console.warn("DrawingManifest: manifest file is empty, returning fresh manifest");
+    return createEmptyManifest();
+  }
+  try {
+    return JSON.parse(text) as Manifest;
+  } catch (err) {
+    console.error("DrawingManifest: failed to parse manifest.json, returning fresh manifest", err);
+    return createEmptyManifest();
+  }
 }
 
 /**

@@ -21,6 +21,18 @@ export async function getDefaultFilePath(): Promise<string> {
   return join(folder, DEFAULT_FILE_NAME);
 }
 
+/**
+ * Persists a Yjs document's full state to a binary file on the local filesystem.
+ *
+ * Encodes the document using {@link Y.encodeStateAsUpdate} and writes the resulting
+ * binary data to `filePath`. Parent directories are created automatically if they
+ * do not already exist.
+ *
+ * @param doc - The Yjs document whose state will be serialized and saved.
+ * @param filePath - Absolute path where the `.drawfinity` file will be written.
+ * @returns Resolves when the file has been written successfully.
+ * @throws If the filesystem write fails (e.g., permission denied, disk full).
+ */
 export async function saveDocument(
   doc: Y.Doc,
   filePath: string,

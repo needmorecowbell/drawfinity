@@ -83,7 +83,8 @@ Per-script `version` fields enable granular update detection (user can see which
 
 ### Local Cache Layer (`src/turtle/exchange/ExchangeCache.ts`)
 
-- [ ] Create `ExchangeCache` class that manages localStorage-based script storage. Key design: store under `drawfinity:exchange:index` (cached index with version) and `drawfinity:exchange:script:{id}` (individual cached scripts with version and code). Implement methods: `getCachedIndex(): CachedExchangeIndex | null`, `setCachedIndex(index: ExchangeIndex): void`, `getCachedScript(id: string): CachedScript | null`, `setCachedScript(script: ExchangeScript): void`, `getAllCachedScripts(): CachedScript[]`, `clearCache(): void`
+- [x] Create `ExchangeCache` class that manages localStorage-based script storage. Key design: store under `drawfinity:exchange:index` (cached index with version) and `drawfinity:exchange:script:{id}` (individual cached scripts with version and code). Implement methods: `getCachedIndex(): CachedExchangeIndex | null`, `setCachedIndex(index: ExchangeIndex): void`, `getCachedScript(id: string): CachedScript | null`, `setCachedScript(script: ExchangeScript): void`, `getAllCachedScripts(): CachedScript[]`, `clearCache(): void`
+  - *Already completed: `ExchangeCache` class fully implemented in `src/turtle/exchange/ExchangeCache.ts` with all required methods and `CachedExchangeIndex` interface. Exported via barrel. 12 tests passing in `ExchangeCache.test.ts`.*
 
 ### Update Detection (`src/turtle/exchange/ExchangeClient.ts`)
 

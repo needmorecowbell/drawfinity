@@ -21,7 +21,7 @@ Measure current documentation coverage and identify the documentation landscape.
 
 ## Analysis Checklist
 
-- [x] **Measure documentation coverage (if needed)**: First check if `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00001_DOC_REPORT.md` already exists with coverage data (look for "Overall Coverage:" with a percentage). If it does, skip the survey and mark this task complete—the coverage report is already in place. If it doesn't exist, survey the codebase for exported/public functions, classes, and types. Count how many have doc comments vs how many are undocumented. Calculate the percentage. Identify the existing documentation style and conventions. Output to `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00001_DOC_REPORT.md`.
+- [ ] **Measure documentation coverage (if needed)**: First check if `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00001_DOC_REPORT.md` already exists with coverage data (look for "Overall Coverage:" with a percentage). If it does, skip the survey and mark this task complete—the coverage report is already in place. If it doesn't exist, survey the codebase for exported/public functions, classes, and types. Count how many have doc comments vs how many are undocumented. Calculate the percentage. Identify the existing documentation style and conventions. Output to `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00001_DOC_REPORT.md`.
 
 ## What to Count
 

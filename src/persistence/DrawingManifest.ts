@@ -30,6 +30,15 @@ export interface DrawingMetadata {
   fileName: string;
 }
 
+/**
+ * Root structure of the `manifest.json` file persisted in the save directory.
+ *
+ * The manifest acts as an index of all saved drawings, storing their metadata
+ * so the home screen can list them without opening each document file.
+ *
+ * @property version - Schema version number. Currently always `1`.
+ * @property drawings - Array of {@link DrawingMetadata} entries, one per saved drawing.
+ */
 export interface Manifest {
   version: 1;
   drawings: DrawingMetadata[];

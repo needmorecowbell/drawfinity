@@ -53,7 +53,7 @@ npm install
 npm run tauri dev
 ```
 
-**Browser only (no local persistence):**
+**Browser only (drawings saved to localStorage):**
 
 ```bash
 npm run dev

@@ -269,7 +269,18 @@ export class SpatialIndex {
     this.shapeMap.delete(shapeId);
   }
 
-  /** Clear all entries. */
+  /**
+   * Removes all strokes and shapes from the spatial index.
+   *
+   * Clears every internal data structure — grid cells, bounding-box caches,
+   * and item lookup maps — for both strokes and shapes. After calling this
+   * method, {@link size} and {@link shapeSize} will both return `0` and all
+   * subsequent {@link query} / {@link queryShapes} calls will return empty
+   * arrays until new items are added.
+   *
+   * This is called internally by {@link rebuild} and {@link rebuildAll}
+   * before re-populating the index.
+   */
   clear(): void {
     this.cells.clear();
     this.strokeBounds.clear();

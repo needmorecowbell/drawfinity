@@ -92,6 +92,26 @@ export class Renderer {
     this.strokeRenderer.setCameraMatrix(matrix);
   }
 
+  /**
+   * Renders the background grid overlay using the currently configured
+   * {@link GridStyle}. When the style is `"none"`, this method is a no-op.
+   *
+   * @param cameraMatrix - A 3x3 transformation matrix stored as a 9-element
+   *   {@link Float32Array} in column-major order, used to position grid
+   *   geometry in clip space.
+   * @param viewportBounds - Axis-aligned bounding rectangle of the visible
+   *   area in world coordinates. Only grid elements within these bounds are
+   *   drawn.
+   * @param viewportBounds.minX - Left edge of the visible area in world space.
+   * @param viewportBounds.minY - Top edge of the visible area in world space.
+   * @param viewportBounds.maxX - Right edge of the visible area in world space.
+   * @param viewportBounds.maxY - Bottom edge of the visible area in world space.
+   * @param zoom - Current camera zoom level, used to scale grid spacing so
+   *   the grid remains visually consistent across zoom levels.
+   *
+   * @see {@link setGridStyle} to change which grid renderer is active.
+   * @see {@link setBackgroundColor} which auto-adjusts grid colors for contrast.
+   */
   drawGrid(
     cameraMatrix: Float32Array,
     viewportBounds: { minX: number; minY: number; maxX: number; maxY: number },

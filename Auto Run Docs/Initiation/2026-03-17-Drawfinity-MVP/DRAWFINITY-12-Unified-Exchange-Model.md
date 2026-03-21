@@ -101,23 +101,31 @@ Per-script `version` fields enable granular update detection (user can see which
 
 ### Remove Built-in Examples
 
-- [ ] Delete `src/turtle/TurtleExamples.ts`. Remove its export from `src/turtle/index.ts`. Remove any imports of `TURTLE_EXAMPLES` across the codebase (likely `TurtlePanel.ts` and any tests that reference it). The exchange snapshot and cache now serve this role entirely
+- [x] Delete `src/turtle/TurtleExamples.ts`. Remove its export from `src/turtle/index.ts`. Remove any imports of `TURTLE_EXAMPLES` across the codebase (likely `TurtlePanel.ts` and any tests that reference it). The exchange snapshot and cache now serve this role entirely
+  - *Completed: Deleted `TurtleExamples.ts` and `TurtleExamples.test.ts`. Removed `TurtleExample` type and `TURTLE_EXAMPLES` exports from `src/turtle/index.ts`. No other references existed in `TurtlePanel.ts` (already cleaned up in prior task). All 1331 tests pass.*
 
 ### Startup Integration (`src/canvas/CanvasApp.ts` or `src/main.ts`)
 
-- [ ] On app startup, call `exchangeClient.checkForUpdates()` in the background (non-blocking, fire-and-forget with error catch). Store the result so the TurtlePanel can display the update indicator when opened. If the check fails (offline), silently fall back to cached data — no error shown to user unless they explicitly open the browser and have zero cached scripts
+- [x] On app startup, call `exchangeClient.checkForUpdates()` in the background (non-blocking, fire-and-forget with error catch). Store the result so the TurtlePanel can display the update indicator when opened. If the check fails (offline), silently fall back to cached data — no error shown to user unless they explicitly open the browser and have zero cached scripts
+  - *Completed: Added `checkForUpdatesInBackground()` to `TurtlePanel` constructor — fire-and-forget with silent error catch. The result is passed to `setUpdateResult()` to show the badge. Two new tests in `TurtlePanelExchange.test.ts` verify badge display on update detection and silent failure on network error. All 1333 tests passing.*
 
 ### Snapshot Fallback Integration
 
-- [ ] In `ExchangeClient` or `ExchangeCache`, add fallback logic: when the cache is empty (first launch, cleared cache) and network is unavailable, load scripts from the bundled `exchange-snapshot.json` (static import or dynamic import). This ensures the app always has the baseline scripts available
+- [x] In `ExchangeClient` or `ExchangeCache`, add fallback logic: when the cache is empty (first launch, cleared cache) and network is unavailable, load scripts from the bundled `exchange-snapshot.json` (static import or dynamic import). This ensures the app always has the baseline scripts available
+  - *Completed: `ExchangeCache` constructor now accepts an optional `ExchangeSnapshot` parameter. When localStorage is empty, `getCachedIndex()`, `getCachedScript()`, and `getAllCachedScripts()` fall back to snapshot data. `TurtlePanel` passes the bundled snapshot to `ExchangeCache`, and snapshot fallback code in `TurtlePanel` was simplified to use the cache layer. 10 new tests in `ExchangeCache.test.ts` cover snapshot fallback scenarios. All 1343 tests passing.*
 
 ### Tests
 
-- [ ] Test `ExchangeCache`: write/read index and scripts to localStorage, cache miss returns null, `clearCache()` empties all exchange keys, `getAllCachedScripts()` returns all stored scripts
-- [ ] Test `checkForUpdates()`: mock remote index with newer versions, verify `newScripts` and `updatedScripts` are correctly identified. Test with empty cache (all scripts are "new"). Test with up-to-date cache (no updates)
-- [ ] Test snapshot fallback: when cache is empty and fetch fails, scripts load from bundled snapshot
-- [ ] Test unified browser UI: verify scripts render with correct status indicators (installed/update available/available), verify update action fetches and caches the new version, verify the old Examples dropdown is gone
-- [ ] Update existing `ExchangeClient.test.ts` and `TurtlePanelExchange.test.ts` to reflect the unified model — remove references to `TURTLE_EXAMPLES` and the separate Examples dropdown
+- [x] Test `ExchangeCache`: write/read index and scripts to localStorage, cache miss returns null, `clearCache()` empties all exchange keys, `getAllCachedScripts()` returns all stored scripts
+  - *Already completed: 22 tests in `ExchangeCache.test.ts` covering index read/write, script read/write, cache miss returns null, clearCache preserves non-exchange keys, getAllCachedScripts with malformed entries, and 10 snapshot fallback tests. All passing.*
+- [x] Test `checkForUpdates()`: mock remote index with newer versions, verify `newScripts` and `updatedScripts` are correctly identified. Test with empty cache (all scripts are "new"). Test with up-to-date cache (no updates)
+  - *Already completed: 10 tests in `ExchangeClient.test.ts` `checkForUpdates` describe block covering empty cache (all new), up-to-date cache (no updates), newer versions, mixed new+updated, major version bumps, cache write-through, and error propagation. All passing.*
+- [x] Test snapshot fallback: when cache is empty and fetch fails, scripts load from bundled snapshot
+  - *Already completed: 10 snapshot fallback tests in `ExchangeCache.test.ts` plus `TurtlePanelExchange.test.ts` "opens exchange overlay and renders scripts from snapshot immediately" test. All passing.*
+- [x] Test unified browser UI: verify scripts render with correct status indicators (installed/update available/available), verify update action fetches and caches the new version, verify the old Examples dropdown is gone
+  - *Already completed: `TurtlePanelExchange.test.ts` has tests for Scripts button presence (no Community/Examples), status badges (Installed/Update Available), import action, update button, badge display, and snapshot rendering. All 13 tests passing.*
+- [x] Update existing `ExchangeClient.test.ts` and `TurtlePanelExchange.test.ts` to reflect the unified model — remove references to `TURTLE_EXAMPLES` and the separate Examples dropdown
+  - *Already completed: No references to `TURTLE_EXAMPLES` exist anywhere in `src/`. Tests use exchange-based mock data throughout. Verified with grep — zero matches.*
 
 ### Cleanup
 

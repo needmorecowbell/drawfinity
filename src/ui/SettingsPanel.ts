@@ -5,10 +5,40 @@ import { USER_COLORS, saveProfile } from "../user/UserStore";
 import { savePreferences } from "../user/UserPreferences";
 import { BRUSH_PRESETS } from "../tools/BrushPresets";
 
+/**
+ * Callbacks for SettingsPanel user interactions.
+ *
+ * @property onSave - Called when the user saves settings, receiving the updated profile and preferences.
+ */
 export interface SettingsPanelCallbacks {
   onSave: (profile: UserProfile, preferences: UserPreferences) => void;
 }
 
+/**
+ * Modal panel for editing user profile and application preferences.
+ *
+ * Provides controls for display name, user color, default brush preset,
+ * grid style, collaboration server URL, and save directory (Tauri only).
+ * Changes are persisted to localStorage on save and propagated via the
+ * {@link SettingsPanelCallbacks.onSave} callback.
+ *
+ * Toggled with `Ctrl+,`. Clicking the overlay backdrop dismisses the panel
+ * without saving.
+ *
+ * @param profile - Current user profile (name, color). Shallow-copied on construction.
+ * @param preferences - Current application preferences. Shallow-copied on construction.
+ * @param callbacks - Callback handlers for panel events.
+ *
+ * @example
+ * ```ts
+ * const settings = new SettingsPanel(profile, preferences, {
+ *   onSave: (updatedProfile, updatedPrefs) => {
+ *     syncManager.setUser(updatedProfile);
+ *   },
+ * });
+ * settings.show();
+ * ```
+ */
 export class SettingsPanel {
   private overlay: HTMLElement;
   private panel: HTMLElement;
@@ -250,6 +280,14 @@ export class SettingsPanel {
     this.hide();
   }
 
+  /**
+   * Updates the panel's profile state and refreshes the name and color UI.
+   *
+   * Call this when the profile changes externally (e.g., from collaboration sync)
+   * to keep the panel in sync without reopening it.
+   *
+   * @param profile - The updated user profile to reflect in the panel.
+   */
   updateProfile(profile: UserProfile): void {
     this.profile = { ...profile };
     this.selectedColor = profile.color;
@@ -259,6 +297,14 @@ export class SettingsPanel {
     this.selectColor(profile.color);
   }
 
+  /**
+   * Updates the panel's preferences state and refreshes all preference controls.
+   *
+   * Synchronizes the brush preset selection, grid style dropdown, server URL input,
+   * and save directory display with the provided preferences.
+   *
+   * @param preferences - The updated application preferences to reflect in the panel.
+   */
   updatePreferences(preferences: UserPreferences): void {
     this.preferences = { ...preferences };
     this.selectedBrushIndex = preferences.defaultBrush;
@@ -278,18 +324,21 @@ export class SettingsPanel {
     this.selectBrush(preferences.defaultBrush);
   }
 
+  /** Displays the settings panel by appending its overlay to the document body. No-op if already visible. */
   show(): void {
     if (this.visible) return;
     this.visible = true;
     document.body.appendChild(this.overlay);
   }
 
+  /** Hides the settings panel by removing its overlay from the DOM. No-op if already hidden. */
   hide(): void {
     if (!this.visible) return;
     this.visible = false;
     this.overlay.remove();
   }
 
+  /** Toggles the settings panel visibility — shows it if hidden, hides it if visible. */
   toggle(): void {
     if (this.visible) {
       this.hide();
@@ -298,10 +347,12 @@ export class SettingsPanel {
     }
   }
 
+  /** Returns whether the settings panel is currently visible. */
   isVisible(): boolean {
     return this.visible;
   }
 
+  /** Cleans up the settings panel by hiding it and removing it from the DOM. */
   destroy(): void {
     this.hide();
   }

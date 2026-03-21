@@ -137,6 +137,12 @@ export class CheatSheet {
     this.searchInput.focus();
   }
 
+  /**
+   * Closes the cheat sheet overlay and removes it from the DOM.
+   *
+   * Detaches the overlay element from `document.body` and marks the panel as
+   * hidden. If the overlay is already hidden this method is a no-op.
+   */
   hide(): void {
     if (!this.visible) return;
     this.visible = false;

@@ -104,6 +104,16 @@ export class ViewManager {
     this.canvasContainer.style.display = "none";
   }
 
+  /**
+   * Transitions the application to the home screen view.
+   *
+   * Destroys the active {@link CanvasApp} instance (if any), hides the canvas
+   * container, refreshes the drawing list from persistence, and displays the
+   * home screen. If a transition is already in progress, the call is silently
+   * ignored to prevent concurrent view changes.
+   *
+   * @returns A promise that resolves once the home screen is fully displayed.
+   */
   async showHome(): Promise<void> {
     if (this.transitioning) return;
     this.transitioning = true;

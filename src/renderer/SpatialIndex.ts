@@ -1,6 +1,19 @@
 import { Stroke } from "../model/Stroke";
 import { Shape } from "../model/Shape";
 
+/**
+ * Axis-aligned bounding box used for spatial queries and viewport culling.
+ *
+ * Represents a rectangular region in world-space defined by its minimum and
+ * maximum coordinates. Used by {@link SpatialIndex} to determine which strokes
+ * and shapes are visible within a given viewport, and by functions like
+ * {@link computeStrokeBounds} to compute the spatial extent of drawable items.
+ *
+ * @property minX - Left edge of the bounding box (world-space X coordinate)
+ * @property minY - Top edge of the bounding box (world-space Y coordinate)
+ * @property maxX - Right edge of the bounding box (world-space X coordinate)
+ * @property maxY - Bottom edge of the bounding box (world-space Y coordinate)
+ */
 export interface AABB {
   minX: number;
   minY: number;

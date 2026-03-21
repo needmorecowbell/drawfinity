@@ -2,6 +2,14 @@ import { CanvasApp } from "../canvas";
 import { HomeScreen, HomeScreenCallbacks } from "./HomeScreen";
 import type { DrawingMetadata } from "../persistence/DrawingManifest";
 
+/**
+ * Union type representing the two top-level application view states.
+ *
+ * - `"home"` — The drawing list / home screen where users browse, create, and manage drawings.
+ * - `"canvas"` — The infinite canvas drawing view where a single drawing is open for editing.
+ *
+ * Used by {@link ViewManager} to track and transition between views.
+ */
 export type ViewName = "home" | "canvas";
 
 export interface ViewManagerDeps {

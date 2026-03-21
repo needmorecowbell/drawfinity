@@ -6,18 +6,42 @@ import { loadProfile } from "../user/UserStore";
 import { ActionRegistry } from "./ActionRegistry";
 import { CheatSheet } from "./CheatSheet";
 
+/**
+ * Callback handlers for HomeScreen user interactions.
+ *
+ * The HomeScreen delegates all data mutations (creating, deleting, renaming drawings)
+ * to the host application through these callbacks. Optional callbacks (`onChangeSaveDirectory`,
+ * `onJoinRoom`) enable platform-specific features — when omitted, the corresponding UI
+ * controls are hidden.
+ */
 export interface HomeScreenCallbacks {
+  /** Called when the user clicks a drawing card to open it. */
   onOpenDrawing: (id: string) => void;
+  /** Called when the user clicks "+ New Drawing". Should create and return the new metadata. */
   onCreateDrawing: () => Promise<DrawingMetadata>;
+  /** Called when the user confirms deletion of a drawing. */
   onDeleteDrawing: (id: string) => Promise<void>;
+  /** Called when the user renames a drawing via the context menu. */
   onRenameDrawing: (id: string, name: string) => Promise<void>;
+  /** Called when the user duplicates a drawing. Should create and return the duplicate metadata. */
   onDuplicateDrawing: (id: string, newName: string) => Promise<DrawingMetadata>;
+  /** Called when the user clicks "Change" on the save directory. Only available in Tauri (desktop). */
   onChangeSaveDirectory?: () => Promise<string | null>;
+  /** Called when the user joins a shared room from the Shared tab. */
   onJoinRoom?: (roomId: string, serverUrl: string, roomName?: string) => void;
 }
 
+/** Identifies which tab is active on the HomeScreen. */
 export type TabName = "my-drawings" | "shared";
 
+/**
+ * Connection state for the Shared tab's server link.
+ *
+ * - `"disconnected"` — no connection attempt has been made or the connection was closed.
+ * - `"connecting"` — a connection attempt is in progress.
+ * - `"connected"` — successfully connected; room list is available.
+ * - `"error"` — the last connection attempt failed.
+ */
 export type SharedConnectionStatus =
   | "disconnected"
   | "connecting"
@@ -26,6 +50,32 @@ export type SharedConnectionStatus =
 
 type SortMode = "date" | "name";
 
+/**
+ * Main menu UI for browsing, creating, and managing drawings.
+ *
+ * HomeScreen renders a two-tab interface: **My Drawings** shows locally saved drawings
+ * with search, sort, and context-menu actions (rename, duplicate, delete), while the
+ * **Shared** tab lets users connect to a collaboration server to browse and join shared
+ * rooms. The screen also displays a save-directory footer (desktop only) and provides
+ * access to the keyboard shortcut cheat sheet.
+ *
+ * HomeScreen does not manage drawing data directly — it delegates all mutations through
+ * {@link HomeScreenCallbacks}. Call {@link setDrawings} to update the displayed list and
+ * {@link show}/{@link hide} to control visibility.
+ *
+ * @example
+ * ```ts
+ * const home = new HomeScreen({
+ *   onOpenDrawing: (id) => canvas.load(id),
+ *   onCreateDrawing: () => drawingManager.createDrawing(),
+ *   onDeleteDrawing: (id) => drawingManager.deleteDrawing(id),
+ *   onRenameDrawing: (id, name) => drawingManager.renameDrawing(id, name),
+ *   onDuplicateDrawing: (id, name) => drawingManager.duplicateDrawing(id, name),
+ * });
+ * home.setDrawings(await drawingManager.listDrawings());
+ * home.show();
+ * ```
+ */
 export class HomeScreen {
   private container: HTMLElement;
   private grid: HTMLElement;
@@ -70,6 +120,15 @@ export class HomeScreen {
   private boundKeydown = this.handleKeydown.bind(this);
   private boundCloseContextMenu = this.closeContextMenu.bind(this);
 
+  /**
+   * Creates the HomeScreen UI and attaches it to the DOM.
+   *
+   * Looks for an existing element with id `"home-screen"` in the document; if none
+   * exists (e.g. in tests), creates a detached `<div>`. The screen starts hidden —
+   * call {@link show} to display it.
+   *
+   * @param callbacks - Handlers for drawing operations and navigation events.
+   */
   constructor(callbacks: HomeScreenCallbacks) {
     this.callbacks = callbacks;
 
@@ -351,15 +410,32 @@ export class HomeScreen {
     }
   }
 
+  /**
+   * Replaces the drawing list and re-renders the My Drawings grid.
+   *
+   * @param drawings - Full list of available drawing metadata. The grid applies the
+   *   current search query and sort mode before rendering.
+   */
   setDrawings(drawings: DrawingMetadata[]): void {
     this.drawings = drawings;
     this.renderGrid();
   }
 
+  /**
+   * Updates the save directory path displayed in the footer.
+   *
+   * @param path - Absolute filesystem path to display.
+   */
   setSaveDirectory(path: string): void {
     this.saveDirectoryPath.textContent = path;
   }
 
+  /**
+   * Shows the HomeScreen and begins listening for keyboard shortcuts.
+   *
+   * If the container is not yet in the DOM, it is appended to `document.body`.
+   * Subsequent calls while already visible are no-ops.
+   */
   show(): void {
     if (this.visible) return;
     this.visible = true;
@@ -371,6 +447,12 @@ export class HomeScreen {
     document.addEventListener("keydown", this.boundKeydown);
   }
 
+  /**
+   * Hides the HomeScreen and removes keyboard/pointer listeners.
+   *
+   * Also closes any open context menu and the cheat sheet overlay.
+   * Subsequent calls while already hidden are no-ops.
+   */
   hide(): void {
     if (!this.visible) return;
     this.visible = false;
@@ -381,32 +463,50 @@ export class HomeScreen {
     document.removeEventListener("keydown", this.boundKeydown);
   }
 
+  /** Returns `true` if the HomeScreen is currently displayed. */
   isVisible(): boolean {
     return this.visible;
   }
 
+  /**
+   * Tears down the HomeScreen, removing all event listeners and clearing DOM content.
+   *
+   * After calling `destroy()`, the instance should not be reused.
+   */
   destroy(): void {
     this.hide();
     this.cheatSheet.destroy();
     this.container.innerHTML = "";
   }
 
+  /** Returns the root DOM element of the HomeScreen. */
   getContainer(): HTMLElement {
     return this.container;
   }
 
+  /** Returns the currently active tab (`"my-drawings"` or `"shared"`). */
   getActiveTab(): TabName {
     return this.activeTab;
   }
 
+  /** Returns the current connection state of the Shared tab's server link. */
   getSharedConnectionStatus(): SharedConnectionStatus {
     return this.sharedStatus;
   }
 
+  /** Returns the list of shared rooms fetched from the collaboration server. */
   getRooms(): RoomInfo[] {
     return this.rooms;
   }
 
+  /**
+   * Switches between the "My Drawings" and "Shared" tabs.
+   *
+   * Toggles visibility of each tab's content area and updates the tab bar styling.
+   * Switching to the already-active tab is a no-op.
+   *
+   * @param tab - The tab to activate.
+   */
   switchTab(tab: TabName): void {
     if (this.activeTab === tab) return;
     this.activeTab = tab;

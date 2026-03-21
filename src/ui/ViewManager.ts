@@ -142,6 +142,20 @@ export class ViewManager {
     }
   }
 
+  /**
+   * Transitions the application to the canvas view for a specific drawing.
+   *
+   * Hides the home screen, destroys any previously active {@link CanvasApp}
+   * instance, and initializes a new one for the given drawing. The canvas
+   * container is made visible and the drawing name is resolved and displayed
+   * in the toolbar (if a {@link ViewManagerDeps.getDrawingName} callback is
+   * provided). If a transition is already in progress, the call is silently
+   * ignored to prevent concurrent view changes.
+   *
+   * @param drawingId - The unique identifier of the drawing to open.
+   * @returns A promise that resolves once the canvas is fully initialized
+   *   and the drawing is ready for editing.
+   */
   async showCanvas(drawingId: string): Promise<void> {
     if (this.transitioning) return;
     this.transitioning = true;

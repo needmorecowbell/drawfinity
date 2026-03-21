@@ -1,13 +1,12 @@
 ---
-type: report
-title: Documentation Gaps - Loop 00001
-created: 2026-03-20
+type: analysis
+title: README Documentation Gaps - Drawfinity
+created: 2026-03-21
 tags:
-  - documentation
-  - gaps
-  - coverage
+  - readme-accuracy
+  - documentation-gaps
 related:
-  - '[[LOOP_00001_DOC_REPORT]]'
+  - '[[LOOP_00001_FEATURE_INVENTORY]]'
   - '[[1_ANALYZE]]'
   - '[[2_FIND_GAPS]]'
 ---
@@ -15,645 +14,380 @@ related:
 # Documentation Gaps - Loop 00001
 
 ## Summary
-- **Total Gaps Found:** 268
-- **By Type:** 16 Functions, 17 Classes, 25 Interfaces, 11 Types, 11 Constants, 188 Class Methods
-- **By Visibility:** 42 Public API, 156 Internal API, 70 Utility
-- **Current Overall Coverage:** 50.0% (target: 90%)
-
-## High-Priority Gaps (Detailed)
-
-These are the most impactful undocumented exports — heavily used across the codebase or complex enough to warrant detailed documentation.
+- **Total Gaps Found:** 24
+- **MISSING (undocumented features):** 20
+- **STALE (removed features still documented):** 0
+- **INACCURATE (wrong descriptions):** 2
+- **INCOMPLETE (needs more detail):** 2
 
 ---
 
-### GAP-001: CanvasApp
-- **File:** `src/canvas/CanvasApp.ts`
-- **Line:** 36
-- **Type:** Class
-- **Visibility:** PUBLIC API
-- **Complexity:** COMPLEX
-- **Current State:** No docs
-- **Why It Needs Docs:**
-  - Central application orchestrator — all features flow through this class
-  - Complex initialization lifecycle (async init with drawing ID, persistence, sync)
-  - Manages 10+ subsystems (camera, renderer, tools, CRDT, sync, UI panels)
-- **Signature:**
-  ```ts
-  export class CanvasApp
-  ```
-- **Documentation Needed:**
-  - [ ] Description
-  - [ ] Parameters
-  - [ ] Return value
-  - [ ] Examples
-  - [ ] Error handling
-- **Undocumented Methods:**
-  - `init(drawingId: string, callbacks?: CanvasAppCallbacks): Promise<void>` (line 84) — COMPLEX
-  - `destroy(): Promise<void>` (line 608) — SIMPLE
-  - `getCurrentDrawingId(): string` (line 667) — SIMPLE
-  - `getDoc(): DrawfinityDoc` (line 671) — SIMPLE
-  - `setDrawingName(name: string): void` (line 675) — SIMPLE
-  - `connectToRoom(serverUrl: string, roomId: string, roomName?: string): void` (line 679) — MODERATE
+## Gap List
 
----
+### GAP-001: Shape Tools
+- **Type:** MISSING
+- **Feature:** Rectangle, Ellipse, Polygon, and Star shape tools
+- **Code Location:** `src/input/ShapeCapture.ts`
+- **README Location:** Not mentioned
+- **Description:**
+  Four shape drawing tools exist with keyboard shortcuts (R, O, P, S) and constraint modifiers (Shift for square/circle, Alt for center-out). Not documented anywhere in README.
+- **Evidence:**
+  - Code: ShapeCapture.ts handles rectangle, ellipse, polygon, star drawing with constraint keys
+  - README: Only mentions Brush and Eraser tools
+- **User Impact:** Users won't discover shape tools without the cheat sheet or guessing keys
 
-### GAP-002: DrawfinityDoc
-- **File:** `src/crdt/DrawfinityDoc.ts`
-- **Line:** 12
-- **Type:** Class
-- **Visibility:** PUBLIC API
-- **Complexity:** COMPLEX
-- **Current State:** No docs
-- **Why It Needs Docs:**
-  - Yjs CRDT document wrapper — the single source of truth for all drawing data
-  - 21 undocumented methods spanning strokes, shapes, bookmarks, and metadata
-  - Consumers need to understand CRDT semantics (transactions, observation callbacks)
-- **Signature:**
-  ```ts
-  export class DrawfinityDoc implements DocumentModel
-  ```
-- **Documentation Needed:**
-  - [ ] Description
-  - [ ] Parameters
-  - [ ] Return value
-  - [ ] Examples
-  - [ ] Error handling
-- **Undocumented Methods:**
-  - `constructor(doc?: Y.Doc)` (line 18) — MODERATE
-  - `addStroke(stroke: Stroke): void` (line 25) — MODERATE
-  - `removeStroke(strokeId: string): boolean` (line 32) — MODERATE
-  - `replaceStroke(strokeId: string, replacements: Stroke[]): boolean` (line 47) — COMPLEX
-  - `addShape(shape: Shape): void` (line 79) — MODERATE
-  - `removeShape(shapeId: string): boolean` (line 86) — MODERATE
-  - `getShapes(): Shape[]` (line 101) — SIMPLE
-  - `onStrokesChanged(callback: () => void): void` (line 121) — MODERATE
-  - `getDoc(): Y.Doc` (line 125) — SIMPLE
-  - `getStrokesArray(): Y.Array<Y.Map<unknown>>` (line 129) — MODERATE
-  - `getBackgroundColor(): string` (line 133) — SIMPLE
-  - `setBackgroundColor(color: string): void` (line 137) — SIMPLE
-  - `onMetaChanged(callback: () => void): void` (line 143) — MODERATE
-  - `getMetaMap(): Y.Map<string>` (line 147) — MODERATE
-  - `addBookmark(bookmark: CameraBookmark): void` (line 151) — MODERATE
-  - `removeBookmark(id: string): boolean` (line 158) — MODERATE
-  - `getBookmarks(): CameraBookmark[]` (line 173) — SIMPLE
-  - `updateBookmark(id: string, partial: Partial<Omit<CameraBookmark, "id">>): boolean` (line 177) — COMPLEX
-  - `onBookmarksChanged(callback: () => void): void` (line 194) — MODERATE
-  - `getBookmarksArray(): Y.Array<Y.Map<unknown>>` (line 198) — MODERATE
+### GAP-002: Background Color Picker
+- **Type:** MISSING
+- **Feature:** Configurable canvas background color
+- **Code Location:** `src/ui/Toolbar.ts`
+- **README Location:** Not mentioned
+- **Description:**
+  Canvas background can be changed via a toolbar color picker with 16 presets. Not documented.
+- **Evidence:**
+  - Code: Toolbar.ts includes background color picker UI
+  - README: No mention of background color
+- **User Impact:** Users may not know they can change the canvas background
 
----
+### GAP-003: Camera Bookmarks
+- **Type:** MISSING
+- **Feature:** Save and restore camera positions
+- **Code Location:** `src/ui/BookmarkPanel.ts`
+- **README Location:** Not mentioned
+- **Description:**
+  Users can save camera positions as bookmarks (Ctrl+D), manage them in a panel (Ctrl+B), and jump between saved views. Not documented.
+- **Evidence:**
+  - Code: BookmarkPanel.ts with full CRUD and keyboard shortcuts
+  - README: No mention of bookmarks
+- **User Impact:** Power users miss a key navigation feature
 
-### GAP-003: SyncManager
-- **File:** `src/sync/SyncManager.ts`
-- **Line:** 33
-- **Type:** Class
-- **Visibility:** PUBLIC API
-- **Complexity:** COMPLEX
-- **Current State:** No docs
-- **Why It Needs Docs:**
-  - Collaboration engine — handles WebSocket connection, user awareness, cursor sync
-  - Complex state machine (5 connection states with reconnection logic)
-  - Consumers need to understand lifecycle (connect -> status callbacks -> disconnect)
-- **Signature:**
-  ```ts
-  export class SyncManager
-  ```
-- **Documentation Needed:**
-  - [ ] Description
-  - [ ] Parameters
-  - [ ] Return value
-  - [ ] Examples
-  - [ ] Error handling
-- **Undocumented Methods:**
-  - `constructor(doc: Y.Doc, reconnectConfig?: Partial<ReconnectConfig>)` (line 48) — MODERATE
-  - `setUser(profile: UserProfile): void` (line 53) — SIMPLE
-  - `connect(serverUrl: string, roomId: string): void` (line 65) — COMPLEX
-  - `disconnect(): void` (line 182) — MODERATE
-  - `getConnectionState(): ConnectionState` (line 198) — SIMPLE
-  - `getReconnectAttempts(): number` (line 202) — SIMPLE
-  - `onStatusChange(callback): () => void` (line 206) — MODERATE
-  - `updateCursorPosition(worldX: number, worldY: number): void` (line 210) — SIMPLE
-  - `getRemoteUsers(): RemoteUser[]` (line 225) — SIMPLE
-  - `onRemoteUsersChange(callback): () => void` (line 248) — MODERATE
-  - `onConnectionStateChange(callback): () => void` (line 255) — MODERATE
-  - `destroy(): void` (line 278) — SIMPLE
+### GAP-004: Turtle Graphics Mode
+- **Type:** MISSING
+- **Feature:** Lua scripting for programmatic drawing
+- **Code Location:** `src/turtle/`, `src/ui/TurtlePanel.ts`
+- **README Location:** Not mentioned
+- **Description:**
+  A full turtle graphics mode with Lua scripting, built-in examples, and a dedicated panel (Ctrl+\`). Major feature completely absent from README.
+- **Evidence:**
+  - Code: Entire `src/turtle/` module with LuaRuntime, TurtleExamples, TurtlePanel
+  - README: No mention
+- **User Impact:** A flagship feature is invisible to users reading the README
 
----
+### GAP-005: Settings Panel
+- **Type:** MISSING
+- **Feature:** User preferences and settings UI
+- **Code Location:** `src/ui/SettingsPanel.ts`
+- **README Location:** Not mentioned
+- **Description:**
+  Settings panel (Ctrl+,) for configuring default brush, color, grid style, server URL, save directory, and user profile. Not documented.
+- **Evidence:**
+  - Code: SettingsPanel.ts with multiple configuration sections
+  - README: No mention
+- **User Impact:** Users can't discover how to customize the app
 
-### GAP-004: DrawingManager
-- **File:** `src/persistence/DrawingManager.ts`
-- **Line:** 22
-- **Type:** Class
-- **Visibility:** PUBLIC API
-- **Complexity:** COMPLEX
-- **Current State:** No docs
-- **Why It Needs Docs:**
-  - File persistence manager — CRUD operations for drawings via Tauri filesystem APIs
-  - All methods are async (filesystem I/O), need error behavior documented
-  - Manages manifest file and save directory lifecycle
-- **Signature:**
-  ```ts
-  export class DrawingManager
-  ```
-- **Documentation Needed:**
-  - [ ] Description
-  - [ ] Parameters
-  - [ ] Return value
-  - [ ] Examples
-  - [ ] Error handling
-- **Undocumented Methods:**
-  - `getDefaultSaveDirectory(): Promise<string>` (line 26) — SIMPLE
-  - `getSaveDirectory(): Promise<string>` (line 31) — SIMPLE
-  - `setSaveDirectory(path: string): void` (line 37) — SIMPLE
-  - `listDrawings(): Promise<DrawingMetadata[]>` (line 55) — MODERATE
-  - `getDrawingName(id: string): Promise<string>` (line 60) — SIMPLE
-  - `createDrawing(name: string): Promise<DrawingMetadata>` (line 66) — COMPLEX
-  - `openDrawing(id: string): Promise<Uint8Array>` (line 89) — MODERATE
-  - `saveDrawing(id: string, state: Uint8Array): Promise<void>` (line 104) — MODERATE
-  - `deleteDrawing(id: string): Promise<void>` (line 117) — MODERATE
-  - `renameDrawing(id: string, name: string): Promise<void>` (line 134) — SIMPLE
-  - `duplicateDrawing(id: string, newName: string): Promise<DrawingMetadata>` (line 145) — COMPLEX
-  - `updateThumbnail(id: string, thumbnail: string): Promise<void>` (line 185) — SIMPLE
-  - `getDrawingFilePath(id: string): Promise<string>` (line 195) — SIMPLE
+### GAP-006: Cheat Sheet
+- **Type:** MISSING
+- **Feature:** Searchable keyboard shortcut overlay
+- **Code Location:** `src/ui/CheatSheet.ts`
+- **README Location:** Not mentioned
+- **Description:**
+  An in-app searchable cheat sheet of all keyboard shortcuts (Ctrl+?). Not documented.
+- **Evidence:**
+  - Code: CheatSheet.ts with search functionality
+  - README: No mention
+- **User Impact:** Users don't know there's a built-in help system
 
----
+### GAP-007: PNG Export Dialog
+- **Type:** MISSING
+- **Feature:** Export drawings as PNG with options
+- **Code Location:** `src/ui/ExportDialog.ts`
+- **README Location:** Not mentioned
+- **Description:**
+  Full export dialog (Ctrl+Shift+E) with resolution options, scope selection (viewport/fit-all), and background options. Not documented.
+- **Evidence:**
+  - Code: ExportDialog.ts with resolution/scope/background configuration
+  - README: No mention
+- **User Impact:** Users don't know they can export their work
 
-### GAP-005: ToolManager
-- **File:** `src/tools/ToolManager.ts`
-- **Line:** 20
-- **Type:** Class
-- **Visibility:** PUBLIC API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Why It Needs Docs:**
-  - Central tool state management — all UI and input systems depend on this
-  - Manages active tool, brush config, color, opacity, and shape config
-- **Signature:**
-  ```ts
-  export class ToolManager
-  ```
-- **Undocumented Methods:**
-  - `setTool(tool: ToolType): void` (line 31) — SIMPLE
-  - `getTool(): ToolType` (line 35) — SIMPLE
-  - `setBrush(brush: BrushConfig): void` (line 39) — SIMPLE
-  - `getBrush(): BrushConfig` (line 45) — SIMPLE
-  - `setColor(color: string): void` (line 49) — SIMPLE
-  - `getColor(): string` (line 54) — SIMPLE
-  - `setOpacity(opacity: number): void` (line 58) — SIMPLE
-  - `getOpacity(): number` (line 62) — SIMPLE
-  - `setShapeConfig(config: Partial<ShapeToolConfig>): void` (line 66) — SIMPLE
-  - `getShapeConfig(): ShapeToolConfig` (line 70) — SIMPLE
-  - `getActiveConfig(): { tool, brush, color, shapeConfig }` (line 74) — SIMPLE
+### GAP-008: Home Screen
+- **Type:** MISSING
+- **Feature:** Drawing list with search, sort, and shared rooms browser
+- **Code Location:** `src/ui/HomeScreen.ts`
+- **README Location:** Not mentioned
+- **Description:**
+  A home screen with drawing list, search, sort, shared rooms tab, and drawing management (create/rename/duplicate/delete). Not documented.
+- **Evidence:**
+  - Code: HomeScreen.ts with full drawing management UI
+  - README: No mention
+- **User Impact:** Users don't know about multi-drawing management
 
----
+### GAP-009: Magnify Tool
+- **Type:** MISSING
+- **Feature:** Click-to-zoom and drag-zoom tool
+- **Code Location:** `src/input/MagnifyCapture.ts`
+- **README Location:** Not mentioned
+- **Description:**
+  A dedicated magnify/zoom tool with Z shortcut. Not documented.
+- **Evidence:**
+  - Code: MagnifyCapture.ts with Z key binding
+  - README: No mention
+- **User Impact:** Users miss a useful navigation tool
 
-### GAP-006: ActionRegistry
-- **File:** `src/ui/ActionRegistry.ts`
-- **Line:** 22
-- **Type:** Class
-- **Visibility:** PUBLIC API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Why It Needs Docs:**
-  - Keyboard shortcut and action dispatch system
-  - Used by cheat sheet, toolbar, and keyboard handler
-- **Signature:**
-  ```ts
-  export class ActionRegistry
-  ```
-- **Undocumented Methods:**
-  - `register(action: Action): void` (line 25) — SIMPLE
-  - `getAll(): Action[]` (line 29) — SIMPLE
-  - `get(id: string): Action | undefined` (line 33) — SIMPLE
-  - `getByCategory(): Map<string, Action[]>` (line 37) — MODERATE
-  - `search(query: string): Action[]` (line 55) — MODERATE
-  - `execute(id: string): boolean` (line 66) — MODERATE
+### GAP-010: Color Picker
+- **Type:** MISSING
+- **Feature:** Stroke color picker with presets
+- **Code Location:** `src/ui/Toolbar.ts`
+- **README Location:** Not mentioned
+- **Description:**
+  12 preset colors plus custom hex input on the toolbar. Not documented.
+- **Evidence:**
+  - Code: Color picker UI in Toolbar.ts
+  - README: No mention of color selection
+- **User Impact:** Users may not realize they can change stroke color
 
----
+### GAP-011: Opacity Slider
+- **Type:** MISSING
+- **Feature:** Per-stroke opacity control
+- **Code Location:** `src/ui/OpacitySlider.ts`
+- **README Location:** Not mentioned
+- **Description:**
+  Toolbar opacity slider for per-stroke opacity. Not documented.
+- **Evidence:**
+  - Code: OpacitySlider.ts component
+  - README: No mention
+- **User Impact:** Users miss fine-grained opacity control
 
-### GAP-007: AutoSave
-- **File:** `src/persistence/AutoSave.ts`
-- **Line:** 7
-- **Type:** Class
-- **Visibility:** INTERNAL API
-- **Complexity:** COMPLEX
-- **Current State:** No docs
-- **Why It Needs Docs:**
-  - Auto-save lifecycle management — debounced persistence of CRDT state
-  - Two constructor overloads (file-based vs DrawingManager-based)
-  - Non-obvious start/stop lifecycle and debounce behavior
-- **Signature:**
-  ```ts
-  export class AutoSave
-  ```
-- **Undocumented Methods:**
-  - `constructor(doc: Y.Doc, filePath: string, debounceMs?: number)` (line 18) — COMPLEX (overloaded)
-  - `start(): void` (line 44) — MODERATE
-  - `stop(): void` (line 53) — SIMPLE
-  - `setFilePath(filePath: string): void` (line 64) — SIMPLE
-  - `getFilePath(): string` (line 68) — SIMPLE
-  - `setDrawingId(drawingId: string): void` (line 72) — SIMPLE
-  - `getDrawingId(): string | null` (line 76) — SIMPLE
-  - `setDrawingManager(manager: DrawingManager): void` (line 80) — SIMPLE
-  - `saveNow(): Promise<void>` (line 84) — MODERATE
+### GAP-012: Grid Options
+- **Type:** MISSING
+- **Feature:** Dot grid and line grid with toggle
+- **Code Location:** `src/renderer/DotGridRenderer.ts`, `src/renderer/LineGridRenderer.ts`
+- **README Location:** Not mentioned (Ctrl+' shortcut also missing)
+- **Description:**
+  Two grid styles (dot and line) configurable in settings. The README Controls table doesn't include the grid toggle shortcut (Ctrl+').
+- **Evidence:**
+  - Code: DotGridRenderer.ts, LineGridRenderer.ts, grid toggle in CanvasApp.ts
+  - README: No mention of grids
+- **User Impact:** Users miss a helpful drawing aid
 
----
+### GAP-013: Remote Cursors
+- **Type:** MISSING
+- **Feature:** See collaborator cursor positions
+- **Code Location:** `src/ui/RemoteCursors.ts`
+- **README Location:** Not mentioned
+- **Description:**
+  During collaboration, remote user cursors are shown with colored labels. Not documented.
+- **Evidence:**
+  - Code: RemoteCursors.ts with cursor rendering and labels
+  - README: Collaboration section doesn't mention cursor visibility
+- **User Impact:** Users don't know they can see collaborator positions
 
-## Quick-Win Gaps
+### GAP-014: Docker / docker-compose
+- **Type:** MISSING
+- **Feature:** Containerized server deployment
+- **Code Location:** `docker-compose.yml`, `server/Dockerfile`
+- **README Location:** Not mentioned
+- **Description:**
+  Docker and docker-compose configuration for deploying the collaboration server. Not documented.
+- **Evidence:**
+  - Code: docker-compose.yml and server/Dockerfile exist
+  - README: Server section only shows `cargo run`
+- **User Impact:** DevOps users miss the easiest deployment method
 
-Small, self-contained items that can be documented quickly.
+### GAP-015: Makefile
+- **Type:** MISSING
+- **Feature:** Convenience build targets
+- **Code Location:** `Makefile`
+- **README Location:** Not mentioned
+- **Description:**
+  Makefile with targets like `make up`, `make dev`, `make test`. Not documented.
+- **Evidence:**
+  - Code: Makefile at project root
+  - README: No mention
+- **User Impact:** Developers miss convenient workflow shortcuts
 
-### GAP-008: CameraBookmark
-- **File:** `src/model/Bookmark.ts`
-- **Line:** 1
-- **Type:** Interface
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
+### GAP-016: Server REST API
+- **Type:** MISSING
+- **Feature:** HTTP API endpoints
+- **Code Location:** `server/src/api.rs`
+- **README Location:** Not mentioned
+- **Description:**
+  The server has REST API endpoints (e.g., /api/rooms, /health). Not documented.
+- **Evidence:**
+  - Code: server/src/api.rs with route handlers
+  - README: Only mentions WebSocket functionality
+- **User Impact:** API consumers can't discover available endpoints
 
-### GAP-009: generateBookmarkId
-- **File:** `src/model/Bookmark.ts`
-- **Line:** 14
-- **Type:** Function
-- **Visibility:** UTILITY
-- **Complexity:** SIMPLE
-- **Current State:** No docs
+### GAP-017: localStorage Fallback
+- **Type:** MISSING
+- **Feature:** Browser persistence when Tauri unavailable
+- **Code Location:** `src/persistence/LocalStorage.ts`
+- **README Location:** Not mentioned
+- **Description:**
+  When running in browser mode (no Tauri), drawings persist to localStorage. README says "no local persistence" for browser mode, which is now inaccurate.
+- **Evidence:**
+  - Code: LocalStorage.ts provides browser fallback persistence
+  - README: "(no local persistence)" on line 56
+- **User Impact:** Users may avoid browser mode thinking their work won't be saved
 
-### GAP-010: StrokePoint
-- **File:** `src/model/Stroke.ts`
-- **Line:** 1
-- **Type:** Interface
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
+### GAP-018: User Profile
+- **Type:** MISSING
+- **Feature:** Configurable name and color for collaboration
+- **Code Location:** `src/user/UserProfile.ts`
+- **README Location:** Not mentioned
+- **Description:**
+  Users can set their name and cursor color for collaboration. Not documented.
+- **Evidence:**
+  - Code: UserProfile.ts with name/color configuration
+  - README: No mention
+- **User Impact:** Collaborators can't personalize their identity
 
-### GAP-011: Stroke
-- **File:** `src/model/Stroke.ts`
-- **Line:** 7
-- **Type:** Interface
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
+### GAP-019: Fit-All View
+- **Type:** MISSING
+- **Feature:** Frame all content in viewport
+- **Code Location:** `src/ui/Toolbar.ts`
+- **README Location:** Not mentioned
+- **Description:**
+  A toolbar button to zoom/pan to fit all drawing content in the viewport. Not documented.
+- **Evidence:**
+  - Code: Fit-all button in Toolbar.ts
+  - README: No mention
+- **User Impact:** Users miss a quick way to see all their content
 
-### GAP-012: generateStrokeId
-- **File:** `src/model/Stroke.ts`
-- **Line:** 31
-- **Type:** Function
-- **Visibility:** UTILITY
-- **Complexity:** SIMPLE
-- **Current State:** No docs
+### GAP-020: Keyboard Shortcut Gaps
+- **Type:** MISSING
+- **Feature:** 14+ undocumented keyboard shortcuts
+- **Code Location:** `src/canvas/CanvasApp.ts`
+- **README Location:** Controls table (lines 115-130)
+- **Description:**
+  README documents 14 shortcuts but codebase has 28+. Missing shortcuts: R (Rectangle), O (Ellipse), P (Polygon), S (Star), G (Pan), Z (Magnify), Ctrl+B (Bookmarks), Ctrl+D (Quick bookmark), Ctrl+, (Settings), Ctrl+\` (Turtle), Ctrl+? (Cheat sheet), Ctrl+Shift+E (Export), Ctrl+W (Home), Escape (Home), Ctrl+' (Grid toggle).
+- **Evidence:**
+  - Code: Key bindings in CanvasApp.ts
+  - README: Only 14 shortcuts listed
+- **User Impact:** Users can't discover most keyboard shortcuts from README
 
-### GAP-013: ShapeType
-- **File:** `src/model/Shape.ts`
-- **Line:** 1
-- **Type:** Type Alias
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
+### GAP-021: Test Count Outdated
+- **Type:** INACCURATE
+- **Feature:** Test suite count
+- **Code Location:** Test suite output
+- **README Location:** Development section (line 170)
+- **Description:**
+  README says "All 316 tests". Actual count is 1343 passing tests.
+- **Evidence:**
+  - Code: `npx vitest run` reports 1343 passed
+  - README: "All 316 tests"
+- **User Impact:** Minor — gives wrong impression of test coverage size
 
-### GAP-014: Shape
-- **File:** `src/model/Shape.ts`
-- **Line:** 3
-- **Type:** Interface
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
+### GAP-022: Browser Mode Persistence Claim
+- **Type:** INACCURATE
+- **Feature:** Browser mode persistence description
+- **Code Location:** `src/persistence/LocalStorage.ts`
+- **README Location:** Getting started section (line 56)
+- **Description:**
+  README states "Browser only (no local persistence)" but localStorage fallback now provides browser persistence.
+- **Evidence:**
+  - Code: LocalStorage.ts implements browser-side persistence
+  - README: "(no local persistence)" on line 56
+- **User Impact:** Users may avoid browser mode thinking drawings will be lost
 
-### GAP-015: CanvasItemKind / CanvasItem
-- **File:** `src/model/Shape.ts`
-- **Lines:** 26, 28
-- **Type:** Type Aliases
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
+### GAP-023: Project Structure Outdated
+- **Type:** INCOMPLETE
+- **Feature:** Source directory listing
+- **Code Location:** `src/`
+- **README Location:** Project structure section (lines 143-153)
+- **Description:**
+  README project structure tree is missing `turtle/`, `user/`, and `canvas/` directories.
+- **Evidence:**
+  - Code: `src/turtle/`, `src/user/`, `src/canvas/` all exist
+  - README: Tree only shows 9 of 12 src/ subdirectories
+- **User Impact:** Developers exploring the codebase get an incomplete picture
 
-### GAP-016: generateShapeId
-- **File:** `src/model/Shape.ts`
-- **Line:** 34
-- **Type:** Function
-- **Visibility:** UTILITY
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-
-### GAP-017: DrawDocument
-- **File:** `src/model/Document.ts`
-- **Line:** 3
-- **Type:** Class
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-
-### GAP-018: ConnectionState
-- **File:** `src/sync/SyncManager.ts`
-- **Line:** 5
-- **Type:** Type Alias
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-
-### GAP-019: ReconnectConfig
-- **File:** `src/sync/SyncManager.ts`
-- **Line:** 12
-- **Type:** Interface
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-
-### GAP-020: RemoteUser
-- **File:** `src/sync/SyncManager.ts`
-- **Line:** 26
-- **Type:** Interface
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-
-### GAP-021: BrushConfig
-- **File:** `src/tools/Brush.ts`
-- **Line:** 1
-- **Type:** Interface
-- **Visibility:** PUBLIC API
-- **Complexity:** MODERATE
-- **Current State:** No docs
-- **Why It Needs Docs:** Core concept — `pressureCurve` and `opacityCurve` fields have non-obvious semantics
-
-### GAP-022: ToolType
-- **File:** `src/tools/ToolManager.ts`
-- **Line:** 5
-- **Type:** Type Alias
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-
-### GAP-023: DEFAULT_BACKGROUND_COLOR
-- **File:** `src/crdt/DrawfinityDoc.ts`
-- **Line:** 10
-- **Type:** Constant
-- **Visibility:** INTERNAL API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-
-### GAP-024: CanvasAppCallbacks
-- **File:** `src/canvas/CanvasApp.ts`
-- **Line:** 23
-- **Type:** Interface
-- **Visibility:** PUBLIC API
-- **Complexity:** SIMPLE
-- **Current State:** No docs
-
----
-
-## Gaps by Module
-
-| Module | Gap Count | Types |
-|--------|-----------|-------|
-| `src/model/` | 11 | 4 Interfaces, 3 Types, 3 Functions, 1 Class |
-| `src/canvas/` | 8 | 1 Interface, 1 Class, 6 Methods |
-| `src/crdt/` | 27 | 1 Constant, 1 Class, 4 Functions, 21 Methods |
-| `src/persistence/` | 40 | 2 Interfaces, 3 Classes, 4 Functions, 28 Methods, 3 Constants |
-| `src/sync/` | 17 | 2 Interfaces, 1 Type, 1 Class, 12 Methods |
-| `src/input/` | 20 | 1 Interface, 2 Classes, 17 Methods |
-| `src/tools/` | 20 | 1 Interface, 1 Type, 1 Function, 2 Classes, 15 Methods |
-| `src/ui/` | 84 | 8 Interfaces, 3 Types, 2 Functions, 10 Classes, 60 Methods, 1 Constant |
-| `src/renderer/` | 30 | 2 Interfaces, 2 Constants, 26 Methods |
-| `src/turtle/` | 11 | 4 Interfaces, 2 Types, 1 Constant, 4 Methods |
+### GAP-024: Collaboration Section Incomplete
+- **Type:** INCOMPLETE
+- **Feature:** Collaboration details
+- **Code Location:** `src/sync/SyncManager.ts`, `src/ui/RemoteCursors.ts`
+- **README Location:** Collaboration section (lines 79-111)
+- **Description:**
+  Collaboration section doesn't mention remote cursors, auto-reconnect with exponential backoff, shared rooms browser, or Docker deployment.
+- **Evidence:**
+  - Code: SyncManager.ts has auto-reconnect; RemoteCursors.ts shows remote users
+  - README: Only describes basic connect flow
+- **User Impact:** Users don't know about collaboration UX features
 
 ---
 
 ## Gaps by Type
 
-### Functions (standalone exported)
-| Name | File | Visibility | Complexity |
-|------|------|------------|------------|
-| `generateBookmarkId` | `src/model/Bookmark.ts:14` | UTILITY | SIMPLE |
-| `generateStrokeId` | `src/model/Stroke.ts:31` | UTILITY | SIMPLE |
-| `generateShapeId` | `src/model/Shape.ts:34` | UTILITY | SIMPLE |
-| `bookmarkToYMap` | `src/crdt/BookmarkAdapter.ts:4` | INTERNAL API | MODERATE |
-| `yMapToBookmark` | `src/crdt/BookmarkAdapter.ts:19` | INTERNAL API | MODERATE |
-| `yMapToStroke` | `src/crdt/StrokeAdapter.ts:30` | INTERNAL API | MODERATE |
-| `yMapToShape` | `src/crdt/ShapeAdapter.ts:33` | INTERNAL API | MODERATE |
-| `isShapeTool` | `src/tools/ToolManager.ts:16` | INTERNAL API | SIMPLE |
-| `loadManifest` | `src/persistence/DrawingManifest.ts:29` | INTERNAL API | MODERATE |
-| `saveManifest` | `src/persistence/DrawingManifest.ts:40` | INTERNAL API | MODERATE |
-| `getDefaultSavePath` | `src/persistence/LocalStorage.ts:14` | INTERNAL API | SIMPLE |
-| `getDefaultFilePath` | `src/persistence/LocalStorage.ts:19` | INTERNAL API | SIMPLE |
-| `saveDocument` | `src/persistence/LocalStorage.ts:24` | INTERNAL API | MODERATE |
-| `loadDocument` | `src/persistence/LocalStorage.ts:43` | INTERNAL API | MODERATE |
-| `computeContentBounds` | `src/ui/ExportRenderer.ts:41` | INTERNAL API | MODERATE |
-| `renderExport` | `src/ui/ExportRenderer.ts:152` | INTERNAL API | COMPLEX |
+### MISSING Features
+| Gap ID | Feature | Code Location | User Impact |
+|--------|---------|---------------|-------------|
+| GAP-001 | Shape tools (R/O/P/S) | `src/input/ShapeCapture.ts` | 4 tools undiscoverable |
+| GAP-002 | Background color picker | `src/ui/Toolbar.ts` | Can't customize canvas |
+| GAP-003 | Camera bookmarks | `src/ui/BookmarkPanel.ts` | Navigation feature hidden |
+| GAP-004 | Turtle graphics mode | `src/turtle/` | Flagship feature invisible |
+| GAP-005 | Settings panel | `src/ui/SettingsPanel.ts` | No customization path |
+| GAP-006 | Cheat sheet | `src/ui/CheatSheet.ts` | Built-in help unknown |
+| GAP-007 | PNG export | `src/ui/ExportDialog.ts` | Can't export drawings |
+| GAP-008 | Home screen | `src/ui/HomeScreen.ts` | Multi-drawing management unknown |
+| GAP-009 | Magnify tool | `src/input/MagnifyCapture.ts` | Navigation tool hidden |
+| GAP-010 | Color picker | `src/ui/Toolbar.ts` | Color selection undocumented |
+| GAP-011 | Opacity slider | `src/ui/OpacitySlider.ts` | Fine opacity control hidden |
+| GAP-012 | Grid options | `src/renderer/DotGridRenderer.ts` | Drawing aid unknown |
+| GAP-013 | Remote cursors | `src/ui/RemoteCursors.ts` | Collab UX unknown |
+| GAP-014 | Docker deployment | `docker-compose.yml` | Easiest deploy path missing |
+| GAP-015 | Makefile targets | `Makefile` | Dev shortcuts hidden |
+| GAP-016 | Server REST API | `server/src/api.rs` | API undocumented |
+| GAP-017 | localStorage fallback | `src/persistence/LocalStorage.ts` | Browser persistence unknown |
+| GAP-018 | User profile | `src/user/UserProfile.ts` | Collab identity config missing |
+| GAP-019 | Fit-all view | `src/ui/Toolbar.ts` | Quick view command hidden |
+| GAP-020 | 14+ keyboard shortcuts | `src/canvas/CanvasApp.ts` | Most shortcuts undocumented |
 
-### Classes (undocumented class-level)
-| Name | File | Visibility | Complexity |
-|------|------|------------|------------|
-| `DrawDocument` | `src/model/Document.ts:3` | INTERNAL API | SIMPLE |
-| `CanvasApp` | `src/canvas/CanvasApp.ts:36` | PUBLIC API | COMPLEX |
-| `DrawfinityDoc` | `src/crdt/DrawfinityDoc.ts:12` | PUBLIC API | COMPLEX |
-| `SyncManager` | `src/sync/SyncManager.ts:33` | PUBLIC API | COMPLEX |
-| `DrawingManager` | `src/persistence/DrawingManager.ts:22` | PUBLIC API | COMPLEX |
-| `AutoSave` | `src/persistence/AutoSave.ts:7` | INTERNAL API | COMPLEX |
-| `ThumbnailGenerator` | `src/persistence/ThumbnailGenerator.ts:93` | INTERNAL API | MODERATE |
-| `StrokeCapture` | `src/input/StrokeCapture.ts:9` | INTERNAL API | COMPLEX |
-| `ShapeCapture` | `src/input/ShapeCapture.ts:30` | INTERNAL API | MODERATE |
-| `ToolManager` | `src/tools/ToolManager.ts:20` | PUBLIC API | MODERATE |
-| `ActionRegistry` | `src/ui/ActionRegistry.ts:22` | PUBLIC API | MODERATE |
-| `BookmarkPanel` | `src/ui/BookmarkPanel.ts:14` | INTERNAL API | MODERATE |
-| `CheatSheet` | `src/ui/CheatSheet.ts:4` | INTERNAL API | SIMPLE |
-| `ConnectionPanel` | `src/ui/ConnectionPanel.ts:7` | INTERNAL API | MODERATE |
-| `HomeScreen` | `src/ui/HomeScreen.ts:29` | PUBLIC API | COMPLEX |
-| `RemoteCursors` | `src/ui/RemoteCursors.ts:20` | INTERNAL API | MODERATE |
-| `SettingsPanel` | `src/ui/SettingsPanel.ts:12` | INTERNAL API | MODERATE |
+### STALE Documentation
+No stale documentation found. All features documented in README exist in code.
 
-### Interfaces (undocumented)
-| Name | File | Visibility | Complexity |
-|------|------|------------|------------|
-| `CameraBookmark` | `src/model/Bookmark.ts:1` | PUBLIC API | SIMPLE |
-| `StrokePoint` | `src/model/Stroke.ts:1` | PUBLIC API | SIMPLE |
-| `Stroke` | `src/model/Stroke.ts:7` | PUBLIC API | SIMPLE |
-| `Shape` | `src/model/Shape.ts:3` | PUBLIC API | SIMPLE |
-| `DrawingMetadata` | `src/persistence/DrawingManifest.ts:9` | INTERNAL API | SIMPLE |
-| `Manifest` | `src/persistence/DrawingManifest.ts:18` | INTERNAL API | SIMPLE |
-| `ReconnectConfig` | `src/sync/SyncManager.ts:12` | INTERNAL API | SIMPLE |
-| `RemoteUser` | `src/sync/SyncManager.ts:26` | PUBLIC API | SIMPLE |
-| `ShapeToolConfig` (tools) | `src/tools/ToolManager.ts:10` | INTERNAL API | SIMPLE |
-| `ShapeToolConfig` (input) | `src/input/ShapeCapture.ts:10` | INTERNAL API | SIMPLE |
-| `BrushConfig` | `src/tools/Brush.ts:1` | PUBLIC API | MODERATE |
-| `EraserConfig` | `src/tools/EraserTool.ts:292` | INTERNAL API | SIMPLE |
-| `Action` | `src/ui/ActionRegistry.ts:1` | PUBLIC API | SIMPLE |
-| `CanvasAppCallbacks` | `src/canvas/CanvasApp.ts:23` | PUBLIC API | SIMPLE |
-| `BookmarkPanelCallbacks` | `src/ui/BookmarkPanel.ts:6` | INTERNAL API | SIMPLE |
-| `ConnectionPanelCallbacks` | `src/ui/ConnectionPanel.ts:3` | INTERNAL API | SIMPLE |
-| `HomeScreenCallbacks` | `src/ui/HomeScreen.ts:9` | INTERNAL API | MODERATE |
-| `SettingsPanelCallbacks` | `src/ui/SettingsPanel.ts:8` | INTERNAL API | SIMPLE |
-| `ToolbarCallbacks` | `src/ui/Toolbar.ts:14` | INTERNAL API | MODERATE |
-| `ToolbarOverflowConfig` | `src/ui/ToolbarOverflow.ts:6` | INTERNAL API | SIMPLE |
-| `TurtlePanelCallbacks` | `src/ui/TurtlePanel.ts:3` | INTERNAL API | SIMPLE |
-| `AABB` | `src/renderer/SpatialIndex.ts:4` | INTERNAL API | SIMPLE |
-| `PenState` | `src/turtle/TurtleState.ts:4` | INTERNAL API | SIMPLE |
-| `TurtleSnapshot` | `src/turtle/TurtleState.ts:11` | INTERNAL API | SIMPLE |
-| `MovementSegment` | `src/turtle/TurtleState.ts:177` | INTERNAL API | SIMPLE |
+### INACCURATE Documentation
+| Gap ID | Feature | What's Wrong | Correct Behavior |
+|--------|---------|--------------|------------------|
+| GAP-021 | Test count | README says 316 | Actual: 1343 tests |
+| GAP-022 | Browser persistence | Says "no local persistence" | localStorage fallback exists |
 
-### Type Aliases (undocumented)
-| Name | File | Visibility | Complexity |
-|------|------|------------|------------|
-| `ShapeType` | `src/model/Shape.ts:1` | PUBLIC API | SIMPLE |
-| `CanvasItemKind` | `src/model/Shape.ts:26` | INTERNAL API | SIMPLE |
-| `CanvasItem` | `src/model/Shape.ts:28` | INTERNAL API | SIMPLE |
-| `ConnectionState` | `src/sync/SyncManager.ts:5` | PUBLIC API | SIMPLE |
-| `ToolType` | `src/tools/ToolManager.ts:5` | PUBLIC API | SIMPLE |
-| `ActionCategory` | `src/ui/ActionRegistry.ts:9` | PUBLIC API | SIMPLE |
-| `TabName` | `src/ui/HomeScreen.ts:19` | INTERNAL API | SIMPLE |
-| `SharedConnectionStatus` | `src/ui/HomeScreen.ts:21` | INTERNAL API | SIMPLE |
-| `ViewName` | `src/ui/ViewManager.ts:5` | INTERNAL API | SIMPLE |
-| `StopCheck` | `src/turtle/LuaRuntime.ts:22` | INTERNAL API | SIMPLE |
-| `CommandHandler` | `src/turtle/LuaRuntime.ts:25` | INTERNAL API | SIMPLE |
-
-### Constants (undocumented)
-| Name | File | Visibility | Complexity |
-|------|------|------------|------------|
-| `DEFAULT_BACKGROUND_COLOR` | `src/crdt/DrawfinityDoc.ts:10` | INTERNAL API | SIMPLE |
-| `BRUSH_PRESETS` | `src/tools/BrushPresets.ts:43` | PUBLIC API | SIMPLE |
-| `ACTION_CATEGORIES` | `src/ui/ActionRegistry.ts:11` | INTERNAL API | SIMPLE |
-| `ICONS` | `src/ui/ToolbarIcons.ts:14` | INTERNAL API | SIMPLE |
-| `THUMBNAIL_WIDTH` | `src/persistence/ThumbnailGenerator.ts:335` | INTERNAL API | SIMPLE |
-| `THUMBNAIL_HEIGHT` | `src/persistence/ThumbnailGenerator.ts:335` | INTERNAL API | SIMPLE |
-| `GENERATION_INTERVAL_MS` | `src/persistence/ThumbnailGenerator.ts:335` | INTERNAL API | SIMPLE |
-| `STROKE_VERTEX_SHADER` | `src/renderer/ShaderProgram.ts:70` | INTERNAL API | SIMPLE |
-| `STROKE_FRAGMENT_SHADER` | `src/renderer/ShaderProgram.ts:87` | INTERNAL API | SIMPLE |
-| `TURTLE_EXAMPLES` | `src/turtle/TurtleExamples.ts:7` | INTERNAL API | SIMPLE |
-| `TurtleExample` | `src/turtle/TurtleExamples.ts:1` | INTERNAL API | SIMPLE |
+### INCOMPLETE Documentation
+| Gap ID | Feature | What's Missing |
+|--------|---------|----------------|
+| GAP-023 | Project structure | Missing turtle/, user/, canvas/ dirs |
+| GAP-024 | Collaboration | Missing remote cursors, auto-reconnect, Docker |
 
 ---
 
-## Undocumented Class Methods by Module
+## Priority Indicators
 
-### src/renderer/
-| Class | Method | Line | Complexity |
-|-------|--------|------|------------|
-| `DotGridRenderer` | `setDotColor` | 171 | SIMPLE |
-| `DotGridRenderer` | `destroy` | 175 | SIMPLE |
-| `WebGLContext` | `resize` | 28 | SIMPLE |
-| `WebGLContext` | `setClearColor` | 42 | SIMPLE |
-| `WebGLContext` | `clear` | 50 | SIMPLE |
-| `WebGLContext` | `destroy` | 54 | SIMPLE |
-| `SpatialIndex` | `constructor` | 90 | SIMPLE |
-| `StrokeRenderer` | `setCameraMatrix` | 77 | SIMPLE |
-| `StrokeRenderer` | `drawStroke` | 84 | MODERATE |
-| `StrokeRenderer` | `destroy` | 221 | SIMPLE |
-| `LineGridRenderer` | `setLineColor` | 141 | SIMPLE |
-| `LineGridRenderer` | `destroy` | 154 | SIMPLE |
-| `StrokeVertexCache` | `size` (getter) | 52 | SIMPLE |
-| `ShaderProgram` | `use` | 37 | SIMPLE |
-| `ShaderProgram` | `getUniformLocation` | 41 | SIMPLE |
-| `ShaderProgram` | `getAttribLocation` | 45 | SIMPLE |
-| `ShaderProgram` | `destroy` | 49 | SIMPLE |
-| `Renderer` | `gl` (getter) | 31 | SIMPLE |
-| `Renderer` | `canvas` (getter) | 35 | SIMPLE |
-| `Renderer` | `setBackgroundColor` | 39 | SIMPLE |
-| `Renderer` | `setGridStyle` | 45 | SIMPLE |
-| `Renderer` | `clear` | 49 | SIMPLE |
-| `Renderer` | `setCameraMatrix` | 54 | SIMPLE |
-| `Renderer` | `drawGrid` | 58 | MODERATE |
-| `Renderer` | `drawStroke` | 71 | MODERATE |
-| `Renderer` | `destroy` | 102 | SIMPLE |
-| `ShapeVertexCache` | `size` (getter) | 36 | SIMPLE |
+### High Priority Gaps
+Features that new users would immediately encounter or need:
+1. GAP-007: PNG export — users need to know how to get their work out
+2. GAP-001: Shape tools — 4 drawing tools with no documentation
+3. GAP-010: Color picker — basic drawing functionality undocumented
+4. GAP-008: Home screen — first thing users see
+5. GAP-022: Browser persistence claim — actively misleading
+6. GAP-020: Keyboard shortcuts — 14+ missing from Controls table
+7. GAP-021: Test count — inaccurate (316 vs 1343)
 
-### src/input/
-| Class | Method | Line | Complexity |
-|-------|--------|------|------------|
-| `StrokeCapture` | `constructor` | 32 | COMPLEX |
-| `StrokeCapture` | `setEnabled` | 157 | SIMPLE |
-| `StrokeCapture` | `isEnabled` | 165 | SIMPLE |
-| `StrokeCapture` | `setColor` | 169 | SIMPLE |
-| `StrokeCapture` | `setWidth` | 173 | SIMPLE |
-| `StrokeCapture` | `setSmoothing` | 177 | SIMPLE |
-| `StrokeCapture` | `setTool` | 181 | SIMPLE |
-| `StrokeCapture` | `getTool` | 185 | SIMPLE |
-| `StrokeCapture` | `getEraserTool` | 189 | SIMPLE |
-| `StrokeCapture` | `destroy` | 206 | SIMPLE |
-| `ShapeCapture` | `constructor` | 54 | MODERATE |
-| `ShapeCapture` | `isEnabled` | 83 | SIMPLE |
-| `ShapeCapture` | `setConfig` | 87 | SIMPLE |
-| `ShapeCapture` | `getConfig` | 91 | SIMPLE |
-| `ShapeCapture` | `destroy` | 199 | SIMPLE |
-| `MagnifyCapture` | `setEnabled` | 55 | SIMPLE |
-| `MagnifyCapture` | `isEnabled` | 62 | SIMPLE |
-| `MagnifyCapture` | `destroy` | 133 | SIMPLE |
+### Medium Priority Gaps
+Features that regular users would use:
+1. GAP-004: Turtle graphics — major feature, invisible in README
+2. GAP-003: Camera bookmarks — power navigation
+3. GAP-005: Settings panel — customization
+4. GAP-006: Cheat sheet — built-in help
+5. GAP-002: Background color — visual customization
+6. GAP-011: Opacity slider — drawing control
+7. GAP-012: Grid options — drawing aid
+8. GAP-013: Remote cursors — collaboration UX
+9. GAP-019: Fit-all view — navigation convenience
+10. GAP-023: Project structure — developer onboarding
 
-### src/tools/
-| Class | Method | Line | Complexity |
-|-------|--------|------|------------|
-| `EraserTool` | `constructor` | 302 | SIMPLE |
-| `EraserTool` | `getRadius` | 309 | SIMPLE |
-| `EraserTool` | `setRadius` | 313 | SIMPLE |
-
-### src/crdt/
-| Class | Method | Line | Complexity |
-|-------|--------|------|------------|
-| `UndoManager` | `constructor` | 11 | SIMPLE |
-| `UndoManager` | `undo` | 17 | SIMPLE |
-| `UndoManager` | `redo` | 21 | SIMPLE |
-| `UndoManager` | `canUndo` | 25 | SIMPLE |
-| `UndoManager` | `canRedo` | 29 | SIMPLE |
-
-### src/turtle/
-| Class | Method | Line | Complexity |
-|-------|--------|------|------------|
-| `TurtleState` | `getPosition` | 113 | SIMPLE |
-| `TurtleState` | `getHeading` | 117 | SIMPLE |
-| `TurtleState` | `isDown` | 121 | SIMPLE |
-| `TurtleState` | `snapshot` | 127 | SIMPLE |
-
-### src/ui/ (selected — full list in detailed gaps above)
-| Class | Method | Line | Complexity |
-|-------|--------|------|------------|
-| `Toolbar` | `selectBrush` | 570 | SIMPLE |
-| `Toolbar` | `setTool` | 578 | SIMPLE |
-| `Toolbar` | `setColor` | 610 | SIMPLE |
-| `Toolbar` | `updateUndoRedo` | 630 | SIMPLE |
-| `Toolbar` | `updateZoom` | 635 | SIMPLE |
-| `Toolbar` | `getActiveBrushIndex` | 639 | SIMPLE |
-| `Toolbar` | `setDrawingName` | 712 | SIMPLE |
-| `Toolbar` | `destroy` | 837 | SIMPLE |
-| `ViewManager` | `showHome` | 51 | COMPLEX |
-| `ViewManager` | `showCanvas` | 79 | COMPLEX |
-| `ViewManager` | `getCurrentView` | 149 | SIMPLE |
-| `ViewManager` | `getCanvasApp` | 153 | SIMPLE |
-| `ViewManager` | `getHomeScreen` | 157 | SIMPLE |
-| `ViewManager` | `destroy` | 161 | SIMPLE |
-| `CursorManager` | `setTool` | 24 | SIMPLE |
-| `CursorManager` | `setBrushWidth` | 29 | SIMPLE |
-| `CursorManager` | `setEraserRadius` | 34 | SIMPLE |
-| `CursorManager` | `setZoom` | 39 | SIMPLE |
-| `CursorManager` | `setPanning` | 43 | SIMPLE |
-| `CursorManager` | `setMagnifyMode` | 48 | SIMPLE |
-| `CursorManager` | `updateCursor` | 111 | MODERATE |
-| `ExportDialog` | `destroy` | 229 | SIMPLE |
-| `Tooltip` | `hide` | 120 | SIMPLE |
-
----
-
-## Related Exports
-
-Exports that should be documented together:
-
-- **Group A:** `Stroke`, `StrokePoint`, `generateStrokeId` — Core stroke data model
-- **Group B:** `Shape`, `ShapeType`, `CanvasItem`, `CanvasItemKind`, `generateShapeId` — Shape data model
-- **Group C:** `CameraBookmark`, `generateBookmarkId`, `BookmarkAdapter` functions — Bookmark system
-- **Group D:** `DrawfinityDoc`, `StrokeAdapter`, `ShapeAdapter`, `BookmarkAdapter` — CRDT data layer
-- **Group E:** `SyncManager`, `ConnectionState`, `ReconnectConfig`, `RemoteUser` — Collaboration system
-- **Group F:** `DrawingManager`, `DrawingMetadata`, `Manifest`, `loadManifest`, `saveManifest` — Persistence layer
-- **Group G:** `AutoSave`, `ThumbnailGenerator` — Auto-save subsystem
-- **Group H:** `ToolManager`, `ToolType`, `BrushConfig`, `BRUSH_PRESETS` — Tool system
-- **Group I:** `ActionRegistry`, `Action`, `ActionCategory` — Keyboard shortcut system
-- **Group J:** `ViewManager`, `HomeScreen`, `CanvasApp` — Application lifecycle
-
----
-
-## Recommended Documentation Order
-
-Based on visibility, complexity, and dependency ordering:
-
-1. **Phase 1 — Data Model** (GAP-008 through GAP-017): `src/model/` types and interfaces. These are referenced everywhere and quick to document.
-2. **Phase 2 — CRDT Layer** (GAP-002, GAP-023, adapters): `DrawfinityDoc` and adapters. Central to the application.
-3. **Phase 3 — Core Classes** (GAP-001, GAP-003, GAP-004, GAP-005): `CanvasApp`, `SyncManager`, `DrawingManager`, `ToolManager`.
-4. **Phase 4 — UI Components** (GAP-006, panels, toolbar): `ActionRegistry`, panels, toolbar, and their callback interfaces.
-5. **Phase 5 — Input & Rendering** (remaining): `StrokeCapture`, `ShapeCapture`, renderer methods.
-6. **Phase 6 — Utilities** (remaining): Turtle types, constants, simple getters/setters.
+### Low Priority Gaps
+Advanced features or edge cases:
+1. GAP-014: Docker deployment — advanced ops
+2. GAP-015: Makefile targets — developer convenience
+3. GAP-016: Server REST API — API consumers
+4. GAP-017: localStorage fallback — edge case persistence
+5. GAP-018: User profile — collaboration config
+6. GAP-009: Magnify tool — alternative zoom method
+7. GAP-024: Collaboration details — supplementary info

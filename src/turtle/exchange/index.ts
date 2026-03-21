@@ -4,6 +4,7 @@ export type {
   ExchangeScript,
   CachedScript,
   ExchangeSnapshot,
+  UpdateCheckResult,
 } from "./ExchangeTypes";
 export { ExchangeClient, ExchangeError } from "./ExchangeClient";
 export { ExchangeCache } from "./ExchangeCache";

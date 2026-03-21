@@ -1,4 +1,9 @@
-import type { ExchangeIndex, ExchangeScriptEntry } from "./ExchangeTypes";
+import type {
+  ExchangeIndex,
+  ExchangeScriptEntry,
+  UpdateCheckResult,
+} from "./ExchangeTypes";
+import type { ExchangeCache } from "./ExchangeCache";
 
 const DEFAULT_BASE_URL =
   "https://raw.githubusercontent.com/needmorecowbell/drawfinity_turtle_exchange/main/";
@@ -14,6 +19,24 @@ export class ExchangeError extends Error {
 }
 
 /**
+ * Compare two semver-like version strings.
+ * Returns true if `remote` is newer than `local`.
+ */
+function isNewerVersion(local: string, remote: string): boolean {
+  const parseParts = (v: string) => v.split(".").map((n) => parseInt(n, 10));
+  const localParts = parseParts(local);
+  const remoteParts = parseParts(remote);
+  const len = Math.max(localParts.length, remoteParts.length);
+  for (let i = 0; i < len; i++) {
+    const l = localParts[i] ?? 0;
+    const r = remoteParts[i] ?? 0;
+    if (r > l) return true;
+    if (r < l) return false;
+  }
+  return false;
+}
+
+/**
  * Client for the Drawfinity Turtle Exchange — fetches community scripts
  * from the GitHub-hosted exchange repository via raw content URLs.
  */
@@ -22,10 +45,12 @@ export class ExchangeClient {
   private indexCache: ExchangeIndex | null = null;
   private indexCacheTime = 0;
   private readonly scriptCache = new Map<string, string>();
+  private readonly cache: ExchangeCache | null;
 
-  constructor(baseUrl?: string) {
+  constructor(baseUrl?: string, cache?: ExchangeCache) {
     const url = baseUrl ?? DEFAULT_BASE_URL;
     this.baseUrl = url.endsWith("/") ? url : url + "/";
+    this.cache = cache ?? null;
   }
 
   /** Fetch the exchange index, using an in-memory cache with a 5-minute TTL. */
@@ -66,7 +91,7 @@ export class ExchangeClient {
     return data;
   }
 
-  /** Fetch the Lua source for a specific script. Results are cached in memory. */
+  /** Fetch the Lua source for a specific script. Results are cached in memory and written through to ExchangeCache. */
   async fetchScript(entry: ExchangeScriptEntry): Promise<string> {
     const cached = this.scriptCache.get(entry.id);
     if (cached !== undefined) return cached;
@@ -90,6 +115,12 @@ export class ExchangeClient {
 
     const code = await response.text();
     this.scriptCache.set(entry.id, code);
+
+    // Write through to persistent cache
+    if (this.cache) {
+      this.cache.setCachedScript({ ...entry, code });
+    }
+
     return code;
   }
 
@@ -120,5 +151,45 @@ export class ExchangeClient {
     }
 
     return results;
+  }
+
+  /**
+   * Fetch the remote index and compare against the local cache to detect
+   * new and updated scripts. Designed to be called on app load (background,
+   * non-blocking). Also updates the cached index in ExchangeCache.
+   */
+  async checkForUpdates(): Promise<UpdateCheckResult> {
+    const remoteIndex = await this.fetchIndex();
+
+    const newScripts: ExchangeScriptEntry[] = [];
+    const updatedScripts: UpdateCheckResult["updatedScripts"] = [];
+
+    if (this.cache) {
+      // Update the cached index
+      this.cache.setCachedIndex(remoteIndex);
+
+      for (const entry of remoteIndex.scripts) {
+        const cachedScript = this.cache.getCachedScript(entry.id);
+        if (!cachedScript) {
+          newScripts.push(entry);
+        } else if (isNewerVersion(cachedScript.version, entry.version)) {
+          updatedScripts.push({
+            entry,
+            currentVersion: cachedScript.version,
+            newVersion: entry.version,
+          });
+        }
+      }
+    } else {
+      // Without a cache, all scripts are considered new
+      newScripts.push(...remoteIndex.scripts);
+    }
+
+    return {
+      hasUpdates: newScripts.length > 0 || updatedScripts.length > 0,
+      newScripts,
+      updatedScripts,
+      remoteIndex,
+    };
   }
 }

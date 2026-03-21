@@ -1,5 +1,8 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ExchangeClient, ExchangeError } from "../exchange";
+import { ExchangeClient, ExchangeError, ExchangeCache } from "../exchange";
 import type { ExchangeIndex, ExchangeScriptEntry } from "../exchange";
 
 const MOCK_INDEX: ExchangeIndex = {
@@ -62,6 +65,23 @@ function mockFetchNetworkError() {
   return vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
 }
 
+function createMockStorage() {
+  const store = new Map<string, string>();
+  return {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => store.set(key, value),
+    removeItem: (key: string) => store.delete(key),
+    clear: () => store.clear(),
+    get length() {
+      return store.size;
+    },
+    key: (index: number) => {
+      const keys = Array.from(store.keys());
+      return keys[index] ?? null;
+    },
+  };
+}
+
 describe("ExchangeClient", () => {
   let client: ExchangeClient;
   const baseUrl = "https://test.example.com/repo/main/";
@@ -72,8 +92,8 @@ describe("ExchangeClient", () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   describe("fetchIndex", () => {
@@ -177,6 +197,31 @@ describe("ExchangeClient", () => {
         "Network error",
       );
     });
+
+    it("writes through to ExchangeCache after fetching", async () => {
+      const mockStorage = createMockStorage();
+      vi.stubGlobal("localStorage", mockStorage);
+
+      const cache = new ExchangeCache();
+      const clientWithCache = new ExchangeClient(baseUrl, cache);
+      vi.stubGlobal("fetch", mockFetchOk(MOCK_SCRIPT));
+
+      const entry = MOCK_INDEX.scripts[0];
+      await clientWithCache.fetchScript(entry);
+
+      const cachedScript = cache.getCachedScript(entry.id);
+      expect(cachedScript).not.toBeNull();
+      expect(cachedScript!.code).toBe(MOCK_SCRIPT);
+      expect(cachedScript!.id).toBe(entry.id);
+      expect(cachedScript!.version).toBe(entry.version);
+    });
+
+    it("does not write through when no cache is provided", async () => {
+      vi.stubGlobal("fetch", mockFetchOk(MOCK_SCRIPT));
+
+      const code = await client.fetchScript(MOCK_INDEX.scripts[0]);
+      expect(code).toBe(MOCK_SCRIPT);
+    });
   });
 
   describe("searchScripts", () => {
@@ -216,7 +261,6 @@ describe("ExchangeClient", () => {
     });
 
     it("applies both query and tag filters (AND logic)", async () => {
-      // "fractal" matches koch-curve and tree by description, but only tree has "nature" tag
       const results = await client.searchScripts("fractal", ["nature"]);
       expect(results).toHaveLength(1);
       expect(results[0].id).toBe("tree");
@@ -225,6 +269,149 @@ describe("ExchangeClient", () => {
     it("returns empty array when nothing matches", async () => {
       const results = await client.searchScripts("nonexistent");
       expect(results).toHaveLength(0);
+    });
+  });
+
+  describe("checkForUpdates", () => {
+    let cache: ExchangeCache;
+    let clientWithCache: ExchangeClient;
+    let mockStorage: ReturnType<typeof createMockStorage>;
+
+    beforeEach(() => {
+      mockStorage = createMockStorage();
+      vi.stubGlobal("localStorage", mockStorage);
+      cache = new ExchangeCache();
+      clientWithCache = new ExchangeClient(baseUrl, cache);
+    });
+
+    it("reports all scripts as new when cache is empty", async () => {
+      vi.stubGlobal("fetch", mockFetchOk(MOCK_INDEX));
+
+      const result = await clientWithCache.checkForUpdates();
+
+      expect(result.hasUpdates).toBe(true);
+      expect(result.newScripts).toHaveLength(3);
+      expect(result.updatedScripts).toHaveLength(0);
+      expect(result.remoteIndex).toEqual(MOCK_INDEX);
+    });
+
+    it("reports no updates when cache is up to date", async () => {
+      for (const entry of MOCK_INDEX.scripts) {
+        cache.setCachedScript({ ...entry, code: "-- cached" });
+      }
+      vi.stubGlobal("fetch", mockFetchOk(MOCK_INDEX));
+
+      const result = await clientWithCache.checkForUpdates();
+
+      expect(result.hasUpdates).toBe(false);
+      expect(result.newScripts).toHaveLength(0);
+      expect(result.updatedScripts).toHaveLength(0);
+    });
+
+    it("identifies updated scripts when remote has newer versions", async () => {
+      for (const entry of MOCK_INDEX.scripts) {
+        cache.setCachedScript({ ...entry, code: "-- cached" });
+      }
+
+      const updatedIndex: ExchangeIndex = {
+        version: "2026-03-22T00:00:00Z",
+        scripts: MOCK_INDEX.scripts.map((s) =>
+          s.id === "koch-curve" ? { ...s, version: "1.1.0" } : s,
+        ),
+      };
+      vi.stubGlobal("fetch", mockFetchOk(updatedIndex));
+
+      const result = await clientWithCache.checkForUpdates();
+
+      expect(result.hasUpdates).toBe(true);
+      expect(result.newScripts).toHaveLength(0);
+      expect(result.updatedScripts).toHaveLength(1);
+      expect(result.updatedScripts[0]).toEqual({
+        entry: { ...MOCK_INDEX.scripts[0], version: "1.1.0" },
+        currentVersion: "1.0.0",
+        newVersion: "1.1.0",
+      });
+    });
+
+    it("identifies both new and updated scripts simultaneously", async () => {
+      cache.setCachedScript({ ...MOCK_INDEX.scripts[0], code: "-- cached" });
+
+      const updatedIndex: ExchangeIndex = {
+        version: "2026-03-22T00:00:00Z",
+        scripts: MOCK_INDEX.scripts.map((s) =>
+          s.id === "koch-curve" ? { ...s, version: "2.0.0" } : s,
+        ),
+      };
+      vi.stubGlobal("fetch", mockFetchOk(updatedIndex));
+
+      const result = await clientWithCache.checkForUpdates();
+
+      expect(result.hasUpdates).toBe(true);
+      expect(result.newScripts).toHaveLength(2);
+      expect(result.newScripts.map((s) => s.id)).toEqual(["spiral", "tree"]);
+      expect(result.updatedScripts).toHaveLength(1);
+      expect(result.updatedScripts[0].currentVersion).toBe("1.0.0");
+      expect(result.updatedScripts[0].newVersion).toBe("2.0.0");
+    });
+
+    it("updates the cached index after checking", async () => {
+      vi.stubGlobal("fetch", mockFetchOk(MOCK_INDEX));
+
+      await clientWithCache.checkForUpdates();
+
+      const cachedIndex = cache.getCachedIndex();
+      expect(cachedIndex).not.toBeNull();
+      expect(cachedIndex!.version).toBe(MOCK_INDEX.version);
+    });
+
+    it("treats all scripts as new when no cache is provided", async () => {
+      const clientNoCache = new ExchangeClient(baseUrl);
+      vi.stubGlobal("fetch", mockFetchOk(MOCK_INDEX));
+
+      const result = await clientNoCache.checkForUpdates();
+
+      expect(result.hasUpdates).toBe(true);
+      expect(result.newScripts).toHaveLength(3);
+      expect(result.updatedScripts).toHaveLength(0);
+    });
+
+    it("does not report updates when remote version equals cached version", async () => {
+      for (const entry of MOCK_INDEX.scripts) {
+        cache.setCachedScript({ ...entry, code: "-- cached" });
+      }
+      vi.stubGlobal("fetch", mockFetchOk(MOCK_INDEX));
+
+      const result = await clientWithCache.checkForUpdates();
+
+      expect(result.hasUpdates).toBe(false);
+    });
+
+    it("handles major version bumps correctly", async () => {
+      cache.setCachedScript({
+        ...MOCK_INDEX.scripts[0],
+        code: "-- cached",
+        version: "1.9.9",
+      });
+
+      const updatedIndex: ExchangeIndex = {
+        version: "2026-03-22T00:00:00Z",
+        scripts: [{ ...MOCK_INDEX.scripts[0], version: "2.0.0" }],
+      };
+      vi.stubGlobal("fetch", mockFetchOk(updatedIndex));
+
+      const result = await clientWithCache.checkForUpdates();
+
+      expect(result.updatedScripts).toHaveLength(1);
+      expect(result.updatedScripts[0].currentVersion).toBe("1.9.9");
+      expect(result.updatedScripts[0].newVersion).toBe("2.0.0");
+    });
+
+    it("propagates fetch errors from checkForUpdates", async () => {
+      vi.stubGlobal("fetch", mockFetchNetworkError());
+
+      await expect(clientWithCache.checkForUpdates()).rejects.toThrow(
+        ExchangeError,
+      );
     });
   });
 

@@ -40,3 +40,19 @@ export type ExchangeSnapshot = {
   version: string;
   scripts: Array<ExchangeScriptEntry & { code: string }>;
 };
+
+/** Result of comparing the remote exchange index against the local cache. */
+export interface UpdateCheckResult {
+  /** Whether any new or updated scripts were found. */
+  hasUpdates: boolean;
+  /** Scripts present in the remote index but not in the local cache. */
+  newScripts: ExchangeScriptEntry[];
+  /** Scripts where the remote version is newer than the cached version. */
+  updatedScripts: Array<{
+    entry: ExchangeScriptEntry;
+    currentVersion: string;
+    newVersion: string;
+  }>;
+  /** The remote index that was fetched for comparison. */
+  remoteIndex: ExchangeIndex;
+}

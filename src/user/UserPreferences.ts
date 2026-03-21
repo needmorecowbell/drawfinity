@@ -1,5 +1,15 @@
 import { readConfigFile, writeConfigFile } from "./ConfigFile";
 
+/**
+ * Canvas background grid rendering style.
+ *
+ * Controls how the infinite canvas background grid is displayed:
+ * - `"dots"` — Evenly spaced dot pattern (default when grid is enabled)
+ * - `"lines"` — Traditional graph-paper line grid
+ * - `"none"` — No grid, plain background
+ *
+ * Used by {@link UserPreferences.gridStyle} and the {@link Renderer.setGridStyle} method.
+ */
 export type GridStyle = "dots" | "lines" | "none";
 
 export interface UserPreferences {

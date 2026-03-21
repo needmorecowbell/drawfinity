@@ -26,6 +26,17 @@ function createEmptyManifest(): Manifest {
   return { version: 1, drawings: [] };
 }
 
+/**
+ * Loads the drawing manifest from the specified directory.
+ *
+ * Reads and parses the `manifest.json` file that tracks all saved drawings
+ * and their metadata. If no manifest file exists yet, returns an empty
+ * manifest with version 1 and no drawings.
+ *
+ * @param dir - Absolute path to the save directory containing `manifest.json`.
+ * @returns The parsed {@link Manifest} object, or a fresh empty manifest if the file does not exist.
+ * @throws If the file exists but contains invalid JSON or cannot be read.
+ */
 export async function loadManifest(dir: string): Promise<Manifest> {
   const path = await join(dir, MANIFEST_FILE);
   const fileExists = await exists(path);

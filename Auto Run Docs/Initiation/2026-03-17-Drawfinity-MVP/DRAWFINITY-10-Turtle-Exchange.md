@@ -10,22 +10,23 @@ The exchange is a **static GitHub repository** (`needmorecowbell/drawfinity_turt
 ```
 drawfinity_turtle_exchange/
 ├── index.json                    # Master index of all scripts (client fetches this)
+├── README.md                     # Repo overview with script table
 ├── CONTRIBUTING.md               # How to submit a script via PR
 ├── scripts/
 │   ├── spiral/
-│   │   ├── script.lua            # Lua source code
+│   │   ├── spiral.lua            # Lua source code (named after the script id)
 │   │   └── metadata.json         # { title, description, author, tags }
 │   ├── star/
-│   │   ├── script.lua
+│   │   ├── star.lua
 │   │   └── metadata.json
 │   ├── koch-curve/
-│   │   ├── script.lua
+│   │   ├── koch-curve.lua
 │   │   └── metadata.json
 │   ├── tree/
-│   │   ├── script.lua
+│   │   ├── tree.lua
 │   │   └── metadata.json
 │   └── sierpinski-triangle/
-│       ├── script.lua
+│       ├── sierpinski-triangle.lua
 │       └── metadata.json
 ```
 
@@ -57,40 +58,20 @@ drawfinity_turtle_exchange/
 
 ## Tasks
 
-### Client-side Integration (Drawfinity)
+### Client-side Integration (Drawfinity) — See Phase 11
 
-- [ ] Create `src/turtle/exchange/ExchangeTypes.ts` — TypeScript types for the exchange:
-  - `ExchangeScriptEntry` — entry from `index.json` (id, title, description, author, tags, path)
-  - `ExchangeIndex` — the full `index.json` shape (`{ scripts: ExchangeScriptEntry[] }`)
-  - `ExchangeScript` — full script with code loaded (extends entry with `code: string`)
+Client-side implementation is documented in detail in **DRAWFINITY-11-Turtle-Exchange-Client-Integration.md**.
 
-- [ ] Create `src/turtle/exchange/ExchangeClient.ts` — GitHub-based script fetcher:
-  - Base URL: `https://raw.githubusercontent.com/needmorecowbell/drawfinity_turtle_exchange/main/`
-  - `fetchIndex()` — fetch and parse `index.json`, cache result in memory with a TTL (e.g., 5 minutes)
-  - `fetchScript(entry)` — fetch the `.lua` file from `{base}/{entry.path}/script.lua`
-  - `searchScripts(query?)` — filter the cached index by title/description/tags (client-side filtering)
-  - Handle fetch failures gracefully (offline, rate-limited, etc.)
+### Exchange Repository Setup (drawfinity_turtle_exchange) — COMPLETE
 
-- [ ] Create `src/turtle/exchange/index.ts` — barrel exports, re-export from `src/turtle/index.ts`
-
-- [ ] Add Exchange UI to TurtlePanel (`src/ui/TurtlePanel.ts`):
-  - Add an "Exchange" button/tab alongside the existing "Examples" dropdown
-  - Show a browsable list of community scripts fetched from the exchange
-  - Each entry shows: title, description, author, tags
-  - Optional search/filter by text or tags
-  - "Import" button on each script that loads the Lua code into the editor
-  - Loading states and error handling for network failures
-
-- [ ] Write tests for the exchange client (mock fetch, verify URL construction, caching behavior, error handling)
-
-### Exchange Repository Setup (drawfinity_turtle_exchange)
-
-- [ ] Remove existing Rust/Axum code (src/, Cargo.toml, Cargo.lock, etc.)
-- [ ] Create `scripts/` directory structure with folders per script
-- [ ] Seed with 5 built-in examples from Drawfinity: Spiral, Star, Koch Curve, Tree, Sierpinski Triangle
-- [ ] Create `index.json` at repo root listing all scripts
-- [ ] Add `CONTRIBUTING.md` with instructions for submitting scripts via PR
-- [ ] Commit and push
+- [x] Remove existing Rust/Axum code (src/, Cargo.toml, Cargo.lock, etc.)
+- [x] Create `scripts/` directory structure with folders per script (each has `{id}.lua` + `metadata.json`)
+- [x] Seed with 5 built-in examples from Drawfinity: Spiral, Star, Koch Curve, Tree, Sierpinski Triangle
+- [x] Verify Lua logic exactly matches Drawfinity's built-in `TurtleExamples.ts`
+- [x] Create `index.json` at repo root listing all scripts
+- [x] Add `CONTRIBUTING.md` with instructions for submitting scripts via PR
+- [x] Add `README.md` with script overview table
+- [x] Commit and push
 
 ## Design Decisions
 

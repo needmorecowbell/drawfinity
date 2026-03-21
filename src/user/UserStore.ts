@@ -25,6 +25,15 @@ function createDefaultProfile(): UserProfile {
   };
 }
 
+/**
+ * Loads the user profile from localStorage, creating a default profile if none exists.
+ *
+ * Attempts to parse the stored profile JSON. If the stored data is missing, corrupt,
+ * or lacks required fields (`id`, `name`, `color`), a new default profile is generated
+ * with a random UUID, the name "Anonymous", and a random color, then persisted automatically.
+ *
+ * @returns The user's profile, either loaded from storage or freshly created.
+ */
 export function loadProfile(): UserProfile {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (raw) {

@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ExchangeCache } from "../exchange";
-import type { ExchangeIndex, ExchangeScript } from "../exchange";
+import type { ExchangeIndex, ExchangeScript, ExchangeSnapshot } from "../exchange";
 
 const MOCK_INDEX: ExchangeIndex = {
   version: "2026-03-21T00:00:00Z",
@@ -187,6 +187,143 @@ describe("ExchangeCache", () => {
 
     it("is a no-op when cache is already empty", () => {
       expect(() => cache.clearCache()).not.toThrow();
+    });
+  });
+
+  describe("snapshot fallback", () => {
+    const MOCK_SNAPSHOT: ExchangeSnapshot = {
+      version: "2026-03-20T00:00:00Z",
+      scripts: [
+        {
+          id: "snapshot-script",
+          title: "Snapshot Script",
+          description: "A bundled script",
+          author: "drawfinity",
+          tags: ["bundled"],
+          path: "scripts/snapshot-script",
+          version: "1.0.0",
+          code: "forward(50)\nright(90)",
+        },
+        {
+          id: "another-snapshot",
+          title: "Another Snapshot",
+          description: "Another bundled script",
+          author: "drawfinity",
+          tags: ["bundled"],
+          path: "scripts/another-snapshot",
+          version: "1.0.0",
+          code: "pencolor(255, 0, 0)\nforward(100)",
+        },
+      ],
+    };
+
+    let snapshotCache: ExchangeCache;
+
+    beforeEach(() => {
+      snapshotCache = new ExchangeCache(MOCK_SNAPSHOT);
+    });
+
+    it("getCachedIndex returns snapshot index when localStorage is empty", () => {
+      const index = snapshotCache.getCachedIndex();
+      expect(index).not.toBeNull();
+      expect(index!.version).toBe("2026-03-20T00:00:00Z");
+      expect(index!.scripts).toHaveLength(2);
+      expect(index!.cachedAt).toBe(0);
+      // Should not include code field in script entries
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((index!.scripts[0] as any).code).toBeUndefined();
+    });
+
+    it("getCachedIndex prefers localStorage over snapshot", () => {
+      snapshotCache.setCachedIndex(MOCK_INDEX);
+      const index = snapshotCache.getCachedIndex();
+      expect(index!.version).toBe(MOCK_INDEX.version);
+      expect(index!.cachedAt).not.toBe(0);
+    });
+
+    it("getCachedScript returns snapshot script when not in localStorage", () => {
+      const script = snapshotCache.getCachedScript("snapshot-script");
+      expect(script).not.toBeNull();
+      expect(script!.id).toBe("snapshot-script");
+      expect(script!.code).toBe("forward(50)\nright(90)");
+      expect(script!.cachedAt).toBe(0);
+    });
+
+    it("getCachedScript prefers localStorage over snapshot", () => {
+      const localScript: ExchangeScript = {
+        id: "snapshot-script",
+        title: "Updated Script",
+        description: "Updated",
+        author: "drawfinity",
+        tags: ["bundled"],
+        path: "scripts/snapshot-script",
+        version: "2.0.0",
+        code: "forward(200)",
+      };
+      snapshotCache.setCachedScript(localScript);
+      const script = snapshotCache.getCachedScript("snapshot-script");
+      expect(script!.code).toBe("forward(200)");
+      expect(script!.version).toBe("2.0.0");
+      expect(script!.cachedAt).not.toBe(0);
+    });
+
+    it("getCachedScript returns null for script not in snapshot or cache", () => {
+      expect(snapshotCache.getCachedScript("nonexistent")).toBeNull();
+    });
+
+    it("getAllCachedScripts returns snapshot scripts when localStorage is empty", () => {
+      const scripts = snapshotCache.getAllCachedScripts();
+      expect(scripts).toHaveLength(2);
+      const ids = scripts.map((s) => s.id).sort();
+      expect(ids).toEqual(["another-snapshot", "snapshot-script"]);
+    });
+
+    it("getAllCachedScripts merges localStorage and snapshot scripts", () => {
+      // Cache one script that's also in snapshot (should not duplicate)
+      snapshotCache.setCachedScript({
+        id: "snapshot-script",
+        title: "Snapshot Script",
+        description: "A bundled script",
+        author: "drawfinity",
+        tags: ["bundled"],
+        path: "scripts/snapshot-script",
+        version: "1.0.0",
+        code: "forward(50)\nright(90)",
+      });
+      // Cache one script not in snapshot
+      snapshotCache.setCachedScript(MOCK_SCRIPT);
+
+      const scripts = snapshotCache.getAllCachedScripts();
+      expect(scripts).toHaveLength(3);
+      const ids = scripts.map((s) => s.id).sort();
+      expect(ids).toEqual(["another-snapshot", "koch-curve", "snapshot-script"]);
+    });
+
+    it("clearCache still works and snapshot fallback remains after clear", () => {
+      snapshotCache.setCachedScript(MOCK_SCRIPT);
+      snapshotCache.clearCache();
+
+      // localStorage scripts are gone
+      expect(localStorage.getItem("drawfinity:exchange:script:koch-curve")).toBeNull();
+
+      // But snapshot scripts are still accessible
+      const script = snapshotCache.getCachedScript("snapshot-script");
+      expect(script).not.toBeNull();
+      expect(script!.code).toBe("forward(50)\nright(90)");
+    });
+
+    it("getCachedIndex falls back to snapshot when localStorage has malformed JSON", () => {
+      localStorage.setItem("drawfinity:exchange:index", "corrupted");
+      const index = snapshotCache.getCachedIndex();
+      expect(index).not.toBeNull();
+      expect(index!.version).toBe("2026-03-20T00:00:00Z");
+    });
+
+    it("getCachedScript falls back to snapshot when localStorage has malformed JSON", () => {
+      localStorage.setItem("drawfinity:exchange:script:snapshot-script", "bad");
+      const script = snapshotCache.getCachedScript("snapshot-script");
+      expect(script).not.toBeNull();
+      expect(script!.code).toBe("forward(50)\nright(90)");
     });
   });
 });

@@ -45,7 +45,7 @@ export class TurtlePanel {
   private panelHeight = 300;
   private startY = 0;
   private startHeight = 0;
-  private exchangeCache = new ExchangeCache();
+  private exchangeCache = new ExchangeCache(snapshotData as ExchangeSnapshot);
   private exchangeClient = new ExchangeClient(undefined, this.exchangeCache);
   private exchangeOverlay: HTMLElement | null = null;
   private updateResult: UpdateCheckResult | null = null;
@@ -413,16 +413,13 @@ export class TurtlePanel {
     return "available";
   }
 
-  /** Get scripts from cache or snapshot as fallback. */
+  /** Get scripts from cache (which automatically falls back to bundled snapshot). */
   private getScriptsFromCacheOrSnapshot(): ExchangeScriptEntry[] {
-    // Try cached index first
     const cachedIndex = this.exchangeCache.getCachedIndex();
     if (cachedIndex && cachedIndex.scripts.length > 0) {
       return cachedIndex.scripts;
     }
-    // Fall back to bundled snapshot
-    const snapshot = snapshotData as ExchangeSnapshot;
-    return snapshot.scripts;
+    return [];
   }
 
   /** Notify the panel of update check results and show badge if updates exist. */
@@ -722,18 +719,7 @@ export class TurtlePanel {
       onUpdate?.();
       this.closeExchangeBrowser();
     } catch {
-      // Fallback: try loading from snapshot if network fails
-      const snapshot = snapshotData as ExchangeSnapshot;
-      const snapshotScript = snapshot.scripts.find((s) => s.id === entry.id);
-      if (snapshotScript) {
-        this.setScript(snapshotScript.code);
-        // Cache it from snapshot
-        this.exchangeCache.setCachedScript({ ...entry, code: snapshotScript.code });
-        this.closeExchangeBrowser();
-        return;
-      }
-
-      // Also try local cache
+      // Fallback: try local cache (which includes snapshot fallback)
       const cached = this.exchangeCache.getCachedScript(entry.id);
       if (cached) {
         this.setScript(cached.code);

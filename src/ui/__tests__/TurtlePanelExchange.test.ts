@@ -12,25 +12,27 @@ function mockFetchOk(body: unknown) {
   } as unknown as Response);
 }
 
+// Use script IDs not in the bundled exchange-snapshot.json to avoid
+// snapshot fallback interfering with update detection tests.
 const MOCK_INDEX = {
   version: "2026-03-21T00:00:00Z",
   scripts: [
     {
-      id: "spiral",
-      title: "Spiral",
-      description: "A cool spiral",
+      id: "test-waves",
+      title: "Waves",
+      description: "A cool wave pattern",
       author: "alice",
       tags: ["pattern"],
-      path: "scripts/spiral",
+      path: "scripts/test-waves",
       version: "1.0.0",
     },
     {
-      id: "tree",
-      title: "Tree",
-      description: "Fractal tree",
+      id: "test-hexagon",
+      title: "Hexagon",
+      description: "Hexagonal tessellation",
       author: "bob",
       tags: ["fractal"],
-      path: "scripts/tree",
+      path: "scripts/test-hexagon",
       version: "1.0.0",
     },
   ],
@@ -70,7 +72,7 @@ describe("TurtlePanel background update check", () => {
 
     // Pre-cache spiral at v1 so it shows as updatable
     storageMap.set(
-      "drawfinity:exchange:script:spiral",
+      "drawfinity:exchange:script:test-waves",
       JSON.stringify({
         ...MOCK_INDEX.scripts[0],
         code: "forward(100)",
@@ -198,23 +200,17 @@ describe("TurtlePanel Unified Script Browser", () => {
       const titles = document.querySelectorAll(".turtle-exchange-item-title");
       const titleTexts = Array.from(titles).map((t) => t.textContent);
       // Should eventually show the mock index scripts
-      expect(titleTexts.some((t) => t?.includes("Spiral"))).toBe(true);
-      expect(titleTexts.some((t) => t?.includes("Tree"))).toBe(true);
+      expect(titleTexts.some((t) => t?.includes("Waves"))).toBe(true);
+      expect(titleTexts.some((t) => t?.includes("Hexagon"))).toBe(true);
     });
   });
 
   it("shows status badges for installed and update-available scripts", () => {
     // Pre-populate cache with one script
     storageMap.set(
-      "drawfinity:exchange:script:spiral",
+      "drawfinity:exchange:script:test-waves",
       JSON.stringify({
-        id: "spiral",
-        title: "Spiral",
-        description: "A cool spiral",
-        author: "alice",
-        tags: ["pattern"],
-        path: "scripts/spiral",
-        version: "1.0.0",
+        ...MOCK_INDEX.scripts[0],
         code: "forward(100)",
         cachedAt: Date.now(),
       }),
@@ -225,7 +221,7 @@ describe("TurtlePanel Unified Script Browser", () => {
       vi.fn().mockRejectedValue(new Error("offline")),
     );
 
-    // Set update result: tree has an update
+    // Set update result: hexagon has an update
     panel.setUpdateResult({
       hasUpdates: true,
       newScripts: [],
@@ -356,15 +352,9 @@ describe("TurtlePanel Unified Script Browser", () => {
       JSON.stringify({ ...MOCK_INDEX, cachedAt: Date.now() }),
     );
     storageMap.set(
-      "drawfinity:exchange:script:spiral",
+      "drawfinity:exchange:script:test-waves",
       JSON.stringify({
-        id: "spiral",
-        title: "Spiral",
-        description: "A cool spiral",
-        author: "alice",
-        tags: ["pattern"],
-        path: "scripts/spiral",
-        version: "1.0.0",
+        ...MOCK_INDEX.scripts[0],
         code: "forward(100)",
         cachedAt: Date.now(),
       }),

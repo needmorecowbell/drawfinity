@@ -250,7 +250,21 @@ function generateFillVertices(
 
 // ── Public API ──────────────────────────────────────────────────────
 
-/** Generate outline vertices for a rectangle shape. */
+/**
+ * Generates WebGL vertex data for rendering a rectangle shape.
+ *
+ * Produces both outline (triangle strip) and fill (triangle list) geometry
+ * from the rectangle's four corner vertices. The outline uses miter joins
+ * at corners, and the fill uses a center-fan triangulation.
+ *
+ * @param shape - The rectangle shape to generate vertices for. Uses `x`, `y`
+ *   for center position, `width`/`height` for dimensions, `rotation` for
+ *   orientation, `strokeColor`/`strokeWidth` for the outline, and `fillColor`
+ *   for the interior. Only shapes with `type: "rectangle"` produce correct geometry.
+ * @returns Vertex data with interleaved `[x, y, r, g, b, a]` buffers.
+ *   `outline` is `null` when `strokeWidth <= 0`; `fill` is `null` when
+ *   `fillColor` is `null`.
+ */
 export function generateRectangleVertices(shape: Shape): ShapeVertexData {
   return generateShapeFromPerimeter(shape, generatePerimeterPoints(shape));
 }

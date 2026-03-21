@@ -36,6 +36,12 @@ export class Renderer {
     return this.context.canvas;
   }
 
+  /**
+   * Sets the canvas background color and automatically adjusts grid overlay colors
+   * for contrast against the new background.
+   *
+   * @param hex - CSS hex color string (e.g. `"#ffffff"`, `"#1a1a2e"`)
+   */
   setBackgroundColor(hex: string): void {
     this.context.setClearColor(hex);
     this.dotGridRenderer.setDotColor(autoContrastDotColor(hex));

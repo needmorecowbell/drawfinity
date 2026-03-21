@@ -48,6 +48,16 @@ export async function loadManifest(dir: string): Promise<Manifest> {
   return JSON.parse(text) as Manifest;
 }
 
+/**
+ * Persists the drawing manifest to the specified directory as `manifest.json`.
+ *
+ * Serializes the manifest to pretty-printed JSON and writes it to disk.
+ * If the target directory does not exist, it is created recursively before writing.
+ *
+ * @param dir - Absolute path to the save directory where `manifest.json` will be written.
+ * @param manifest - The {@link Manifest} object to persist.
+ * @throws If the file cannot be written (e.g., permission denied or disk full).
+ */
 export async function saveManifest(
   dir: string,
   manifest: Manifest,

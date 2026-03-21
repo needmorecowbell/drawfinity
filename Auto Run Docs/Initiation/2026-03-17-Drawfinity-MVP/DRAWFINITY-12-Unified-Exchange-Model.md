@@ -74,51 +74,58 @@ Per-script `version` fields enable granular update detection (user can see which
 ### Type Updates (`src/turtle/exchange/ExchangeTypes.ts`)
 
 - [x] Add `version` field to `ExchangeScriptEntry` interface. Add `ExchangeIndex.version` (string, ISO timestamp). Add `CachedScript` interface to represent a locally stored script: extends `ExchangeScript` with `cachedAt: number` (Unix ms timestamp) and `version: string`. Add `ExchangeSnapshot` type alias for the bundled build-time data (same shape as `ExchangeIndex` but with `code` included per entry)
-  - *Completed: Added `version: string` to `ExchangeScriptEntry` and `ExchangeIndex`, created `CachedScript` interface extending `ExchangeScript` with `cachedAt` and `version`, added `ExchangeSnapshot` type alias. Updated barrel exports in `exchange/index.ts` and `turtle/index.ts`. Updated test mocks in `ExchangeClient.test.ts` and `TurtlePanelExchange.test.ts` to include version fields. All 1307 tests pass.*
+  - *Completed: All types already implemented in `src/turtle/exchange/ExchangeTypes.ts` — `ExchangeScriptEntry.version`, `ExchangeIndex.version`, `CachedScript` (extends `ExchangeScript` with `cachedAt`), `ExchangeSnapshot` type alias, and `UpdateCheckResult` interface. Exported via barrel in `src/turtle/exchange/index.ts`.*
 
 ### Build-time Snapshot Generator
 
 - [x] Create `scripts/generate-exchange-snapshot.ts` (or `.mjs`) — a Node script that fetches the current exchange repo `index.json` and all `.lua` files, then writes a single `src/turtle/exchange/exchange-snapshot.json` containing the full index with inline script code. Add an `exchange:snapshot` npm script in `package.json` that runs this generator. The snapshot file should be `.gitignore`d if we want fresh builds to always pull latest, OR committed if we want reproducible offline builds — default to committed for reliability
-  - *Completed: Created `scripts/generate-exchange-snapshot.mjs` supporting both GitHub remote fetch (default) and `--local <path>` for local repos. Added `exchange:snapshot` npm script to `package.json`. Snapshot committed at `src/turtle/exchange/exchange-snapshot.json` with all 5 seeded scripts and inline Lua code. Added 5 validation tests in `generate-exchange-snapshot.test.ts`. All 1312 tests pass.*
+  - *Already completed: `scripts/generate-exchange-snapshot.mjs` exists with remote (GitHub) and `--local` modes, `exchange:snapshot` npm script in `package.json`, and committed `exchange-snapshot.json` with 5 bundled scripts.*
 
 ### Local Cache Layer (`src/turtle/exchange/ExchangeCache.ts`)
 
 - [x] Create `ExchangeCache` class that manages localStorage-based script storage. Key design: store under `drawfinity:exchange:index` (cached index with version) and `drawfinity:exchange:script:{id}` (individual cached scripts with version and code). Implement methods: `getCachedIndex(): CachedExchangeIndex | null`, `setCachedIndex(index: ExchangeIndex): void`, `getCachedScript(id: string): CachedScript | null`, `setCachedScript(script: ExchangeScript): void`, `getAllCachedScripts(): CachedScript[]`, `clearCache(): void`
-  - *Completed: Created `ExchangeCache` class in `src/turtle/exchange/ExchangeCache.ts` with `CachedExchangeIndex` interface. All methods implemented with JSON parse error handling. Added barrel exports to `exchange/index.ts` and `turtle/index.ts`. Created 12 tests in `ExchangeCache.test.ts` covering read/write, cache miss, malformed JSON, selective clearing, and getAllCachedScripts. All 1324 tests pass.*
+  - *Already completed: `ExchangeCache` class fully implemented in `src/turtle/exchange/ExchangeCache.ts` with all required methods and `CachedExchangeIndex` interface. Exported via barrel. 12 tests passing in `ExchangeCache.test.ts`.*
 
 ### Update Detection (`src/turtle/exchange/ExchangeClient.ts`)
 
 - [x] Extend `ExchangeClient` with update-awareness. Add `checkForUpdates(): Promise<UpdateCheckResult>` that fetches the remote index and compares against the local cache. `UpdateCheckResult` should contain: `hasUpdates: boolean`, `newScripts: ExchangeScriptEntry[]` (scripts in remote but not in cache), `updatedScripts: Array<{ entry: ExchangeScriptEntry, currentVersion: string, newVersion: string }>` (scripts where remote version > cached version), `remoteIndex: ExchangeIndex`. This method should be called on app load (background, non-blocking). Update `fetchScript()` to write through to `ExchangeCache` after fetching
-  - *Completed: Added `UpdateCheckResult` interface to `ExchangeTypes.ts`. Extended `ExchangeClient` constructor to accept optional `ExchangeCache`. Implemented `checkForUpdates()` with semver comparison via `isNewerVersion()`. Updated `fetchScript()` to write through to `ExchangeCache`. Added barrel exports for `UpdateCheckResult`. Created 10 new tests covering: empty cache (all new), up-to-date cache, updated versions, mixed new+updated, cached index update, no-cache fallback, version equality, major version bumps, and error propagation. All 1335 tests pass.*
+  - *Already completed: `checkForUpdates()` fully implemented with semver comparison via `isNewerVersion()`, cache write-through in `fetchScript()`, and `UpdateCheckResult` interface in `ExchangeTypes.ts`. 17 tests covering empty cache, up-to-date cache, version bumps, mixed new+updated scripts, and error propagation — all passing.*
 
 ### Unified Script Browser UI (`src/ui/TurtlePanel.ts`)
 
 - [x] Replace the separate "Examples" dropdown and "Community" button with a single unified script browser. The browser should show all scripts from the exchange (using cached data or snapshot as fallback). Each script entry shows: title, description, author, tags, and status — one of "installed" (in cache, up to date), "update available" (in cache, newer version exists), or "available" (not yet cached). Add an "Updates Available" badge/indicator on the browser toggle button when `checkForUpdates()` finds changes. Do NOT auto-update — user explicitly clicks "Update" per script or "Update All"
-  - *Completed: Replaced Examples dropdown and Community button with a single "Scripts" button that opens a unified exchange browser. Scripts load from ExchangeCache or bundled snapshot as fallback, with background fetch for fresh data. Each script shows status badges (Installed/Update Available) and context-aware action buttons (Import/Update). Added `setUpdateResult()` public method for badge count display. Added "Update All" button in browser header. Added CSS for status badges, update button style, and Scripts button badge. Updated TurtlePanel.test.ts (replaced 8 Examples dropdown tests with 4 unified browser tests) and TurtlePanelExchange.test.ts (8 new tests covering Scripts button, snapshot rendering, status badges, update badge, and import flow). All 1326 tests pass.*
+  - *Already completed: `TurtlePanel.ts` has unified "Scripts" button with badge, `openExchangeBrowser()` with status badges (installed/update-available/available), Update All, search/tag filtering, and multi-layer fallback (cache → snapshot → network). 37 tests passing across `TurtlePanel.test.ts` and `TurtlePanelExchange.test.ts`.*
 
 - [x] Remove the `TURTLE_EXAMPLES` import and the Examples dropdown `<select>` element from `TurtlePanel.ts`. The unified browser replaces both entry points. Ensure the "Import" action still populates the editor textarea and saves to localStorage as before
-  - *Already completed in previous task: TurtlePanel.ts has no TURTLE_EXAMPLES import or Examples `<select>` dropdown. The unified Scripts browser's Import action populates the editor via `setScript()` which saves to localStorage. All 1336 tests pass.*
+  - *Already completed in prior task: `TurtlePanel.ts` has no `TURTLE_EXAMPLES` import and no Examples `<select>`. The unified Scripts browser replaced both. `importExchangeScript()` calls `setScript()` → `saveScript()` which writes to localStorage correctly. 37 TurtlePanel tests passing.*
 
 ### Remove Built-in Examples
 
 - [x] Delete `src/turtle/TurtleExamples.ts`. Remove its export from `src/turtle/index.ts`. Remove any imports of `TURTLE_EXAMPLES` across the codebase (likely `TurtlePanel.ts` and any tests that reference it). The exchange snapshot and cache now serve this role entirely
-  - *Completed: `TurtleExamples.ts` deleted, all exports/imports removed from barrel files and TurtlePanel. All tests pass.*
+  - *Completed: Deleted `TurtleExamples.ts` and `TurtleExamples.test.ts`. Removed `TurtleExample` type and `TURTLE_EXAMPLES` exports from `src/turtle/index.ts`. No other references existed in `TurtlePanel.ts` (already cleaned up in prior task). All 1331 tests pass.*
 
 ### Startup Integration (`src/canvas/CanvasApp.ts` or `src/main.ts`)
 
-- [ ] On app startup, call `exchangeClient.checkForUpdates()` in the background (non-blocking, fire-and-forget with error catch). Store the result so the TurtlePanel can display the update indicator when opened. If the check fails (offline), silently fall back to cached data — no error shown to user unless they explicitly open the browser and have zero cached scripts
+- [x] On app startup, call `exchangeClient.checkForUpdates()` in the background (non-blocking, fire-and-forget with error catch). Store the result so the TurtlePanel can display the update indicator when opened. If the check fails (offline), silently fall back to cached data — no error shown to user unless they explicitly open the browser and have zero cached scripts
+  - *Completed: Added `checkForUpdatesInBackground()` to `TurtlePanel` constructor — fire-and-forget with silent error catch. The result is passed to `setUpdateResult()` to show the badge. Two new tests in `TurtlePanelExchange.test.ts` verify badge display on update detection and silent failure on network error. All 1333 tests passing.*
 
 ### Snapshot Fallback Integration
 
-- [ ] In `ExchangeClient` or `ExchangeCache`, add fallback logic: when the cache is empty (first launch, cleared cache) and network is unavailable, load scripts from the bundled `exchange-snapshot.json` (static import or dynamic import). This ensures the app always has the baseline scripts available
+- [x] In `ExchangeClient` or `ExchangeCache`, add fallback logic: when the cache is empty (first launch, cleared cache) and network is unavailable, load scripts from the bundled `exchange-snapshot.json` (static import or dynamic import). This ensures the app always has the baseline scripts available
+  - *Completed: `ExchangeCache` constructor now accepts an optional `ExchangeSnapshot` parameter. When localStorage is empty, `getCachedIndex()`, `getCachedScript()`, and `getAllCachedScripts()` fall back to snapshot data. `TurtlePanel` passes the bundled snapshot to `ExchangeCache`, and snapshot fallback code in `TurtlePanel` was simplified to use the cache layer. 10 new tests in `ExchangeCache.test.ts` cover snapshot fallback scenarios. All 1343 tests passing.*
 
 ### Tests
 
-- [ ] Test `ExchangeCache`: write/read index and scripts to localStorage, cache miss returns null, `clearCache()` empties all exchange keys, `getAllCachedScripts()` returns all stored scripts
-- [ ] Test `checkForUpdates()`: mock remote index with newer versions, verify `newScripts` and `updatedScripts` are correctly identified. Test with empty cache (all scripts are "new"). Test with up-to-date cache (no updates)
-- [ ] Test snapshot fallback: when cache is empty and fetch fails, scripts load from bundled snapshot
-- [ ] Test unified browser UI: verify scripts render with correct status indicators (installed/update available/available), verify update action fetches and caches the new version, verify the old Examples dropdown is gone
-- [ ] Update existing `ExchangeClient.test.ts` and `TurtlePanelExchange.test.ts` to reflect the unified model — remove references to `TURTLE_EXAMPLES` and the separate Examples dropdown
+- [x] Test `ExchangeCache`: write/read index and scripts to localStorage, cache miss returns null, `clearCache()` empties all exchange keys, `getAllCachedScripts()` returns all stored scripts
+  - *Already completed: 22 tests in `ExchangeCache.test.ts` covering index read/write, script read/write, cache miss returns null, clearCache preserves non-exchange keys, getAllCachedScripts with malformed entries, and 10 snapshot fallback tests. All passing.*
+- [x] Test `checkForUpdates()`: mock remote index with newer versions, verify `newScripts` and `updatedScripts` are correctly identified. Test with empty cache (all scripts are "new"). Test with up-to-date cache (no updates)
+  - *Already completed: 10 tests in `ExchangeClient.test.ts` `checkForUpdates` describe block covering empty cache (all new), up-to-date cache (no updates), newer versions, mixed new+updated, major version bumps, cache write-through, and error propagation. All passing.*
+- [x] Test snapshot fallback: when cache is empty and fetch fails, scripts load from bundled snapshot
+  - *Already completed: 10 snapshot fallback tests in `ExchangeCache.test.ts` plus `TurtlePanelExchange.test.ts` "opens exchange overlay and renders scripts from snapshot immediately" test. All passing.*
+- [x] Test unified browser UI: verify scripts render with correct status indicators (installed/update available/available), verify update action fetches and caches the new version, verify the old Examples dropdown is gone
+  - *Already completed: `TurtlePanelExchange.test.ts` has tests for Scripts button presence (no Community/Examples), status badges (Installed/Update Available), import action, update button, badge display, and snapshot rendering. All 13 tests passing.*
+- [x] Update existing `ExchangeClient.test.ts` and `TurtlePanelExchange.test.ts` to reflect the unified model — remove references to `TURTLE_EXAMPLES` and the separate Examples dropdown
+  - *Already completed: No references to `TURTLE_EXAMPLES` exist anywhere in `src/`. Tests use exchange-based mock data throughout. Verified with grep — zero matches.*
 
 ### Cleanup
 

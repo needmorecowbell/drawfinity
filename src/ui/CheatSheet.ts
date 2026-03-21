@@ -121,6 +121,13 @@ export class CheatSheet {
     }
   }
 
+  /**
+   * Opens the cheat sheet overlay and focuses the search input.
+   *
+   * Appends the overlay element to `document.body`, clears any previous search
+   * query, renders the full action list, and moves keyboard focus to the search
+   * field. If the overlay is already visible this method is a no-op.
+   */
   show(): void {
     if (this.visible) return;
     this.visible = true;

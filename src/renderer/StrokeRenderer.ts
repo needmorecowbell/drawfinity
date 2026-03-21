@@ -5,6 +5,19 @@ import {
 } from "./ShaderProgram";
 import { generateTriangleStrip } from "./StrokeMesh";
 
+/**
+ * A point within a stroke used for rendering, containing position and optional pressure.
+ *
+ * This is the renderer-local interface for stroke points consumed by
+ * {@link StrokeRenderer} and {@link generateTriangleStrip}. Unlike the model-layer
+ * `StrokePoint` (in `model/Stroke.ts`), pressure is optional here — when omitted,
+ * the renderer treats it as a uniform-width stroke.
+ *
+ * @property x - Horizontal position in world-space coordinates.
+ * @property y - Vertical position in world-space coordinates.
+ * @property pressure - Normalized pressure value (0–1). Optional; when absent,
+ *   the stroke is rendered at uniform width.
+ */
 export interface StrokePoint {
   x: number;
   y: number;

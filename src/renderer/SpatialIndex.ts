@@ -201,7 +201,17 @@ export class SpatialIndex {
     }
   }
 
-  /** Remove a stroke from the index by ID. */
+  /**
+   * Removes a stroke from the spatial index by its unique identifier.
+   *
+   * Looks up the stroke's previously computed bounding box, iterates over
+   * all grid cells that the bounding box overlaps, and filters the stroke
+   * out of each cell's entry list. Empty cells are deleted to free memory.
+   * If the stroke ID is not found in the index, this method is a no-op.
+   *
+   * @param strokeId - The unique identifier of the stroke to remove
+   *   (matches `stroke.id` passed to {@link add}).
+   */
   remove(strokeId: string): void {
     const bounds = this.strokeBounds.get(strokeId);
     if (!bounds) return;

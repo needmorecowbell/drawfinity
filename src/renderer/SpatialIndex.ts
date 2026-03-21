@@ -169,7 +169,18 @@ export class SpatialIndex {
     }
   }
 
-  /** Add a shape to the index. */
+  /**
+   * Adds a shape to the spatial index for viewport culling queries.
+   *
+   * Computes the shape's axis-aligned bounding box via {@link computeShapeBounds},
+   * then maps the shape into every grid cell that its bounding box overlaps.
+   * If the shape already exists in the index (same `shape.id`), a duplicate
+   * entry will be created — call {@link removeShape} first to update an existing shape.
+   *
+   * @param shape - The shape to index. Uses `shape.id` as the unique key,
+   *   and the shape's center, dimensions, rotation, and stroke width for bounds
+   *   computation.
+   */
   addShape(shape: Shape): void {
     const bounds = computeShapeBounds(shape);
     this.shapeBoundsMap.set(shape.id, bounds);

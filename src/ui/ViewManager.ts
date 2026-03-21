@@ -12,6 +12,24 @@ import type { DrawingMetadata } from "../persistence/DrawingManifest";
  */
 export type ViewName = "home" | "canvas";
 
+/**
+ * Dependency injection interface for {@link ViewManager}.
+ *
+ * Provides the persistence and drawing management callbacks that ViewManager
+ * needs to orchestrate transitions between the home screen and canvas views.
+ * All drawing CRUD operations are supplied externally, allowing ViewManager
+ * to remain decoupled from the persistence layer.
+ *
+ * @property listDrawings - Fetches all available drawings for the home screen listing.
+ * @property createDrawing - Creates a new drawing with the given name and returns its metadata.
+ * @property deleteDrawing - Permanently deletes a drawing by its unique ID.
+ * @property renameDrawing - Renames an existing drawing identified by ID.
+ * @property duplicateDrawing - Creates a copy of a drawing with a new name.
+ * @property getSaveDirectory - Returns the current directory path where drawings are stored.
+ * @property onChangeSaveDirectory - Optional callback to prompt the user to select a new save directory.
+ *   Returns the new path if changed, or `null` if the user cancelled.
+ * @property getDrawingName - Optional callback to resolve a drawing's display name from its ID.
+ */
 export interface ViewManagerDeps {
   listDrawings: () => Promise<DrawingMetadata[]>;
   createDrawing: (name: string) => Promise<DrawingMetadata>;

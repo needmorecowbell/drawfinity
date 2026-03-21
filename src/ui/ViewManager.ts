@@ -41,6 +41,36 @@ export interface ViewManagerDeps {
   getDrawingName?: (id: string) => Promise<string>;
 }
 
+/**
+ * Manages transitions between the home screen and canvas drawing views.
+ *
+ * ViewManager orchestrates the application's two top-level view states: the home
+ * screen (where users browse and manage drawings) and the canvas (where a single
+ * drawing is open for editing). It handles the lifecycle of {@link CanvasApp} instances,
+ * ensuring proper cleanup when switching views, and guards against concurrent
+ * transitions with an internal lock.
+ *
+ * @param canvasContainer - The DOM element that hosts the canvas drawing view.
+ * @param deps - Persistence and drawing management callbacks injected via {@link ViewManagerDeps}.
+ *
+ * @example
+ * ```ts
+ * const viewManager = new ViewManager(document.getElementById("canvas")!, {
+ *   listDrawings: () => manifest.list(),
+ *   createDrawing: (name) => manifest.create(name),
+ *   deleteDrawing: (id) => manifest.delete(id),
+ *   renameDrawing: (id, name) => manifest.rename(id, name),
+ *   duplicateDrawing: (id, name) => manifest.duplicate(id, name),
+ *   getSaveDirectory: () => manifest.getDirectory(),
+ * });
+ *
+ * // Open a drawing on the canvas
+ * await viewManager.showCanvas("drawing-123");
+ *
+ * // Return to the home screen
+ * await viewManager.showHome();
+ * ```
+ */
 export class ViewManager {
   private currentView: ViewName = "home";
   private canvasApp: CanvasApp | null = null;

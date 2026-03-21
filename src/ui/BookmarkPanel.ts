@@ -3,14 +3,41 @@ import { CameraBookmark, generateBookmarkId } from "../model/Bookmark";
 import { Camera } from "../camera/Camera";
 import { ICONS } from "./ToolbarIcons";
 
+/**
+ * Callbacks for responding to bookmark panel interactions and resolving user identity.
+ *
+ * All callbacks are optional — omit any that are not relevant to the current context
+ * (e.g., user-identity callbacks are only needed during collaboration).
+ */
 export interface BookmarkPanelCallbacks {
+  /** Called when the user clicks a bookmark to navigate the camera to its saved position. */
   onNavigate?: (bookmark: CameraBookmark) => void;
+  /** Returns the local user's unique identifier, used to tag bookmark ownership. */
   getUserId?: () => string;
+  /** Returns the local user's display name, stored on newly created bookmarks. */
   getUserName?: () => string;
+  /** Resolves a remote user's ID to their display name, shown as the bookmark creator label. */
   resolveUserName?: (userId: string) => string | undefined;
+  /** Returns whether the document is in a collaborative session, enabling creator-name display. */
   isCollaborating?: () => boolean;
 }
 
+/**
+ * Side panel UI for managing camera bookmarks on the infinite canvas.
+ *
+ * Displays a list of saved {@link CameraBookmark} positions that users can navigate to,
+ * rename, or delete. In collaborative sessions, each bookmark shows its creator's name.
+ * New bookmarks capture the current camera position and zoom level.
+ *
+ * The panel listens for CRDT bookmark changes via {@link DrawfinityDoc.onBookmarksChanged}
+ * and re-renders automatically when bookmarks are added, updated, or removed by any user.
+ *
+ * Toggle visibility with `Ctrl+B`; quick-add a bookmark with `Ctrl+D`.
+ *
+ * @param doc - The shared CRDT document that stores bookmarks
+ * @param camera - The camera whose position is captured when adding bookmarks
+ * @param callbacks - Optional callbacks for navigation, user identity, and collaboration state
+ */
 export class BookmarkPanel {
   private container: HTMLElement;
   private listEl: HTMLElement;
@@ -230,6 +257,14 @@ export class BookmarkPanel {
     this.renderList();
   }
 
+  /**
+   * Adds a new bookmark at the current camera position.
+   *
+   * If a label is provided, the bookmark is created immediately. Otherwise, the panel
+   * opens (if hidden) and displays an inline text input for the user to enter a name.
+   *
+   * @param label - Optional bookmark name; when omitted, shows an inline input for naming
+   */
   addBookmark(label?: string): void {
     if (!this.visible) {
       this.show();
@@ -286,10 +321,12 @@ export class BookmarkPanel {
     this.doc.removeBookmark(id);
   }
 
+  /** Forces a re-render of the bookmark list from the current CRDT state. */
   refreshList(): void {
     this.renderList();
   }
 
+  /** Shows the bookmark panel by appending it to the document body. No-op if already visible. */
   show(): void {
     if (this.visible) return;
     this.visible = true;
@@ -297,6 +334,7 @@ export class BookmarkPanel {
     this.container.classList.add("bm-visible");
   }
 
+  /** Hides the bookmark panel and removes it from the DOM. No-op if already hidden. */
   hide(): void {
     if (!this.visible) return;
     this.visible = false;
@@ -304,6 +342,7 @@ export class BookmarkPanel {
     this.container.remove();
   }
 
+  /** Toggles the bookmark panel between visible and hidden states. */
   toggle(): void {
     if (this.visible) {
       this.hide();
@@ -312,10 +351,12 @@ export class BookmarkPanel {
     }
   }
 
+  /** Returns whether the bookmark panel is currently visible. */
   isVisible(): boolean {
     return this.visible;
   }
 
+  /** Cleans up the panel by hiding it and removing it from the DOM. */
   destroy(): void {
     this.hide();
   }

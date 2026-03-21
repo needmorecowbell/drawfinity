@@ -48,6 +48,18 @@ export class Renderer {
     this.lineGridRenderer.setAutoContrastColor(hex);
   }
 
+  /**
+   * Sets the grid rendering style used when drawing the canvas background grid.
+   *
+   * The selected style takes effect on the next call to {@link drawGrid}. The grid
+   * style is typically loaded from {@link UserPreferences.gridStyle} and can be
+   * changed at runtime via the settings panel.
+   *
+   * @param style - The grid style to use: `"dots"` for a dot grid, `"lines"` for
+   *   a line grid, or `"none"` to hide the grid entirely.
+   *
+   * @see {@link GridStyle}
+   */
   setGridStyle(style: GridStyle): void {
     this.gridStyle = style;
   }

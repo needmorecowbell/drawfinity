@@ -76,6 +76,18 @@ export class Renderer {
     this.context.clear();
   }
 
+  /**
+   * Sets the camera transformation matrix used for rendering strokes.
+   *
+   * Uploads a 3x3 homogeneous transformation matrix to the stroke shader,
+   * controlling how stroke geometry is projected onto the viewport. This must
+   * be called whenever the camera moves, zooms, or rotates, and before any
+   * stroke draw calls in the current frame.
+   *
+   * @param matrix - A 3x3 transformation matrix stored as a 9-element
+   *   {@link Float32Array} in column-major order, mapping world coordinates
+   *   to clip space.
+   */
   setCameraMatrix(matrix: Float32Array): void {
     this.strokeRenderer.setCameraMatrix(matrix);
   }

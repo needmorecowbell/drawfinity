@@ -18,5 +18,7 @@ export type {
   ExchangeScriptEntry,
   ExchangeIndex,
   ExchangeScript,
+  CachedScript,
+  ExchangeSnapshot,
 } from "./exchange";
 export { ExchangeClient, ExchangeError } from "./exchange";

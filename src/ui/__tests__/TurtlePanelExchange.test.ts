@@ -13,6 +13,7 @@ function mockFetchOk(body: unknown) {
 }
 
 const MOCK_INDEX = {
+  version: "2026-03-21T00:00:00Z",
   scripts: [
     {
       id: "spiral",
@@ -21,6 +22,7 @@ const MOCK_INDEX = {
       author: "alice",
       tags: ["pattern"],
       path: "scripts/spiral",
+      version: "1.0.0",
     },
     {
       id: "tree",
@@ -29,6 +31,7 @@ const MOCK_INDEX = {
       author: "bob",
       tags: ["fractal"],
       path: "scripts/tree",
+      version: "1.0.0",
     },
   ],
 };

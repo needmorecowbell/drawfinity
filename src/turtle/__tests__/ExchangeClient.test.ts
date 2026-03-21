@@ -3,6 +3,7 @@ import { ExchangeClient, ExchangeError } from "../exchange";
 import type { ExchangeIndex, ExchangeScriptEntry } from "../exchange";
 
 const MOCK_INDEX: ExchangeIndex = {
+  version: "2026-03-21T00:00:00Z",
   scripts: [
     {
       id: "koch-curve",
@@ -11,6 +12,7 @@ const MOCK_INDEX: ExchangeIndex = {
       author: "drawfinity",
       tags: ["fractal", "recursive", "math"],
       path: "scripts/koch-curve",
+      version: "1.0.0",
     },
     {
       id: "spiral",
@@ -19,6 +21,7 @@ const MOCK_INDEX: ExchangeIndex = {
       author: "community",
       tags: ["pattern", "color"],
       path: "scripts/spiral",
+      version: "1.0.0",
     },
     {
       id: "tree",
@@ -27,6 +30,7 @@ const MOCK_INDEX: ExchangeIndex = {
       author: "drawfinity",
       tags: ["fractal", "recursive", "nature"],
       path: "scripts/tree",
+      version: "1.0.0",
     },
   ],
 };

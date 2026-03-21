@@ -78,7 +78,8 @@ Per-script `version` fields enable granular update detection (user can see which
 
 ### Build-time Snapshot Generator
 
-- [ ] Create `scripts/generate-exchange-snapshot.ts` (or `.mjs`) — a Node script that fetches the current exchange repo `index.json` and all `.lua` files, then writes a single `src/turtle/exchange/exchange-snapshot.json` containing the full index with inline script code. Add an `exchange:snapshot` npm script in `package.json` that runs this generator. The snapshot file should be `.gitignore`d if we want fresh builds to always pull latest, OR committed if we want reproducible offline builds — default to committed for reliability
+- [x] Create `scripts/generate-exchange-snapshot.ts` (or `.mjs`) — a Node script that fetches the current exchange repo `index.json` and all `.lua` files, then writes a single `src/turtle/exchange/exchange-snapshot.json` containing the full index with inline script code. Add an `exchange:snapshot` npm script in `package.json` that runs this generator. The snapshot file should be `.gitignore`d if we want fresh builds to always pull latest, OR committed if we want reproducible offline builds — default to committed for reliability
+  - *Already completed: `scripts/generate-exchange-snapshot.mjs` exists with remote (GitHub) and `--local` modes, `exchange:snapshot` npm script in `package.json`, and committed `exchange-snapshot.json` with 5 bundled scripts.*
 
 ### Local Cache Layer (`src/turtle/exchange/ExchangeCache.ts`)
 

@@ -312,7 +312,26 @@ export function generatePolygonVertices(shape: Shape): ShapeVertexData {
   return generateShapeFromPerimeter(shape, generatePerimeterPoints(shape));
 }
 
-/** Generate outline vertices for a star shape. */
+/**
+ * Generates WebGL vertex data for rendering a star shape.
+ *
+ * Produces triangle-strip outline and triangle-list fill geometry for a star
+ * with a configurable number of points (via {@link Shape.sides}, default 5)
+ * and inner radius ratio (via {@link Shape.starInnerRadius}, default 0.4).
+ * Outer and inner vertices alternate around the perimeter, with the first
+ * outer vertex placed at the top of the shape (−π/2) so that the star
+ * appears upright. Position, rotation, colors, and stroke width are all
+ * read from the shape's properties.
+ *
+ * @param shape - The star shape to generate vertices for. Uses `sides`
+ *   (default 5) to determine the number of points, `starInnerRadius`
+ *   (default 0.4) to control the ratio between inner and outer radii, and
+ *   reads `width`, `height`, `x`, `y`, `rotation`, `strokeColor`,
+ *   `strokeWidth`, `fillColor`, and `opacity` for geometry and color.
+ * @returns Vertex data with interleaved `[x, y, r, g, b, a]` buffers.
+ *   `outline` is `null` when `strokeWidth <= 0`; `fill` is `null` when
+ *   `fillColor` is `null`.
+ */
 export function generateStarVertices(shape: Shape): ShapeVertexData {
   return generateShapeFromPerimeter(shape, generatePerimeterPoints(shape));
 }

@@ -20,7 +20,7 @@ Using the documentation report, identify specific undocumented exports that need
 
 ## Discovery Checklist
 
-- [ ] **Find documentation gaps (or skip if not needed)**: Read `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00002_DOC_REPORT.md`. If the report shows overall coverage of 90% or higher, OR there are no modules with coverage below 90%, mark this task complete without creating a gaps file—the coverage target has been met. Otherwise, examine low-coverage modules, identify specific undocumented functions, classes, and types. List each gap with file path, export name, type, and why documentation is needed. Output to `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00002_GAPS.md`.
+- [x] **Find documentation gaps (or skip if not needed)**: Read `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00002_DOC_REPORT.md`. If the report shows overall coverage of 90% or higher, OR there are no modules with coverage below 90%, mark this task complete without creating a gaps file—the coverage target has been met. Otherwise, examine low-coverage modules, identify specific undocumented functions, classes, and types. List each gap with file path, export name, type, and why documentation is needed. Output to `/home/adam/Dev/drawfinity/Auto Run Docs/LOOP_00002_GAPS.md`.
 
 ## What to Look For
 

@@ -33,10 +33,11 @@ window.addEventListener("unhandledrejection", (e) => {
         drawingManager.duplicateDrawing(id, newName),
       getSaveDirectory: () => drawingManager.getSaveDirectory(),
       getDrawingName: (id) => drawingManager.getDrawingName(id),
+      drawingManager,
     });
   } catch {
-    console.warn(
-      "Drawfinity: persistence unavailable, using in-memory stubs",
+    console.log(
+      "Drawfinity: Tauri not detected, using browser localStorage for persistence",
     );
 
     // Browser-only mode: persist drawing list to localStorage

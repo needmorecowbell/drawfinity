@@ -39,6 +39,7 @@ export class AutoSave {
   private updateHandler: ((update: Uint8Array, origin: unknown) => void) | null =
     null;
   private saving = false;
+  private savePromise: Promise<void> | null = null;
 
   /**
    * Creates an AutoSave instance for direct file-based persistence.
@@ -168,21 +169,29 @@ export class AutoSave {
       clearTimeout(this.timer);
       this.timer = null;
     }
-    if (this.saving) return;
+    // If a save is already in progress, wait for it then do another save
+    // to ensure the latest state is persisted
+    if (this.saving && this.savePromise) {
+      await this.savePromise;
+    }
 
     this.saving = true;
-    try {
-      if (this.drawingId && this.drawingManager) {
-        const state = Y.encodeStateAsUpdate(this.doc);
-        await this.drawingManager.saveDrawing(this.drawingId, state);
-      } else {
-        await saveDocument(this.doc, this.filePath);
+    this.savePromise = (async () => {
+      try {
+        if (this.drawingId && this.drawingManager) {
+          const state = Y.encodeStateAsUpdate(this.doc);
+          await this.drawingManager.saveDrawing(this.drawingId, state);
+        } else {
+          await saveDocument(this.doc, this.filePath);
+        }
+      } catch (err) {
+        console.error("AutoSave: failed to save document", err);
+      } finally {
+        this.saving = false;
+        this.savePromise = null;
       }
-    } catch (err) {
-      console.error("AutoSave: failed to save document", err);
-    } finally {
-      this.saving = false;
-    }
+    })();
+    await this.savePromise;
   }
 
   private scheduleSave(): void {

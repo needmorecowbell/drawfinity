@@ -23,6 +23,16 @@ export interface AABB {
 
 /**
  * Computes the axis-aligned bounding box of a stroke, accounting for stroke width.
+ *
+ * Iterates over all points in the stroke to find the spatial extent, then
+ * expands the bounds by half the stroke width in each direction to ensure
+ * the full rendered area is enclosed.
+ *
+ * @param stroke - The stroke whose bounding box to compute. Must contain
+ *   at least one point for meaningful results; an empty points array yields
+ *   an inverted (infinite) AABB.
+ * @returns An {@link AABB} that fully encloses the stroke's rendered area,
+ *   including its width.
  */
 export function computeStrokeBounds(stroke: Stroke): AABB {
   let minX = Infinity;

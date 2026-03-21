@@ -27,7 +27,11 @@ logs-frontend: ## Tail frontend logs only
 
 # ── Local development ────────────────────────────────────
 
-dev: stop ## Start server + frontend locally (no Docker)
+node_modules: package.json ## Install npm dependencies if needed
+	npm install
+	@touch node_modules
+
+dev: stop node_modules ## Start server + frontend locally (no Docker)
 	@echo "Starting server and frontend..."
 	@cd server && cargo run -- --port 8080 --data-dir ./data &
 	@sleep 2
@@ -47,18 +51,18 @@ stop: ## Stop local dev processes (Vite + server)
 server: ## Start only the collaboration server locally
 	cd server && cargo run -- --port 8080 --data-dir ./data
 
-frontend: ## Start only the frontend dev server locally
+frontend: node_modules ## Start only the frontend dev server locally
 	npx vite --host --port 1420
 
-tauri: ## Start Tauri desktop app in dev mode
+tauri: node_modules ## Start Tauri desktop app in dev mode
 	npm run tauri dev
 
 # ── Testing & building ───────────────────────────────────
 
-test: ## Run all frontend tests
+test: node_modules ## Run all frontend tests
 	npx vitest run
 
-test-watch: ## Run frontend tests in watch mode
+test-watch: node_modules ## Run frontend tests in watch mode
 	npx vitest --watch
 
 test-server: ## Run server tests
@@ -66,13 +70,13 @@ test-server: ## Run server tests
 
 test-all: test test-server ## Run all tests (frontend + server)
 
-typecheck: ## TypeScript type check
+typecheck: node_modules ## TypeScript type check
 	npx tsc --noEmit
 
-build: ## Production build (frontend only)
+build: node_modules ## Production build (frontend only)
 	npm run build
 
-build-tauri: ## Production Tauri desktop build
+build-tauri: node_modules ## Production Tauri desktop build
 	npm run tauri build
 
 build-server: ## Production server build

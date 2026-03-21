@@ -6,6 +6,21 @@ import {
 } from "@tauri-apps/plugin-fs";
 import { join } from "@tauri-apps/api/path";
 
+/**
+ * Metadata for a saved drawing, stored in the manifest file.
+ *
+ * Each entry in the {@link Manifest} `drawings` array is a `DrawingMetadata`
+ * record that describes a single drawing without containing its actual
+ * stroke/shape data. Used by the home screen to list drawings, display
+ * thumbnails, and resolve file paths for loading.
+ *
+ * @property id - Unique identifier for the drawing (UUID).
+ * @property name - User-visible display name of the drawing.
+ * @property createdAt - ISO 8601 timestamp of when the drawing was first created.
+ * @property modifiedAt - ISO 8601 timestamp of the most recent save.
+ * @property thumbnail - Base64-encoded PNG data URI for the home screen preview (optional).
+ * @property fileName - Name of the `.drawfinity` binary file that stores the drawing's Yjs document state.
+ */
 export interface DrawingMetadata {
   id: string;
   name: string;

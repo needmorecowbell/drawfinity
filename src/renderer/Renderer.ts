@@ -125,6 +125,18 @@ export class Renderer {
     // "none" — skip drawing
   }
 
+  /**
+   * Renders a single stroke to the canvas as triangle strip geometry.
+   *
+   * Delegates to the internal {@link StrokeRenderer} which converts the stroke
+   * points into filled quads offset along segment normals with miter joins.
+   * For rendering multiple strokes efficiently, prefer {@link drawStrokeBatch}.
+   *
+   * @param points - Ordered array of stroke points with position and optional pressure.
+   *   Pressure values (0–1) control the rendered width at each point.
+   * @param color - RGBA color tuple, each component in the range [0, 1].
+   * @param width - Base stroke width in world-space units, scaled by each point's pressure.
+   */
   drawStroke(
     points: readonly StrokePoint[],
     color: [number, number, number, number],

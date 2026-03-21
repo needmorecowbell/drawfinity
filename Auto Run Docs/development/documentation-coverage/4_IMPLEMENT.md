@@ -36,6 +36,20 @@ Write documentation for `PENDING` gaps from the evaluation phase. Create high-qu
   - **Completed:** DOC-012 HomeScreen — added JSDoc for class, `HomeScreenCallbacks` interface (7 callbacks), `TabName` type, `SharedConnectionStatus` type, constructor, and 11 public methods (`setDrawings`, `setSaveDirectory`, `show`, `hide`, `isVisible`, `destroy`, `getContainer`, `getActiveTab`, `getSharedConnectionStatus`, `getRooms`, `switchTab`)
   - **Completed:** DOC-013 CameraBookmark — added JSDoc for `CameraBookmark` interface with 8 properties (`id`, `label`, `x`, `y`, `zoom`, `createdBy`, `createdByName`, `createdAt`) and `generateBookmarkId` function
   - **Completed:** DOC-015 RemoteUser — already had JSDoc from DOC-003 SyncManager work; marked as IMPLEMENTED with 4 properties (`id`, `name`, `color`, `cursor`)
+  - **Completed:** DOC-022 bookmarkToYMap & DOC-023 yMapToBookmark — added JSDoc for both BookmarkAdapter functions: `bookmarkToYMap` (serializes CameraBookmark to Yjs Map) and `yMapToBookmark` (deserializes Yjs Map back to CameraBookmark)
+  - **Completed:** DOC-024 yMapToStroke — added JSDoc for `yMapToStroke` function documenting deserialization of Yjs Map to Stroke object with opacity default behavior
+  - **Completed:** DOC-025 yMapToShape — added JSDoc for `yMapToShape` function documenting deserialization of Yjs Map to Shape object with fillColor/opacity defaults and optional polygon/star properties
+  - **Completed:** DOC-026 isShapeTool — already documented as part of DOC-005 ToolManager work; corrected status from PENDING to IMPLEMENTED
+  - **Completed:** DOC-027 loadManifest — added JSDoc for `loadManifest` function documenting manifest loading from directory with empty-manifest fallback behavior
+  - **Completed:** DOC-028 saveManifest — added JSDoc for `saveManifest` function documenting manifest persistence to filesystem with directory auto-creation
+  - **Completed:** DOC-029 saveDocument — added JSDoc for `saveDocument` function documenting Yjs document state persistence to binary file with auto-created parent directories
+  - **Completed:** DOC-030 loadDocument — added JSDoc for `loadDocument` function documenting Yjs document loading from binary file with null return for missing files
+  - **Completed:** DOC-031 DrawingMetadata — added JSDoc for interface with 6 properties (`id`, `name`, `createdAt`, `modifiedAt`, `thumbnail`, `fileName`) documenting saved drawing metadata used by the home screen
+  - **Completed:** DOC-032 Manifest — added JSDoc for interface with 2 properties (`version`, `drawings`) documenting root manifest.json structure used as an index of all saved drawings
+  - **Completed:** DOC-033 ReconnectConfig — already documented as part of DOC-003 SyncManager work; status corrected to IMPLEMENTED
+  - **Completed:** DOC-034 StrokeCapture — added JSDoc for class, constructor (4 params), and 12 public methods (`getActiveStroke`, `setEnabled`, `isEnabled`, `setColor`, `setWidth`, `setSmoothing`, `setTool`, `getTool`, `getEraserTool`, `setBrushConfig`, `getBrushConfig`, `destroy`)
+  - **Completed:** DOC-035 ShapeCapture — added JSDoc for class (constructor with 4 params, modifier key behavior), `ShapeDocumentModel` interface, `ShapeToolConfig` interface (7 properties), and 6 public methods (`setEnabled`, `isEnabled`, `setConfig`, `getConfig`, `getPreviewShape`, `destroy`)
+  - **Completed:** DOC-016 ShapeType — already had JSDoc from DOC-010 Shape work; marked as IMPLEMENTED with description of all 4 shape variants and their rendering semantics
 
 ## Documentation Structure
 

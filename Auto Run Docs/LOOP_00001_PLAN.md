@@ -16,7 +16,7 @@ related:
 
 ## Summary
 - **Total Gaps:** 268
-- **Auto-Document (PENDING):** 43
+- **Auto-Document (PENDING):** 40
 - **Needs Context:** 3
 - **Won't Do:** 217
 
@@ -336,7 +336,8 @@ related:
   - [x] Note: Already documented as part of DOC-003 SyncManager work
 
 ### DOC-016: ShapeType
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/model/Shape.ts`
 - **Gap ID:** GAP-013
 - **Type:** Type Alias
@@ -346,12 +347,13 @@ related:
   ```ts
   export type ShapeType
   ```
-- **Documentation Plan:**
-  - [ ] Description: Supported shape types (rectangle, ellipse, polygon, star)
-  - [ ] Parameters: N/A
-  - [ ] Returns: N/A
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Supported shape types (rectangle, ellipse, polygon, star) with rendering semantics for each variant
+  - [x] Parameters: N/A
+  - [x] Returns: N/A
+  - [x] Examples: No
+  - [x] Errors: N/A
+  - [x] Note: Already documented as part of DOC-010 Shape work
 
 ### DOC-017: ToolType
 - **Status:** `PENDING`
@@ -444,7 +446,8 @@ related:
   - [ ] Errors: N/A
 
 ### DOC-022: bookmarkToYMap
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/crdt/BookmarkAdapter.ts`
 - **Gap ID:** (from functions table)
 - **Type:** Function
@@ -454,15 +457,16 @@ related:
   ```ts
   export function bookmarkToYMap(bookmark: CameraBookmark): Y.Map<unknown>
   ```
-- **Documentation Plan:**
-  - [ ] Description: Serializes a CameraBookmark to a Yjs Map for CRDT storage
-  - [ ] Parameters: bookmark
-  - [ ] Returns: Y.Map
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Serializes a CameraBookmark into a Yjs Map for CRDT storage and collaborative synchronization
+  - [x] Parameters: bookmark (1)
+  - [x] Returns: Y.Map containing all bookmark properties
+  - [x] Examples: No
+  - [x] Errors: N/A
 
 ### DOC-023: yMapToBookmark
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/crdt/BookmarkAdapter.ts`
 - **Gap ID:** (from functions table)
 - **Type:** Function
@@ -472,15 +476,16 @@ related:
   ```ts
   export function yMapToBookmark(map: Y.Map<unknown>): CameraBookmark
   ```
-- **Documentation Plan:**
-  - [ ] Description: Deserializes a Yjs Map back to a CameraBookmark
-  - [ ] Parameters: map
-  - [ ] Returns: CameraBookmark
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Deserializes a Yjs Map back into a CameraBookmark object
+  - [x] Parameters: yMap (1)
+  - [x] Returns: CameraBookmark
+  - [x] Examples: No
+  - [x] Errors: N/A
 
 ### DOC-024: yMapToStroke
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/crdt/StrokeAdapter.ts`
 - **Gap ID:** (from functions table)
 - **Type:** Function
@@ -490,15 +495,16 @@ related:
   ```ts
   export function yMapToStroke(map: Y.Map<unknown>): Stroke
   ```
-- **Documentation Plan:**
-  - [ ] Description: Deserializes a Yjs Map to a Stroke object
-  - [ ] Parameters: map
-  - [ ] Returns: Stroke
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Deserializes a Yjs Map back into a plain Stroke object
+  - [x] Parameters: yMap (1)
+  - [x] Returns: Stroke with all points and visual properties restored
+  - [x] Examples: No
+  - [x] Errors: N/A
 
 ### DOC-025: yMapToShape
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/crdt/ShapeAdapter.ts`
 - **Gap ID:** (from functions table)
 - **Type:** Function
@@ -508,15 +514,16 @@ related:
   ```ts
   export function yMapToShape(map: Y.Map<unknown>): Shape
   ```
-- **Documentation Plan:**
-  - [ ] Description: Deserializes a Yjs Map to a Shape object
-  - [ ] Parameters: map
-  - [ ] Returns: Shape
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Deserializes a Yjs Map back into a plain Shape object
+  - [x] Parameters: yMap (1)
+  - [x] Returns: Fully-hydrated Shape object ready for rendering
+  - [x] Examples: No
+  - [x] Errors: N/A
 
 ### DOC-026: isShapeTool
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00001 (as part of DOC-005 ToolManager)
 - **File:** `src/tools/ToolManager.ts`
 - **Gap ID:** (from functions table)
 - **Type:** Function
@@ -526,15 +533,16 @@ related:
   ```ts
   export function isShapeTool(tool: ToolType): boolean
   ```
-- **Documentation Plan:**
-  - [ ] Description: Type guard for shape-type tools
-  - [ ] Parameters: tool
-  - [ ] Returns: boolean
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Type guard for shape-type tools
+  - [x] Parameters: tool
+  - [x] Returns: boolean
+  - [x] Examples: No
+  - [x] Errors: N/A
 
 ### DOC-027: loadManifest
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/persistence/DrawingManifest.ts`
 - **Gap ID:** (from functions table)
 - **Type:** Function
@@ -544,15 +552,16 @@ related:
   ```ts
   export async function loadManifest(savePath: string): Promise<Manifest>
   ```
-- **Documentation Plan:**
-  - [ ] Description: Loads drawing manifest from filesystem
-  - [ ] Parameters: savePath
-  - [ ] Returns: Manifest
-  - [ ] Examples: No
-  - [ ] Errors: File not found, parse errors
+- **Documentation Added:**
+  - [x] Description: Loads drawing manifest from specified directory, returns empty manifest if file missing
+  - [x] Parameters: dir (absolute path to save directory)
+  - [x] Returns: Manifest object or fresh empty manifest
+  - [x] Examples: No
+  - [x] Errors: Throws on invalid JSON or unreadable file
 
 ### DOC-028: saveManifest
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/persistence/DrawingManifest.ts`
 - **Gap ID:** (from functions table)
 - **Type:** Function
@@ -562,15 +571,16 @@ related:
   ```ts
   export async function saveManifest(savePath: string, manifest: Manifest): Promise<void>
   ```
-- **Documentation Plan:**
-  - [ ] Description: Persists drawing manifest to filesystem
-  - [ ] Parameters: savePath, manifest
-  - [ ] Returns: void
-  - [ ] Examples: No
-  - [ ] Errors: Write failures
+- **Documentation Added:**
+  - [x] Description: Persists drawing manifest to filesystem as manifest.json
+  - [x] Parameters: dir (absolute path), manifest (Manifest object)
+  - [x] Returns: void
+  - [x] Examples: No
+  - [x] Errors: Write failures (permission denied, disk full)
 
 ### DOC-029: saveDocument
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/persistence/LocalStorage.ts`
 - **Gap ID:** (from functions table)
 - **Type:** Function
@@ -580,15 +590,16 @@ related:
   ```ts
   export async function saveDocument(doc: Y.Doc, filePath: string): Promise<void>
   ```
-- **Documentation Plan:**
-  - [ ] Description: Saves Yjs document state to a file
-  - [ ] Parameters: doc, filePath
-  - [ ] Returns: void
-  - [ ] Examples: No
-  - [ ] Errors: Filesystem errors
+- **Documentation Added:**
+  - [x] Description: Persists a Yjs document's full state to a binary file on the local filesystem
+  - [x] Parameters: doc (Y.Doc), filePath (absolute path)
+  - [x] Returns: void
+  - [x] Examples: No
+  - [x] Errors: Filesystem write failures (permission denied, disk full)
 
 ### DOC-030: loadDocument
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/persistence/LocalStorage.ts`
 - **Gap ID:** (from functions table)
 - **Type:** Function
@@ -596,17 +607,18 @@ related:
 - **Importance:** HIGH
 - **Signature:**
   ```ts
-  export async function loadDocument(doc: Y.Doc, filePath: string): Promise<void>
+  export async function loadDocument(filePath: string): Promise<Y.Doc | null>
   ```
-- **Documentation Plan:**
-  - [ ] Description: Loads Yjs document state from a file
-  - [ ] Parameters: doc, filePath
-  - [ ] Returns: void
-  - [ ] Examples: No
-  - [ ] Errors: File not found, corrupt state
+- **Documentation Added:**
+  - [x] Description: Loads a Yjs document from a `.drawfinity` binary file
+  - [x] Parameters: filePath (absolute path)
+  - [x] Returns: Y.Doc | null (null if file does not exist)
+  - [x] Examples: No
+  - [x] Errors: Permission denied, corrupt data
 
 ### DOC-031: DrawingMetadata
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/persistence/DrawingManifest.ts`
 - **Gap ID:** (from interfaces table)
 - **Type:** Interface
@@ -616,15 +628,16 @@ related:
   ```ts
   export interface DrawingMetadata
   ```
-- **Documentation Plan:**
-  - [ ] Description: Metadata for a saved drawing (id, name, timestamps, thumbnail)
-  - [ ] Parameters: All fields
-  - [ ] Returns: N/A
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Metadata for a saved drawing stored in the manifest file, used by home screen for listing and resolving file paths
+  - [x] Parameters: All 6 fields (`id`, `name`, `createdAt`, `modifiedAt`, `thumbnail`, `fileName`)
+  - [x] Returns: N/A
+  - [x] Examples: No
+  - [x] Errors: N/A
 
 ### DOC-032: Manifest
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/persistence/DrawingManifest.ts`
 - **Gap ID:** (from interfaces table)
 - **Type:** Interface
@@ -634,15 +647,16 @@ related:
   ```ts
   export interface Manifest
   ```
-- **Documentation Plan:**
-  - [ ] Description: Root manifest file structure containing drawing metadata list
-  - [ ] Parameters: All fields
-  - [ ] Returns: N/A
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Root manifest file structure containing drawing metadata list
+  - [x] Parameters: All 2 fields (`version`, `drawings`)
+  - [x] Returns: N/A
+  - [x] Examples: No
+  - [x] Errors: N/A
 
 ### DOC-033: ReconnectConfig
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00001
 - **File:** `src/sync/SyncManager.ts`
 - **Gap ID:** GAP-019
 - **Type:** Interface
@@ -652,15 +666,17 @@ related:
   ```ts
   export interface ReconnectConfig
   ```
-- **Documentation Plan:**
-  - [ ] Description: Configuration for WebSocket reconnection strategy
-  - [ ] Parameters: All fields (delays, max attempts)
-  - [ ] Returns: N/A
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Configuration for WebSocket reconnection strategy
+  - [x] Parameters: All 4 fields (`enabled`, `initialDelayMs`, `maxDelayMs`, `maxAttempts`)
+  - [x] Returns: N/A
+  - [x] Examples: No
+  - [x] Errors: N/A
+  - [x] Note: Already documented as part of DOC-003 SyncManager work
 
 ### DOC-034: StrokeCapture
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/input/StrokeCapture.ts`
 - **Gap ID:** (from classes table)
 - **Type:** Class
@@ -670,15 +686,17 @@ related:
   ```ts
   export class StrokeCapture
   ```
-- **Documentation Plan:**
-  - [ ] Description: Pointer event capture and stroke construction with smoothing
-  - [ ] Parameters: Constructor dependencies
-  - [ ] Returns: N/A
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Pointer event capture and stroke construction with smoothing, erasure delegation
+  - [x] Parameters: Constructor (4 params: `camera`, `cameraController`, `document`, `canvas`)
+  - [x] Returns: N/A (class)
+  - [x] Examples: No
+  - [x] Errors: N/A
+  - [x] Public methods documented: `getActiveStroke`, `setEnabled`, `isEnabled`, `setColor`, `setWidth`, `setSmoothing`, `setTool`, `getTool`, `getEraserTool`, `setBrushConfig`, `getBrushConfig`, `destroy`
 
 ### DOC-035: ShapeCapture
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/input/ShapeCapture.ts`
 - **Gap ID:** (from classes table)
 - **Type:** Class
@@ -688,12 +706,13 @@ related:
   ```ts
   export class ShapeCapture
   ```
-- **Documentation Plan:**
-  - [ ] Description: Shape drawing capture from pointer events
-  - [ ] Parameters: Constructor dependencies
-  - [ ] Returns: N/A
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: Pointer-drag gesture capture converting drags into Shape objects with modifier key support (Shift=constrain, Alt=center-out)
+  - [x] Parameters: Constructor (4 params: `camera`, `cameraController`, `document`, `canvas`)
+  - [x] Returns: N/A (class)
+  - [x] Examples: No
+  - [x] Errors: N/A
+  - [x] Also documented: `ShapeDocumentModel` interface, `ShapeToolConfig` interface (7 properties), public methods (`setEnabled`, `isEnabled`, `setConfig`, `getConfig`, `getPreviewShape`, `destroy`)
 
 ### DOC-036: ThumbnailGenerator
 - **Status:** `PENDING`

@@ -204,3 +204,240 @@
 - **Coverage Impact:** +~0.1% (1 interface documented)
 
 ---
+
+## Loop 00002 - 2026-03-20 21:32 EDT
+
+### Documentation Added
+
+#### DOC-022: bookmarkToYMap
+- **Status:** IMPLEMENTED
+- **File:** `src/crdt/BookmarkAdapter.ts`
+- **Type:** Function
+- **Documentation Summary:**
+  - Description: Serializes a CameraBookmark into a Yjs Map for CRDT storage and collaborative synchronization
+  - Parameters: 1 documented (`bookmark`)
+  - Returns: Y.Map containing all bookmark properties
+  - Examples: No
+- **Coverage Impact:** +~0.1% (1 function documented)
+
+#### DOC-023: yMapToBookmark
+- **Status:** IMPLEMENTED
+- **File:** `src/crdt/BookmarkAdapter.ts`
+- **Type:** Function
+- **Documentation Summary:**
+  - Description: Deserializes a Yjs Map back into a CameraBookmark object
+  - Parameters: 1 documented (`yMap`)
+  - Returns: CameraBookmark
+  - Examples: No
+- **Coverage Impact:** +~0.1% (1 function documented)
+
+---
+
+## Loop 00002 - 2026-03-20 21:35 EDT
+
+### Documentation Added
+
+#### DOC-024: yMapToStroke
+- **Status:** IMPLEMENTED
+- **File:** `src/crdt/StrokeAdapter.ts`
+- **Type:** Function
+- **Documentation Summary:**
+  - Description: Deserializes a Yjs Map back into a plain Stroke object, reading keys written by strokeToYMap and defaulting opacity to 1.0 if missing
+  - Parameters: 1 documented (`yMap`)
+  - Returns: Stroke with all points and visual properties restored
+  - Examples: No
+- **Coverage Impact:** +~0.1% (1 function documented)
+
+---
+
+---
+
+## Loop 00002 - 2026-03-20 21:40 EDT
+
+### Documentation Added
+
+#### DOC-025: yMapToShape
+- **Status:** IMPLEMENTED
+- **File:** `src/crdt/ShapeAdapter.ts`
+- **Type:** Function
+- **Documentation Summary:**
+  - Description: Deserializes a Yjs Map back into a plain Shape object, restoring all required properties with defaults for fillColor (null) and opacity (1.0), plus optional polygon/star properties
+  - Parameters: 1 documented (yMap)
+  - Examples: No
+- **Coverage Impact:** +0.5%
+
+---
+
+## Loop 00002 - 2026-03-20 21:38 EDT
+
+### Documentation Added
+
+#### DOC-026: isShapeTool
+- **Status:** IMPLEMENTED (already documented as part of DOC-005 ToolManager; status corrected)
+- **File:** `src/tools/ToolManager.ts`
+- **Type:** Function
+- **Documentation Summary:**
+  - Description: Already had JSDoc from DOC-005 work — type guard checking if a tool type is a shape tool
+  - Parameters: 1 documented (tool)
+  - Examples: No
+- **Coverage Impact:** +0% (already documented)
+
+#### DOC-027: loadManifest
+- **Status:** IMPLEMENTED
+- **File:** `src/persistence/DrawingManifest.ts`
+- **Type:** Function
+- **Documentation Summary:**
+  - Description: Loads the drawing manifest from a directory, returning an empty manifest if the file does not exist
+  - Parameters: 1 documented (dir)
+  - Examples: No
+- **Coverage Impact:** +0.5%
+
+---
+
+## Loop 00002 - 2026-03-20 21:40 EDT
+
+### Documentation Added
+
+#### DOC-028: saveManifest
+- **Status:** IMPLEMENTED
+- **File:** `src/persistence/DrawingManifest.ts`
+- **Type:** Function
+- **Documentation Summary:**
+  - Description: Persists drawing manifest to filesystem as manifest.json, creating the directory recursively if needed
+  - Parameters: 2 documented (dir, manifest)
+  - Returns: void
+  - Examples: No
+  - Errors: Write failures (permission denied, disk full)
+- **Coverage Impact:** +0.1% (1 function documented)
+
+---
+
+## Loop 00002 - 2026-03-20 21:42 EDT
+
+### Documentation Added
+
+#### DOC-029: saveDocument
+- **Status:** IMPLEMENTED
+- **File:** `src/persistence/LocalStorage.ts`
+- **Type:** Function
+- **Documentation Summary:**
+  - Description: Persists a Yjs document's full state to a binary file on the local filesystem, encoding via Y.encodeStateAsUpdate and auto-creating parent directories
+  - Parameters: 2 documented (`doc`, `filePath`)
+  - Returns: void
+  - Examples: No
+  - Errors: Filesystem write failures (permission denied, disk full)
+- **Coverage Impact:** +0.1% (1 function documented)
+
+---
+
+## Loop 00002 - 2026-03-20 21:44 EDT
+
+### Documentation Added
+
+#### DOC-030: loadDocument
+- **Status:** IMPLEMENTED
+- **File:** `src/persistence/LocalStorage.ts`
+- **Type:** Function
+- **Documentation Summary:**
+  - Description: Loads a Yjs document from a `.drawfinity` binary file, returning null if the file does not exist
+  - Parameters: 1 documented (`filePath`)
+  - Returns: Y.Doc | null
+  - Examples: No
+  - Errors: Permission denied, corrupt data
+- **Coverage Impact:** +0.1% (1 function documented)
+
+---
+
+#### DOC-031: DrawingMetadata
+- **Status:** IMPLEMENTED
+- **File:** `src/persistence/DrawingManifest.ts`
+- **Type:** Interface
+- **Documentation Summary:**
+  - Description: Metadata for a saved drawing stored in the manifest file, used by home screen for listing drawings, displaying thumbnails, and resolving file paths
+  - Parameters: All 6 properties documented (`id`, `name`, `createdAt`, `modifiedAt`, `thumbnail`, `fileName`)
+  - Examples: No
+  - Errors: N/A
+- **Coverage Impact:** +0.1% (1 interface with 6 properties documented)
+
+---
+
+## Loop 00002 - 2026-03-20 21:47 EDT
+
+### Documentation Added
+
+#### DOC-032: Manifest
+- **Status:** IMPLEMENTED
+- **File:** `src/persistence/DrawingManifest.ts`
+- **Type:** Interface
+- **Documentation Summary:**
+  - Description: Root structure of the manifest.json file persisted in the save directory, acting as an index of all saved drawings
+  - Parameters: 2 properties documented (`version`, `drawings`)
+  - Examples: No
+  - Errors: N/A
+- **Coverage Impact:** +0.1% (1 interface with 2 properties documented)
+
+---
+
+## Loop 00002 - 2026-03-20 21:50 EDT
+
+### Documentation Added
+
+#### DOC-033: ReconnectConfig
+- **Status:** IMPLEMENTED (already documented as part of DOC-003 SyncManager)
+- **File:** `src/sync/SyncManager.ts`
+- **Type:** Interface
+- **Documentation Summary:**
+  - Description: Already had JSDoc from DOC-003 work; status corrected to IMPLEMENTED
+  - Parameters: 4 properties (`enabled`, `initialDelayMs`, `maxDelayMs`, `maxAttempts`)
+  - Examples: No
+  - Errors: N/A
+- **Coverage Impact:** +0% (already documented)
+
+#### DOC-034: StrokeCapture
+- **Status:** IMPLEMENTED
+- **File:** `src/input/StrokeCapture.ts`
+- **Type:** Class
+- **Documentation Summary:**
+  - Description: Captures pointer events on the canvas and converts them into strokes or erasure operations, with pressure-curve processing and smoothing
+  - Parameters: Constructor with 4 params (`camera`, `cameraController`, `document`, `canvas`)
+  - Public methods: 12 documented (`getActiveStroke`, `setEnabled`, `isEnabled`, `setColor`, `setWidth`, `setSmoothing`, `setTool`, `getTool`, `getEraserTool`, `setBrushConfig`, `getBrushConfig`, `destroy`)
+  - Examples: No
+  - Errors: N/A
+- **Coverage Impact:** +1.2% (1 class with constructor and 12 public methods documented)
+
+---
+
+## Loop 00002 - 2026-03-20 21:53 EDT
+
+### Documentation Added
+
+#### DOC-035: ShapeCapture
+- **Status:** IMPLEMENTED
+- **File:** `src/input/ShapeCapture.ts`
+- **Type:** Class
+- **Documentation Summary:**
+  - Description: Pointer-drag gesture capture that converts drag interactions into Shape objects committed to the document, with Shift (constrain) and Alt (center-out) modifier support
+  - Parameters: Constructor with 4 params (`camera`, `cameraController`, `document`, `canvas`)
+  - Public methods: 6 documented (`setEnabled`, `isEnabled`, `setConfig`, `getConfig`, `getPreviewShape`, `destroy`)
+  - Also documented: `ShapeDocumentModel` interface (1 method), `ShapeToolConfig` interface (7 properties)
+  - Examples: No
+  - Errors: N/A
+- **Coverage Impact:** +1.5% (1 class, 2 interfaces, 6 public methods documented)
+
+---
+
+## Loop 00002 - 2026-03-20 21:55 EDT
+
+### Documentation Added
+
+#### DOC-016: ShapeType
+- **Status:** IMPLEMENTED
+- **File:** `src/model/Shape.ts`
+- **Type:** Type Alias
+- **Documentation Summary:**
+  - Description: Supported geometric shape types with per-variant rendering semantics (rectangle, ellipse, polygon, star)
+  - Parameters: N/A
+  - Examples: No
+  - Errors: N/A
+  - Note: Already documented as part of DOC-010 Shape work in Loop 00001
+- **Coverage Impact:** +0.4% (1 type alias confirmed documented)

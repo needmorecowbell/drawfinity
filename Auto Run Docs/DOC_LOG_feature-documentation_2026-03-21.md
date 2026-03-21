@@ -187,3 +187,20 @@
 - **Coverage Impact:** +~0.1% (1 type alias documented)
 
 ---
+
+## Loop 00002 - 2026-03-20 21:30 EDT
+
+### Documentation Added
+
+#### DOC-015: RemoteUser
+- **Status:** IMPLEMENTED
+- **File:** `src/sync/SyncManager.ts`
+- **Type:** Interface
+- **Documentation Summary:**
+  - Description: A collaborator visible through the Yjs awareness protocol
+  - Properties: 4 documented (`id`, `name`, `color`, `cursor`)
+  - Examples: No
+  - Note: Already documented as part of DOC-003 SyncManager work
+- **Coverage Impact:** +~0.1% (1 interface documented)
+
+---

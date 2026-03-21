@@ -35,6 +35,7 @@ Write documentation for `PENDING` gaps from the evaluation phase. Create high-qu
   - **Completed:** DOC-011 BrushConfig — added JSDoc for interface with 6 properties (`name`, `baseWidth`, `pressureCurve`, `opacityCurve`, `color`, `smoothing`) documenting brush configuration with pressure/opacity curve semantics and example
   - **Completed:** DOC-012 HomeScreen — added JSDoc for class, `HomeScreenCallbacks` interface (7 callbacks), `TabName` type, `SharedConnectionStatus` type, constructor, and 11 public methods (`setDrawings`, `setSaveDirectory`, `show`, `hide`, `isVisible`, `destroy`, `getContainer`, `getActiveTab`, `getSharedConnectionStatus`, `getRooms`, `switchTab`)
   - **Completed:** DOC-013 CameraBookmark — added JSDoc for `CameraBookmark` interface with 8 properties (`id`, `label`, `x`, `y`, `zoom`, `createdBy`, `createdByName`, `createdAt`) and `generateBookmarkId` function
+  - **Completed:** DOC-015 RemoteUser — already had JSDoc from DOC-003 SyncManager work; marked as IMPLEMENTED with 4 properties (`id`, `name`, `color`, `cursor`)
 
 ## Documentation Structure
 

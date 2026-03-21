@@ -16,7 +16,7 @@ related:
 
 ## Summary
 - **Total Gaps:** 268
-- **Auto-Document (PENDING):** 44
+- **Auto-Document (PENDING):** 43
 - **Needs Context:** 3
 - **Won't Do:** 217
 
@@ -316,7 +316,8 @@ related:
   - [x] Note: Already documented as part of DOC-003 SyncManager work
 
 ### DOC-015: RemoteUser
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
+- **Implemented In:** Loop 00002
 - **File:** `src/sync/SyncManager.ts`
 - **Gap ID:** GAP-020
 - **Type:** Interface
@@ -326,12 +327,13 @@ related:
   ```ts
   export interface RemoteUser
   ```
-- **Documentation Plan:**
-  - [ ] Description: Remote collaborator's profile and cursor state
-  - [ ] Parameters: All fields
-  - [ ] Returns: N/A
-  - [ ] Examples: No
-  - [ ] Errors: N/A
+- **Documentation Added:**
+  - [x] Description: A collaborator visible through the Yjs awareness protocol
+  - [x] Parameters: All 4 fields (`id`, `name`, `color`, `cursor`)
+  - [x] Returns: N/A
+  - [x] Examples: No
+  - [x] Errors: N/A
+  - [x] Note: Already documented as part of DOC-003 SyncManager work
 
 ### DOC-016: ShapeType
 - **Status:** `PENDING`

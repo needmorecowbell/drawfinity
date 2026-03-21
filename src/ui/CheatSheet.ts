@@ -1,6 +1,23 @@
 import { ActionRegistry, ACTION_CATEGORIES } from "./ActionRegistry";
 import type { Action } from "./ActionRegistry";
 
+/**
+ * Keyboard shortcuts and actions cheat sheet overlay panel.
+ *
+ * Displays a searchable, categorized list of all registered actions and their
+ * keyboard shortcuts. Clicking an action row executes it and dismisses the panel.
+ * The overlay can be dismissed by pressing Escape, clicking outside the content
+ * area, or calling {@link hide}.
+ *
+ * @param registry - The {@link ActionRegistry} that supplies the list of available actions
+ *
+ * @example
+ * ```ts
+ * const cheatSheet = new CheatSheet(actionRegistry);
+ * cheatSheet.show();   // Opens the overlay with focus on the search input
+ * cheatSheet.toggle(); // Toggles visibility
+ * ```
+ */
 export class CheatSheet {
   private overlay: HTMLElement;
   private content: HTMLElement;

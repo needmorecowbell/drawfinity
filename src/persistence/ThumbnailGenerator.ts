@@ -4,9 +4,13 @@ import { generateShapeVertices } from "../renderer/ShapeMesh";
 import type { Stroke } from "../model/Stroke";
 import type { Shape } from "../model/Shape";
 
+/** Width in pixels of generated thumbnail images. */
 const THUMBNAIL_WIDTH = 200;
+/** Height in pixels of generated thumbnail images. */
 const THUMBNAIL_HEIGHT = 150;
+/** Fraction of content bounds added as padding on each side when fitting content into the thumbnail viewport. */
 const PADDING_RATIO = 0.1;
+/** Minimum interval in milliseconds between automatic thumbnail generations (30 seconds). */
 const GENERATION_INTERVAL_MS = 30_000;
 
 function hexToRgba(hex: string): [number, number, number, number] {
@@ -90,24 +94,69 @@ function computeFitTransform(
   return new Float32Array([sx, 0, 0, 0, sy, 0, tx, ty, 1]);
 }
 
+/**
+ * Generates PNG thumbnail images of drawings for display on the home screen.
+ *
+ * Creates an offscreen WebGL2 canvas and renders a miniature version of the
+ * drawing's strokes and shapes, automatically fitting all content within the
+ * thumbnail viewport. Thumbnails are throttled to generate at most once every
+ * {@link GENERATION_INTERVAL_MS} (30 seconds) and only when drawing activity
+ * has occurred since the last generation.
+ *
+ * @example
+ * ```ts
+ * const generator = new ThumbnailGenerator();
+ * generator.markActivity(); // Signal that drawing content changed
+ * if (generator.shouldGenerate()) {
+ *   const dataUrl = generator.generate(doc);
+ *   if (dataUrl) updateThumbnail(dataUrl);
+ * }
+ * ```
+ */
 export class ThumbnailGenerator {
   private lastGenerationTime = 0;
   private activitySinceLastGeneration = false;
 
+  /**
+   * Signals that drawing activity has occurred, making the thumbnail eligible
+   * for regeneration on the next call to {@link shouldGenerate} or {@link forceGenerate}.
+   */
   markActivity(): void {
     this.activitySinceLastGeneration = true;
   }
 
+  /**
+   * Returns whether a thumbnail should be generated based on both activity
+   * and the throttle interval. Returns `true` only if {@link markActivity}
+   * has been called and at least {@link GENERATION_INTERVAL_MS} has elapsed
+   * since the last generation.
+   */
   shouldGenerate(): boolean {
     if (!this.activitySinceLastGeneration) return false;
     const now = Date.now();
     return now - this.lastGenerationTime >= GENERATION_INTERVAL_MS;
   }
 
+  /**
+   * Returns whether a thumbnail should be generated, ignoring the throttle
+   * interval. Returns `true` if any drawing activity has occurred since the
+   * last generation. Useful for generating a final thumbnail on save.
+   */
   forceGenerate(): boolean {
     return this.activitySinceLastGeneration;
   }
 
+  /**
+   * Renders a thumbnail of the drawing and returns it as a PNG data URL.
+   *
+   * Creates a temporary offscreen WebGL2 canvas, renders all strokes and
+   * shapes fitted to the thumbnail viewport, and returns the result as a
+   * `data:image/png;base64,...` string. Resets the activity flag and records
+   * the generation timestamp on success.
+   *
+   * @param doc - The Yjs document wrapper containing the drawing's strokes and shapes.
+   * @returns A PNG data URL string, or `null` if the drawing is empty or WebGL2 is unavailable.
+   */
   generate(doc: DrawfinityDoc): string | null {
     const strokes = doc.getStrokes();
     const shapes = doc.getShapes ? doc.getShapes() : [];

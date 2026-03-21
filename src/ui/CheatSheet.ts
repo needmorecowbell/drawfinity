@@ -163,6 +163,12 @@ export class CheatSheet {
     }
   }
 
+  /**
+   * Returns whether the cheat sheet overlay is currently visible.
+   *
+   * @returns `true` if the overlay is attached to the DOM and displayed,
+   *          `false` if it is hidden
+   */
   isVisible(): boolean {
     return this.visible;
   }

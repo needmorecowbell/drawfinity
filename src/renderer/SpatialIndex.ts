@@ -310,8 +310,17 @@ export class SpatialIndex {
   }
 
   /**
-   * Query all strokes whose bounding boxes intersect the given viewport AABB.
-   * Returns a deduplicated array of strokes sorted by document order (timestamp).
+   * Queries the spatial index for all strokes whose bounding boxes intersect
+   * the given viewport rectangle. Strokes that span multiple grid cells are
+   * deduplicated so each stroke appears at most once in the result.
+   *
+   * The returned array is sorted by document order (ascending timestamp)
+   * so that newer strokes render on top of older ones.
+   *
+   * @param viewport - The axis-aligned bounding box defining the visible area to query.
+   * @returns A deduplicated array of {@link Stroke} objects intersecting the viewport,
+   *          sorted by timestamp in ascending order. Returns an empty array when no
+   *          strokes fall within the viewport.
    */
   query(viewport: AABB): Stroke[] {
     const range = this.getCellRange(viewport);

@@ -173,6 +173,12 @@ export class CheatSheet {
     return this.visible;
   }
 
+  /**
+   * Tears down the cheat sheet by hiding the overlay and removing it from the DOM.
+   *
+   * Call this when the cheat sheet is no longer needed to ensure the overlay
+   * element is detached from `document.body`. Safe to call multiple times.
+   */
   destroy(): void {
     this.hide();
   }

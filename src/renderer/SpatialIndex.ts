@@ -310,7 +310,22 @@ export class SpatialIndex {
     }
   }
 
-  /** Rebuild the index from strokes and shapes. */
+  /**
+   * Clears all existing index data and re-indexes both strokes and shapes
+   * from scratch. This is the combined equivalent of calling {@link rebuild}
+   * for strokes followed by re-adding all shapes, but performed in a single
+   * pass after one {@link clear} call.
+   *
+   * Use this after bulk operations that invalidate both stroke and shape
+   * spatial data simultaneously (e.g., full document reload, collaborative
+   * sync merge, or undo/redo of mixed stroke-and-shape operations).
+   *
+   * @param strokes - The complete array of strokes to index. Each stroke's
+   *   bounding box is computed via {@link computeStrokeBounds} and mapped to
+   *   the appropriate grid cells.
+   * @param shapes - The complete array of shapes to index. Each shape is
+   *   inserted via {@link addShape}.
+   */
   rebuildAll(strokes: Stroke[], shapes: Shape[]): void {
     this.clear();
     for (const stroke of strokes) {

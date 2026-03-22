@@ -69,7 +69,7 @@ jobs:
             ## Drawfinity v__VERSION__
 
             ### Downloads
-            - **Linux**: `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), `.AppImage` (universal)
+            - **Linux**: `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), `.tar.gz` (portable binary)
             - **macOS**: `.dmg` (Intel & Apple Silicon)
             - **Windows**: `.msi` (installer), `.exe` (NSIS installer)
 
@@ -84,40 +84,37 @@ jobs:
           releaseDraft: ${{ github.event.inputs.draft || true }}
           prerelease: false
 
-      - name: Fix AppImage EGL compatibility
+      - name: Create portable Linux tarball
         run: |
-          # The AppImage bundles Ubuntu's EGL/Mesa libs which crash on non-Ubuntu
-          # distros (Arch/Manjaro/Fedora) with "EGL_BAD_PARAMETER". Remove them
-          # so the host system's graphics drivers are used instead.
-          APPIMAGE=$(find src-tauri/target/release/bundle/appimage -name '*.AppImage' 2>/dev/null | head -1)
-          if [ -n "$APPIMAGE" ]; then
-            chmod +x "$APPIMAGE"
-            "$APPIMAGE" --appimage-extract
+          # AppImage bundles Ubuntu's WebKitGTK + EGL stack which is incompatible
+          # with non-Ubuntu distros. Provide a portable tarball with just the binary
+          # that uses the host system's libraries.
+          VERSION=$(jq -r .version package.json)
+          TARBALL_DIR="drawfinity-${VERSION}-linux-amd64"
+          mkdir -p "$TARBALL_DIR"
+          cp src-tauri/target/release/drawfinity "$TARBALL_DIR/"
+          cp src-tauri/icons/128x128.png "$TARBALL_DIR/drawfinity.png"
+          cat > "$TARBALL_DIR/drawfinity.desktop" << 'DESKTOP'
+          [Desktop Entry]
+          Name=Drawfinity
+          Comment=Infinite canvas drawing app with real-time collaboration
+          Exec=drawfinity
+          Icon=drawfinity
+          Terminal=false
+          Type=Application
+          Categories=Graphics;
+          DESKTOP
+          # Remove leading spaces from heredoc
+          sed -i 's/^          //' "$TARBALL_DIR/drawfinity.desktop"
+          tar czf "${TARBALL_DIR}.tar.gz" "$TARBALL_DIR"
+          rm -rf "$TARBALL_DIR"
 
-            # Remove bundled EGL/Mesa/graphics libs that conflict with host drivers
-            rm -f squashfs-root/usr/lib/libEGL*.so*
-            rm -f squashfs-root/usr/lib/libGLESv2*.so*
-            rm -f squashfs-root/usr/lib/libgbm*.so*
-            rm -f squashfs-root/usr/lib/libdrm*.so*
-            rm -f squashfs-root/usr/lib/libglapi*.so*
-            rm -f squashfs-root/usr/lib/dri/*.so*
-
-            # Repack the AppImage
-            wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
-            chmod +x appimagetool
-            ARCH=x86_64 ./appimagetool squashfs-root "$APPIMAGE"
-
-            rm -rf squashfs-root appimagetool
-          fi
-
-      - name: Upload fixed AppImage to release
+      - name: Upload Linux tarball to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          APPIMAGE=$(find src-tauri/target/release/bundle/appimage -name '*.AppImage' 2>/dev/null | head -1)
-          if [ -n "$APPIMAGE" ]; then
-            gh release upload "v$(jq -r .version package.json)" "$APPIMAGE" --clobber
-          fi
+          VERSION=$(jq -r .version package.json)
+          gh release upload "v${VERSION}" "drawfinity-${VERSION}-linux-amd64.tar.gz" --clobber
 
       - name: Build server binary
         run: cd server && cargo build --release

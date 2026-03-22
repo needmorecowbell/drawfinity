@@ -467,7 +467,6 @@ describe("Complete Drawing Experience Integration Tests", () => {
       doc.addShape(makeShape({ id: "erase-me" }));
       doc.addStroke(makeStroke({ id: "s1" }));
 
-      const eraser = new EraserTool({ radius: 5 });
       // Simulate eraser finding the shape and removing it
       doc.removeShape("erase-me");
 

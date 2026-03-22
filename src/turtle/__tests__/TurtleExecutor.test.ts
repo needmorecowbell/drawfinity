@@ -157,7 +157,7 @@ describe("TurtleExecutor", () => {
     });
 
     it("speed(1) uses 100ms delay between steps", async () => {
-      const setTimeoutSpy = vi.spyOn(global, "setTimeout");
+      const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
       runtime.setCommands([
         { type: "speed", value: 1 },
         { type: "forward", distance: 10 },
@@ -170,15 +170,15 @@ describe("TurtleExecutor", () => {
 
       // The speed command itself has a delay, then the forward command has a delay
       const delays = setTimeoutSpy.mock.calls
-        .map((call) => call[1])
-        .filter((d) => typeof d === "number" && d > 0);
+        .map((call: unknown[]) => call[1])
+        .filter((d: unknown) => typeof d === "number" && d > 0);
       expect(delays).toContain(100);
 
       setTimeoutSpy.mockRestore();
     });
 
     it("speed(10) uses 1ms delay between steps", async () => {
-      const setTimeoutSpy = vi.spyOn(global, "setTimeout");
+      const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
       runtime.setCommands([
         { type: "speed", value: 10 },
         { type: "forward", distance: 10 },
@@ -190,8 +190,8 @@ describe("TurtleExecutor", () => {
       await resultPromise;
 
       const delays = setTimeoutSpy.mock.calls
-        .map((call) => call[1])
-        .filter((d) => typeof d === "number" && d > 0);
+        .map((call: unknown[]) => call[1])
+        .filter((d: unknown) => typeof d === "number" && d > 0);
       expect(delays).toContain(1);
 
       setTimeoutSpy.mockRestore();

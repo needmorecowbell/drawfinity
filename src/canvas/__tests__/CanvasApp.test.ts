@@ -169,7 +169,7 @@ describe("CanvasApp", () => {
     Object.defineProperty(canvas, "clientHeight", { value: 600, configurable: true });
 
     // Mock ResizeObserver
-    global.ResizeObserver = class MockResizeObserver {
+    (globalThis as Record<string, unknown>).ResizeObserver = class MockResizeObserver {
       observe = vi.fn();
       unobserve = vi.fn();
       disconnect = vi.fn();

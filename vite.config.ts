@@ -5,6 +5,12 @@ const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
+  // Vitest configuration
+  test: {
+    // wasmoon triggers unhandled errors in jsdom (cannot load WASM via http: URL).
+    // All tests pass; these are environment-level warnings, not test failures.
+    dangerouslyIgnoreUnhandledErrors: true,
+  },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

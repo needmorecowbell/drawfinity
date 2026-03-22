@@ -165,7 +165,7 @@ describe("LocalStorage", () => {
         expect.any(Uint8Array),
       );
       // Verify the state bytes are non-empty
-      const stateArg = mockManager.saveDrawing.mock.calls[0][1] as Uint8Array;
+      const stateArg = (mockManager.saveDrawing.mock.calls[0] as unknown[])[1] as Uint8Array;
       expect(stateArg.length).toBeGreaterThan(0);
     });
   });

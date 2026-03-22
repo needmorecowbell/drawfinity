@@ -13,7 +13,6 @@ export class CursorManager {
   private currentTool: ToolType = "brush";
   private brushWidth = 2;
   private eraserRadius = 10;
-  private zoom = 1;
   private isPanning = false;
   private magnifyMode: "default" | "in" | "out" = "default";
 
@@ -36,8 +35,8 @@ export class CursorManager {
     this.updateCursor();
   }
 
-  setZoom(zoom: number): void {
-    this.zoom = zoom;
+  setZoom(_zoom: number): void {
+    // Reserved for future zoom-dependent cursor scaling
   }
 
   setPanning(panning: boolean): void {

@@ -143,7 +143,7 @@ describe("ServerApi", () => {
 
       const error = await caught;
       expect(error).toBeInstanceOf(ServerApiError);
-      expect(error.message).toContain("timed out");
+      expect((error as Error).message).toContain("timed out");
       vi.useRealTimers();
     });
   });

@@ -69,7 +69,7 @@ jobs:
             ## Drawfinity v__VERSION__
 
             ### Downloads
-            - **Linux**: `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), `.tar.gz` (portable binary)
+            - **Linux**: `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), `.AppImage` (universal)
             - **macOS**: `.dmg` (Intel & Apple Silicon)
             - **Windows**: `.msi` (installer), `.exe` (NSIS installer)
 
@@ -84,37 +84,41 @@ jobs:
           releaseDraft: ${{ github.event.inputs.draft || true }}
           prerelease: false
 
-      - name: Create portable Linux tarball
+      - name: Fix AppImage for cross-distro compatibility
         run: |
-          # AppImage bundles Ubuntu's WebKitGTK + EGL stack which is incompatible
-          # with non-Ubuntu distros. Provide a portable tarball with just the binary
-          # that uses the host system's libraries.
-          VERSION=$(jq -r .version package.json)
-          TARBALL_DIR="drawfinity-${VERSION}-linux-amd64"
-          mkdir -p "$TARBALL_DIR"
-          cp src-tauri/target/release/drawfinity "$TARBALL_DIR/"
-          cp src-tauri/icons/128x128.png "$TARBALL_DIR/drawfinity.png"
-          cat > "$TARBALL_DIR/drawfinity.desktop" << 'DESKTOP'
-          [Desktop Entry]
-          Name=Drawfinity
-          Comment=Infinite canvas drawing app with real-time collaboration
-          Exec=drawfinity
-          Icon=drawfinity
-          Terminal=false
-          Type=Application
-          Categories=Graphics;
-          DESKTOP
-          # Remove leading spaces from heredoc
-          sed -i 's/^          //' "$TARBALL_DIR/drawfinity.desktop"
-          tar czf "${TARBALL_DIR}.tar.gz" "$TARBALL_DIR"
-          rm -rf "$TARBALL_DIR"
+          # The CI-built AppImage bundles Ubuntu's shared libraries (WebKitGTK,
+          # EGL, Mesa, etc.) which are incompatible with non-Ubuntu distros —
+          # causing EGL_BAD_PARAMETER crashes on Arch/Manjaro/Fedora. Selectively
+          # stripping creates broken dependency chains, so we remove ALL bundled
+          # .so files. The AppImage keeps its binary, desktop integration, icons,
+          # and GTK config but uses the host system's libraries at runtime.
+          # Tauri already requires system WebKitGTK as a runtime dependency.
+          APPIMAGE=$(find src-tauri/target/release/bundle/appimage -name '*.AppImage' 2>/dev/null | head -1)
+          if [ -n "$APPIMAGE" ]; then
+            chmod +x "$APPIMAGE"
+            "$APPIMAGE" --appimage-extract
 
-      - name: Upload Linux tarball to release
+            # Remove ALL bundled shared libraries — use host system's instead
+            find squashfs-root/usr/lib -maxdepth 1 -name '*.so*' -delete
+            rm -rf squashfs-root/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1/
+            rm -rf squashfs-root/usr/lib/dri/
+
+            # Repack the AppImage
+            wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+            chmod +x appimagetool
+            ARCH=x86_64 ./appimagetool squashfs-root "$APPIMAGE"
+
+            rm -rf squashfs-root appimagetool
+          fi
+
+      - name: Upload fixed AppImage to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION=$(jq -r .version package.json)
-          gh release upload "v${VERSION}" "drawfinity-${VERSION}-linux-amd64.tar.gz" --clobber
+          APPIMAGE=$(find src-tauri/target/release/bundle/appimage -name '*.AppImage' 2>/dev/null | head -1)
+          if [ -n "$APPIMAGE" ]; then
+            gh release upload "v$(jq -r .version package.json)" "$APPIMAGE" --clobber
+          fi
 
       - name: Build server binary
         run: cd server && cargo build --release

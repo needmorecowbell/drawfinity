@@ -1,6 +1,6 @@
 [package]
 name = "drawfinity"
-version = "0.0.1"
+version = "0.0.2"
 description = "An open-source infinite canvas drawing app"
 authors = ["you"]
 edition = "2021"

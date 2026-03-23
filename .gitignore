@@ -33,3 +33,6 @@ Thumbs.db
 # Environment
 .env
 .env.*
+
+# Maestro Auto Run Docs (local development workflow)
+Auto\ Run\ Docs/

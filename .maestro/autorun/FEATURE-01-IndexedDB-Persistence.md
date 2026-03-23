@@ -1,6 +1,15 @@
-# Stability 04: Browser Persistence Robustness
+# Feature 01: IndexedDB Browser Persistence
 
-Harden the browser-mode (localStorage) persistence layer against data loss, corruption, and storage limits.
+Upgrade browser-mode persistence from localStorage to IndexedDB — larger storage, binary-native, with quota warnings and corruption recovery.
+
+## Context
+
+Drawfinity is an infinite canvas drawing app built with **Tauri v2**. In desktop mode, persistence uses Tauri's `plugin-fs` APIs (`src/persistence/`). In browser mode (no Tauri), it falls back to **localStorage** with base64-encoded Yjs CRDT state. The persistence module is dynamically imported in `src/main.ts` to avoid crashing in browser dev mode.
+
+The CRDT document wrapper is at `src/crdt/DrawfinityDoc.ts` (Yjs). State is serialized via `Y.encodeStateAsUpdate()`.
+
+**Run tests with:** `npx vitest run`
+**Type-check with:** `npx tsc --noEmit`
 
 ## Problems
 
@@ -47,3 +56,4 @@ Harden the browser-mode (localStorage) persistence layer against data loss, corr
   - Test: fallback to localStorage when IndexedDB is unavailable
   - Test: corrupt state detection (invalid bytes, truncated data)
   - Test: quota warning threshold triggers notification
+  - All existing tests must still pass: `npx vitest run`

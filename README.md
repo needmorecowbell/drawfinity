@@ -211,4 +211,4 @@ See [`docs/cross-platform-notes.md`](docs/cross-platform-notes.md) for detailed 
 
 ## License
 
-This project is private and not yet licensed for distribution.
+This project is licensed under the [MIT License](LICENSE).

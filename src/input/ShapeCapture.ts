@@ -89,6 +89,8 @@ export class ShapeCapture {
   /** Modifier keys held during drag */
   private shiftHeld = false;
   private altHeld = false;
+  /** Zoom level captured at pointerdown — used for consistent strokeWidth scaling. */
+  private capturedZoom = 1;
 
   private onPointerDown: (e: PointerEvent) => void;
   private onPointerMove: (e: PointerEvent) => void;
@@ -163,6 +165,7 @@ export class ShapeCapture {
     this.currentY = world.y;
     this.shiftHeld = e.shiftKey;
     this.altHeld = e.altKey;
+    this.capturedZoom = this.camera.zoom;
     this.active = true;
     this.canvas.setPointerCapture(e.pointerId);
   }
@@ -238,7 +241,7 @@ export class ShapeCapture {
       height: h,
       rotation: 0,
       strokeColor: this.config.strokeColor,
-      strokeWidth: this.config.strokeWidth / this.camera.zoom,
+      strokeWidth: this.config.strokeWidth / this.capturedZoom,
       fillColor: this.config.fillColor,
       opacity: this.config.opacity,
       sides: this.config.sides,

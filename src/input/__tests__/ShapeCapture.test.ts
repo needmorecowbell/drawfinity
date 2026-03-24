@@ -277,6 +277,30 @@ describe("ShapeCapture", () => {
     expect(canvas.removeEventListener).toHaveBeenCalledTimes(4);
   });
 
+  it("uses zoom captured at pointerdown for strokeWidth (no jitter on zoom change mid-drag)", () => {
+    capture.setEnabled(true);
+    capture.setConfig({ strokeWidth: 4 });
+    camera.zoom = 2;
+
+    // Start drag — zoom is 2, so strokeWidth should be 4/2 = 2
+    canvas.__fire("pointerdown", { button: 0, ctrlKey: false, shiftKey: false, altKey: false, clientX: 400, clientY: 300, pointerId: 1 });
+
+    // Change zoom mid-drag (user pinch-zooms while drawing shape)
+    camera.zoom = 8;
+
+    canvas.__fire("pointermove", { clientX: 500, clientY: 400, shiftKey: false, altKey: false, pointerId: 1 });
+
+    // Preview should still use the captured zoom (2), not the current zoom (8)
+    const preview = capture.getPreviewShape();
+    expect(preview).not.toBeNull();
+    expect(preview!.strokeWidth).toBe(2); // 4 / 2, not 4 / 8
+
+    // Finalized shape should also use the captured zoom
+    canvas.__fire("pointerup", { clientX: 500, clientY: 400, shiftKey: false, altKey: false, pointerId: 1 });
+    expect(doc.shapes).toHaveLength(1);
+    expect(doc.shapes[0].strokeWidth).toBe(2);
+  });
+
   it("handles negative drag direction (drag up-left)", () => {
     capture.setEnabled(true);
 

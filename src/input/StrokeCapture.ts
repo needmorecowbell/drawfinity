@@ -1,5 +1,6 @@
 import { Camera } from "../camera";
 import { CameraController } from "../camera";
+import { UndoManager } from "../crdt";
 import { DocumentModel, Stroke, StrokePoint, generateStrokeId } from "../model/Stroke";
 import { BrushConfig } from "../tools/Brush";
 import { EraserTool } from "../tools/EraserTool";
@@ -35,6 +36,7 @@ export class StrokeCapture {
   private activeBrush: BrushConfig | null = null;
   private activeTool: ToolType = "brush";
   private eraserTool: EraserTool = new EraserTool();
+  private undoManager: UndoManager | null = null;
   private isErasing = false;
   private activeStrokeOpacityCurve: ((p: number) => number) | null = null;
   /** World-space width for the active stroke (brushWidth / zoom at stroke start). */
@@ -85,6 +87,7 @@ export class StrokeCapture {
 
     if (this.activeTool === "eraser") {
       this.isErasing = true;
+      this.undoManager?.beginBatch();
       this.canvas.setPointerCapture(e.pointerId);
       this.eraseAt(world.x, world.y);
       return;
@@ -118,6 +121,7 @@ export class StrokeCapture {
   private handlePointerUp(e: PointerEvent): void {
     if (this.isErasing) {
       this.isErasing = false;
+      this.undoManager?.endBatch();
       this.canvas.releasePointerCapture(e.pointerId);
       return;
     }
@@ -241,6 +245,13 @@ export class StrokeCapture {
   /** Returns the underlying {@link EraserTool} instance used for erasure hit-testing. */
   getEraserTool(): EraserTool {
     return this.eraserTool;
+  }
+
+  /**
+   * Sets the undo manager used to batch erase gestures into a single undo step.
+   */
+  setUndoManager(undoManager: UndoManager): void {
+    this.undoManager = undoManager;
   }
 
   /** Apply a full brush config — sets color, width, and smoothing from the brush. */

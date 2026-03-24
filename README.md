@@ -1,16 +1,68 @@
-# Drawfinity
+<p align="center">
+  <img src="docs/assets/logo.png" alt="Drawfinity logo" width="128" height="128">
+</p>
 
-An infinite canvas drawing application with pressure-sensitive brushes, real-time collaboration, and a high-performance WebGL rendering pipeline. Built with Tauri v2, TypeScript, and Yjs CRDTs.
+<h1 align="center">Drawfinity</h1>
+
+<p align="center"><em>An infinite canvas for drawing, collaboration, and creative coding.</em></p>
+
+Drawfinity is a free, open-source drawing app with an infinite canvas. Use pressure-sensitive brushes to sketch, write Lua scripts to generate geometric art with turtle graphics, or draw together in real-time with friends. Runs as a native desktop app on Linux, macOS, and Windows.
+
+<!-- Replace placeholder screenshots with actual captures -->
+<p align="center">
+  <img src="docs/assets/screenshot-canvas.png" alt="Drawfinity canvas with brush strokes and shapes" width="720">
+</p>
+
+<p align="center">
+  <img src="docs/assets/screenshot-turtle.png" alt="Turtle graphics mode generating a fractal tree" width="720">
+</p>
 
 ## Features
 
-- **Infinite canvas** — pan and zoom without limits (log-space interpolation for smooth zooming)
-- **Pressure-sensitive brushes** — 4 presets (Pen, Pencil, Marker, Highlighter) with configurable pressure and opacity curves
-- **Real-time collaboration** — connect multiple clients to a shared room via WebSocket; conflict-free sync powered by Yjs CRDTs
-- **High-performance rendering** — WebGL2 triangle strip geometry, spatial indexing, LOD simplification, vertex caching, and batched draw calls for 60fps with 1000+ strokes
-- **Eraser tool** — remove strokes by proximity, fully undoable
-- **Local persistence** — auto-saves to `~/Documents/Drawfinity/drawing.drawfinity`
-- **Cross-platform** — runs as a native desktop app on Linux, Windows, and macOS via Tauri
+### Highlights
+
+- **Infinite canvas** — pan and zoom without limits, with momentum and smooth log-space zoom
+- **Turtle graphics** — write Lua scripts to generate spirals, fractals, and geometric art
+- **Real-time collaboration** — draw together in shared rooms with conflict-free sync
+- **Cross-platform** — native desktop app on Linux, macOS, and Windows via Tauri v2
+
+### Drawing Tools
+
+Drawfinity comes with a **brush tool** offering four presets, an **eraser**, and four **shape tools** for quick geometry.
+
+| Preset | Width | Pressure | Opacity | Use case |
+|--------|-------|----------|---------|----------|
+| **Pen** | 2px | Constant | Full | Technical drawing |
+| **Pencil** | 1.5px | Responsive | Pressure-based | Sketching |
+| **Marker** | 8px | Low sensitivity | Full | Bold strokes |
+| **Highlighter** | 16px | Constant | 30% | Overlay marking |
+
+**Shape tools:** Rectangle (`R`), Ellipse (`O`), Polygon (`P`), and Star (`S`). Each supports pressure-sensitive stroke width.
+
+### Turtle Graphics
+
+Open the turtle panel with `` Ctrl+` `` and write Lua scripts to drive a virtual turtle across the canvas. Built-in examples include spirals, fractal trees, and recursive snowflakes — a great way to explore creative coding.
+
+```lua
+-- Draw a square
+for i = 1, 4 do
+  forward(100)
+  right(90)
+end
+```
+
+See [docs/turtle-graphics.md](docs/turtle-graphics.md) for the full API reference.
+
+### Real-time Collaboration
+
+Press `Ctrl+K` to open the connection panel, enter a server URL and room ID, and start drawing with others. All changes sync instantly and conflict-free via Yjs CRDTs — everyone can draw at the same time without issues.
+
+### Camera & Navigation
+
+- **Bookmarks** — save and recall camera positions (`Ctrl+B` to open panel, `Ctrl+D` to quick-add)
+- **Momentum panning** — flick the canvas and it glides with inertia
+- **Smooth zoom** — scroll wheel, trackpad pinch, or `Ctrl+=`/`Ctrl+-` with animation
+- **Dot grid** — toggle a reference grid with `Ctrl+'`
 
 ## Getting started
 

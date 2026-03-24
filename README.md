@@ -64,6 +64,33 @@ Press `Ctrl+K` to open the connection panel, enter a server URL and room ID, and
 - **Smooth zoom** — scroll wheel, trackpad pinch, or `Ctrl+=`/`Ctrl+-` with animation
 - **Dot grid** — toggle a reference grid with `Ctrl+'`
 
+## Screenshots
+
+<!-- screenshots: replace placeholders with actual captures -->
+
+<table>
+<tr>
+<td align="center">
+<img src="docs/assets/screenshot-canvas.png" alt="Infinite canvas with brush strokes and dot grid" width="360"><br>
+<em>Infinite canvas drawing</em>
+</td>
+<td align="center">
+<img src="docs/assets/screenshot-turtle.png" alt="Turtle graphics panel with Lua code generating a fractal tree" width="360"><br>
+<em>Turtle graphics scripting</em>
+</td>
+</tr>
+<tr>
+<td align="center">
+<img src="docs/assets/screenshot-shapes.png" alt="Shape tools drawing rectangles, ellipses, polygons, and stars" width="360"><br>
+<em>Shape tools</em>
+</td>
+<td align="center">
+<img src="docs/assets/screenshot-collab.png" alt="Two users drawing together in a shared collaboration room" width="360"><br>
+<em>Real-time collaboration</em>
+</td>
+</tr>
+</table>
+
 ## Getting started
 
 The fastest way to try Drawfinity depends on what you have installed. Pick whichever path suits you:
@@ -272,14 +299,17 @@ Multiple clients in the same room see each other's strokes in real time — all 
 src/                     # TypeScript frontend
 ├── main.ts              # App entry point and render loop
 ├── camera/              # Infinite pan/zoom with momentum
+├── canvas/              # CanvasApp — full drawing canvas lifecycle
 ├── crdt/                # Yjs CRDT document and undo manager
-├── input/               # Pointer capture and stroke smoothing
+├── input/               # Pointer capture, stroke smoothing, shape capture
 ├── model/               # Stroke and document type definitions
 ├── persistence/         # Tauri file I/O and auto-save
 ├── renderer/            # WebGL2 rendering pipeline
 ├── sync/                # WebSocket collaboration (y-websocket)
-├── tools/               # Brush presets, eraser, tool manager
-└── ui/                  # Toolbar, connection panel, cursors, FPS
+├── tools/               # Brush presets, eraser, shape tools, tool manager
+├── turtle/              # Lua turtle graphics runtime and drawing
+├── ui/                  # Toolbar, connection panel, cursors, FPS
+└── user/                # User preferences and profile
 
 server/                  # Rust collaboration server
 ├── src/main.rs          # Axum HTTP + WebSocket server
@@ -295,23 +325,27 @@ src-tauri/               # Tauri desktop wrapper configuration
 ### Run tests
 
 ```bash
-npx vitest run          # All 316 tests
-npx vitest --watch      # Watch mode
+make test               # All 716 tests (~5s)
+make test-watch         # Watch mode
+make test-server        # Server tests only
+make test-all           # Frontend + server tests
 ```
 
 ### Type-check
 
 ```bash
-npx tsc --noEmit
+make typecheck
 ```
 
 ### Clean build artifacts
 
 ```bash
-npm run clean           # Remove dist/ and Cargo target
-npm run clean:cache     # Also clear WebKitGTK cache (Linux)
-npm run tauri:fresh     # Clean everything and restart Tauri dev
+make clean              # Remove build artifacts
+make clean-docker       # Remove Docker containers, images, and volumes
+make clean-all          # Remove everything (build artifacts + Docker)
 ```
+
+See the [Makefile reference](#makefile-reference) for all available targets.
 
 ## Technology
 

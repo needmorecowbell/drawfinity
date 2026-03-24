@@ -181,15 +181,6 @@ Room state is persisted on the server in the data directory, so rooms survive se
 | `Ctrl+K` | Toggle connection panel |
 | `F3` | Toggle FPS counter |
 
-## Brush presets
-
-| Preset | Width | Pressure | Opacity | Use case |
-|--------|-------|----------|---------|----------|
-| **Pen** | 2px | Constant | Full | Technical drawing |
-| **Pencil** | 1.5px | Responsive | Pressure-based | Sketching |
-| **Marker** | 8px | Low sensitivity | Full | Bold strokes |
-| **Highlighter** | 16px | Constant | 30% | Overlay marking |
-
 ## Project structure
 
 ```

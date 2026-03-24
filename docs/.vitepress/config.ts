@@ -14,8 +14,14 @@ export default defineConfig({
 
     nav: [
       { text: 'Guide', link: '/getting-started' },
-      { text: 'Turtle Graphics', link: '/turtle-graphics' },
-      { text: 'API Reference', link: '/turtle-api' },
+      {
+        text: 'Creative Coding',
+        items: [
+          { text: 'Turtle Graphics', link: '/turtle-graphics' },
+          { text: 'Turtle API Reference', link: '/turtle-api' },
+        ],
+      },
+      { text: 'Architecture', link: '/architecture' },
       {
         text: 'GitHub',
         link: 'https://github.com/needmorecowbell/drawfinity',

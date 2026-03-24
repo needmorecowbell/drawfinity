@@ -287,6 +287,7 @@ export class CanvasApp {
     this.magnifyCapture.setEnabled(false);
     this.magnifyCapture.onCursorChange = (mode) => this.cursorManager.setMagnifyMode(mode);
     this.undoManager = new UndoManager(this.doc.getStrokesArray());
+    this.strokeCapture.setUndoManager(this.undoManager);
 
     this.fpsCounter = new FpsCounter();
     this.camera.setViewportSize(canvas.clientWidth, canvas.clientHeight);

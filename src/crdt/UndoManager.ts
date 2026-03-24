@@ -7,11 +7,38 @@ import * as Y from "yjs";
  */
 export class UndoManager {
   private undoManager: Y.UndoManager;
+  private batchDepth = 0;
 
   constructor(strokes: Y.Array<Y.Map<unknown>>) {
     this.undoManager = new Y.UndoManager(strokes, {
       captureTimeout: 0,
     });
+  }
+
+  /**
+   * Begin batching subsequent operations into a single undo step.
+   * Call {@link endBatch} when the batch is complete.
+   * Supports nesting — only the outermost begin/end pair takes effect.
+   */
+  beginBatch(): void {
+    if (this.batchDepth === 0) {
+      this.undoManager.stopCapturing();
+      this.undoManager.captureTimeout = Number.MAX_SAFE_INTEGER;
+    }
+    this.batchDepth++;
+  }
+
+  /**
+   * End a batch started by {@link beginBatch}. The next operation after this
+   * will start a new undo step.
+   */
+  endBatch(): void {
+    if (this.batchDepth <= 0) return;
+    this.batchDepth--;
+    if (this.batchDepth === 0) {
+      this.undoManager.captureTimeout = 0;
+      this.undoManager.stopCapturing();
+    }
   }
 
   undo(): void {

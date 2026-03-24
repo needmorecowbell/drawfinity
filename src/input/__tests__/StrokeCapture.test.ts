@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { StrokeCapture } from "../StrokeCapture";
 import { Camera } from "../../camera";
 import { CameraController } from "../../camera";
-import { DrawfinityDoc } from "../../crdt";
+import { DrawfinityDoc, UndoManager } from "../../crdt";
+import { Stroke, generateStrokeId } from "../../model/Stroke";
 
 function createMockCanvas() {
   const listeners: Record<string, Function[]> = {};
@@ -143,5 +144,88 @@ describe("StrokeCapture", () => {
     const strokes = doc.getStrokes();
     expect(strokes[0].color).toBe("#ff0000");
     expect(strokes[0].width).toBe(5);
+  });
+
+  describe("eraser undo batching", () => {
+    let undoManager: UndoManager;
+
+    function makeStroke(id: string, x: number): Stroke {
+      return {
+        id,
+        points: [
+          { x, y: 0, pressure: 0.5 },
+          { x: x + 10, y: 10, pressure: 0.5 },
+        ],
+        color: "#000",
+        width: 2,
+        timestamp: Date.now(),
+      };
+    }
+
+    beforeEach(() => {
+      undoManager = new UndoManager(doc.getStrokesArray());
+      capture.setUndoManager(undoManager);
+      capture.setTool("eraser");
+    });
+
+    it("erase 3 strokes in one gesture, undo once restores all 3", () => {
+      // Add 3 strokes at known positions (at world origin since camera is default)
+      doc.addStroke(makeStroke("s1", 0));
+      doc.addStroke(makeStroke("s2", 5));
+      doc.addStroke(makeStroke("s3", 8));
+      expect(doc.getStrokes()).toHaveLength(3);
+
+      // Set eraser radius large enough to hit all strokes near origin
+      capture.getEraserTool().setRadius(50);
+
+      // Simulate erase gesture: pointerdown at origin, pointermove, pointerup
+      canvas.__fire("pointerdown", { button: 0, ctrlKey: false, clientX: 400, clientY: 300, pressure: 0.5, pointerId: 1 });
+      canvas.__fire("pointermove", { clientX: 405, clientY: 305, pressure: 0.5, pointerId: 1 });
+      canvas.__fire("pointerup", { pointerId: 1 });
+
+      expect(doc.getStrokes()).toHaveLength(0);
+
+      // Single undo should restore all 3 strokes
+      undoManager.undo();
+      expect(doc.getStrokes()).toHaveLength(3);
+    });
+
+    it("erase mix of strokes and shapes in one gesture, undo restores all", () => {
+      // Add strokes near origin
+      doc.addStroke(makeStroke("s1", 0));
+      doc.addStroke(makeStroke("s2", 5));
+
+      // Add a shape near origin
+      doc.addShape({
+        id: "shape1",
+        type: "rectangle",
+        x: 0,
+        y: 0,
+        width: 20,
+        height: 20,
+        rotation: 0,
+        strokeColor: "#000",
+        strokeWidth: 2,
+        fillColor: null,
+        timestamp: Date.now(),
+      });
+
+      expect(doc.getStrokes()).toHaveLength(2);
+      expect(doc.getShapes()).toHaveLength(1);
+
+      capture.getEraserTool().setRadius(50);
+
+      // Erase gesture
+      canvas.__fire("pointerdown", { button: 0, ctrlKey: false, clientX: 400, clientY: 300, pressure: 0.5, pointerId: 1 });
+      canvas.__fire("pointerup", { pointerId: 1 });
+
+      expect(doc.getStrokes()).toHaveLength(0);
+      expect(doc.getShapes()).toHaveLength(0);
+
+      // Single undo restores everything
+      undoManager.undo();
+      expect(doc.getStrokes()).toHaveLength(2);
+      expect(doc.getShapes()).toHaveLength(1);
+    });
   });
 });

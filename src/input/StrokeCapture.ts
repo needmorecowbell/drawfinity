@@ -163,10 +163,12 @@ export class StrokeCapture {
   }
 
   private eraseAt(worldX: number, worldY: number): void {
+    const zoom = this.camera.zoom;
+
     // Erase strokes (split or remove)
     if (this.document.replaceStroke || this.document.removeStroke) {
       const strokes = this.document.getStrokes();
-      const results = this.eraserTool.computeErasureResults(worldX, worldY, strokes);
+      const results = this.eraserTool.computeErasureResults(worldX, worldY, strokes, zoom);
       for (const { strokeId, fragments } of results) {
         if (this.document.replaceStroke) {
           this.document.replaceStroke(strokeId, fragments);
@@ -179,7 +181,7 @@ export class StrokeCapture {
     // Erase shapes (whole-shape removal)
     if (this.document.getShapes && this.document.removeShape) {
       const shapes = this.document.getShapes();
-      const hitShapeIds = this.eraserTool.findIntersectingShapes(worldX, worldY, shapes);
+      const hitShapeIds = this.eraserTool.findIntersectingShapes(worldX, worldY, shapes, zoom);
       for (const shapeId of hitShapeIds) {
         this.document.removeShape(shapeId);
       }

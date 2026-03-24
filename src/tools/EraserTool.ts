@@ -315,17 +315,33 @@ export class EraserTool {
   }
 
   /**
+   * Returns the effective world-space eraser radius for a given zoom level.
+   * At zoom 1 the radius equals the configured value; at higher zoom levels
+   * the world-space radius shrinks so the eraser feels consistent on screen.
+   *
+   * @param zoom - Current camera zoom level (defaults to 1).
+   */
+  getEffectiveRadius(zoom = 1): number {
+    return this.config.radius / zoom;
+  }
+
+  /**
    * Given the eraser position in world coordinates and the current strokes,
    * returns the IDs of strokes that intersect the eraser.
+   *
+   * @param zoom - Current camera zoom level. When provided, the eraser radius
+   *   is scaled by `1 / zoom` so it feels consistent in screen space.
    */
   findIntersectingStrokes(
     worldX: number,
     worldY: number,
     strokes: Stroke[],
+    zoom = 1,
   ): string[] {
+    const radius = this.getEffectiveRadius(zoom);
     const hits: string[] = [];
     for (const stroke of strokes) {
-      if (pointIntersectsStroke(worldX, worldY, stroke, this.config.radius)) {
+      if (pointIntersectsStroke(worldX, worldY, stroke, radius)) {
         hits.push(stroke.id);
       }
     }
@@ -336,15 +352,20 @@ export class EraserTool {
    * Given the eraser position in world coordinates and the current shapes,
    * returns the IDs of shapes that intersect the eraser.
    * Shapes are erased whole (no splitting).
+   *
+   * @param zoom - Current camera zoom level. When provided, the eraser radius
+   *   is scaled by `1 / zoom` so it feels consistent in screen space.
    */
   findIntersectingShapes(
     worldX: number,
     worldY: number,
     shapes: Shape[],
+    zoom = 1,
   ): string[] {
+    const radius = this.getEffectiveRadius(zoom);
     const hits: string[] = [];
     for (const shape of shapes) {
-      if (pointIntersectsShape(worldX, worldY, shape, this.config.radius)) {
+      if (pointIntersectsShape(worldX, worldY, shape, radius)) {
         hits.push(shape.id);
       }
     }
@@ -356,16 +377,21 @@ export class EraserTool {
    * sub-strokes after removing the erased portion.
    * Returns an array of { strokeId, fragments } where fragments are the
    * surviving sub-strokes (may be empty if the entire stroke is erased).
+   *
+   * @param zoom - Current camera zoom level. When provided, the eraser radius
+   *   is scaled by `1 / zoom` so it feels consistent in screen space.
    */
   computeErasureResults(
     worldX: number,
     worldY: number,
     strokes: Stroke[],
+    zoom = 1,
   ): Array<{ strokeId: string; fragments: Stroke[] }> {
+    const radius = this.getEffectiveRadius(zoom);
     const results: Array<{ strokeId: string; fragments: Stroke[] }> = [];
 
     for (const stroke of strokes) {
-      if (!pointIntersectsStroke(worldX, worldY, stroke, this.config.radius)) {
+      if (!pointIntersectsStroke(worldX, worldY, stroke, radius)) {
         continue;
       }
 
@@ -373,7 +399,7 @@ export class EraserTool {
         stroke,
         worldX,
         worldY,
-        this.config.radius,
+        radius,
       );
       results.push({ strokeId: stroke.id, fragments });
     }

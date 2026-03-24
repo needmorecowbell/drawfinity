@@ -278,3 +278,74 @@ describe("SpatialIndex — shapes", () => {
     expect(index.shapeSize).toBe(0);
   });
 });
+
+describe("queryAll — interleaved document order", () => {
+  it("returns strokes and shapes merged by timestamp", () => {
+    const index = new SpatialIndex(500);
+    const stroke1 = makeStroke("st1", [{ x: 10, y: 10 }, { x: 20, y: 20 }]);
+    stroke1.timestamp = 100;
+
+    const shape1 = makeShape("sh1", 30, 30, 20, 20, { timestamp: 200 });
+
+    const stroke2 = makeStroke("st2", [{ x: 40, y: 40 }, { x: 50, y: 50 }]);
+    stroke2.timestamp = 300;
+
+    index.add(stroke1);
+    index.addShape(shape1);
+    index.add(stroke2);
+
+    const items = index.queryAll({ minX: 0, minY: 0, maxX: 500, maxY: 500 });
+    expect(items).toHaveLength(3);
+    expect(items[0]).toEqual({ kind: "stroke", item: stroke1 });
+    expect(items[1]).toEqual({ kind: "shape", item: shape1 });
+    expect(items[2]).toEqual({ kind: "stroke", item: stroke2 });
+  });
+
+  it("shape drawn after stroke appears later in results", () => {
+    const index = new SpatialIndex(500);
+    const stroke = makeStroke("st1", [{ x: 10, y: 10 }, { x: 20, y: 20 }]);
+    stroke.timestamp = 100;
+
+    const shape = makeShape("sh1", 15, 15, 20, 20, { timestamp: 150 });
+
+    index.add(stroke);
+    index.addShape(shape);
+
+    const items = index.queryAll({ minX: 0, minY: 0, maxX: 500, maxY: 500 });
+    expect(items).toHaveLength(2);
+    expect(items[0].kind).toBe("stroke");
+    expect(items[1].kind).toBe("shape");
+    // Shape has higher timestamp so it renders on top
+    expect(items[1].item.timestamp).toBeGreaterThan(items[0].item.timestamp);
+  });
+
+  it("returns empty array when no items are visible", () => {
+    const index = new SpatialIndex(100);
+    const stroke = makeStroke("st1", [{ x: 500, y: 500 }, { x: 520, y: 520 }]);
+    index.add(stroke);
+
+    const items = index.queryAll({ minX: 0, minY: 0, maxX: 100, maxY: 100 });
+    expect(items).toHaveLength(0);
+  });
+
+  it("handles shapes-only correctly", () => {
+    const index = new SpatialIndex(500);
+    const shape = makeShape("sh1", 50, 50, 20, 20, { timestamp: 100 });
+    index.addShape(shape);
+
+    const items = index.queryAll({ minX: 0, minY: 0, maxX: 500, maxY: 500 });
+    expect(items).toHaveLength(1);
+    expect(items[0].kind).toBe("shape");
+  });
+
+  it("handles strokes-only correctly", () => {
+    const index = new SpatialIndex(500);
+    const stroke = makeStroke("st1", [{ x: 10, y: 10 }, { x: 20, y: 20 }]);
+    stroke.timestamp = 100;
+    index.add(stroke);
+
+    const items = index.queryAll({ minX: 0, minY: 0, maxX: 500, maxY: 500 });
+    expect(items).toHaveLength(1);
+    expect(items[0].kind).toBe("stroke");
+  });
+});

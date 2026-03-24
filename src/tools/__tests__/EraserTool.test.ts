@@ -527,6 +527,75 @@ describe("pointIntersectsShape", () => {
   });
 });
 
+describe("EraserTool zoom-aware radius", () => {
+  it("getEffectiveRadius returns config radius at zoom 1", () => {
+    const eraser = new EraserTool({ radius: 10 });
+    expect(eraser.getEffectiveRadius(1)).toBe(10);
+  });
+
+  it("getEffectiveRadius shrinks radius at high zoom", () => {
+    const eraser = new EraserTool({ radius: 10 });
+    expect(eraser.getEffectiveRadius(10)).toBe(1);
+    expect(eraser.getEffectiveRadius(100)).toBeCloseTo(0.1);
+  });
+
+  it("getEffectiveRadius grows radius at low zoom", () => {
+    const eraser = new EraserTool({ radius: 10 });
+    expect(eraser.getEffectiveRadius(0.5)).toBe(20);
+  });
+
+  it("getEffectiveRadius defaults to zoom 1 when omitted", () => {
+    const eraser = new EraserTool({ radius: 10 });
+    expect(eraser.getEffectiveRadius()).toBe(10);
+  });
+
+  it("findIntersectingStrokes uses zoom-scaled radius", () => {
+    const eraser = new EraserTool({ radius: 10 });
+    // Stroke along x-axis from 0 to 100
+    const strokes = [
+      makeStroke("s1", [{ x: 0, y: 0 }, { x: 100, y: 0 }]),
+    ];
+    // At zoom 1, radius=10 — point at (50, 8) is 8 units away, within 10+1=11 → hit
+    expect(eraser.findIntersectingStrokes(50, 8, strokes, 1)).toEqual(["s1"]);
+    // At zoom 100, effective radius=0.1 — point at (50, 8) is way outside → miss
+    expect(eraser.findIntersectingStrokes(50, 8, strokes, 100)).toEqual([]);
+  });
+
+  it("computeErasureResults uses zoom-scaled radius", () => {
+    const eraser = new EraserTool({ radius: 10 });
+    // Stroke from 0 to 100 with points every 10 units
+    const stroke = makeStroke(
+      "s1",
+      Array.from({ length: 11 }, (_, i) => ({ x: i * 10, y: 0 })),
+    );
+    // At zoom 1, radius=10 — erasing at x=50 removes center segments, produces 2 fragments
+    const resultsZ1 = eraser.computeErasureResults(50, 0, [stroke], 1);
+    expect(resultsZ1).toHaveLength(1);
+    expect(resultsZ1[0].fragments.length).toBe(2);
+
+    // At zoom 100, effective radius=0.1 — barely touches the segment at x=50
+    // Still hits (halfWidth=1 makes effectiveRadius=1.1), but fragments stay larger
+    const resultsZ100 = eraser.computeErasureResults(50, 0, [stroke], 100);
+    expect(resultsZ100).toHaveLength(1);
+    // More fragments survive at high zoom since the eraser is smaller
+    const z1Surviving = resultsZ1[0].fragments.reduce((n, f) => n + f.points.length, 0);
+    const z100Surviving = resultsZ100[0].fragments.reduce((n, f) => n + f.points.length, 0);
+    expect(z100Surviving).toBeGreaterThan(z1Surviving);
+  });
+
+  it("findIntersectingShapes uses zoom-scaled radius", () => {
+    const eraser = new EraserTool({ radius: 10 });
+    const shapes = [
+      makeShape({ id: "s1", x: 50, y: 50, width: 100, height: 80, strokeWidth: 0 }),
+    ];
+    // Point at (106, 50) is 6 units outside the right edge (half-width=50).
+    // At zoom 1, radius=10 → hit
+    expect(eraser.findIntersectingShapes(106, 50, shapes, 1)).toEqual(["s1"]);
+    // At zoom 100, effective radius=0.1 → miss
+    expect(eraser.findIntersectingShapes(106, 50, shapes, 100)).toEqual([]);
+  });
+});
+
 describe("EraserTool.findIntersectingShapes", () => {
   it("returns IDs of shapes that intersect the eraser position", () => {
     const eraser = new EraserTool({ radius: 5 });

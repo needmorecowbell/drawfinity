@@ -650,33 +650,51 @@ export class CanvasApp {
       this.renderer.drawGrid(cameraMatrix, viewportBounds, this.camera.zoom);
 
       const allStrokes = this.doc.getStrokes();
-      const visibleStrokes = this.spatialIndex.query(viewportBounds);
       const currentZoom = this.camera.zoom;
       const vertexCache = this.renderer.vertexCache;
-
-      // Shapes
-      const visibleShapes = this.spatialIndex.queryShapes(viewportBounds);
       const shapeVertexCache = this.renderer.shapeVertexCache;
-      const shapeFills: Float32Array[] = [];
-      const shapeOutlines: Float32Array[] = [];
-      for (const shape of visibleShapes) {
-        const vd = shapeVertexCache.get(shape);
-        if (vd.fill) shapeFills.push(vd.fill);
-        if (vd.outline) shapeOutlines.push(vd.outline);
-      }
-      if (shapeFills.length > 0) this.renderer.drawShapeFillBatch(shapeFills);
-      if (shapeOutlines.length > 0) this.renderer.drawShapeOutlineBatch(shapeOutlines);
 
-      // Strokes
-      const strips: Float32Array[] = [];
-      for (const stroke of visibleStrokes) {
-        const rgba = hexToRgba(stroke.color);
-        rgba[3] = stroke.opacity ?? 1.0;
-        const lodPoints = getStrokeLOD(stroke.id, stroke.points, currentZoom);
-        const data = vertexCache.get(stroke.id, lodPoints, rgba, stroke.width, currentZoom);
-        if (data) strips.push(data);
+      // Render all items interleaved by document order (timestamp).
+      // Batch consecutive same-type items to minimize draw mode switches.
+      const visibleItems = this.spatialIndex.queryAll(viewportBounds);
+      let visibleStrokeCount = 0;
+
+      let pendingStrips: Float32Array[] = [];
+      let pendingShapeFills: Float32Array[] = [];
+      let pendingShapeOutlines: Float32Array[] = [];
+      let lastKind: "stroke" | "shape" | null = null;
+
+      const flushBatch = (): void => {
+        if (pendingShapeFills.length > 0) this.renderer.drawShapeFillBatch(pendingShapeFills);
+        if (pendingShapeOutlines.length > 0) this.renderer.drawShapeOutlineBatch(pendingShapeOutlines);
+        if (pendingStrips.length > 0) this.renderer.drawStrokeBatch(pendingStrips);
+        pendingStrips = [];
+        pendingShapeFills = [];
+        pendingShapeOutlines = [];
+      };
+
+      for (const ci of visibleItems) {
+        if (ci.kind !== lastKind && lastKind !== null) {
+          flushBatch();
+        }
+        lastKind = ci.kind;
+
+        if (ci.kind === "stroke") {
+          visibleStrokeCount++;
+          const stroke = ci.item;
+          const rgba = hexToRgba(stroke.color);
+          rgba[3] = stroke.opacity ?? 1.0;
+          const lodPoints = getStrokeLOD(stroke.id, stroke.points, currentZoom);
+          const data = vertexCache.get(stroke.id, lodPoints, rgba, stroke.width, currentZoom);
+          if (data) pendingStrips.push(data);
+        } else {
+          const shape = ci.item;
+          const vd = shapeVertexCache.get(shape);
+          if (vd.fill) pendingShapeFills.push(vd.fill);
+          if (vd.outline) pendingShapeOutlines.push(vd.outline);
+        }
       }
-      if (strips.length > 0) this.renderer.drawStrokeBatch(strips);
+      flushBatch();
 
       // Active stroke preview
       const active = this.strokeCapture.getActiveStroke();
@@ -694,7 +712,7 @@ export class CanvasApp {
         if (pvd.outline) this.renderer.drawShapeOutlineBatch([pvd.outline]);
       }
 
-      this.fpsCounter.update(now, allStrokes.length, visibleStrokes.length);
+      this.fpsCounter.update(now, allStrokes.length, visibleStrokeCount);
       this.animFrameId = requestAnimationFrame(frame);
     };
     this.animFrameId = requestAnimationFrame(frame);

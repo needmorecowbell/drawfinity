@@ -1,5 +1,5 @@
 import { Stroke } from "../model/Stroke";
-import { Shape } from "../model/Shape";
+import { Shape, CanvasItem } from "../model/Shape";
 
 /**
  * Axis-aligned bounding box used for spatial queries and viewport culling.
@@ -418,6 +418,37 @@ export class SpatialIndex {
 
     result.sort((a, b) => a.timestamp - b.timestamp);
     return result;
+  }
+
+  /**
+   * Queries the spatial index for all strokes and shapes whose bounding boxes
+   * intersect the given viewport, returning them as a unified array sorted by
+   * timestamp. This enables interleaved rendering in correct document order.
+   */
+  queryAll(viewport: AABB): CanvasItem[] {
+    const strokes = this.query(viewport);
+    const shapes = this.queryShapes(viewport);
+
+    const items: CanvasItem[] = [];
+    let si = 0;
+    let shi = 0;
+
+    // Merge two already-sorted arrays by timestamp
+    while (si < strokes.length && shi < shapes.length) {
+      if (strokes[si].timestamp <= shapes[shi].timestamp) {
+        items.push({ kind: "stroke", item: strokes[si++] });
+      } else {
+        items.push({ kind: "shape", item: shapes[shi++] });
+      }
+    }
+    while (si < strokes.length) {
+      items.push({ kind: "stroke", item: strokes[si++] });
+    }
+    while (shi < shapes.length) {
+      items.push({ kind: "shape", item: shapes[shi++] });
+    }
+
+    return items;
   }
 
   /** Returns the number of indexed strokes. */

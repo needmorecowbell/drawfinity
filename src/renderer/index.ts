@@ -5,7 +5,7 @@ export { ShaderProgram, STROKE_VERTEX_SHADER, STROKE_FRAGMENT_SHADER } from "./S
 export { StrokeRenderer } from "./StrokeRenderer";
 export type { StrokePoint } from "./StrokeRenderer";
 export { Renderer } from "./Renderer";
-export { generateTriangleStrip } from "./StrokeMesh";
+export { generateTriangleStrip, generateDotQuad } from "./StrokeMesh";
 export { SpatialIndex, computeStrokeBounds, computeShapeBounds } from "./SpatialIndex";
 export type { AABB } from "./SpatialIndex";
 export { generateShapeVertices, generateRectangleVertices, generateEllipseVertices, generatePolygonVertices, generateStarVertices } from "./ShapeMesh";

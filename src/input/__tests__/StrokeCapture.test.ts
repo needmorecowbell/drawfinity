@@ -3,7 +3,7 @@ import { StrokeCapture } from "../StrokeCapture";
 import { Camera } from "../../camera";
 import { CameraController } from "../../camera";
 import { DrawfinityDoc, UndoManager } from "../../crdt";
-import { Stroke, generateStrokeId } from "../../model/Stroke";
+import { Stroke } from "../../model/Stroke";
 
 function createMockCanvas() {
   const listeners: Record<string, Function[]> = {};
@@ -207,6 +207,7 @@ describe("StrokeCapture", () => {
         strokeColor: "#000",
         strokeWidth: 2,
         fillColor: null,
+        opacity: 1,
         timestamp: Date.now(),
       });
 

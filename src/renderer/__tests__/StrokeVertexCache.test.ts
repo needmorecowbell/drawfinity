@@ -55,4 +55,26 @@ describe("StrokeVertexCache", () => {
     const data = cache.get("s1", [{ x: 0, y: 0 }], WHITE, 2, 1.0);
     expect(data).toBeNull();
   });
+
+  it("regenerates when width changes", () => {
+    const cache = new StrokeVertexCache();
+    const data1 = cache.get("s1", twoPointLine, WHITE, 2, 1.0);
+    const data2 = cache.get("s1", twoPointLine, WHITE, 5, 1.0);
+    expect(data1).not.toBe(data2);
+  });
+
+  it("regenerates when color changes", () => {
+    const cache = new StrokeVertexCache();
+    const RED: [number, number, number, number] = [1, 0, 0, 1];
+    const data1 = cache.get("s1", twoPointLine, WHITE, 2, 1.0);
+    const data2 = cache.get("s1", twoPointLine, RED, 2, 1.0);
+    expect(data1).not.toBe(data2);
+  });
+
+  it("returns cached data when width and color are unchanged", () => {
+    const cache = new StrokeVertexCache();
+    const data1 = cache.get("s1", twoPointLine, WHITE, 2, 1.0);
+    const data2 = cache.get("s1", twoPointLine, WHITE, 2, 1.0);
+    expect(data1).toBe(data2);
+  });
 });

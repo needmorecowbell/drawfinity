@@ -83,4 +83,40 @@ describe("ShapeVertexCache", () => {
     expect(data2.outline).not.toBeNull();
     expect(data1).not.toBe(data2); // new object
   });
+
+  it("regenerates when strokeColor changes", () => {
+    const cache = new ShapeVertexCache();
+    const shape1 = makeShape();
+    const data1 = cache.get(shape1);
+    const shape2 = makeShape({ strokeColor: "#0000ff" });
+    const data2 = cache.get(shape2);
+    expect(data1).not.toBe(data2);
+  });
+
+  it("regenerates when strokeWidth changes", () => {
+    const cache = new ShapeVertexCache();
+    const shape1 = makeShape();
+    const data1 = cache.get(shape1);
+    const shape2 = makeShape({ strokeWidth: 8 });
+    const data2 = cache.get(shape2);
+    expect(data1).not.toBe(data2);
+  });
+
+  it("regenerates when fillColor changes", () => {
+    const cache = new ShapeVertexCache();
+    const shape1 = makeShape();
+    const data1 = cache.get(shape1);
+    const shape2 = makeShape({ fillColor: "#00ff00" });
+    const data2 = cache.get(shape2);
+    expect(data1).not.toBe(data2);
+  });
+
+  it("returns cached data when shape properties are unchanged", () => {
+    const cache = new ShapeVertexCache();
+    const shape = makeShape();
+    const data1 = cache.get(shape);
+    const shapeCopy = makeShape(); // same properties
+    const data2 = cache.get(shapeCopy);
+    expect(data1).toBe(data2);
+  });
 });

@@ -1,0 +1,27 @@
+/* Artistic/creative color palette for Drawfinity docs */
+
+:root {
+  /* Brand colors — warm creative tones */
+  --vp-c-brand-1: #e06c75;
+  --vp-c-brand-2: #d4585f;
+  --vp-c-brand-3: #c94a52;
+  --vp-c-brand-soft: rgba(224, 108, 117, 0.14);
+
+  /* Tip/info accents */
+  --vp-c-tip-1: #61afef;
+  --vp-c-tip-2: #528bcc;
+  --vp-c-tip-3: #4680c2;
+  --vp-c-tip-soft: rgba(97, 175, 239, 0.14);
+}
+
+.dark {
+  --vp-c-brand-1: #e06c75;
+  --vp-c-brand-2: #e8838b;
+  --vp-c-brand-3: #f0a0a6;
+  --vp-c-brand-soft: rgba(224, 108, 117, 0.16);
+}
+
+/* Hero section styling */
+.VPHero .VPImage {
+  border-radius: 16px;
+}

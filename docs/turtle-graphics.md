@@ -1,3 +1,8 @@
+---
+title: Turtle Graphics
+description: Write Lua scripts to create geometric art, fractals, and patterns on the Drawfinity canvas.
+---
+
 # Turtle Graphics
 
 Drawfinity includes a built-in turtle graphics environment powered by Lua 5.4. Write scripts to create geometric art, fractals, and patterns that become permanent strokes on the canvas — fully saveable, syncable, and editable just like hand-drawn art.
@@ -389,10 +394,14 @@ sierpinski(256, 5)
 | **Stop** | Halt a running script |
 | **Place** | Click canvas to reposition the turtle's home origin |
 | **Speed slider** | Adjust animation speed (0-10) |
-| **Scripts** | Browse and import scripts from the [Turtle Exchange](https://github.com/needmorecowbell/drawfinity_turtle_exchange) |
+| **Scripts** | Browse and import scripts from the [Turtle Exchange](/turtle-exchange) |
 | **Clear Console** | Clear the output log |
 
 Scripts are automatically saved per-drawing and restored when you reopen the panel.
+
+## Turtle Exchange
+
+The [Turtle Exchange](/turtle-exchange) is a community library of turtle scripts. Click **Scripts** in the turtle panel to browse, search by tag, and import scripts with one click. You can also contribute your own — see the [contribution guide](/turtle-exchange#contributing).
 
 ## Tips
 

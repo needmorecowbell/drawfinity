@@ -1,13 +1,6 @@
 ---
-type: reference
-title: Cross-Platform Build & Compatibility Notes
-created: 2026-03-18
-tags:
-  - build
-  - cross-platform
-  - compatibility
-related:
-  - '[[DRAWFINITY-05-Polish-and-Cross-Platform]]'
+title: Cross-Platform Notes
+description: Build instructions, platform-specific issues, and compatibility notes for Linux, macOS, and Windows.
 ---
 
 # Cross-Platform Build & Compatibility Notes

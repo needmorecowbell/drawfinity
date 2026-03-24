@@ -12,6 +12,9 @@
     "clean:cache": "rm -rf dist src-tauri/target ~/.local/share/com.drawfinity.app/WebKitCache ~/.local/share/com.drawfinity.app/CacheStorage && echo 'Cleaned dist + Cargo target + WebKitGTK cache'",
     "tauri:fresh": "npm run clean:cache && npm run tauri dev",
     "tauri:build": "NO_STRIP=true tauri build",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "exchange:snapshot": "node scripts/generate-exchange-snapshot.mjs"
   },
   "dependencies": {
@@ -28,8 +31,11 @@
     "@tauri-apps/cli": "^2",
     "@types/node": "^25.5.0",
     "jsdom": "^29.0.0",
+    "mermaid": "^11.13.0",
     "typescript": "~5.6.2",
     "vite": "^6.0.3",
+    "vitepress": "^1.6.4",
+    "vitepress-plugin-mermaid": "^2.0.17",
     "vitest": "^4.1.0"
   }
 }

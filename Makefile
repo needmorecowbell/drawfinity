@@ -1,4 +1,4 @@
-.PHONY: help up down restart logs server frontend dev stop dev-stop tauri test build clean clean-all
+.PHONY: help up down restart logs server frontend dev stop dev-stop tauri test build clean clean-all docs docs-dev docs-preview
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -83,6 +83,17 @@ build-server: ## Production server build
 	cd server && cargo build --release
 
 build-all: build build-server ## Build frontend + server
+
+# ── Documentation ────────────────────────────────────────
+
+docs: node_modules ## Build VitePress documentation site
+	npm run docs:build
+
+docs-dev: node_modules ## Start VitePress docs dev server
+	npm run docs:dev
+
+docs-preview: node_modules ## Preview built docs site
+	npm run docs:preview
 
 # ── Cleanup ──────────────────────────────────────────────
 

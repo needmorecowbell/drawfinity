@@ -130,10 +130,23 @@ export class StrokeCapture {
 
     // Only finalize strokes with at least 2 points
     if (this.activeStroke.length >= 2) {
-      const smoothed = smoothStroke(this.activeStroke, this.smoothingWindow);
+      let smoothed = smoothStroke(this.activeStroke, this.smoothingWindow);
       // Compute stroke-level opacity from the brush's opacityCurve using average pressure
       const avgPressure = this.activeStroke.reduce((s, p) => s + p.pressure, 0) / this.activeStroke.length;
       const opacity = this.activeStrokeOpacityCurve ? this.activeStrokeOpacityCurve(avgPressure) : 1.0;
+
+      // If the total path length is sub-pixel, treat as a dot:
+      // create a minimal 2-point stroke that renders as a visible quad.
+      const minLength = 0.5 / this.camera.zoom;
+      if (computePathLength(smoothed) < minLength) {
+        const center = smoothed[0];
+        const offset = this.activeStrokeWorldWidth / 4;
+        smoothed = [
+          { x: center.x - offset, y: center.y, pressure: center.pressure },
+          { x: center.x + offset, y: center.y, pressure: center.pressure },
+        ];
+      }
+
       const stroke: Stroke = {
         id: generateStrokeId(),
         points: smoothed,
@@ -274,4 +287,15 @@ export class StrokeCapture {
     this.canvas.removeEventListener("pointerup", this.onPointerUp);
     this.canvas.removeEventListener("pointercancel", this.onPointerUp);
   }
+}
+
+/** Sum of Euclidean distances between consecutive points. */
+function computePathLength(points: readonly StrokePoint[]): number {
+  let length = 0;
+  for (let i = 1; i < points.length; i++) {
+    const dx = points[i].x - points[i - 1].x;
+    const dy = points[i].y - points[i - 1].y;
+    length += Math.sqrt(dx * dx + dy * dy);
+  }
+  return length;
 }

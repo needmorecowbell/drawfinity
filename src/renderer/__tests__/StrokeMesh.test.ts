@@ -119,13 +119,16 @@ describe("StrokeMesh.generateTriangleStrip", () => {
       expect(generateTriangleStrip(points, -5, WHITE)).toBeNull();
     });
 
-    it("deduplicates consecutive identical points and returns null if only one unique", () => {
+    it("deduplicates consecutive identical points and generates a dot quad for one unique", () => {
       const points: StrokePoint[] = [
         { x: 3, y: 3 },
         { x: 3, y: 3 },
         { x: 3, y: 3 },
       ];
-      expect(generateTriangleStrip(points, 2, WHITE)).toBeNull();
+      const data = generateTriangleStrip(points, 2, WHITE);
+      expect(data).not.toBeNull();
+      // Dot quad: 4 vertices × 6 floats = 24
+      expect(data!.length).toBe(24);
     });
 
     it("deduplicates but still produces geometry when enough unique points remain", () => {

@@ -44,7 +44,10 @@ export function generateTriangleStrip(
     }
   }
 
-  if (deduped.length < 2) return null;
+  if (deduped.length < 2) {
+    // Single unique point — generate a dot quad (2 triangles)
+    return generateDotQuad(deduped[0], width, color);
+  }
 
   const vertexCount = deduped.length * 2;
   // 6 floats per vertex: x, y, r, g, b, a
@@ -133,6 +136,47 @@ export function generateTriangleStrip(
     data[ri + 4] = b;
     data[ri + 5] = a;
   }
+
+  return data;
+}
+
+/**
+ * Generates a small quad (as a triangle strip) representing a dot at a single point.
+ *
+ * Used when a stroke collapses to a single unique point after deduplication.
+ * Produces 4 vertices forming a square centered on the point, rendered via
+ * `GL_TRIANGLE_STRIP` as two triangles.
+ *
+ * @param point - The center point with `x`, `y`, and optional `pressure`.
+ * @param width - Base stroke width in world-space units.
+ * @param color - RGBA color as a 4-element tuple with components in [0, 1].
+ * @returns Interleaved `Float32Array` with layout `[x, y, r, g, b, a]` per vertex.
+ */
+export function generateDotQuad(
+  point: StrokePoint,
+  width: number,
+  color: [number, number, number, number],
+): Float32Array {
+  const pressure = point.pressure ?? 0.5;
+  const halfSize = Math.max((width * pressure) / 2, width / 4);
+  const [r, g, b, a] = color;
+
+  // 4 vertices in triangle-strip order: TL, BL, TR, BR
+  const data = new Float32Array(4 * 6);
+  const { x, y } = point;
+
+  // Top-left
+  data[0] = x - halfSize; data[1] = y - halfSize;
+  data[2] = r; data[3] = g; data[4] = b; data[5] = a;
+  // Bottom-left
+  data[6] = x - halfSize; data[7] = y + halfSize;
+  data[8] = r; data[9] = g; data[10] = b; data[11] = a;
+  // Top-right
+  data[12] = x + halfSize; data[13] = y - halfSize;
+  data[14] = r; data[15] = g; data[16] = b; data[17] = a;
+  // Bottom-right
+  data[18] = x + halfSize; data[19] = y + halfSize;
+  data[20] = r; data[21] = g; data[22] = b; data[23] = a;
 
   return data;
 }

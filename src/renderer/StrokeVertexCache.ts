@@ -4,6 +4,8 @@ import type { StrokePoint } from "./StrokeRenderer";
 interface CacheEntry {
   data: Float32Array;
   lodBracket: number;
+  width: number;
+  color: [number, number, number, number];
 }
 
 /**
@@ -28,14 +30,22 @@ export class StrokeVertexCache {
     const bracket = this.getLODBracket(zoom);
     const entry = this.cache.get(strokeId);
 
-    if (entry && entry.lodBracket === bracket) {
+    if (
+      entry &&
+      entry.lodBracket === bracket &&
+      entry.width === width &&
+      entry.color[0] === color[0] &&
+      entry.color[1] === color[1] &&
+      entry.color[2] === color[2] &&
+      entry.color[3] === color[3]
+    ) {
       return entry.data;
     }
 
     const data = generateTriangleStrip(points, width, color);
     if (!data) return null;
 
-    this.cache.set(strokeId, { data, lodBracket: bracket });
+    this.cache.set(strokeId, { data, lodBracket: bracket, width, color });
     return data;
   }
 

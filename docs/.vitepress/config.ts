@@ -4,7 +4,7 @@ import { withMermaid } from 'vitepress-plugin-mermaid'
 export default withMermaid(defineConfig({
   title: 'Drawfinity',
   description: 'Infinite canvas drawing app with real-time collaboration and turtle graphics',
-  base: '/',
+  base: '/drawfinity/',
 
   head: [
     ['link', { rel: 'icon', type: 'image/png', href: '/favicon.png' }],

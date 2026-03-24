@@ -34,5 +34,9 @@ Thumbs.db
 .env
 .env.*
 
+# VitePress build output and cache
+docs/.vitepress/dist
+docs/.vitepress/cache
+
 # Maestro Auto Run Docs (local development workflow)
 Auto\ Run\ Docs/

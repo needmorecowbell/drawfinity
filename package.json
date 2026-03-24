@@ -12,6 +12,9 @@
     "clean:cache": "rm -rf dist src-tauri/target ~/.local/share/com.drawfinity.app/WebKitCache ~/.local/share/com.drawfinity.app/CacheStorage && echo 'Cleaned dist + Cargo target + WebKitGTK cache'",
     "tauri:fresh": "npm run clean:cache && npm run tauri dev",
     "tauri:build": "NO_STRIP=true tauri build",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "exchange:snapshot": "node scripts/generate-exchange-snapshot.mjs"
   },
   "dependencies": {

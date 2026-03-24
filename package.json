@@ -2,6 +2,7 @@
   "name": "drawfinity",
   "private": true,
   "version": "0.0.1",
+  "homepage": "https://needmorecowbell.github.io/drawfinity/",
   "type": "module",
   "scripts": {
     "dev": "vite",

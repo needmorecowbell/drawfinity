@@ -6,6 +6,12 @@
 
 <p align="center"><em>An infinite canvas for drawing, collaboration, and creative coding.</em></p>
 
+<p align="center">
+  <a href="https://needmorecowbell.github.io/drawfinity/">Documentation</a> &middot;
+  <a href="https://github.com/needmorecowbell/drawfinity/releases">Downloads</a> &middot;
+  <a href="https://needmorecowbell.github.io/drawfinity/getting-started">Getting Started</a>
+</p>
+
 Drawfinity is a free, open-source drawing app with an infinite canvas. Use pressure-sensitive brushes to sketch, write Lua scripts to generate geometric art with turtle graphics, or draw together in real-time with friends. Runs as a native desktop app on Linux, macOS, and Windows.
 
 <!-- Replace placeholder screenshots with actual captures -->
@@ -51,7 +57,7 @@ for i = 1, 4 do
 end
 ```
 
-See [docs/turtle-graphics.md](docs/turtle-graphics.md) for the full API reference.
+See the [Turtle Graphics documentation](https://needmorecowbell.github.io/drawfinity/turtle-graphics) for the full API reference.
 
 ### Real-time Collaboration
 
@@ -105,7 +111,7 @@ Grab the latest release for your platform from the [GitHub Releases page](https:
 
 Download the desktop app, install it, and you're drawing in seconds. The server binary is optional — only needed if you want to host your own collaboration rooms.
 
-See the [Downloads page](docs/downloads.md) for detailed installation instructions per platform.
+See the [Downloads page](https://needmorecowbell.github.io/drawfinity/downloads) for detailed installation instructions per platform.
 
 ### Build from source
 
@@ -385,7 +391,7 @@ Pressure data is read from `PointerEvent.pressure` and works with:
 - **WebKitGTK cache staleness** (Linux): if the UI shows stale content after code changes, run `npm run clean:cache`
 - **macOS code signing**: unsigned builds work locally but require signing for distribution
 
-See [`docs/cross-platform-notes.md`](docs/cross-platform-notes.md) for detailed platform notes.
+See the [Cross-platform notes](https://needmorecowbell.github.io/drawfinity/cross-platform-notes) for detailed platform notes.
 
 ## License
 

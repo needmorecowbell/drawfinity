@@ -66,67 +66,110 @@ Press `Ctrl+K` to open the connection panel, enter a server URL and room ID, and
 
 ## Getting started
 
-### Prerequisites
+The fastest way to try Drawfinity depends on what you have installed. Pick whichever path suits you:
 
-- [Node.js](https://nodejs.org/) (v18+)
-- [Rust](https://rustup.rs/) (stable toolchain)
-- Tauri v2 system dependencies (see below)
+### Quick start with Docker
 
-#### Linux (Debian/Ubuntu)
-```bash
-sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
-```
-
-#### Linux (Arch/Manjaro)
-```bash
-sudo pacman -S webkit2gtk-4.1 gtk3 libayatana-appindicator librsvg
-```
-
-#### macOS
-```bash
-xcode-select --install
-```
-
-#### Windows
-- [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with the C++ workload
-- [WebView2 runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (pre-installed on Windows 10 1803+ and Windows 11)
-
-### Install dependencies
+If you have Docker and Docker Compose, one command gets everything running — the collaboration server and the frontend:
 
 ```bash
-npm install
+make up
 ```
 
-### Run in development
+Open `http://localhost:1420` in your browser and start drawing. Use `make logs` to watch output, `make restart` to rebuild, and `make down` to stop.
 
-**Desktop app (recommended):**
+### Quick start without Docker
+
+Start both the server and frontend locally:
 
 ```bash
-npm run tauri dev
+make dev
 ```
 
-**Browser only (drawings saved to localStorage):**
+This launches the collaboration server on port 8080 and Vite on port 1420. Stop everything with `make stop`.
+
+### Desktop app
+
+For the full native experience with file save/load and tablet support:
+
+```bash
+make tauri
+```
+
+This starts Tauri in dev mode with hot-reload. For a production build: `npm run tauri build`.
+
+| Platform | Format | Location |
+|----------|--------|----------|
+| Linux | `.deb`, `.rpm`, Binary | `src-tauri/target/release/bundle/` |
+| macOS | `.dmg`, `.app` | `src-tauri/target/release/bundle/` |
+| Windows | `.msi`, `.exe` | `src-tauri/target/release/bundle/` |
+
+### Browser only
+
+If you just want to sketch without a server:
 
 ```bash
 npm run dev
 ```
 
-Then open `http://localhost:1420` in your browser.
+Open `http://localhost:1420`. Drawings are saved to localStorage (no collaboration in this mode).
 
-### Build for production
+<details>
+<summary><strong>Prerequisites & platform dependencies</strong></summary>
 
+- [Node.js](https://nodejs.org/) (v18+)
+- [Rust](https://rustup.rs/) (stable toolchain) — needed for the collaboration server and Tauri desktop builds
+
+**Linux (Debian/Ubuntu)**
 ```bash
-npm run tauri build
+sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
 ```
 
-Build artifacts by platform:
+**Linux (Arch/Manjaro)**
+```bash
+sudo pacman -S webkit2gtk-4.1 gtk3 libayatana-appindicator librsvg
+```
 
-| Platform | Format | Location |
-|----------|--------|----------|
-| Linux | `.deb`, `.rpm` | `src-tauri/target/release/bundle/deb/`, `rpm/` |
-| Linux | Binary | `src-tauri/target/release/drawfinity` |
-| macOS | `.dmg`, `.app` | `src-tauri/target/release/bundle/dmg/`, `macos/` |
-| Windows | `.msi`, `.exe` | `src-tauri/target/release/bundle/msi/`, `nsis/` |
+**macOS**
+```bash
+xcode-select --install
+```
+
+**Windows**
+- [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with the C++ workload
+- [WebView2 runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (pre-installed on Windows 10 1803+ and Windows 11)
+
+</details>
+
+### Makefile reference
+
+Run `make help` to see all targets. Here's the full list organized by category:
+
+| Category | Target | Description |
+|----------|--------|-------------|
+| **Docker** | `up` | Start server + frontend via Docker Compose |
+| | `down` | Stop and remove containers |
+| | `restart` | Restart everything |
+| | `logs` | Tail logs from all services |
+| | `logs-server` | Tail server logs only |
+| | `logs-frontend` | Tail frontend logs only |
+| **Local Dev** | `dev` | Start server + frontend locally (no Docker) |
+| | `stop` | Stop local dev processes |
+| | `server` | Start only the collaboration server |
+| | `frontend` | Start only the frontend dev server |
+| | `tauri` | Start Tauri desktop app in dev mode |
+| **Testing** | `test` | Run all frontend tests |
+| | `test-watch` | Run frontend tests in watch mode |
+| | `test-server` | Run server tests |
+| | `test-all` | Run all tests (frontend + server) |
+| | `typecheck` | TypeScript type check |
+| **Building** | `build` | Production build (frontend only) |
+| | `build-tauri` | Production Tauri desktop build |
+| | `build-server` | Production server build |
+| | `build-all` | Build frontend + server |
+| **Cleanup** | `clean` | Remove build artifacts |
+| | `clean-docker` | Remove Docker containers, images, and volumes |
+| | `clean-all` | Remove everything (build artifacts + Docker) |
 
 ## Collaboration
 

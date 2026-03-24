@@ -1,3 +1,8 @@
+---
+title: Turtle Graphics
+description: Write Lua scripts to create geometric art, fractals, and patterns on the Drawfinity canvas.
+---
+
 # Turtle Graphics
 
 Drawfinity includes a built-in turtle graphics environment powered by Lua 5.4. Write scripts to create geometric art, fractals, and patterns that become permanent strokes on the canvas — fully saveable, syncable, and editable just like hand-drawn art.

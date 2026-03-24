@@ -41,6 +41,12 @@ export default defineConfig({
           { text: 'Turtle API', link: '/turtle-api' },
         ],
       },
+      {
+        text: 'Internals',
+        items: [
+          { text: 'Architecture', link: '/architecture' },
+        ],
+      },
     ],
 
     socialLinks: [

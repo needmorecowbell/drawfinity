@@ -6,7 +6,11 @@ export default defineConfig({
   base: '/',
 
   head: [
-    ['link', { rel: 'icon', href: '/assets/logo.png' }],
+    ['link', { rel: 'icon', type: 'image/png', href: '/favicon.png' }],
+    ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:title', content: 'Drawfinity' }],
+    ['meta', { property: 'og:description', content: 'Infinite canvas for drawing, collaboration, and creative coding' }],
+    ['meta', { property: 'og:image', content: '/assets/screenshot-canvas.png' }],
   ],
 
   themeConfig: {

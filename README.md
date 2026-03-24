@@ -171,58 +171,100 @@ Run `make help` to see all targets. Here's the full list organized by category:
 | | `clean-docker` | Remove Docker containers, images, and volumes |
 | | `clean-all` | Remove everything (build artifacts + Docker) |
 
-## Collaboration
+## Running your own server
 
-Drawfinity includes a Rust WebSocket server for real-time multi-user collaboration.
+Drawfinity ships with a lightweight Rust collaboration server. It acts as a WebSocket relay — clients connect to a room, and the server broadcasts Yjs CRDT updates between them. Room state is persisted to disk so rooms survive server restarts.
 
-### Start the server
+### Standalone
 
 ```bash
-cd server
-cargo run
+make server
+# or: cd server && cargo run
 ```
 
-The server listens on port `8080` by default. Configure with:
+The server listens on port **8080** by default. Override with CLI flags or environment variables:
 
 ```bash
+# CLI flags
 cargo run -- --port 9090 --data-dir /path/to/storage
-```
 
-Or via environment variables:
-
-```bash
+# Environment variables
 DRAWFINITY_PORT=9090 DRAWFINITY_DATA_DIR=/path/to/storage cargo run
 ```
 
-### Connect from the app
+### Docker deployment
+
+```bash
+make up            # Docker Compose — starts server + frontend
+# or
+docker compose up
+```
+
+### Health check
+
+```
+GET http://localhost:8080/health
+```
+
+Returns `200 OK` when the server is ready. Useful for load-balancer probes or uptime monitors.
+
+### Connecting from the app
 
 1. Press `Ctrl+K` to open the connection panel
 2. Enter the server URL (default: `ws://localhost:8080`)
 3. Enter or generate a room ID
 4. Click **Connect**
 
-Multiple clients connected to the same room will see each other's strokes in real time. All changes are conflict-free — draw simultaneously without issues.
-
-Room state is persisted on the server in the data directory, so rooms survive server restarts.
+Multiple clients in the same room see each other's strokes in real time — all changes are conflict-free via Yjs CRDTs.
 
 ## Controls
+
+### Drawing
 
 | Input | Action |
 |-------|--------|
 | Left click + drag | Draw |
-| Middle mouse drag | Pan |
-| Scroll wheel | Zoom |
-| Trackpad pinch | Zoom (continuous) |
-| `Space` + drag | Pan mode |
-| `Ctrl+=` / `Ctrl+-` | Animated zoom in/out |
-| `Ctrl+0` | Reset zoom to 100% |
 | `B` | Brush tool |
 | `E` | Eraser tool |
-| `1`–`4` | Select brush preset |
-| `[` / `]` | Adjust brush size |
-| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / Redo |
+| `R` | Rectangle shape tool |
+| `O` | Ellipse shape tool |
+| `P` | Polygon shape tool |
+| `S` | Star shape tool |
+| `1`–`4` | Select brush preset (Pen, Pencil, Marker, Highlighter) |
+| `[` / `]` | Decrease / increase brush size |
+
+### Navigation
+
+| Input | Action |
+|-------|--------|
+| Middle mouse drag | Pan |
+| `Space` + drag | Pan mode |
+| `G` | Toggle pan/zoom tool |
+| Scroll wheel | Zoom (discrete steps) |
+| Trackpad pinch | Zoom (continuous) |
+| `Ctrl+=` / `Ctrl+-` | Animated zoom in/out |
+| `Ctrl+0` | Reset zoom to 100% |
+
+### Panels & UI
+
+| Input | Action |
+|-------|--------|
 | `Ctrl+K` | Toggle connection panel |
+| `Ctrl+B` | Toggle bookmark panel |
+| `Ctrl+D` | Quick-add bookmark |
+| `Ctrl+,` | Toggle settings panel |
+| `` Ctrl+` `` | Toggle turtle graphics panel |
+| `Ctrl+'` | Toggle dot grid |
 | `F3` | Toggle FPS counter |
+
+### General
+
+| Input | Action |
+|-------|--------|
+| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / Redo |
+| `Ctrl+Shift+E` | Export PNG |
+| `Ctrl+W` | Return to home screen |
+| `Escape` | Return to home screen |
 
 ## Project structure
 

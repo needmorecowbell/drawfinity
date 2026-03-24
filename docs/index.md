@@ -10,6 +10,9 @@ hero:
     alt: Drawfinity logo
   actions:
     - theme: brand
+      text: Download
+      link: /downloads
+    - theme: alt
       text: Get Started
       link: /getting-started
     - theme: alt

@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitepress'
+import { withMermaid } from 'vitepress-plugin-mermaid'
 
-export default defineConfig({
+export default withMermaid(defineConfig({
   title: 'Drawfinity',
   description: 'Infinite canvas drawing app with real-time collaboration and turtle graphics',
   base: '/',
@@ -17,12 +18,14 @@ export default defineConfig({
     logo: '/assets/logo.png',
 
     nav: [
+      { text: 'Downloads', link: '/downloads' },
       { text: 'Guide', link: '/getting-started' },
       {
         text: 'Creative Coding',
         items: [
           { text: 'Turtle Graphics', link: '/turtle-graphics' },
           { text: 'Turtle API Reference', link: '/turtle-api' },
+          { text: 'Turtle Exchange', link: '/turtle-exchange' },
         ],
       },
       { text: 'Architecture', link: '/architecture' },
@@ -36,6 +39,7 @@ export default defineConfig({
       {
         text: 'Guide',
         items: [
+          { text: 'Downloads', link: '/downloads' },
           { text: 'Getting Started', link: '/getting-started' },
           { text: 'Features', link: '/features' },
           { text: 'Collaboration', link: '/collaboration' },
@@ -49,6 +53,7 @@ export default defineConfig({
         items: [
           { text: 'Turtle Graphics', link: '/turtle-graphics' },
           { text: 'Turtle API', link: '/turtle-api' },
+          { text: 'Turtle Exchange', link: '/turtle-exchange' },
         ],
       },
       {
@@ -75,4 +80,6 @@ export default defineConfig({
 
   // Dark mode by default — artistic/creative feel
   appearance: 'dark',
-})
+
+  mermaid: {},
+}))

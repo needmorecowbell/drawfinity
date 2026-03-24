@@ -93,9 +93,25 @@ Press `Ctrl+K` to open the connection panel, enter a server URL and room ID, and
 
 ## Getting started
 
-The fastest way to try Drawfinity depends on what you have installed. Pick whichever path suits you:
+### Download a release (fastest)
 
-### Quick start with Docker
+Grab the latest release for your platform from the [GitHub Releases page](https://github.com/needmorecowbell/drawfinity/releases):
+
+| Platform | Desktop App | Server |
+|----------|-------------|--------|
+| **Linux** | `.deb`, `.rpm`, `.AppImage` | `drawfinity-server-linux-amd64` |
+| **macOS** | `.dmg` (Apple Silicon) | `drawfinity-server-macos-arm64` |
+| **Windows** | `.msi`, `.exe` | `drawfinity-server-windows-amd64.exe` |
+
+Download the desktop app, install it, and you're drawing in seconds. The server binary is optional — only needed if you want to host your own collaboration rooms.
+
+See the [Downloads page](docs/downloads.md) for detailed installation instructions per platform.
+
+### Build from source
+
+If you prefer to build from source, pick whichever path suits you:
+
+#### Quick start with Docker
 
 If you have Docker and Docker Compose, one command gets everything running — the collaboration server and the frontend:
 
@@ -105,7 +121,7 @@ make up
 
 Open `http://localhost:1420` in your browser and start drawing. Use `make logs` to watch output, `make restart` to rebuild, and `make down` to stop.
 
-### Quick start without Docker
+#### Quick start without Docker
 
 Start both the server and frontend locally:
 
@@ -115,7 +131,7 @@ make dev
 
 This launches the collaboration server on port 8080 and Vite on port 1420. Stop everything with `make stop`.
 
-### Desktop app
+#### Desktop app (from source)
 
 For the full native experience with file save/load and tablet support:
 
@@ -131,7 +147,7 @@ This starts Tauri in dev mode with hot-reload. For a production build: `npm run 
 | macOS | `.dmg`, `.app` | `src-tauri/target/release/bundle/` |
 | Windows | `.msi`, `.exe` | `src-tauri/target/release/bundle/` |
 
-### Browser only
+#### Browser only
 
 If you just want to sketch without a server:
 

@@ -9,16 +9,16 @@
 /// last byte), or the value would overflow a `usize`.
 pub fn read_var_uint(data: &[u8]) -> Option<(usize, usize)> {
     let mut value: usize = 0;
-    let mut shift = 0;
+    let mut shift = 0usize;
     for (i, &byte) in data.iter().enumerate() {
+        if shift >= usize::BITS as usize {
+            return None; // overflow protection: check before shifting
+        }
         value |= ((byte & 0x7F) as usize) << shift;
         if byte & 0x80 == 0 {
             return Some((value, i + 1));
         }
         shift += 7;
-        if shift > 35 {
-            return None; // overflow protection
-        }
     }
     None // ran out of bytes
 }

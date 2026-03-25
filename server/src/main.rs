@@ -7,6 +7,7 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use axum::extract::DefaultBodyLimit;
 use axum::routing::get;
 use axum::Router;
 use clap::Parser;
@@ -49,6 +50,7 @@ async fn main() {
         .route("/api/rooms/:room_id", get(api::get_room))
         .route("/ws/:room_id", get(ws::ws_handler))
         .layer(CorsLayer::permissive())
+        .layer(DefaultBodyLimit::max(1024 * 1024)) // 1 MiB
         .with_state(room_manager);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], args.port));

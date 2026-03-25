@@ -23,6 +23,21 @@ pub fn read_var_uint(data: &[u8]) -> Option<(usize, usize)> {
     None // ran out of bytes
 }
 
+/// Encode a `usize` as a lib0 var-uint, appending the bytes to `buf`.
+pub fn write_var_uint(buf: &mut Vec<u8>, mut value: usize) {
+    loop {
+        let mut byte = (value & 0x7F) as u8;
+        value >>= 7;
+        if value > 0 {
+            byte |= 0x80;
+        }
+        buf.push(byte);
+        if value == 0 {
+            break;
+        }
+    }
+}
+
 /// Skip a lib0 var-uint length prefix and return the remaining bytes.
 ///
 /// This is a convenience wrapper for stripping the length prefix from
@@ -81,5 +96,38 @@ mod tests {
     #[test]
     fn skip_prefix_empty() {
         assert_eq!(skip_var_uint_prefix(&[]), None);
+    }
+
+    #[test]
+    fn write_var_uint_single_byte() {
+        let mut buf = Vec::new();
+        write_var_uint(&mut buf, 0);
+        assert_eq!(buf, vec![0]);
+
+        buf.clear();
+        write_var_uint(&mut buf, 127);
+        assert_eq!(buf, vec![127]);
+    }
+
+    #[test]
+    fn write_var_uint_multi_byte() {
+        let mut buf = Vec::new();
+        write_var_uint(&mut buf, 128);
+        assert_eq!(buf, vec![0x80, 0x01]);
+
+        buf.clear();
+        write_var_uint(&mut buf, 300);
+        assert_eq!(buf, vec![0xAC, 0x02]);
+    }
+
+    #[test]
+    fn write_read_roundtrip() {
+        for value in [0, 1, 127, 128, 255, 300, 16384, 1_000_000] {
+            let mut buf = Vec::new();
+            write_var_uint(&mut buf, value);
+            let (decoded, consumed) = read_var_uint(&buf).unwrap();
+            assert_eq!(decoded, value);
+            assert_eq!(consumed, buf.len());
+        }
     }
 }

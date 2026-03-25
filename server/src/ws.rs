@@ -75,6 +75,19 @@ fn extract_yjs_payload(data: &[u8]) -> Option<&[u8]> {
     Some(&after_envelope[payload_start..payload_end])
 }
 
+/// Build a y-websocket SyncStep2 frame from raw yrs state bytes.
+///
+/// The y-websocket protocol expects: `[msgType=0, syncSubType=1, varUintLen, ...rawYrsBytes]`.
+/// This wraps raw yrs bytes in the proper envelope so the client can parse them.
+fn build_sync_step2(raw_yrs: &[u8]) -> Vec<u8> {
+    let mut msg = Vec::with_capacity(2 + 5 + raw_yrs.len());
+    msg.push(YWS_MSG_SYNC);
+    msg.push(YJS_SYNC_STEP2);
+    codec::write_var_uint(&mut msg, raw_yrs.len());
+    msg.extend_from_slice(raw_yrs);
+    msg
+}
+
 /// WebSocket upgrade handler at `/ws/{room_id}`.
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
@@ -91,10 +104,10 @@ async fn handle_socket(socket: WebSocket, room_id: String, room_manager: Arc<Roo
 
     let (mut ws_sender, mut ws_receiver) = socket.split();
 
-    // Send the current document state as the first message
+    // Send the current document state as a SyncStep2 frame
     if !initial_state.is_empty()
         && ws_sender
-            .send(Message::Binary(initial_state))
+            .send(Message::Binary(build_sync_step2(&initial_state)))
             .await
             .is_err()
     {
@@ -271,5 +284,29 @@ mod tests {
         assert!(extract_yjs_payload(&[YWS_MSG_SYNC, YJS_UPDATE]).is_none());
         // Length says 5 but only 2 bytes available
         assert!(extract_yjs_payload(&[YWS_MSG_SYNC, YJS_UPDATE, 5, 0xAA, 0xBB]).is_none());
+    }
+
+    // --- build_sync_step2 tests ---
+
+    #[test]
+    fn test_build_sync_step2_roundtrips() {
+        // Build a SyncStep2 frame and verify extract_yjs_payload recovers the original
+        let raw = vec![0x01, 0x02, 0x03, 0x04];
+        let frame = build_sync_step2(&raw);
+        assert_eq!(frame[0], YWS_MSG_SYNC);
+        assert_eq!(frame[1], YJS_SYNC_STEP2);
+        assert!(is_doc_update_message(&frame));
+        let extracted = extract_yjs_payload(&frame).unwrap();
+        assert_eq!(extracted, &raw);
+    }
+
+    #[test]
+    fn test_build_sync_step2_large_payload() {
+        // Payload > 127 bytes requires multi-byte var-uint length
+        let raw = vec![0xAB; 300];
+        let frame = build_sync_step2(&raw);
+        let extracted = extract_yjs_payload(&frame).unwrap();
+        assert_eq!(extracted.len(), 300);
+        assert_eq!(extracted, &raw);
     }
 }

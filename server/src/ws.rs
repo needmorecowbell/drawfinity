@@ -37,10 +37,21 @@ fn is_valid_yws_message(data: &[u8]) -> bool {
     )
 }
 
-/// Returns true if the message is a Yjs sync protocol message (should be persisted).
-/// Awareness and auth messages are ephemeral and should only be relayed.
-fn is_sync_message(data: &[u8]) -> bool {
-    !data.is_empty() && data[0] == YWS_MSG_SYNC
+/// Yjs sync sub-protocol message types (byte[1] inside a messageSync envelope).
+/// See: https://github.com/yjs/y-protocols/blob/master/sync.js
+const YJS_SYNC_STEP1: u8 = 0; // state vector query — not persistable
+const YJS_SYNC_STEP2: u8 = 1; // full encoded document state
+const YJS_SYNC_UPDATE: u8 = 2; // incremental update
+
+/// Returns true if the message should be persisted as document state.
+///
+/// Only `messageSyncStep2` (full doc state) and `messageYjsUpdate` (incremental update)
+/// are persistable. `messageSyncStep1` is a state-vector query and must not be stored,
+/// as it would overwrite the real document state with a client's state vector.
+fn is_persistable_sync_message(data: &[u8]) -> bool {
+    data.len() >= 2
+        && data[0] == YWS_MSG_SYNC
+        && matches!(data[1], YJS_SYNC_STEP2 | YJS_SYNC_UPDATE)
 }
 
 /// WebSocket upgrade handler at `/ws/{room_id}`.
@@ -98,8 +109,8 @@ async fn handle_socket(socket: WebSocket, room_id: String, room_manager: Arc<Roo
                     );
                     continue;
                 }
-                // Only persist sync messages — awareness/auth are ephemeral
-                if is_sync_message(&bytes) {
+                // Only persist sync step2/update — step1 is a query, awareness/auth are ephemeral
+                if is_persistable_sync_message(&bytes) {
                     broadcast_rm
                         .update_doc_state(&broadcast_room_id, bytes.clone())
                         .await;
@@ -175,11 +186,32 @@ mod tests {
     }
 
     #[test]
-    fn test_is_sync_message() {
-        assert!(is_sync_message(&[YWS_MSG_SYNC, 0, 1]));
-        assert!(!is_sync_message(&[YWS_MSG_AWARENESS, 0, 1]));
-        assert!(!is_sync_message(&[YWS_MSG_AUTH, 0]));
-        assert!(!is_sync_message(&[YWS_MSG_QUERY_AWARENESS]));
-        assert!(!is_sync_message(&[]));
+    fn test_persistable_sync_step2() {
+        assert!(is_persistable_sync_message(&[YWS_MSG_SYNC, YJS_SYNC_STEP2, 0xFF]));
+    }
+
+    #[test]
+    fn test_persistable_sync_update() {
+        assert!(is_persistable_sync_message(&[YWS_MSG_SYNC, YJS_SYNC_UPDATE, 0x01]));
+    }
+
+    #[test]
+    fn test_reject_sync_step1_from_persistence() {
+        // SyncStep1 is a state-vector query — must NOT be persisted
+        assert!(!is_persistable_sync_message(&[YWS_MSG_SYNC, YJS_SYNC_STEP1, 0x01]));
+    }
+
+    #[test]
+    fn test_reject_non_sync_from_persistence() {
+        assert!(!is_persistable_sync_message(&[YWS_MSG_AWARENESS, 0, 1]));
+        assert!(!is_persistable_sync_message(&[YWS_MSG_AUTH, 0]));
+        assert!(!is_persistable_sync_message(&[YWS_MSG_QUERY_AWARENESS, 0]));
+    }
+
+    #[test]
+    fn test_reject_too_short_for_persistence() {
+        // Need at least 2 bytes (transport type + sync sub-type)
+        assert!(!is_persistable_sync_message(&[]));
+        assert!(!is_persistable_sync_message(&[YWS_MSG_SYNC]));
     }
 }

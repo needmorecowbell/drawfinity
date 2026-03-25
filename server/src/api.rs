@@ -99,15 +99,16 @@ pub async fn create_room(
     let meta = room_manager
         .create_named_room(body.name, body.creator_name)
         .await;
+    let response = RoomInfoResponse {
+        id: meta.id,
+        name: meta.name,
+        client_count: 0,
+        created_at: meta.created_at,
+        last_active_at: meta.last_active_at,
+    };
     Ok((
         StatusCode::CREATED,
-        Json(serde_json::json!({
-            "id": meta.id,
-            "name": meta.name,
-            "client_count": 0,
-            "created_at": meta.created_at,
-            "last_active_at": meta.last_active_at,
-        })),
+        Json(serde_json::to_value(response).unwrap()),
     ))
 }
 

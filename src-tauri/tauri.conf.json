@@ -35,6 +35,11 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico"
+      }
+    },
     "shortDescription": "Infinite canvas drawing app with real-time collaboration",
     "longDescription": "Drawfinity is an infinite canvas drawing application featuring pressure-sensitive brush tools, real-time collaboration via WebSocket sync, and a high-performance WebGL rendering pipeline."
   }

@@ -40,15 +40,18 @@ fn is_valid_yws_message(data: &[u8]) -> bool {
 /// Yjs sync sub-protocol message types (byte[1] inside a messageSync envelope).
 /// See: https://github.com/yjs/y-protocols/blob/master/sync.js
 const YJS_SYNC_STEP2: u8 = 1; // full encoded document state
+const YJS_UPDATE: u8 = 2; // incremental Yjs update
 
-/// Returns true if the message should be persisted as document state.
+/// Returns true if the message carries a document update that should be applied
+/// to the server-side Yjs doc.
 ///
-/// Only `messageSyncStep2` (full encoded doc state) is safe to store by replacement.
-/// `messageSyncStep1` (sub-type 0) is a state-vector query, and `messageYjsUpdate`
-/// (sub-type 2) is an incremental delta — neither can be stored via full replacement
-/// without corrupting the document for late-joining clients.
-fn is_persistable_sync_message(data: &[u8]) -> bool {
-    data.len() >= 2 && data[0] == YWS_MSG_SYNC && data[1] == YJS_SYNC_STEP2
+/// Both `messageSyncStep2` (full state) and `messageYjsUpdate` (incremental delta)
+/// are applied via `yrs::Doc::apply_update`, which handles merging correctly.
+/// `messageSyncStep1` (sub-type 0) is a state-vector query and is not a doc update.
+fn is_doc_update_message(data: &[u8]) -> bool {
+    data.len() >= 2
+        && data[0] == YWS_MSG_SYNC
+        && (data[1] == YJS_SYNC_STEP2 || data[1] == YJS_UPDATE)
 }
 
 /// WebSocket upgrade handler at `/ws/{room_id}`.
@@ -106,8 +109,8 @@ async fn handle_socket(socket: WebSocket, room_id: String, room_manager: Arc<Roo
                     );
                     continue;
                 }
-                // Only persist sync step2/update — step1 is a query, awareness/auth are ephemeral
-                if is_persistable_sync_message(&bytes) {
+                // Apply doc updates (SyncStep2 + YjsUpdate) — step1 is a query, awareness/auth are ephemeral
+                if is_doc_update_message(&bytes) {
                     // Strip y-websocket transport envelope (2 bytes: transport type + sync sub-type)
                     broadcast_rm
                         .apply_update(&broadcast_room_id, &bytes[2..])
@@ -184,33 +187,33 @@ mod tests {
     }
 
     #[test]
-    fn test_persistable_sync_step2() {
-        assert!(is_persistable_sync_message(&[YWS_MSG_SYNC, YJS_SYNC_STEP2, 0xFF]));
+    fn test_doc_update_sync_step2() {
+        assert!(is_doc_update_message(&[YWS_MSG_SYNC, YJS_SYNC_STEP2, 0xFF]));
     }
 
     #[test]
-    fn test_reject_sync_update_from_persistence() {
-        // YjsUpdate (sub-type 2) is an incremental delta — cannot be stored by replacement
-        assert!(!is_persistable_sync_message(&[YWS_MSG_SYNC, 2, 0x01]));
+    fn test_doc_update_yjs_update() {
+        // YjsUpdate (sub-type 2) is now applied via yrs merging
+        assert!(is_doc_update_message(&[YWS_MSG_SYNC, YJS_UPDATE, 0x01]));
     }
 
     #[test]
-    fn test_reject_sync_step1_from_persistence() {
-        // SyncStep1 (sub-type 0) is a state-vector query — must NOT be persisted
-        assert!(!is_persistable_sync_message(&[YWS_MSG_SYNC, 0, 0x01]));
+    fn test_reject_sync_step1_from_doc_update() {
+        // SyncStep1 (sub-type 0) is a state-vector query — not a doc update
+        assert!(!is_doc_update_message(&[YWS_MSG_SYNC, 0, 0x01]));
     }
 
     #[test]
-    fn test_reject_non_sync_from_persistence() {
-        assert!(!is_persistable_sync_message(&[YWS_MSG_AWARENESS, 0, 1]));
-        assert!(!is_persistable_sync_message(&[YWS_MSG_AUTH, 0]));
-        assert!(!is_persistable_sync_message(&[YWS_MSG_QUERY_AWARENESS, 0]));
+    fn test_reject_non_sync_from_doc_update() {
+        assert!(!is_doc_update_message(&[YWS_MSG_AWARENESS, 0, 1]));
+        assert!(!is_doc_update_message(&[YWS_MSG_AUTH, 0]));
+        assert!(!is_doc_update_message(&[YWS_MSG_QUERY_AWARENESS, 0]));
     }
 
     #[test]
-    fn test_reject_too_short_for_persistence() {
+    fn test_reject_too_short_for_doc_update() {
         // Need at least 2 bytes (transport type + sync sub-type)
-        assert!(!is_persistable_sync_message(&[]));
-        assert!(!is_persistable_sync_message(&[YWS_MSG_SYNC]));
+        assert!(!is_doc_update_message(&[]));
+        assert!(!is_doc_update_message(&[YWS_MSG_SYNC]));
     }
 }

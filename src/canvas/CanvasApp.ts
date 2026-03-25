@@ -20,6 +20,7 @@ import { FpsCounter } from "../ui/FpsCounter";
 import { SyncManager } from "../sync";
 import { loadProfileAsync, loadPreferencesAsync, savePreferences, type UserPreferences, type GridStyle } from "../user";
 import { showStorageNotification } from "../ui/StorageNotification";
+import { showCorruptionDialog } from "../ui/CorruptionDialog";
 
 /**
  * Callbacks for CanvasApp lifecycle events, provided by the parent view manager.
@@ -198,17 +199,47 @@ export class CanvasApp {
       const storage = (this.callbacks?.browserStorage as BrowserStorageType) ?? await createBrowserStorage();
       console.log(`CanvasApp: Tauri unavailable, using ${storage.storageLabel} fallback`);
 
+      const { validateYjsState } = await import("../persistence/BrowserStorage");
       const savedState = await storage.loadDocState(drawingId);
       if (savedState) {
         console.log(`CanvasApp: loading from ${storage.storageLabel} (${savedState.length} bytes)`);
-        try {
-          const loadedDoc = new Y.Doc();
-          Y.applyUpdate(loadedDoc, savedState);
-          this.doc = new DrawfinityDoc(loadedDoc);
+        const result = validateYjsState(savedState);
+        if (result.valid && result.doc) {
+          this.doc = new DrawfinityDoc(result.doc);
           console.log(`CanvasApp: restored ${this.doc.getStrokes().length} strokes`);
-        } catch (loadErr) {
-          console.error("CanvasApp: failed to restore state, starting fresh", loadErr);
-          this.doc = new DrawfinityDoc();
+        } else {
+          // State is corrupt — check for backup and offer recovery
+          console.error("CanvasApp: primary state corrupt, checking backup", result.error);
+          const backupState = await storage.loadBackupState(drawingId);
+          const hasBackup = backupState !== null && validateYjsState(backupState).valid;
+          const choice = await showCorruptionDialog(hasBackup);
+          if (choice === "recover" && backupState) {
+            const backupResult = validateYjsState(backupState);
+            if (backupResult.valid && backupResult.doc) {
+              this.doc = new DrawfinityDoc(backupResult.doc);
+              console.log("CanvasApp: recovered from backup state");
+              showStorageNotification(
+                "Drawing recovered from backup. Some recent changes may be missing.",
+                "warning",
+                12000,
+              );
+            } else {
+              console.error("CanvasApp: backup also corrupt, starting fresh");
+              this.doc = new DrawfinityDoc();
+              showStorageNotification(
+                "Backup was also corrupted. Starting with a blank canvas.",
+                "error",
+                0,
+              );
+            }
+          } else {
+            this.doc = new DrawfinityDoc();
+            showStorageNotification(
+              "Starting with a blank canvas due to corrupted data.",
+              "info",
+              8000,
+            );
+          }
         }
       } else {
         console.log(`CanvasApp: no saved state for drawing "${drawingId}"`);

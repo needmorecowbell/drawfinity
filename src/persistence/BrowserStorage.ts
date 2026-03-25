@@ -1,3 +1,4 @@
+import * as Y from "yjs";
 import type { DrawingMetadata } from "./DrawingManifest";
 import {
   isAvailable as isIDBAvailable,
@@ -75,6 +76,38 @@ export async function isStorageLow(): Promise<boolean> {
   return info !== null && info.available < LOW_STORAGE_THRESHOLD;
 }
 
+/** Result of validating Yjs state bytes. */
+export interface ValidationResult {
+  valid: boolean;
+  doc: Y.Doc | null;
+  error: Error | null;
+}
+
+/**
+ * Validate Yjs state bytes by attempting to apply them to a fresh document.
+ * Returns the loaded document on success, or the error on failure.
+ */
+export function validateYjsState(state: Uint8Array): ValidationResult {
+  try {
+    const doc = new Y.Doc();
+    Y.applyUpdate(doc, state);
+    return { valid: true, doc, error: null };
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    console.error("Drawfinity: corrupt Yjs state detected", {
+      stateLength: state.length,
+      firstBytes: Array.from(state.slice(0, 16)),
+      error,
+    });
+    return { valid: false, doc: null, error };
+  }
+}
+
+/** Key used to store a backup copy of the last-known-good state. */
+function backupKey(drawingId: string): string {
+  return `${drawingId}__backup`;
+}
+
 /**
  * Creates a browser-mode persistence adapter.
  * Uses IndexedDB when available; falls back to localStorage.
@@ -138,6 +171,26 @@ export async function createBrowserStorage() {
       }
 
       try {
+        // Backup the current (known-good) state before overwriting
+        try {
+          const existing = useIDB
+            ? await idbLoadDocument(drawingId)
+            : (() => {
+                const b64 = localStorage.getItem(`drawfinity:doc:${drawingId}`);
+                return b64 ? base64ToUint8(b64) : null;
+              })();
+          if (existing) {
+            const bk = backupKey(drawingId);
+            if (useIDB) {
+              await idbSaveDocument(bk, existing);
+            } else {
+              localStorage.setItem(`drawfinity:doc:${bk}`, uint8ToBase64(existing));
+            }
+          }
+        } catch (backupErr) {
+          console.warn("Drawfinity: failed to create backup before save", backupErr);
+        }
+
         if (useIDB) {
           await idbSaveDocument(drawingId, state);
         } else {
@@ -168,9 +221,20 @@ export async function createBrowserStorage() {
     async deleteDocState(drawingId: string): Promise<void> {
       if (useIDB) {
         await idbDeleteDocument(drawingId);
+        await idbDeleteDocument(backupKey(drawingId));
       } else {
         localStorage.removeItem(`drawfinity:doc:${drawingId}`);
+        localStorage.removeItem(`drawfinity:doc:${backupKey(drawingId)}`);
       }
+    },
+
+    async loadBackupState(drawingId: string): Promise<Uint8Array | null> {
+      const bk = backupKey(drawingId);
+      if (useIDB) {
+        return idbLoadDocument(bk);
+      }
+      const b64 = localStorage.getItem(`drawfinity:doc:${bk}`);
+      return b64 ? base64ToUint8(b64) : null;
     },
   };
 }

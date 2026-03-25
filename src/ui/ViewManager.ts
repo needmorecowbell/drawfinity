@@ -41,6 +41,8 @@ export interface ViewManagerDeps {
   getDrawingName?: (id: string) => Promise<string>;
   /** When provided, the shared DrawingManager is passed to CanvasApp to avoid stale manifest caches. */
   drawingManager?: unknown;
+  /** When provided, the browser storage adapter is passed to CanvasApp for IndexedDB persistence. */
+  browserStorage?: unknown;
 }
 
 /**
@@ -179,6 +181,7 @@ export class ViewManager {
         onGoHome: () => this.showHome(),
         onRenameDrawing: (id, name) => this.deps.renameDrawing(id, name),
         drawingManager: this.deps.drawingManager,
+        browserStorage: this.deps.browserStorage,
       });
 
       // Set drawing name in toolbar
@@ -218,6 +221,7 @@ export class ViewManager {
         onGoHome: () => this.showHome(),
         onRenameDrawing: (id, name) => this.deps.renameDrawing(id, name),
         drawingManager: this.deps.drawingManager,
+        browserStorage: this.deps.browserStorage,
       });
 
       // Connect to the room

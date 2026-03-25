@@ -1,4 +1,6 @@
 import { ViewManager } from "./ui/ViewManager";
+import { createBrowserStorage } from "./persistence/BrowserStorage";
+import type { DrawingMetadata } from "./persistence/DrawingManifest";
 
 // Surface unhandled promise rejections (WebKitGTK swallows them silently)
 window.addEventListener("unhandledrejection", (e) => {
@@ -37,37 +39,16 @@ window.addEventListener("unhandledrejection", (e) => {
     });
   } catch {
     console.log(
-      "Drawfinity: Tauri not detected, using browser localStorage for persistence",
+      "Drawfinity: Tauri not detected, using browser persistence",
     );
 
-    // Browser-only mode: persist drawing list to localStorage
-    const DRAWINGS_KEY = "drawfinity:drawings";
-
-    function loadDrawings(): Array<{
-      id: string;
-      name: string;
-      createdAt: string;
-      modifiedAt: string;
-      fileName: string;
-    }> {
-      try {
-        const raw = localStorage.getItem(DRAWINGS_KEY);
-        return raw ? JSON.parse(raw) : [];
-      } catch {
-        return [];
-      }
-    }
-
-    function saveDrawings(drawings: typeof memDrawings): void {
-      try { localStorage.setItem(DRAWINGS_KEY, JSON.stringify(drawings)); } catch { /* quota */ }
-    }
-
-    const memDrawings = loadDrawings();
+    const storage = await createBrowserStorage();
+    const { memDrawings } = storage;
 
     viewManager = new ViewManager(canvasContainer, {
       listDrawings: async () => memDrawings,
       createDrawing: async (name) => {
-        const drawing = {
+        const drawing: DrawingMetadata = {
           id: crypto.randomUUID(),
           name,
           createdAt: new Date().toISOString(),
@@ -75,25 +56,24 @@ window.addEventListener("unhandledrejection", (e) => {
           fileName: "",
         };
         memDrawings.push(drawing);
-        saveDrawings(memDrawings);
+        await storage.persistManifest();
         return drawing;
       },
       deleteDrawing: async (id) => {
         const idx = memDrawings.findIndex((d) => d.id === id);
         if (idx >= 0) memDrawings.splice(idx, 1);
-        saveDrawings(memDrawings);
-        // Also remove the drawing's Yjs state
-        localStorage.removeItem(`drawfinity:doc:${id}`);
+        await storage.persistManifest();
+        await storage.deleteDocState(id);
       },
       renameDrawing: async (id, name) => {
         const d = memDrawings.find((d) => d.id === id);
         if (d) {
           d.name = name;
-          saveDrawings(memDrawings);
+          await storage.persistManifest();
         }
       },
       duplicateDrawing: async (id, newName) => {
-        const dup = {
+        const dup: DrawingMetadata = {
           id: crypto.randomUUID(),
           name: newName,
           createdAt: new Date().toISOString(),
@@ -101,19 +81,19 @@ window.addEventListener("unhandledrejection", (e) => {
           fileName: "",
         };
         memDrawings.push(dup);
-        saveDrawings(memDrawings);
-        // Copy the Yjs doc state too
-        const srcState = localStorage.getItem(`drawfinity:doc:${id}`);
+        await storage.persistManifest();
+        const srcState = await storage.loadDocState(id);
         if (srcState) {
-          try { localStorage.setItem(`drawfinity:doc:${dup.id}`, srcState); } catch { /* quota */ }
+          await storage.saveDocState(dup.id, srcState);
         }
         return dup;
       },
-      getSaveDirectory: async () => "(browser — localStorage)",
+      getSaveDirectory: async () => `(browser — ${storage.storageLabel})`,
       getDrawingName: async (id) => {
         const d = memDrawings.find((d) => d.id === id);
         return d?.name ?? "Untitled";
       },
+      browserStorage: storage,
     });
   }
 

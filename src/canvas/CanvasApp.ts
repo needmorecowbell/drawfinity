@@ -31,6 +31,8 @@ export interface CanvasAppCallbacks {
   onRenameDrawing?: (id: string, name: string) => void;
   /** When provided, CanvasApp reuses this DrawingManager instead of creating its own. */
   drawingManager?: unknown;
+  /** When provided, CanvasApp uses this browser storage adapter (IndexedDB/localStorage). */
+  browserStorage?: unknown;
 }
 
 /** Encode Uint8Array to base64 without spread operator (safe for large arrays). */
@@ -189,46 +191,45 @@ export class CanvasApp {
       this.autoSave = new AutoSave(this.doc.getDoc(), savePath, 2000, drawingId, drawingManager);
       this.autoSave.start();
     } catch (err) {
-      console.log("CanvasApp: Tauri persistence unavailable, using localStorage fallback");
+      // Browser fallback: use IndexedDB (via browserStorage) or localStorage
+      const { createBrowserStorage } = await import("../persistence/BrowserStorage");
+      type BrowserStorageType = Awaited<ReturnType<typeof createBrowserStorage>>;
+      const storage = (this.callbacks?.browserStorage as BrowserStorageType) ?? await createBrowserStorage();
+      console.log(`CanvasApp: Tauri unavailable, using ${storage.storageLabel} fallback`);
 
-      // Browser fallback: persist Yjs state to localStorage
-      const storageKey = `drawfinity:doc:${drawingId}`;
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        console.log(`CanvasApp: loading from localStorage key="${storageKey}" (${saved.length} chars)`);
+      const savedState = await storage.loadDocState(drawingId);
+      if (savedState) {
+        console.log(`CanvasApp: loading from ${storage.storageLabel} (${savedState.length} bytes)`);
         try {
-          const bytes = base64ToUint8(saved);
           const loadedDoc = new Y.Doc();
-          Y.applyUpdate(loadedDoc, bytes);
+          Y.applyUpdate(loadedDoc, savedState);
           this.doc = new DrawfinityDoc(loadedDoc);
-          console.log(`CanvasApp: restored ${this.doc.getStrokes().length} strokes from localStorage`);
+          console.log(`CanvasApp: restored ${this.doc.getStrokes().length} strokes`);
         } catch (loadErr) {
-          console.error("CanvasApp: failed to restore from localStorage, starting fresh", loadErr);
+          console.error("CanvasApp: failed to restore state, starting fresh", loadErr);
           this.doc = new DrawfinityDoc();
         }
       } else {
-        console.log(`CanvasApp: no saved state in localStorage for key="${storageKey}"`);
+        console.log(`CanvasApp: no saved state for drawing "${drawingId}"`);
         this.doc = new DrawfinityDoc();
       }
 
-      // Capture doc reference for closures
+      // Debounced auto-save to IndexedDB/localStorage
       const doc = this.doc;
       let saveTimer: ReturnType<typeof setTimeout> | null = null;
-      const saveToLocalStorage = () => {
+      const saveToBrowser = async () => {
         try {
           const state = Y.encodeStateAsUpdate(doc.getDoc());
-          const b64 = uint8ToBase64(state);
-          localStorage.setItem(storageKey, b64);
-          console.log(`CanvasApp: saved to localStorage key="${storageKey}" (${b64.length} chars, ${state.length} bytes)`);
+          await storage.saveDocState(drawingId, state);
+          console.log(`CanvasApp: saved to ${storage.storageLabel} (${state.length} bytes)`);
         } catch (saveErr) {
-          console.error("CanvasApp: failed to save to localStorage", saveErr);
+          console.error("CanvasApp: failed to save to browser storage", saveErr);
         }
       };
       const debouncedSave = () => {
         if (saveTimer) clearTimeout(saveTimer);
-        saveTimer = setTimeout(saveToLocalStorage, 2000);
+        saveTimer = setTimeout(saveToBrowser, 2000);
       };
-      // Listen to ALL doc changes (strokes, shapes, metadata, bookmarks)
       doc.getDoc().on("update", debouncedSave);
 
       this.autoSave = {
@@ -236,7 +237,7 @@ export class CanvasApp {
         stop() { if (saveTimer) clearTimeout(saveTimer); },
         async saveNow() {
           if (saveTimer) clearTimeout(saveTimer);
-          saveToLocalStorage();
+          await saveToBrowser();
         },
       };
     }

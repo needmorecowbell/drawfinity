@@ -71,22 +71,21 @@ async fn handle_socket(socket: WebSocket, room_id: String, room_manager: Arc<Roo
     let (mut ws_sender, mut ws_receiver) = socket.split();
 
     // Send the current document state as the first message
-    if !initial_state.is_empty() {
-        if ws_sender
-            .send(Message::Binary(initial_state.into()))
+    if !initial_state.is_empty()
+        && ws_sender
+            .send(Message::Binary(initial_state))
             .await
             .is_err()
-        {
-            room_manager.leave_room(&room_id).await;
-            return;
-        }
+    {
+        room_manager.leave_room(&room_id).await;
+        return;
     }
 
     // Spawn a task to forward broadcast messages to this client's WebSocket
     let forward_room_id = room_id.clone();
     let forward_task = tokio::spawn(async move {
         while let Ok(msg) = rx.recv().await {
-            if ws_sender.send(Message::Binary(msg.into())).await.is_err() {
+            if ws_sender.send(Message::Binary(msg)).await.is_err() {
                 break;
             }
         }
@@ -99,7 +98,7 @@ async fn handle_socket(socket: WebSocket, room_id: String, room_manager: Arc<Roo
     while let Some(Ok(msg)) = ws_receiver.next().await {
         match msg {
             Message::Binary(data) => {
-                let bytes: Vec<u8> = data.into();
+                let bytes: Vec<u8> = data;
                 if !is_valid_yws_message(&bytes) {
                     tracing::warn!(
                         room_id = %broadcast_room_id,

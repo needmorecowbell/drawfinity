@@ -108,6 +108,52 @@ vi.mock("../../persistence", () => ({
   })),
 }));
 
+// Mock turtle module to avoid wasmoon WASM loading in jsdom
+vi.mock("../../turtle", () => ({
+  LuaRuntime: class MockLuaRuntime {
+    init = vi.fn().mockResolvedValue(undefined);
+    execute = vi.fn().mockResolvedValue({ success: true });
+    close = vi.fn();
+    setStateQuery = vi.fn();
+  },
+  TurtleState: class MockTurtleState {
+    x = 0;
+    y = 0;
+    heading = 0;
+    penDown = true;
+    speed = 5;
+    setOrigin = vi.fn();
+    reset = vi.fn();
+  },
+  TurtleDrawing: class MockTurtleDrawing {
+    constructor() {}
+    clear = vi.fn();
+  },
+  TurtleExecutor: class MockTurtleExecutor {
+    constructor() {}
+    run = vi.fn();
+    stop = vi.fn();
+    isRunning = vi.fn(() => false);
+  },
+  TurtleIndicator: class MockTurtleIndicator {
+    constructor() {}
+    show = vi.fn();
+    hide = vi.fn();
+    update = vi.fn();
+    destroy = vi.fn();
+  },
+  ExchangeClient: class MockExchangeClient {
+    checkForUpdates = vi.fn().mockResolvedValue({ hasUpdates: false, scripts: [] });
+    fetchIndex = vi.fn().mockResolvedValue({ scripts: [] });
+    fetchScript = vi.fn().mockResolvedValue(null);
+  },
+  ExchangeCache: class MockExchangeCache {
+    getScripts = vi.fn(() => []);
+    getScript = vi.fn(() => null);
+  },
+  ExchangeError: class extends Error {},
+}));
+
 // Mock y-websocket
 vi.mock("y-websocket", () => ({
   WebsocketProvider: vi.fn().mockImplementation(() => ({

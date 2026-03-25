@@ -147,6 +147,77 @@ describe("BrowserStorage", () => {
     });
   });
 
+  describe("clearAllData", () => {
+    it("clears IndexedDB documents, localStorage keys, and memDrawings", async () => {
+      const { createBrowserStorage } = await importBrowserStorage();
+      const storage = await createBrowserStorage();
+
+      // Populate storage with multiple drawings
+      storage.memDrawings.push(
+        { id: "d1", name: "Drawing 1", createdAt: "2026-01-01", modifiedAt: "2026-01-01", fileName: "" },
+        { id: "d2", name: "Drawing 2", createdAt: "2026-01-02", modifiedAt: "2026-01-02", fileName: "" },
+      );
+      await storage.persistManifest();
+      await storage.saveDocState("d1", new Uint8Array([1, 2, 3]));
+      await storage.saveDocState("d2", new Uint8Array([4, 5, 6]));
+
+      // Also seed some drawfinity-prefixed localStorage keys
+      localStorage.setItem("drawfinity:settings", "test");
+      localStorage.setItem("drawfinity:other", "data");
+      // Non-drawfinity key should survive
+      localStorage.setItem("unrelated-key", "keep");
+
+      await storage.clearAllData();
+
+      // memDrawings should be empty
+      expect(storage.memDrawings).toHaveLength(0);
+
+      // Documents should be gone from IndexedDB
+      expect(await storage.loadDocState("d1")).toBeNull();
+      expect(await storage.loadDocState("d2")).toBeNull();
+
+      // drawfinity localStorage keys should be gone
+      expect(localStorage.getItem("drawfinity:settings")).toBeNull();
+      expect(localStorage.getItem("drawfinity:other")).toBeNull();
+
+      // Non-drawfinity key should be untouched
+      expect(localStorage.getItem("unrelated-key")).toBe("keep");
+    });
+
+    it("clears localStorage-backed storage when IndexedDB is unavailable", async () => {
+      const originalOpen = indexedDB.open;
+      vi.spyOn(indexedDB, "open").mockImplementation(() => {
+        throw new Error("IndexedDB disabled");
+      });
+
+      const { createBrowserStorage } = await importBrowserStorage();
+      const storage = await createBrowserStorage();
+      expect(storage.useIDB).toBe(false);
+
+      vi.mocked(indexedDB.open).mockImplementation(originalOpen);
+
+      // Populate
+      storage.memDrawings.push(
+        { id: "d1", name: "Drawing 1", createdAt: "2026-01-01", modifiedAt: "2026-01-01", fileName: "" },
+      );
+      await storage.saveDocState("d1", new Uint8Array([10, 20]));
+
+      await storage.clearAllData();
+
+      expect(storage.memDrawings).toHaveLength(0);
+      expect(await storage.loadDocState("d1")).toBeNull();
+    });
+
+    it("is idempotent on empty storage", async () => {
+      const { createBrowserStorage } = await importBrowserStorage();
+      const storage = await createBrowserStorage();
+
+      // Should not throw when nothing to clear
+      await storage.clearAllData();
+      expect(storage.memDrawings).toHaveLength(0);
+    });
+  });
+
   describe("base64 helpers", () => {
     it("round-trips Uint8Array through base64", async () => {
       const { uint8ToBase64, base64ToUint8 } = await importBrowserStorage();

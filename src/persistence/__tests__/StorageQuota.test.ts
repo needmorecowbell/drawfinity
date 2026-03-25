@@ -177,5 +177,57 @@ describe("Storage Quota Detection", () => {
       // Restore
       localStorageShim.setItem = originalSetItem;
     });
+
+    it("calls onSaveError when localStorage fills up from accumulated writes", async () => {
+      // Make IndexedDB unavailable so it falls back to localStorage
+      const originalOpen = indexedDB.open;
+      vi.spyOn(indexedDB, "open").mockImplementation(() => {
+        throw new Error("IndexedDB disabled");
+      });
+
+      vi.stubGlobal("navigator", {});
+
+      const storage = await createBrowserStorage();
+      expect(storage.useIDB).toBe(false);
+
+      vi.mocked(indexedDB.open).mockImplementation(originalOpen);
+
+      // Simulate accumulated saves: allow first few setItem calls, then throw
+      // Save same doc repeatedly so backup writes kick in on second+ saves.
+      // First save: 1 setItem (no backup, no existing state)
+      // Second save: 2 setItems (backup existing + actual write)
+      // Third save: backup write will be call #4 which exceeds limit
+      const originalSetItem = localStorageShim.setItem;
+      let saveCount = 0;
+      localStorageShim.setItem = (key: string, value: string) => {
+        saveCount++;
+        if (saveCount > 3) {
+          throw new DOMException("QuotaExceededError", "QuotaExceededError");
+        }
+        originalSetItem.call(localStorageShim, key, value);
+      };
+
+      const errorHandler = vi.fn();
+      storage.onSaveError = errorHandler;
+
+      // First save (1 setItem: no existing state to backup)
+      await storage.saveDocState("doc-a", new Uint8Array([1, 2, 3]));
+      expect(errorHandler).not.toHaveBeenCalled();
+
+      // Second save of same doc (2 setItems: backup + actual)
+      await storage.saveDocState("doc-a", new Uint8Array([4, 5, 6]));
+      expect(errorHandler).not.toHaveBeenCalled();
+
+      // Third save: backup write is call #4, exceeds limit.
+      // Backup failure is caught (warn only), but actual write is call #5 → throws
+      await expect(
+        storage.saveDocState("doc-a", new Uint8Array([7, 8, 9])),
+      ).rejects.toThrow();
+
+      expect(errorHandler).toHaveBeenCalledOnce();
+
+      // Restore
+      localStorageShim.setItem = originalSetItem;
+    });
   });
 });

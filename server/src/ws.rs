@@ -54,6 +54,46 @@ fn is_doc_update_message(data: &[u8]) -> bool {
         && (data[1] == YJS_SYNC_STEP2 || data[1] == YJS_UPDATE)
 }
 
+/// Read a lib0 var-uint from a byte slice, returning (value, bytes_consumed).
+///
+/// lib0 var-uint encoding uses the MSB as a continuation bit:
+/// each byte contributes 7 bits of value; if bit 7 is set, read another byte.
+fn read_var_uint(data: &[u8]) -> Option<(usize, usize)> {
+    let mut value: usize = 0;
+    let mut shift = 0;
+    for (i, &byte) in data.iter().enumerate() {
+        value |= ((byte & 0x7F) as usize) << shift;
+        if byte & 0x80 == 0 {
+            return Some((value, i + 1));
+        }
+        shift += 7;
+        if shift > 35 {
+            return None; // overflow protection
+        }
+    }
+    None // ran out of bytes
+}
+
+/// Extract the raw Yjs update bytes from a y-protocols sync message.
+///
+/// After the 2-byte y-websocket envelope `[msgType, syncSubType]`, y-protocols
+/// encodes the payload using lib0's `writeVarUint8Array`: a var-uint length prefix
+/// followed by the raw bytes. This function strips both the envelope and the
+/// length prefix, returning only the raw Yjs update bytes.
+fn extract_yjs_payload(data: &[u8]) -> Option<&[u8]> {
+    if data.len() < 3 {
+        return None;
+    }
+    let after_envelope = &data[2..];
+    let (len, consumed) = read_var_uint(after_envelope)?;
+    let payload_start = consumed;
+    let payload_end = payload_start + len;
+    if payload_end > after_envelope.len() {
+        return None;
+    }
+    Some(&after_envelope[payload_start..payload_end])
+}
+
 /// WebSocket upgrade handler at `/ws/{room_id}`.
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
@@ -110,10 +150,18 @@ async fn handle_socket(socket: WebSocket, room_id: String, room_manager: Arc<Roo
                 }
                 // Apply doc updates (SyncStep2 + YjsUpdate) — step1 is a query, awareness/auth are ephemeral
                 if is_doc_update_message(&bytes) {
-                    // Strip y-websocket transport envelope (2 bytes: transport type + sync sub-type)
-                    broadcast_rm
-                        .apply_update(&broadcast_room_id, &bytes[2..])
-                        .await;
+                    // Strip y-websocket envelope + lib0 var-uint length prefix to get raw Yjs bytes
+                    if let Some(payload) = extract_yjs_payload(&bytes) {
+                        broadcast_rm
+                            .apply_update(&broadcast_room_id, payload)
+                            .await;
+                    } else {
+                        tracing::warn!(
+                            room_id = %broadcast_room_id,
+                            len = bytes.len(),
+                            "Failed to extract Yjs payload from sync message"
+                        );
+                    }
                 }
                 // Broadcast all valid messages (including awareness) to peers
                 let _ = tx.send(bytes);
@@ -214,5 +262,61 @@ mod tests {
         // Need at least 2 bytes (transport type + sync sub-type)
         assert!(!is_doc_update_message(&[]));
         assert!(!is_doc_update_message(&[YWS_MSG_SYNC]));
+    }
+
+    // --- read_var_uint tests ---
+
+    #[test]
+    fn test_read_var_uint_single_byte() {
+        assert_eq!(read_var_uint(&[0]), Some((0, 1)));
+        assert_eq!(read_var_uint(&[42]), Some((42, 1)));
+        assert_eq!(read_var_uint(&[127]), Some((127, 1)));
+    }
+
+    #[test]
+    fn test_read_var_uint_multi_byte() {
+        // 128 = 0x80 → encoded as [0x80, 0x01] (continuation bit set on first byte)
+        assert_eq!(read_var_uint(&[0x80, 0x01]), Some((128, 2)));
+        // 300 = 0x12C → encoded as [0xAC, 0x02]
+        assert_eq!(read_var_uint(&[0xAC, 0x02]), Some((300, 2)));
+    }
+
+    #[test]
+    fn test_read_var_uint_empty() {
+        assert_eq!(read_var_uint(&[]), None);
+    }
+
+    #[test]
+    fn test_read_var_uint_truncated() {
+        // Continuation bit set but no next byte
+        assert_eq!(read_var_uint(&[0x80]), None);
+    }
+
+    // --- extract_yjs_payload tests ---
+
+    #[test]
+    fn test_extract_payload_simple() {
+        // Envelope [0, 2] + var-uint length 3 + 3 bytes of payload
+        let msg = vec![YWS_MSG_SYNC, YJS_UPDATE, 3, 0xAA, 0xBB, 0xCC];
+        let payload = extract_yjs_payload(&msg).unwrap();
+        assert_eq!(payload, &[0xAA, 0xBB, 0xCC]);
+    }
+
+    #[test]
+    fn test_extract_payload_large_length() {
+        // 128-byte payload → var-uint length [0x80, 0x01]
+        let mut msg = vec![YWS_MSG_SYNC, YJS_SYNC_STEP2, 0x80, 0x01];
+        msg.extend(vec![0xFF; 128]);
+        let payload = extract_yjs_payload(&msg).unwrap();
+        assert_eq!(payload.len(), 128);
+        assert!(payload.iter().all(|&b| b == 0xFF));
+    }
+
+    #[test]
+    fn test_extract_payload_too_short() {
+        // Only envelope, no length prefix
+        assert!(extract_yjs_payload(&[YWS_MSG_SYNC, YJS_UPDATE]).is_none());
+        // Length says 5 but only 2 bytes available
+        assert!(extract_yjs_payload(&[YWS_MSG_SYNC, YJS_UPDATE, 5, 0xAA, 0xBB]).is_none());
     }
 }

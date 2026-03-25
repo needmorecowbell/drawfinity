@@ -393,6 +393,10 @@ Pressure data is read from `PointerEvent.pressure` and works with:
 
 See the [Cross-platform notes](https://needmorecowbell.github.io/drawfinity/cross-platform-notes) for detailed platform notes.
 
+## Built with AI
+
+Drawfinity is developed and managed with [Maestro](https://runmaestro.ai) orchestrating multiple [Claude Code](https://claude.com/claude-code) agents working in parallel. Maestro coordinates the planning, implementation, and review of features across the full stack — from the WebGL renderer to the Rust collaboration server.
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).

@@ -39,19 +39,16 @@ fn is_valid_yws_message(data: &[u8]) -> bool {
 
 /// Yjs sync sub-protocol message types (byte[1] inside a messageSync envelope).
 /// See: https://github.com/yjs/y-protocols/blob/master/sync.js
-const YJS_SYNC_STEP1: u8 = 0; // state vector query — not persistable
 const YJS_SYNC_STEP2: u8 = 1; // full encoded document state
-const YJS_SYNC_UPDATE: u8 = 2; // incremental update
 
 /// Returns true if the message should be persisted as document state.
 ///
-/// Only `messageSyncStep2` (full doc state) and `messageYjsUpdate` (incremental update)
-/// are persistable. `messageSyncStep1` is a state-vector query and must not be stored,
-/// as it would overwrite the real document state with a client's state vector.
+/// Only `messageSyncStep2` (full encoded doc state) is safe to store by replacement.
+/// `messageSyncStep1` (sub-type 0) is a state-vector query, and `messageYjsUpdate`
+/// (sub-type 2) is an incremental delta — neither can be stored via full replacement
+/// without corrupting the document for late-joining clients.
 fn is_persistable_sync_message(data: &[u8]) -> bool {
-    data.len() >= 2
-        && data[0] == YWS_MSG_SYNC
-        && matches!(data[1], YJS_SYNC_STEP2 | YJS_SYNC_UPDATE)
+    data.len() >= 2 && data[0] == YWS_MSG_SYNC && data[1] == YJS_SYNC_STEP2
 }
 
 /// WebSocket upgrade handler at `/ws/{room_id}`.
@@ -191,14 +188,15 @@ mod tests {
     }
 
     #[test]
-    fn test_persistable_sync_update() {
-        assert!(is_persistable_sync_message(&[YWS_MSG_SYNC, YJS_SYNC_UPDATE, 0x01]));
+    fn test_reject_sync_update_from_persistence() {
+        // YjsUpdate (sub-type 2) is an incremental delta — cannot be stored by replacement
+        assert!(!is_persistable_sync_message(&[YWS_MSG_SYNC, 2, 0x01]));
     }
 
     #[test]
     fn test_reject_sync_step1_from_persistence() {
-        // SyncStep1 is a state-vector query — must NOT be persisted
-        assert!(!is_persistable_sync_message(&[YWS_MSG_SYNC, YJS_SYNC_STEP1, 0x01]));
+        // SyncStep1 (sub-type 0) is a state-vector query — must NOT be persisted
+        assert!(!is_persistable_sync_message(&[YWS_MSG_SYNC, 0, 0x01]));
     }
 
     #[test]

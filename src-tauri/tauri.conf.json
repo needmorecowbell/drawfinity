@@ -18,8 +18,7 @@
         "height": 800,
         "minWidth": 800,
         "minHeight": 600,
-        "center": true,
-        "icon": "icons/icon.png"
+        "center": true
       }
     ],
     "security": {
@@ -38,9 +37,7 @@
     ],
     "windows": {
       "nsis": {
-        "installerIcon": "icons/icon.ico",
-        "headerImage": null,
-        "sidebarImage": null
+        "installerIcon": "icons/icon.ico"
       }
     },
     "shortDescription": "Infinite canvas drawing app with real-time collaboration",

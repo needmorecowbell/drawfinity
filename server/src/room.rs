@@ -4,6 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::{broadcast, RwLock};
 
 use crate::persistence::{DebouncedWriter, Persistence};
+use crate::yrs_doc::YrsDocHolder;
 
 fn unix_timestamp() -> u64 {
     SystemTime::now()
@@ -22,7 +23,7 @@ pub struct RoomMetadata {
     pub creator_name: Option<String>,
 }
 
-/// A collaborative room holding connected clients and accumulated document state.
+/// A collaborative room holding connected clients and a server-side Yjs document.
 #[allow(dead_code)]
 pub struct Room {
     pub id: String,
@@ -30,8 +31,8 @@ pub struct Room {
     pub tx: broadcast::Sender<Vec<u8>>,
     /// Number of connected clients (tracked manually since broadcast doesn't expose this).
     pub client_count: usize,
-    /// Accumulated Yjs document state as raw bytes.
-    pub doc_state: Vec<u8>,
+    /// Server-side Yjs document that merges all updates.
+    pub yrs_doc: YrsDocHolder,
     /// Optional human-readable name for this room.
     pub name: Option<String>,
     /// Unix timestamp (seconds) when the room was created.
@@ -50,7 +51,7 @@ impl Room {
             id,
             tx,
             client_count: 0,
-            doc_state: Vec::new(),
+            yrs_doc: YrsDocHolder::new(),
             name: None,
             created_at: now,
             last_active_at: now,
@@ -58,14 +59,21 @@ impl Room {
         }
     }
 
-    pub fn with_state(id: String, doc_state: Vec<u8>) -> Self {
+    pub fn with_state(id: String, state: Vec<u8>) -> Self {
         let (tx, _) = broadcast::channel(256);
         let now = unix_timestamp();
+        let yrs_doc = match YrsDocHolder::from_state(&state) {
+            Ok(doc) => doc,
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to decode persisted state, starting empty doc");
+                YrsDocHolder::new()
+            }
+        };
         Self {
             id,
             tx,
             client_count: 0,
-            doc_state,
+            yrs_doc,
             name: None,
             created_at: now,
             last_active_at: now,
@@ -74,18 +82,30 @@ impl Room {
     }
 
     /// Create a room restored from persisted state and metadata.
-    pub fn with_state_and_metadata(id: String, doc_state: Vec<u8>, metadata: RoomMetadata) -> Self {
+    pub fn with_state_and_metadata(id: String, state: Vec<u8>, metadata: RoomMetadata) -> Self {
         let (tx, _) = broadcast::channel(256);
+        let yrs_doc = match YrsDocHolder::from_state(&state) {
+            Ok(doc) => doc,
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to decode persisted state, starting empty doc");
+                YrsDocHolder::new()
+            }
+        };
         Self {
             id,
             tx,
             client_count: 0,
-            doc_state,
+            yrs_doc,
             name: metadata.name,
             created_at: metadata.created_at,
             last_active_at: metadata.last_active_at,
             creator_name: metadata.creator_name,
         }
+    }
+
+    /// Encode the full document state as bytes.
+    pub fn encoded_state(&self) -> Vec<u8> {
+        self.yrs_doc.encode_state()
     }
 
     /// Extract serializable metadata from this room.
@@ -166,7 +186,7 @@ impl RoomManager {
         let mut room_guard = room.write().await;
         room_guard.client_count += 1;
         let tx = room_guard.tx.clone();
-        let state = room_guard.doc_state.clone();
+        let state = room_guard.encoded_state();
         tracing::info!(
             room_id = room_id,
             clients = room_guard.client_count,
@@ -189,7 +209,7 @@ impl RoomManager {
                 );
                 let empty = room_guard.client_count == 0;
                 let (state, metadata) = if empty {
-                    (Some(room_guard.doc_state.clone()), Some(room_guard.metadata()))
+                    (Some(room_guard.encoded_state()), Some(room_guard.metadata()))
                 } else {
                     (None, None)
                 };
@@ -232,18 +252,23 @@ impl RoomManager {
         }
     }
 
-    /// Update the stored document state for a room, with debounced persistence.
+    /// Apply a Yjs update to the room's document, with debounced persistence.
+    /// `update_bytes` should be raw Yjs update bytes (no y-websocket transport envelope).
     /// Also updates `last_active_at` timestamp and persists metadata alongside state.
-    pub async fn update_doc_state(&self, room_id: &str, state: Vec<u8>) {
+    pub async fn apply_update(&self, room_id: &str, update_bytes: &[u8]) {
         let rooms = self.rooms.read().await;
         if let Some(room) = rooms.get(room_id) {
             let mut room_guard = room.write().await;
-            room_guard.doc_state = state.clone();
+            if let Err(e) = room_guard.yrs_doc.apply_update(update_bytes) {
+                tracing::warn!(room_id = room_id, error = %e, "Failed to apply Yjs update");
+                return;
+            }
             room_guard.last_active_at = unix_timestamp();
+            let encoded = room_guard.encoded_state();
             let metadata = room_guard.metadata();
             // Queue debounced write to disk (state + metadata)
             self.debounced_writer
-                .queue_save_with_metadata(room_id.to_string(), state, metadata);
+                .queue_save_with_metadata(room_id.to_string(), encoded, metadata);
         }
     }
 
@@ -292,9 +317,23 @@ impl RoomManager {
 mod tests {
     use super::*;
     use tempfile::TempDir;
+    use yrs::{Doc, Map, ReadTxn, StateVector, Transact, Update};
+    use yrs::updates::decoder::Decode;
 
     fn test_persistence(dir: &TempDir) -> Arc<Persistence> {
         Arc::new(Persistence::new(dir.path().to_path_buf()))
+    }
+
+    /// Helper: create a valid Yjs state update from a doc with a single key-value pair.
+    fn make_yrs_update(key: &str, value: &str) -> Vec<u8> {
+        let doc = Doc::new();
+        {
+            let map = doc.get_or_insert_map("test");
+            let mut txn = doc.transact_mut();
+            map.insert(&mut txn, key, value);
+        }
+        let txn = doc.transact();
+        txn.encode_state_as_update_v1(&StateVector::default())
     }
 
     #[tokio::test]
@@ -307,7 +346,9 @@ mod tests {
         let guard = room.read().await;
         assert_eq!(guard.id, "test-room");
         assert_eq!(guard.client_count, 0);
-        assert!(guard.doc_state.is_empty());
+        // Empty yrs doc still encodes to non-empty bytes
+        let state = guard.encoded_state();
+        assert!(!state.is_empty());
     }
 
     #[tokio::test]
@@ -317,7 +358,8 @@ mod tests {
         p.init().await.unwrap();
         let manager = RoomManager::new(p);
         let (_tx, state) = manager.join_room("new-room").await;
-        assert!(state.is_empty());
+        // Even an empty yrs doc returns encoded state bytes
+        assert!(!state.is_empty());
 
         // Verify client count incremented
         let room = manager.get_or_create_room("new-room").await;
@@ -332,16 +374,25 @@ mod tests {
         p.init().await.unwrap();
         let manager = RoomManager::new(p);
 
-        // Set up a room with some state
+        // Apply an update to the room's yrs doc
+        let update = make_yrs_update("greeting", "hello");
         let room = manager.get_or_create_room("state-room").await;
         {
-            let mut guard = room.write().await;
-            guard.doc_state = vec![1, 2, 3, 4];
+            let guard = room.read().await;
+            guard.yrs_doc.apply_update(&update).unwrap();
         }
 
-        // Join should return existing state
+        // Join should return state that contains our data
         let (_tx, state) = manager.join_room("state-room").await;
-        assert_eq!(state, vec![1, 2, 3, 4]);
+        let verify = Doc::new();
+        {
+            let u = Update::decode_v1(&state).unwrap();
+            verify.transact_mut().apply_update(u).unwrap();
+        }
+        let map = verify.get_or_insert_map("test");
+        let txn = verify.transact();
+        let val = map.get(&txn, "greeting").unwrap().to_string(&txn);
+        assert_eq!(val, "hello");
     }
 
     #[tokio::test]
@@ -376,19 +427,30 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_update_doc_state() {
+    async fn test_apply_update() {
         let dir = TempDir::new().unwrap();
         let p = test_persistence(&dir);
         p.init().await.unwrap();
         let manager = RoomManager::new(p);
         manager.join_room("update-test").await;
-        manager
-            .update_doc_state("update-test", vec![10, 20, 30])
-            .await;
 
+        // Create a valid Yjs update
+        let update = make_yrs_update("key", "value");
+        manager.apply_update("update-test", &update).await;
+
+        // Verify the update was applied
         let room = manager.get_or_create_room("update-test").await;
         let guard = room.read().await;
-        assert_eq!(guard.doc_state, vec![10, 20, 30]);
+        let state = guard.encoded_state();
+        let verify = Doc::new();
+        {
+            let u = Update::decode_v1(&state).unwrap();
+            verify.transact_mut().apply_update(u).unwrap();
+        }
+        let map = verify.get_or_insert_map("test");
+        let txn = verify.transact();
+        let val = map.get(&txn, "key").unwrap().to_string(&txn);
+        assert_eq!(val, "value");
     }
 
     #[tokio::test]
@@ -412,12 +474,38 @@ mod tests {
         let p = test_persistence(&dir);
         p.init().await.unwrap();
 
-        // Pre-persist some state
-        p.save("persisted-room", &[99, 88, 77]).await.unwrap();
+        // Create valid Yjs state bytes and persist them
+        let update = make_yrs_update("persisted", "data");
+        p.save("persisted-room", &update).await.unwrap();
 
         let manager = RoomManager::new(p);
         let (_tx, state) = manager.join_room("persisted-room").await;
-        assert_eq!(state, vec![99, 88, 77]);
+
+        // Verify the persisted data can be read back
+        let verify = Doc::new();
+        {
+            let u = Update::decode_v1(&state).unwrap();
+            verify.transact_mut().apply_update(u).unwrap();
+        }
+        let map = verify.get_or_insert_map("test");
+        let txn = verify.transact();
+        let val = map.get(&txn, "persisted").unwrap().to_string(&txn);
+        assert_eq!(val, "data");
+    }
+
+    #[tokio::test]
+    async fn test_room_loads_invalid_persisted_state_falls_back() {
+        let dir = TempDir::new().unwrap();
+        let p = test_persistence(&dir);
+        p.init().await.unwrap();
+
+        // Persist invalid bytes — should fall back to empty doc
+        p.save("bad-state-room", &[0xFF, 0xFF, 0xFF]).await.unwrap();
+
+        let manager = RoomManager::new(p);
+        let (_tx, state) = manager.join_room("bad-state-room").await;
+        // Should still get valid (empty) yrs state, not crash
+        assert!(!state.is_empty());
     }
 
     #[tokio::test]
@@ -456,7 +544,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_update_doc_state_updates_last_active_at() {
+    async fn test_apply_update_updates_last_active_at() {
         let dir = TempDir::new().unwrap();
         let p = test_persistence(&dir);
         p.init().await.unwrap();
@@ -472,9 +560,9 @@ mod tests {
 
         // Small delay so timestamp changes
         tokio::time::sleep(std::time::Duration::from_millis(1100)).await;
-        manager
-            .update_doc_state("activity-test", vec![1, 2, 3])
-            .await;
+
+        let update = make_yrs_update("ts", "check");
+        manager.apply_update("activity-test", &update).await;
 
         let guard = room.read().await;
         assert!(guard.last_active_at >= initial_active);
@@ -486,8 +574,9 @@ mod tests {
         let p = test_persistence(&dir);
         p.init().await.unwrap();
 
-        // Pre-persist state and metadata
-        p.save("meta-persist", &[1, 2, 3]).await.unwrap();
+        // Pre-persist valid Yjs state and metadata
+        let update = make_yrs_update("meta", "val");
+        p.save("meta-persist", &update).await.unwrap();
         let meta = RoomMetadata {
             id: "meta-persist".to_string(),
             name: Some("Persisted Room".to_string()),

@@ -108,8 +108,9 @@ async fn handle_socket(socket: WebSocket, room_id: String, room_manager: Arc<Roo
                 }
                 // Only persist sync step2/update — step1 is a query, awareness/auth are ephemeral
                 if is_persistable_sync_message(&bytes) {
+                    // Strip y-websocket transport envelope (2 bytes: transport type + sync sub-type)
                     broadcast_rm
-                        .update_doc_state(&broadcast_room_id, bytes.clone())
+                        .apply_update(&broadcast_room_id, &bytes[2..])
                         .await;
                 }
                 // Broadcast all valid messages (including awareness) to peers

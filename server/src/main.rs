@@ -4,6 +4,9 @@ mod room;
 mod ws;
 pub mod yrs_doc;
 
+#[cfg(test)]
+mod integration_tests;
+
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;

@@ -49,8 +49,8 @@ async fn main() {
         .route("/api/rooms", get(api::list_rooms).post(api::create_room))
         .route("/api/rooms/:room_id", get(api::get_room))
         .route("/ws/:room_id", get(ws::ws_handler))
-        .layer(CorsLayer::permissive())
         .layer(DefaultBodyLimit::max(1024 * 1024)) // 1 MiB
+        .layer(CorsLayer::permissive())
         .with_state(room_manager);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], args.port));

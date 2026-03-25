@@ -72,9 +72,9 @@ pub async fn create_room(
     State(room_manager): State<Arc<RoomManager>>,
     Json(body): Json<CreateRoomRequest>,
 ) -> impl IntoResponse {
-    // Validate name length
+    // Validate name length (character count, not bytes)
     if let Some(ref name) = body.name {
-        if name.len() > MAX_ROOM_NAME_LEN {
+        if name.chars().count() > MAX_ROOM_NAME_LEN {
             return Err((
                 StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({
@@ -84,9 +84,9 @@ pub async fn create_room(
         }
     }
 
-    // Validate creator_name length
+    // Validate creator_name length (character count, not bytes)
     if let Some(ref creator_name) = body.creator_name {
-        if creator_name.len() > MAX_CREATOR_NAME_LEN {
+        if creator_name.chars().count() > MAX_CREATOR_NAME_LEN {
             return Err((
                 StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({

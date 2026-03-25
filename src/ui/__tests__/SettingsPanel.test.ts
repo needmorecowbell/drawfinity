@@ -322,4 +322,58 @@ describe("SettingsPanel", () => {
     const select = document.querySelector(".settings-select") as HTMLSelectElement;
     expect(select.value).toBe("none");
   });
+
+  it("renders Clear All Data button in danger zone", () => {
+    panel.show();
+    const dangerZone = document.querySelector(".settings-danger-zone");
+    expect(dangerZone).not.toBeNull();
+    const clearBtn = document.querySelector(".settings-btn-danger") as HTMLButtonElement;
+    expect(clearBtn).not.toBeNull();
+    expect(clearBtn.textContent).toBe("Clear All Data");
+  });
+
+  it("Clear All Data button shows confirmation dialog", () => {
+    panel.show();
+    const clearBtn = document.querySelector(".settings-btn-danger") as HTMLButtonElement;
+    clearBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+    const confirm = document.querySelector(".settings-clear-confirm");
+    expect(confirm).not.toBeNull();
+    expect(confirm!.textContent).toContain("This will delete all drawings");
+  });
+
+  it("confirmation Cancel button removes dialog without clearing", () => {
+    const onClearData = vi.fn().mockResolvedValue(undefined);
+    panel.destroy();
+    panel = new SettingsPanel(makeProfile(), makePreferences(), { onSave: onSaveSpy, onClearData });
+    panel.show();
+
+    const clearBtn = document.querySelector(".settings-btn-danger") as HTMLButtonElement;
+    clearBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+    const cancelBtn = document.querySelector(".settings-clear-confirm .settings-btn-secondary") as HTMLButtonElement;
+    cancelBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+    expect(document.querySelector(".settings-clear-confirm")).toBeNull();
+    expect(onClearData).not.toHaveBeenCalled();
+  });
+
+  it("confirmation Delete Everything button calls onClearData and hides panel", async () => {
+    const onClearData = vi.fn().mockResolvedValue(undefined);
+    panel.destroy();
+    panel = new SettingsPanel(makeProfile(), makePreferences(), { onSave: onSaveSpy, onClearData });
+    panel.show();
+
+    const clearBtn = document.querySelector(".settings-btn-danger") as HTMLButtonElement;
+    clearBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+    const confirmBtn = document.querySelector(".settings-clear-confirm .settings-btn-danger") as HTMLButtonElement;
+    confirmBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+    expect(onClearData).toHaveBeenCalledOnce();
+    // Wait for the promise to resolve
+    await vi.waitFor(() => {
+      expect(panel.isVisible()).toBe(false);
+    });
+  });
 });

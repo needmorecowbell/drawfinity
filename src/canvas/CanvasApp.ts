@@ -131,6 +131,7 @@ export class CanvasApp {
   private pointermoveHandler!: (e: PointerEvent) => void;
   private beforeUnloadHandler!: () => void;
   private bookmarkPanel!: BookmarkPanel;
+  private browserStorage: { clearAllData(): Promise<void> } | null = null;
   private bookmarkButton!: HTMLButtonElement;
   private settingsButton!: HTMLButtonElement;
   private userColorIndicator!: HTMLDivElement;
@@ -289,6 +290,8 @@ export class CanvasApp {
           await saveToBrowser();
         },
       };
+
+      this.browserStorage = storage;
     }
 
     // Apply initial background color from document
@@ -456,6 +459,12 @@ export class CanvasApp {
 
     // Settings panel
     this.settingsPanel = new SettingsPanel(userProfile, userPreferences, {
+      onClearData: async () => {
+        if (this.browserStorage) {
+          await this.browserStorage.clearAllData();
+        }
+        this.callbacks.onGoHome?.();
+      },
       onSave: (profile, preferences) => {
         userProfile = profile;
         userPreferences = preferences;

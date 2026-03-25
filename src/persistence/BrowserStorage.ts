@@ -7,6 +7,7 @@ import {
   deleteDocument as idbDeleteDocument,
   loadManifestFromIDB,
   saveManifestToIDB,
+  clearAll as idbClearAll,
 } from "./IndexedDBStorage";
 
 const LS_DRAWINGS_KEY = "drawfinity:drawings";
@@ -235,6 +236,25 @@ export async function createBrowserStorage() {
       }
       const b64 = localStorage.getItem(`drawfinity:doc:${bk}`);
       return b64 ? base64ToUint8(b64) : null;
+    },
+
+    async clearAllData(): Promise<void> {
+      if (useIDB) {
+        await idbClearAll();
+      }
+      // Clear all drawfinity-related localStorage keys
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("drawfinity:")) {
+          keysToRemove.push(key);
+        }
+      }
+      for (const key of keysToRemove) {
+        localStorage.removeItem(key);
+      }
+      memDrawings.length = 0;
+      console.log("Drawfinity: all data cleared");
     },
   };
 }

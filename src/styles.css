@@ -1290,6 +1290,47 @@ html, body {
   background: #e0e0e0;
 }
 
+.settings-danger-zone {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.settings-danger-label {
+  color: #cc3333;
+}
+
+.settings-btn-danger {
+  padding: 6px 16px;
+  border: 1px solid #cc3333;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: system-ui, -apple-system, sans-serif;
+  cursor: pointer;
+  background: #fff;
+  color: #cc3333;
+  transition: background 0.15s, color 0.15s;
+}
+
+.settings-btn-danger:hover {
+  background: #cc3333;
+  color: #fff;
+}
+
+.settings-clear-confirm {
+  margin-top: 12px;
+  padding: 12px;
+  background: #fff5f5;
+  border: 1px solid #cc3333;
+  border-radius: 6px;
+}
+
+.settings-clear-confirm p {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: #333;
+}
+
 /* Home Screen */
 #home-screen {
   position: fixed;

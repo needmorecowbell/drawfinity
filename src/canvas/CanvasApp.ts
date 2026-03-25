@@ -19,6 +19,7 @@ import { CursorManager } from "../ui/CursorManager";
 import { FpsCounter } from "../ui/FpsCounter";
 import { SyncManager } from "../sync";
 import { loadProfileAsync, loadPreferencesAsync, savePreferences, type UserPreferences, type GridStyle } from "../user";
+import { showStorageNotification } from "../ui/StorageNotification";
 
 /**
  * Callbacks for CanvasApp lifecycle events, provided by the parent view manager.
@@ -213,6 +214,23 @@ export class CanvasApp {
         console.log(`CanvasApp: no saved state for drawing "${drawingId}"`);
         this.doc = new DrawfinityDoc();
       }
+
+      // Wire up storage notifications
+      storage.onStorageLow = (availableBytes: number) => {
+        const availMB = (availableBytes / (1024 * 1024)).toFixed(1);
+        showStorageNotification(
+          `Storage running low (${availMB} MB remaining). Consider exporting or deleting old drawings.`,
+          "warning",
+          12000,
+        );
+      };
+      storage.onSaveError = (error: Error) => {
+        showStorageNotification(
+          `Failed to save drawing: ${error.message}. Try exporting your work or clearing old drawings.`,
+          "error",
+          0, // sticky — user must dismiss
+        );
+      };
 
       // Debounced auto-save to IndexedDB/localStorage
       const doc = this.doc;

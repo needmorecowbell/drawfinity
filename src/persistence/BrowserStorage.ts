@@ -42,6 +42,39 @@ export function base64ToUint8(b64: string): Uint8Array {
   return bytes;
 }
 
+/** Minimum available storage (1 MB) before showing a warning. */
+const LOW_STORAGE_THRESHOLD = 1 * 1024 * 1024;
+
+/**
+ * Check available storage quota using the Storage Manager API.
+ * Returns `{ usage, quota, available }` in bytes, or `null` if the API is unsupported.
+ */
+export async function checkStorageQuota(): Promise<{
+  usage: number;
+  quota: number;
+  available: number;
+} | null> {
+  try {
+    if (navigator?.storage?.estimate) {
+      const est = await navigator.storage.estimate();
+      const usage = est.usage ?? 0;
+      const quota = est.quota ?? 0;
+      return { usage, quota, available: quota - usage };
+    }
+  } catch {
+    // API unavailable or permission denied
+  }
+  return null;
+}
+
+/**
+ * Returns true when available storage is below the warning threshold.
+ */
+export async function isStorageLow(): Promise<boolean> {
+  const info = await checkStorageQuota();
+  return info !== null && info.available < LOW_STORAGE_THRESHOLD;
+}
+
 /**
  * Creates a browser-mode persistence adapter.
  * Uses IndexedDB when available; falls back to localStorage.
@@ -96,13 +129,33 @@ export async function createBrowserStorage() {
     persistManifest,
 
     async saveDocState(drawingId: string, state: Uint8Array): Promise<void> {
-      if (useIDB) {
-        await idbSaveDocument(drawingId, state);
-      } else {
-        const b64 = uint8ToBase64(state);
-        localStorage.setItem(`drawfinity:doc:${drawingId}`, b64);
+      // Check quota before saving
+      const quotaInfo = await checkStorageQuota();
+      if (quotaInfo && quotaInfo.available < LOW_STORAGE_THRESHOLD) {
+        const availMB = (quotaInfo.available / (1024 * 1024)).toFixed(1);
+        console.warn(`Drawfinity: storage running low — ${availMB} MB remaining`);
+        this.onStorageLow?.(quotaInfo.available);
+      }
+
+      try {
+        if (useIDB) {
+          await idbSaveDocument(drawingId, state);
+        } else {
+          const b64 = uint8ToBase64(state);
+          localStorage.setItem(`drawfinity:doc:${drawingId}`, b64);
+        }
+      } catch (err) {
+        console.error("Drawfinity: save failed", err);
+        this.onSaveError?.(err instanceof Error ? err : new Error(String(err)));
+        throw err; // Re-throw so callers know the save failed
       }
     },
+
+    /** Called when available storage drops below 1 MB. */
+    onStorageLow: null as ((availableBytes: number) => void) | null,
+
+    /** Called when a save fails (quota exceeded, write error, etc.). */
+    onSaveError: null as ((error: Error) => void) | null,
 
     async loadDocState(drawingId: string): Promise<Uint8Array | null> {
       if (useIDB) {

@@ -105,11 +105,10 @@ async fn handle_socket(socket: WebSocket, room_id: String, room_manager: Arc<Roo
     let (mut ws_sender, mut ws_receiver) = socket.split();
 
     // Send the current document state as a SyncStep2 frame
-    if !initial_state.is_empty()
-        && ws_sender
-            .send(Message::Binary(build_sync_step2(&initial_state)))
-            .await
-            .is_err()
+    if ws_sender
+        .send(Message::Binary(build_sync_step2(&initial_state)))
+        .await
+        .is_err()
     {
         room_manager.leave_room(&room_id).await;
         return;

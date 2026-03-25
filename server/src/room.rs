@@ -24,7 +24,6 @@ pub struct RoomMetadata {
 }
 
 /// A collaborative room holding connected clients and a server-side Yjs document.
-#[allow(dead_code)]
 pub struct Room {
     pub id: String,
     /// Broadcast channel for distributing updates to all clients in the room.

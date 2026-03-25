@@ -1,4 +1,5 @@
 mod api;
+mod codec;
 mod persistence;
 mod room;
 mod ws;

@@ -1,3 +1,4 @@
+use crate::codec;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
 
@@ -27,24 +28,6 @@ impl From<yrs::error::UpdateError> for YrsDocError {
     fn from(e: yrs::error::UpdateError) -> Self {
         YrsDocError::Apply(e)
     }
-}
-
-/// Read a lib0 var-uint from a byte slice and return the remaining bytes after it.
-///
-/// Old persisted files use lib0's `writeVarUint8Array` which prefixes the payload
-/// with a var-uint length. This strips that prefix.
-fn strip_var_uint_prefix(data: &[u8]) -> Option<&[u8]> {
-    let mut shift = 0;
-    for (i, &byte) in data.iter().enumerate() {
-        if byte & 0x80 == 0 {
-            return Some(&data[i + 1..]);
-        }
-        shift += 7;
-        if shift > 35 {
-            return None;
-        }
-    }
-    None
 }
 
 /// Wraps a `yrs::Doc` with helper methods for applying and encoding Yjs state.
@@ -82,7 +65,7 @@ impl YrsDocHolder {
         if state.len() > 2 && state[0] == 0 && state[1] == 1 {
             let after_envelope = &state[2..];
             // Strip the lib0 var-uint length prefix to get raw Yjs bytes
-            if let Some(payload) = strip_var_uint_prefix(after_envelope) {
+            if let Some(payload) = codec::skip_var_uint_prefix(after_envelope) {
                 if let Ok(update) = Update::decode_v1(payload) {
                     tracing::info!("Detected old-format persisted state with y-websocket envelope, stripped envelope + length prefix");
                     holder.doc.transact_mut().apply_update(update)?;

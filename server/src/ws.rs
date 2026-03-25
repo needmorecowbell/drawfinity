@@ -9,6 +9,7 @@ use axum::{
 };
 use futures_util::{SinkExt, StreamExt};
 
+use crate::codec;
 use crate::room::RoomManager;
 
 /// Maximum allowed size for a single WebSocket binary message (1 MiB).
@@ -54,26 +55,6 @@ fn is_doc_update_message(data: &[u8]) -> bool {
         && (data[1] == YJS_SYNC_STEP2 || data[1] == YJS_UPDATE)
 }
 
-/// Read a lib0 var-uint from a byte slice, returning (value, bytes_consumed).
-///
-/// lib0 var-uint encoding uses the MSB as a continuation bit:
-/// each byte contributes 7 bits of value; if bit 7 is set, read another byte.
-fn read_var_uint(data: &[u8]) -> Option<(usize, usize)> {
-    let mut value: usize = 0;
-    let mut shift = 0;
-    for (i, &byte) in data.iter().enumerate() {
-        value |= ((byte & 0x7F) as usize) << shift;
-        if byte & 0x80 == 0 {
-            return Some((value, i + 1));
-        }
-        shift += 7;
-        if shift > 35 {
-            return None; // overflow protection
-        }
-    }
-    None // ran out of bytes
-}
-
 /// Extract the raw Yjs update bytes from a y-protocols sync message.
 ///
 /// After the 2-byte y-websocket envelope `[msgType, syncSubType]`, y-protocols
@@ -85,7 +66,7 @@ fn extract_yjs_payload(data: &[u8]) -> Option<&[u8]> {
         return None;
     }
     let after_envelope = &data[2..];
-    let (len, consumed) = read_var_uint(after_envelope)?;
+    let (len, consumed) = codec::read_var_uint(after_envelope)?;
     let payload_start = consumed;
     let payload_end = payload_start + len;
     if payload_end > after_envelope.len() {
@@ -264,37 +245,9 @@ mod tests {
         assert!(!is_doc_update_message(&[YWS_MSG_SYNC]));
     }
 
-    // --- read_var_uint tests ---
-
-    #[test]
-    fn test_read_var_uint_single_byte() {
-        assert_eq!(read_var_uint(&[0]), Some((0, 1)));
-        assert_eq!(read_var_uint(&[42]), Some((42, 1)));
-        assert_eq!(read_var_uint(&[127]), Some((127, 1)));
-    }
-
-    #[test]
-    fn test_read_var_uint_multi_byte() {
-        // 128 = 0x80 → encoded as [0x80, 0x01] (continuation bit set on first byte)
-        assert_eq!(read_var_uint(&[0x80, 0x01]), Some((128, 2)));
-        // 300 = 0x12C → encoded as [0xAC, 0x02]
-        assert_eq!(read_var_uint(&[0xAC, 0x02]), Some((300, 2)));
-    }
-
-    #[test]
-    fn test_read_var_uint_empty() {
-        assert_eq!(read_var_uint(&[]), None);
-    }
-
-    #[test]
-    fn test_read_var_uint_truncated() {
-        // Continuation bit set but no next byte
-        assert_eq!(read_var_uint(&[0x80]), None);
-    }
-
     // --- extract_yjs_payload tests ---
 
-    #[test]
+#[test]
     fn test_extract_payload_simple() {
         // Envelope [0, 2] + var-uint length 3 + 3 bytes of payload
         let msg = vec![YWS_MSG_SYNC, YJS_UPDATE, 3, 0xAA, 0xBB, 0xCC];

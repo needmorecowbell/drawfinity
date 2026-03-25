@@ -18,7 +18,8 @@
         "height": 800,
         "minWidth": 800,
         "minHeight": 600,
-        "center": true
+        "center": true,
+        "icon": "icons/icon.png"
       }
     ],
     "security": {
@@ -35,6 +36,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "headerImage": null,
+        "sidebarImage": null
+      }
+    },
     "shortDescription": "Infinite canvas drawing app with real-time collaboration",
     "longDescription": "Drawfinity is an infinite canvas drawing application featuring pressure-sensitive brush tools, real-time collaboration via WebSocket sync, and a high-performance WebGL rendering pipeline."
   }

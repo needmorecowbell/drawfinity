@@ -9,6 +9,7 @@ use axum::{
 };
 use futures_util::{SinkExt, StreamExt};
 
+use crate::codec;
 use crate::room::RoomManager;
 
 /// Maximum allowed size for a single WebSocket binary message (1 MiB).
@@ -40,15 +41,51 @@ fn is_valid_yws_message(data: &[u8]) -> bool {
 /// Yjs sync sub-protocol message types (byte[1] inside a messageSync envelope).
 /// See: https://github.com/yjs/y-protocols/blob/master/sync.js
 const YJS_SYNC_STEP2: u8 = 1; // full encoded document state
+const YJS_UPDATE: u8 = 2; // incremental Yjs update
 
-/// Returns true if the message should be persisted as document state.
+/// Returns true if the message carries a document update that should be applied
+/// to the server-side Yjs doc.
 ///
-/// Only `messageSyncStep2` (full encoded doc state) is safe to store by replacement.
-/// `messageSyncStep1` (sub-type 0) is a state-vector query, and `messageYjsUpdate`
-/// (sub-type 2) is an incremental delta — neither can be stored via full replacement
-/// without corrupting the document for late-joining clients.
-fn is_persistable_sync_message(data: &[u8]) -> bool {
-    data.len() >= 2 && data[0] == YWS_MSG_SYNC && data[1] == YJS_SYNC_STEP2
+/// Both `messageSyncStep2` (full state) and `messageYjsUpdate` (incremental delta)
+/// are applied via `yrs::Doc::apply_update`, which handles merging correctly.
+/// `messageSyncStep1` (sub-type 0) is a state-vector query and is not a doc update.
+fn is_doc_update_message(data: &[u8]) -> bool {
+    data.len() >= 2
+        && data[0] == YWS_MSG_SYNC
+        && (data[1] == YJS_SYNC_STEP2 || data[1] == YJS_UPDATE)
+}
+
+/// Extract the raw Yjs update bytes from a y-protocols sync message.
+///
+/// After the 2-byte y-websocket envelope `[msgType, syncSubType]`, y-protocols
+/// encodes the payload using lib0's `writeVarUint8Array`: a var-uint length prefix
+/// followed by the raw bytes. This function strips both the envelope and the
+/// length prefix, returning only the raw Yjs update bytes.
+fn extract_yjs_payload(data: &[u8]) -> Option<&[u8]> {
+    if data.len() < 3 {
+        return None;
+    }
+    let after_envelope = &data[2..];
+    let (len, consumed) = codec::read_var_uint(after_envelope)?;
+    let payload_start = consumed;
+    let payload_end = payload_start + len;
+    if payload_end > after_envelope.len() {
+        return None;
+    }
+    Some(&after_envelope[payload_start..payload_end])
+}
+
+/// Build a y-websocket SyncStep2 frame from raw yrs state bytes.
+///
+/// The y-websocket protocol expects: `[msgType=0, syncSubType=1, varUintLen, ...rawYrsBytes]`.
+/// This wraps raw yrs bytes in the proper envelope so the client can parse them.
+fn build_sync_step2(raw_yrs: &[u8]) -> Vec<u8> {
+    let mut msg = Vec::with_capacity(2 + 5 + raw_yrs.len());
+    msg.push(YWS_MSG_SYNC);
+    msg.push(YJS_SYNC_STEP2);
+    codec::write_var_uint(&mut msg, raw_yrs.len());
+    msg.extend_from_slice(raw_yrs);
+    msg
 }
 
 /// WebSocket upgrade handler at `/ws/{room_id}`.
@@ -67,23 +104,21 @@ async fn handle_socket(socket: WebSocket, room_id: String, room_manager: Arc<Roo
 
     let (mut ws_sender, mut ws_receiver) = socket.split();
 
-    // Send the current document state as the first message
-    if !initial_state.is_empty() {
-        if ws_sender
-            .send(Message::Binary(initial_state.into()))
-            .await
-            .is_err()
-        {
-            room_manager.leave_room(&room_id).await;
-            return;
-        }
+    // Send the current document state as a SyncStep2 frame
+    if ws_sender
+        .send(Message::Binary(build_sync_step2(&initial_state)))
+        .await
+        .is_err()
+    {
+        room_manager.leave_room(&room_id).await;
+        return;
     }
 
     // Spawn a task to forward broadcast messages to this client's WebSocket
     let forward_room_id = room_id.clone();
     let forward_task = tokio::spawn(async move {
         while let Ok(msg) = rx.recv().await {
-            if ws_sender.send(Message::Binary(msg.into())).await.is_err() {
+            if ws_sender.send(Message::Binary(msg)).await.is_err() {
                 break;
             }
         }
@@ -96,7 +131,7 @@ async fn handle_socket(socket: WebSocket, room_id: String, room_manager: Arc<Roo
     while let Some(Ok(msg)) = ws_receiver.next().await {
         match msg {
             Message::Binary(data) => {
-                let bytes: Vec<u8> = data.into();
+                let bytes: Vec<u8> = data;
                 if !is_valid_yws_message(&bytes) {
                     tracing::warn!(
                         room_id = %broadcast_room_id,
@@ -106,11 +141,20 @@ async fn handle_socket(socket: WebSocket, room_id: String, room_manager: Arc<Roo
                     );
                     continue;
                 }
-                // Only persist sync step2/update — step1 is a query, awareness/auth are ephemeral
-                if is_persistable_sync_message(&bytes) {
-                    broadcast_rm
-                        .update_doc_state(&broadcast_room_id, bytes.clone())
-                        .await;
+                // Apply doc updates (SyncStep2 + YjsUpdate) — step1 is a query, awareness/auth are ephemeral
+                if is_doc_update_message(&bytes) {
+                    // Strip y-websocket envelope + lib0 var-uint length prefix to get raw Yjs bytes
+                    if let Some(payload) = extract_yjs_payload(&bytes) {
+                        broadcast_rm
+                            .apply_update(&broadcast_room_id, payload)
+                            .await;
+                    } else {
+                        tracing::warn!(
+                            room_id = %broadcast_room_id,
+                            len = bytes.len(),
+                            "Failed to extract Yjs payload from sync message"
+                        );
+                    }
                 }
                 // Broadcast all valid messages (including awareness) to peers
                 let _ = tx.send(bytes);
@@ -183,33 +227,85 @@ mod tests {
     }
 
     #[test]
-    fn test_persistable_sync_step2() {
-        assert!(is_persistable_sync_message(&[YWS_MSG_SYNC, YJS_SYNC_STEP2, 0xFF]));
+    fn test_doc_update_sync_step2() {
+        assert!(is_doc_update_message(&[YWS_MSG_SYNC, YJS_SYNC_STEP2, 0xFF]));
     }
 
     #[test]
-    fn test_reject_sync_update_from_persistence() {
-        // YjsUpdate (sub-type 2) is an incremental delta — cannot be stored by replacement
-        assert!(!is_persistable_sync_message(&[YWS_MSG_SYNC, 2, 0x01]));
+    fn test_doc_update_yjs_update() {
+        // YjsUpdate (sub-type 2) is now applied via yrs merging
+        assert!(is_doc_update_message(&[YWS_MSG_SYNC, YJS_UPDATE, 0x01]));
     }
 
     #[test]
-    fn test_reject_sync_step1_from_persistence() {
-        // SyncStep1 (sub-type 0) is a state-vector query — must NOT be persisted
-        assert!(!is_persistable_sync_message(&[YWS_MSG_SYNC, 0, 0x01]));
+    fn test_reject_sync_step1_from_doc_update() {
+        // SyncStep1 (sub-type 0) is a state-vector query — not a doc update
+        assert!(!is_doc_update_message(&[YWS_MSG_SYNC, 0, 0x01]));
     }
 
     #[test]
-    fn test_reject_non_sync_from_persistence() {
-        assert!(!is_persistable_sync_message(&[YWS_MSG_AWARENESS, 0, 1]));
-        assert!(!is_persistable_sync_message(&[YWS_MSG_AUTH, 0]));
-        assert!(!is_persistable_sync_message(&[YWS_MSG_QUERY_AWARENESS, 0]));
+    fn test_reject_non_sync_from_doc_update() {
+        assert!(!is_doc_update_message(&[YWS_MSG_AWARENESS, 0, 1]));
+        assert!(!is_doc_update_message(&[YWS_MSG_AUTH, 0]));
+        assert!(!is_doc_update_message(&[YWS_MSG_QUERY_AWARENESS, 0]));
     }
 
     #[test]
-    fn test_reject_too_short_for_persistence() {
+    fn test_reject_too_short_for_doc_update() {
         // Need at least 2 bytes (transport type + sync sub-type)
-        assert!(!is_persistable_sync_message(&[]));
-        assert!(!is_persistable_sync_message(&[YWS_MSG_SYNC]));
+        assert!(!is_doc_update_message(&[]));
+        assert!(!is_doc_update_message(&[YWS_MSG_SYNC]));
+    }
+
+    // --- extract_yjs_payload tests ---
+
+#[test]
+    fn test_extract_payload_simple() {
+        // Envelope [0, 2] + var-uint length 3 + 3 bytes of payload
+        let msg = vec![YWS_MSG_SYNC, YJS_UPDATE, 3, 0xAA, 0xBB, 0xCC];
+        let payload = extract_yjs_payload(&msg).unwrap();
+        assert_eq!(payload, &[0xAA, 0xBB, 0xCC]);
+    }
+
+    #[test]
+    fn test_extract_payload_large_length() {
+        // 128-byte payload → var-uint length [0x80, 0x01]
+        let mut msg = vec![YWS_MSG_SYNC, YJS_SYNC_STEP2, 0x80, 0x01];
+        msg.extend(vec![0xFF; 128]);
+        let payload = extract_yjs_payload(&msg).unwrap();
+        assert_eq!(payload.len(), 128);
+        assert!(payload.iter().all(|&b| b == 0xFF));
+    }
+
+    #[test]
+    fn test_extract_payload_too_short() {
+        // Only envelope, no length prefix
+        assert!(extract_yjs_payload(&[YWS_MSG_SYNC, YJS_UPDATE]).is_none());
+        // Length says 5 but only 2 bytes available
+        assert!(extract_yjs_payload(&[YWS_MSG_SYNC, YJS_UPDATE, 5, 0xAA, 0xBB]).is_none());
+    }
+
+    // --- build_sync_step2 tests ---
+
+    #[test]
+    fn test_build_sync_step2_roundtrips() {
+        // Build a SyncStep2 frame and verify extract_yjs_payload recovers the original
+        let raw = vec![0x01, 0x02, 0x03, 0x04];
+        let frame = build_sync_step2(&raw);
+        assert_eq!(frame[0], YWS_MSG_SYNC);
+        assert_eq!(frame[1], YJS_SYNC_STEP2);
+        assert!(is_doc_update_message(&frame));
+        let extracted = extract_yjs_payload(&frame).unwrap();
+        assert_eq!(extracted, &raw);
+    }
+
+    #[test]
+    fn test_build_sync_step2_large_payload() {
+        // Payload > 127 bytes requires multi-byte var-uint length
+        let raw = vec![0xAB; 300];
+        let frame = build_sync_step2(&raw);
+        let extracted = extract_yjs_payload(&frame).unwrap();
+        assert_eq!(extracted.len(), 300);
+        assert_eq!(extracted, &raw);
     }
 }

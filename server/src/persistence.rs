@@ -88,7 +88,7 @@ impl Persistence {
     pub async fn save_metadata(&self, room_id: &str, metadata: &RoomMetadata) -> std::io::Result<()> {
         let path = self.metadata_path(room_id);
         let json = serde_json::to_string_pretty(metadata)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            .map_err(std::io::Error::other)?;
         fs::write(&path, json).await?;
         tracing::debug!(room_id = room_id, "Persisted room metadata");
         Ok(())
@@ -180,6 +180,7 @@ impl DebouncedWriter {
     }
 
     /// Queue a save for a room. The actual write is debounced.
+    #[cfg(test)]
     pub fn queue_save(&self, room_id: String, data: Vec<u8>) {
         let _ = self.tx.send(SaveRequest { room_id, data, metadata: None });
     }

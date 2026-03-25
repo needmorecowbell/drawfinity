@@ -140,6 +140,10 @@ async fn test_multiple_clients_edits_persist_across_restart() {
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     }
 
+    // Allow the debounced writer's shutdown flush to complete before reading.
+    // With current_thread runtime, spawned tasks only run at yield points.
+    tokio::task::yield_now().await;
+
     // Server restart
     {
         let persistence = Arc::new(Persistence::new(persistence_dir));

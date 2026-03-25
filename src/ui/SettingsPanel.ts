@@ -12,6 +12,7 @@ import { BRUSH_PRESETS } from "../tools/BrushPresets";
  */
 export interface SettingsPanelCallbacks {
   onSave: (profile: UserProfile, preferences: UserPreferences) => void;
+  onClearData?: () => Promise<void>;
 }
 
 /**
@@ -215,6 +216,26 @@ export class SettingsPanel {
     this.saveDirectoryContainer.appendChild(dirRow);
     this.panel.appendChild(this.saveDirectoryContainer);
 
+    // Danger zone — Clear all data
+    const dangerSection = document.createElement("div");
+    dangerSection.className = "settings-danger-zone";
+
+    const dangerLabel = document.createElement("label");
+    dangerLabel.className = "settings-label settings-danger-label";
+    dangerLabel.textContent = "Danger Zone";
+    dangerSection.appendChild(dangerLabel);
+
+    const clearBtn = document.createElement("button");
+    clearBtn.className = "settings-btn settings-btn-danger";
+    clearBtn.textContent = "Clear All Data";
+    clearBtn.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.showClearConfirmation();
+    });
+    dangerSection.appendChild(clearBtn);
+
+    this.panel.appendChild(dangerSection);
+
     // Button row
     const btnRow = document.createElement("div");
     btnRow.className = "settings-btn-row";
@@ -322,6 +343,42 @@ export class SettingsPanel {
         preferences.saveDirectory !== undefined ? "" : "none";
     }
     this.selectBrush(preferences.defaultBrush);
+  }
+
+  private showClearConfirmation(): void {
+    const dialog = document.createElement("div");
+    dialog.className = "settings-clear-confirm";
+
+    const msg = document.createElement("p");
+    msg.textContent = "This will delete all drawings. Are you sure?";
+    dialog.appendChild(msg);
+
+    const btnRow = document.createElement("div");
+    btnRow.className = "settings-btn-row";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.className = "settings-btn settings-btn-secondary";
+    cancelBtn.textContent = "Cancel";
+    cancelBtn.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      dialog.remove();
+    });
+    btnRow.appendChild(cancelBtn);
+
+    const confirmBtn = document.createElement("button");
+    confirmBtn.className = "settings-btn settings-btn-danger";
+    confirmBtn.textContent = "Delete Everything";
+    confirmBtn.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      dialog.remove();
+      this.callbacks.onClearData?.()?.then(() => {
+        this.hide();
+      });
+    });
+    btnRow.appendChild(confirmBtn);
+
+    dialog.appendChild(btnRow);
+    this.panel.appendChild(dialog);
   }
 
   /** Displays the settings panel by appending its overlay to the document body. No-op if already visible. */

@@ -33,3 +33,6 @@ export type { TurtlePanelCallbacks } from "./TurtlePanel";
 export { ICONS } from "./ToolbarIcons";
 export { BookmarkPanel } from "./BookmarkPanel";
 export type { BookmarkPanelCallbacks } from "./BookmarkPanel";
+export { showStorageNotification } from "./StorageNotification";
+export { showCorruptionDialog } from "./CorruptionDialog";
+export type { CorruptionChoice } from "./CorruptionDialog";

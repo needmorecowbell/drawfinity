@@ -19,6 +19,8 @@ import { CursorManager } from "../ui/CursorManager";
 import { FpsCounter } from "../ui/FpsCounter";
 import { SyncManager } from "../sync";
 import { loadProfileAsync, loadPreferencesAsync, savePreferences, type UserPreferences, type GridStyle } from "../user";
+import { showStorageNotification } from "../ui/StorageNotification";
+import { showCorruptionDialog } from "../ui/CorruptionDialog";
 
 /**
  * Callbacks for CanvasApp lifecycle events, provided by the parent view manager.
@@ -31,6 +33,8 @@ export interface CanvasAppCallbacks {
   onRenameDrawing?: (id: string, name: string) => void;
   /** When provided, CanvasApp reuses this DrawingManager instead of creating its own. */
   drawingManager?: unknown;
+  /** When provided, CanvasApp uses this browser storage adapter (IndexedDB/localStorage). */
+  browserStorage?: unknown;
 }
 
 /** Encode Uint8Array to base64 without spread operator (safe for large arrays). */
@@ -127,6 +131,7 @@ export class CanvasApp {
   private pointermoveHandler!: (e: PointerEvent) => void;
   private beforeUnloadHandler!: () => void;
   private bookmarkPanel!: BookmarkPanel;
+  private browserStorage: { clearAllData(): Promise<void> } | null = null;
   private bookmarkButton!: HTMLButtonElement;
   private settingsButton!: HTMLButtonElement;
   private userColorIndicator!: HTMLDivElement;
@@ -189,46 +194,92 @@ export class CanvasApp {
       this.autoSave = new AutoSave(this.doc.getDoc(), savePath, 2000, drawingId, drawingManager);
       this.autoSave.start();
     } catch (err) {
-      console.log("CanvasApp: Tauri persistence unavailable, using localStorage fallback");
+      // Browser fallback: use IndexedDB (via browserStorage) or localStorage
+      const { createBrowserStorage } = await import("../persistence/BrowserStorage");
+      type BrowserStorageType = Awaited<ReturnType<typeof createBrowserStorage>>;
+      const storage = (this.callbacks?.browserStorage as BrowserStorageType) ?? await createBrowserStorage();
+      console.log(`CanvasApp: Tauri unavailable, using ${storage.storageLabel} fallback`);
 
-      // Browser fallback: persist Yjs state to localStorage
-      const storageKey = `drawfinity:doc:${drawingId}`;
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        console.log(`CanvasApp: loading from localStorage key="${storageKey}" (${saved.length} chars)`);
-        try {
-          const bytes = base64ToUint8(saved);
-          const loadedDoc = new Y.Doc();
-          Y.applyUpdate(loadedDoc, bytes);
-          this.doc = new DrawfinityDoc(loadedDoc);
-          console.log(`CanvasApp: restored ${this.doc.getStrokes().length} strokes from localStorage`);
-        } catch (loadErr) {
-          console.error("CanvasApp: failed to restore from localStorage, starting fresh", loadErr);
-          this.doc = new DrawfinityDoc();
+      const { validateYjsState } = await import("../persistence/BrowserStorage");
+      const savedState = await storage.loadDocState(drawingId);
+      if (savedState) {
+        console.log(`CanvasApp: loading from ${storage.storageLabel} (${savedState.length} bytes)`);
+        const result = validateYjsState(savedState);
+        if (result.valid && result.doc) {
+          this.doc = new DrawfinityDoc(result.doc);
+          console.log(`CanvasApp: restored ${this.doc.getStrokes().length} strokes`);
+        } else {
+          // State is corrupt — check for backup and offer recovery
+          console.error("CanvasApp: primary state corrupt, checking backup", result.error);
+          const backupState = await storage.loadBackupState(drawingId);
+          const hasBackup = backupState !== null && validateYjsState(backupState).valid;
+          const choice = await showCorruptionDialog(hasBackup);
+          if (choice === "recover" && backupState) {
+            const backupResult = validateYjsState(backupState);
+            if (backupResult.valid && backupResult.doc) {
+              this.doc = new DrawfinityDoc(backupResult.doc);
+              console.log("CanvasApp: recovered from backup state");
+              showStorageNotification(
+                "Drawing recovered from backup. Some recent changes may be missing.",
+                "warning",
+                12000,
+              );
+            } else {
+              console.error("CanvasApp: backup also corrupt, starting fresh");
+              this.doc = new DrawfinityDoc();
+              showStorageNotification(
+                "Backup was also corrupted. Starting with a blank canvas.",
+                "error",
+                0,
+              );
+            }
+          } else {
+            this.doc = new DrawfinityDoc();
+            showStorageNotification(
+              "Starting with a blank canvas due to corrupted data.",
+              "info",
+              8000,
+            );
+          }
         }
       } else {
-        console.log(`CanvasApp: no saved state in localStorage for key="${storageKey}"`);
+        console.log(`CanvasApp: no saved state for drawing "${drawingId}"`);
         this.doc = new DrawfinityDoc();
       }
 
-      // Capture doc reference for closures
+      // Wire up storage notifications
+      storage.onStorageLow = (availableBytes: number) => {
+        const availMB = (availableBytes / (1024 * 1024)).toFixed(1);
+        showStorageNotification(
+          `Storage running low (${availMB} MB remaining). Consider exporting or deleting old drawings.`,
+          "warning",
+          12000,
+        );
+      };
+      storage.onSaveError = (error: Error) => {
+        showStorageNotification(
+          `Failed to save drawing: ${error.message}. Try exporting your work or clearing old drawings.`,
+          "error",
+          0, // sticky — user must dismiss
+        );
+      };
+
+      // Debounced auto-save to IndexedDB/localStorage
       const doc = this.doc;
       let saveTimer: ReturnType<typeof setTimeout> | null = null;
-      const saveToLocalStorage = () => {
+      const saveToBrowser = async () => {
         try {
           const state = Y.encodeStateAsUpdate(doc.getDoc());
-          const b64 = uint8ToBase64(state);
-          localStorage.setItem(storageKey, b64);
-          console.log(`CanvasApp: saved to localStorage key="${storageKey}" (${b64.length} chars, ${state.length} bytes)`);
+          await storage.saveDocState(drawingId, state);
+          console.log(`CanvasApp: saved to ${storage.storageLabel} (${state.length} bytes)`);
         } catch (saveErr) {
-          console.error("CanvasApp: failed to save to localStorage", saveErr);
+          console.error("CanvasApp: failed to save to browser storage", saveErr);
         }
       };
       const debouncedSave = () => {
         if (saveTimer) clearTimeout(saveTimer);
-        saveTimer = setTimeout(saveToLocalStorage, 2000);
+        saveTimer = setTimeout(saveToBrowser, 2000);
       };
-      // Listen to ALL doc changes (strokes, shapes, metadata, bookmarks)
       doc.getDoc().on("update", debouncedSave);
 
       this.autoSave = {
@@ -236,9 +287,11 @@ export class CanvasApp {
         stop() { if (saveTimer) clearTimeout(saveTimer); },
         async saveNow() {
           if (saveTimer) clearTimeout(saveTimer);
-          saveToLocalStorage();
+          await saveToBrowser();
         },
       };
+
+      this.browserStorage = storage;
     }
 
     // Apply initial background color from document
@@ -406,6 +459,12 @@ export class CanvasApp {
 
     // Settings panel
     this.settingsPanel = new SettingsPanel(userProfile, userPreferences, {
+      onClearData: async () => {
+        if (this.browserStorage) {
+          await this.browserStorage.clearAllData();
+        }
+        this.callbacks.onGoHome?.();
+      },
       onSave: (profile, preferences) => {
         userProfile = profile;
         userPreferences = preferences;

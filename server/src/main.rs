@@ -2,6 +2,7 @@ mod api;
 mod persistence;
 mod room;
 mod ws;
+pub mod yrs_doc;
 
 use std::net::SocketAddr;
 use std::path::PathBuf;

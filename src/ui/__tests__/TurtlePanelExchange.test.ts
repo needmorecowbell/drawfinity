@@ -345,6 +345,203 @@ describe("TurtlePanel Unified Script Browser", () => {
     expect(panel.getScript()).toBe(luaCode);
   });
 
+  it("importing an already-cached script with status 'installed' skips network fetch", async () => {
+    // Pre-cache script
+    storageMap.set(
+      "drawfinity:exchange:script:test-waves",
+      JSON.stringify({
+        ...MOCK_INDEX.scripts[0],
+        code: "forward(100)",
+        cachedAt: Date.now(),
+      }),
+    );
+
+    // Set up cached index so script appears in browser
+    storageMap.set(
+      "drawfinity:exchange:index",
+      JSON.stringify({ ...MOCK_INDEX, cachedAt: Date.now() }),
+    );
+
+    const fetchMock = vi.fn().mockRejectedValue(new Error("should not be called"));
+    vi.stubGlobal("fetch", fetchMock);
+    // Reset call count after panel construction (background check)
+    fetchMock.mockClear();
+
+    // Open exchange
+    const buttons = document.querySelectorAll(".turtle-btn-secondary");
+    const scriptsBtn = Array.from(buttons).find(
+      (b) => b.textContent?.startsWith("Scripts"),
+    ) as HTMLButtonElement;
+    scriptsBtn.dispatchEvent(
+      new PointerEvent("pointerdown", { bubbles: true }),
+    );
+
+    // Clear any calls from browser open (background index fetch)
+    fetchMock.mockClear();
+
+    // Click Import on the cached script (Waves)
+    const items = document.querySelectorAll(".turtle-exchange-item");
+    const wavesItem = Array.from(items).find(
+      (el) => el.querySelector(".turtle-exchange-item-title")?.textContent?.includes("Waves"),
+    );
+    const importBtn = wavesItem?.querySelector(
+      ".turtle-exchange-import-btn",
+    ) as HTMLButtonElement;
+    importBtn.dispatchEvent(
+      new PointerEvent("pointerdown", { bubbles: true }),
+    );
+
+    // Should close immediately without network fetch
+    await vi.waitFor(() => {
+      expect(document.querySelector(".turtle-exchange-overlay")).toBeNull();
+    });
+    expect(panel.getScript()).toBe("forward(100)");
+    // No fetch calls should have been made for the import
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("importing an 'update-available' script falls back to cache on network failure", async () => {
+    // Pre-cache script
+    storageMap.set(
+      "drawfinity:exchange:script:test-waves",
+      JSON.stringify({
+        ...MOCK_INDEX.scripts[0],
+        code: "forward(100)",
+        cachedAt: Date.now(),
+      }),
+    );
+    storageMap.set(
+      "drawfinity:exchange:index",
+      JSON.stringify({ ...MOCK_INDEX, cachedAt: Date.now() }),
+    );
+
+    // Mark as update-available
+    panel.setUpdateResult({
+      hasUpdates: true,
+      newScripts: [],
+      updatedScripts: [
+        {
+          entry: MOCK_INDEX.scripts[0],
+          currentVersion: "1.0.0",
+          newVersion: "2.0.0",
+        },
+      ],
+      remoteIndex: MOCK_INDEX,
+    });
+
+    // Fail network fetch for the script
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("network error")),
+    );
+
+    // Open exchange
+    const buttons = document.querySelectorAll(".turtle-btn-secondary");
+    const scriptsBtn = Array.from(buttons).find(
+      (b) => b.textContent?.startsWith("Scripts"),
+    ) as HTMLButtonElement;
+    scriptsBtn.dispatchEvent(
+      new PointerEvent("pointerdown", { bubbles: true }),
+    );
+
+    // Click Update on the script
+    const actionBtns = document.querySelectorAll(".turtle-exchange-import-btn");
+    const updateBtn = Array.from(actionBtns).find(
+      (b) => b.textContent === "Update",
+    ) as HTMLButtonElement;
+    updateBtn.dispatchEvent(
+      new PointerEvent("pointerdown", { bubbles: true }),
+    );
+
+    // Should fall back to cached version and close
+    await vi.waitFor(() => {
+      expect(document.querySelector(".turtle-exchange-overlay")).toBeNull();
+    });
+    expect(panel.getScript()).toBe("forward(100)");
+  });
+
+  it("importing a new uncached script shows 'Offline' on network failure", async () => {
+    // Set up index with scripts but don't cache any
+    storageMap.set(
+      "drawfinity:exchange:index",
+      JSON.stringify({ ...MOCK_INDEX, cachedAt: Date.now() }),
+    );
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("network error")),
+    );
+
+    // Open exchange
+    const buttons = document.querySelectorAll(".turtle-btn-secondary");
+    const scriptsBtn = Array.from(buttons).find(
+      (b) => b.textContent?.startsWith("Scripts"),
+    ) as HTMLButtonElement;
+    scriptsBtn.dispatchEvent(
+      new PointerEvent("pointerdown", { bubbles: true }),
+    );
+
+    // Click Import on a non-cached script
+    const importBtn = document.querySelector(
+      ".turtle-exchange-import-btn",
+    ) as HTMLButtonElement;
+    const origText = importBtn.textContent;
+    importBtn.dispatchEvent(
+      new PointerEvent("pointerdown", { bubbles: true }),
+    );
+
+    // Should show "Offline" after failure
+    await vi.waitFor(() => {
+      expect(importBtn.textContent).toBe("Offline");
+    });
+
+    // Should revert after 2s
+    await new Promise((r) => setTimeout(r, 2100));
+    expect(importBtn.textContent).toBe(origText);
+  });
+
+  it("shows 'Loading… (slow)' after 2s when fetch is slow", async () => {
+    // Set up index with scripts but don't cache any
+    storageMap.set(
+      "drawfinity:exchange:index",
+      JSON.stringify({ ...MOCK_INDEX, cachedAt: Date.now() }),
+    );
+
+    // Fetch that never resolves (simulates slow network)
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(() => new Promise(() => {})),
+    );
+
+    vi.useFakeTimers();
+
+    // Open exchange
+    const buttons = document.querySelectorAll(".turtle-btn-secondary");
+    const scriptsBtn = Array.from(buttons).find(
+      (b) => b.textContent?.startsWith("Scripts"),
+    ) as HTMLButtonElement;
+    scriptsBtn.dispatchEvent(
+      new PointerEvent("pointerdown", { bubbles: true }),
+    );
+
+    // Click Import on a script
+    const importBtn = document.querySelector(
+      ".turtle-exchange-import-btn",
+    ) as HTMLButtonElement;
+    importBtn.dispatchEvent(
+      new PointerEvent("pointerdown", { bubbles: true }),
+    );
+
+    // Initially shows "Loading…"
+    expect(importBtn.textContent).toBe("Loading\u2026");
+
+    // Advance 2 seconds — should now show slow indicator
+    vi.advanceTimersByTime(2000);
+    expect(importBtn.textContent).toBe("Loading\u2026 (slow)");
+
+    vi.useRealTimers();
+  });
+
   it("shows Update button for scripts with update-available status", () => {
     // Set up cached index and update result
     storageMap.set(

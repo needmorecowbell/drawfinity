@@ -9,6 +9,46 @@ const DEFAULT_BASE_URL =
   "https://raw.githubusercontent.com/needmorecowbell/drawfinity_turtle_exchange/main/";
 
 const INDEX_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const INDEX_TIMEOUT_MS = 8000;
+const SCRIPT_TIMEOUT_MS = 5000;
+
+/**
+ * Attempt a fetch via the Tauri HTTP plugin (Rust-side networking).
+ * Returns null if the plugin is unavailable (e.g. running in browser).
+ */
+async function tauriFetch(url: string): Promise<Response | null> {
+  try {
+    const { fetch: tFetch } = await import("@tauri-apps/plugin-http");
+    return await tFetch(url);
+  } catch {
+    return null; // Not running in Tauri, or plugin not available
+  }
+}
+
+/**
+ * Fetch with an AbortController-based timeout.
+ * Tries standard fetch first; if it fails, retries once via Tauri HTTP plugin
+ * (which bypasses WebView2's network stack).
+ */
+async function fetchWithTimeout(
+  url: string,
+  timeoutMs: number,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } catch (err) {
+    // Do not retry via Tauri when the request was deliberately aborted (timeout)
+    if ((err as Error).name !== "AbortError") {
+      const tauriResponse = await tauriFetch(url);
+      if (tauriResponse) return tauriResponse;
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /** Descriptive error for exchange fetch failures. */
 export class ExchangeError extends Error {
@@ -63,10 +103,19 @@ export class ExchangeClient {
     const url = `${this.baseUrl}index.json`;
     let response: Response;
     try {
-      response = await fetch(url);
+      response = await fetchWithTimeout(url, INDEX_TIMEOUT_MS);
     } catch (err) {
+      const e = err as Error;
+      console.warn("[Exchange] fetch failed for index", {
+        url,
+        name: e.name,
+        message: e.message,
+      });
+      if (e.name === "AbortError") {
+        throw new ExchangeError("Request timed out fetching exchange index");
+      }
       throw new ExchangeError(
-        `Network error fetching exchange index: ${(err as Error).message}`,
+        `Network error fetching exchange index: ${e.message}`,
       );
     }
 
@@ -99,10 +148,22 @@ export class ExchangeClient {
     const url = `${this.baseUrl}${entry.path}/${entry.id}.lua`;
     let response: Response;
     try {
-      response = await fetch(url);
+      response = await fetchWithTimeout(url, SCRIPT_TIMEOUT_MS);
     } catch (err) {
+      const e = err as Error;
+      console.warn("[Exchange] fetch failed for script", {
+        url,
+        script: entry.title,
+        name: e.name,
+        message: e.message,
+      });
+      if (e.name === "AbortError") {
+        throw new ExchangeError(
+          `Request timed out fetching script "${entry.title}"`,
+        );
+      }
       throw new ExchangeError(
-        `Network error fetching script "${entry.title}": ${(err as Error).message}`,
+        `Network error fetching script "${entry.title}": ${e.message}`,
       );
     }
 

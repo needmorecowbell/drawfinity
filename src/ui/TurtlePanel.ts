@@ -701,13 +701,27 @@ export class TurtlePanel {
     btn: HTMLButtonElement,
     onUpdate?: () => void,
   ): Promise<void> {
+    const cached = this.exchangeCache.getCachedScript(entry.id);
+    const status = this.getScriptStatus(entry);
+
+    // Fast path: already installed and not outdated — use cache directly
+    if (cached && status !== "update-available") {
+      this.setScript(cached.code);
+      this.closeExchangeBrowser();
+      return;
+    }
+
     const origText = btn.textContent;
     btn.textContent = "Loading\u2026";
     btn.disabled = true;
 
+    const slowTimer = setTimeout(() => {
+      btn.textContent = "Loading\u2026 (slow)";
+    }, 2000);
+
     try {
-      // Try network fetch first
       const code = await this.exchangeClient.fetchScript(entry);
+      clearTimeout(slowTimer);
       this.setScript(code);
 
       // If this was an update, remove from update result and re-render
@@ -726,15 +740,15 @@ export class TurtlePanel {
       onUpdate?.();
       this.closeExchangeBrowser();
     } catch {
-      // Fallback: try local cache (which includes snapshot fallback)
-      const cached = this.exchangeCache.getCachedScript(entry.id);
+      clearTimeout(slowTimer);
+      // Update failed but we have a cached version — use it
       if (cached) {
         this.setScript(cached.code);
         this.closeExchangeBrowser();
         return;
       }
 
-      btn.textContent = "Error";
+      btn.textContent = "Offline";
       btn.disabled = false;
       setTimeout(() => {
         btn.textContent = origText;

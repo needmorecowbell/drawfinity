@@ -81,6 +81,7 @@ export class TurtleState implements TurtleStateQuery {
     this.angle = 0;
     this.pen = { down: true, color: "#000000", width: 3, opacity: 1.0 };
     this.speed = 5;
+    this.worldSpace = false;
   }
 
   /**

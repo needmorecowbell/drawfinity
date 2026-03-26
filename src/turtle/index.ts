@@ -31,3 +31,5 @@ export {
 } from "./TurtleRegistry";
 export type { TurtleMessage } from "./TurtleMessaging";
 export { MessageBus, Blackboard } from "./TurtleMessaging";
+export type { AwarenessTurtle } from "./TurtleAwareness";
+export { TurtleAwareness } from "./TurtleAwareness";

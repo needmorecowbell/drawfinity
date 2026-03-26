@@ -1,6 +1,8 @@
 import { LuaRuntime, TurtleCommand, ExecutionResult } from "./LuaRuntime";
 import { TurtleRegistry } from "./TurtleRegistry";
 import { MessageBus, Blackboard } from "./TurtleMessaging";
+import { TurtleAwareness } from "./TurtleAwareness";
+import type { SyncManager } from "../sync/SyncManager";
 import type { DocumentModel } from "../model/Stroke";
 
 /** Events emitted by TurtleExecutor during script execution. */
@@ -42,6 +44,7 @@ export class TurtleExecutor {
 
   private messageBus: MessageBus;
   private blackboard: Blackboard;
+  private awareness: TurtleAwareness | null = null;
   private running = false;
   private stopRequested = false;
   /** Raw camera zoom level, used for LOD pixel-size calculations. */
@@ -61,6 +64,22 @@ export class TurtleExecutor {
     this.events = events;
     this.messageBus = new MessageBus();
     this.blackboard = new Blackboard();
+  }
+
+  /**
+   * Attach a SyncManager for multiplayer turtle awareness broadcasting.
+   * When set, turtle states are broadcast to remote clients during replay.
+   */
+  setSyncManager(syncManager: SyncManager | null): void {
+    if (syncManager) {
+      this.awareness = new TurtleAwareness(
+        syncManager,
+        this.registry,
+        this.scriptId,
+      );
+    } else {
+      this.awareness = null;
+    }
   }
 
   /** Whether a script is currently executing. */
@@ -141,6 +160,7 @@ export class TurtleExecutor {
     const luaResult = await this.runtime.execute(script);
     if (!luaResult.success) {
       this.running = false;
+      this.awareness?.clear();
       const result: ExecutionResult = {
         success: false,
         error: luaResult.error,
@@ -172,6 +192,10 @@ export class TurtleExecutor {
     for (const [, entry] of ownedAfterReplay) {
       entry.drawing.flush();
     }
+
+    // Send final awareness update then clear remote indicators
+    this.awareness?.forceUpdate();
+    this.awareness?.clear();
 
     this.running = false;
     this.events.onComplete?.(replayResult);
@@ -286,6 +310,7 @@ export class TurtleExecutor {
         : 1;
       if (tickCount % throttle === 0) {
         this.events.onStep?.();
+        this.awareness?.update();
       }
 
       if (maxDelay > 0) {

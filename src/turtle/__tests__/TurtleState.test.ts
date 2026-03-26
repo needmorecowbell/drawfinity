@@ -107,7 +107,7 @@ describe("TurtleState", () => {
   });
 
   describe("goto", () => {
-    it("moves to absolute position with pen down", () => {
+    it("moves to absolute position with pen down (zoom=1, no scaling)", () => {
       const seg = state.applyCommand({ type: "goto", x: 50, y: 75 });
       expect(state.x).toBe(50);
       expect(state.y).toBe(75);
@@ -343,13 +343,39 @@ describe("TurtleState", () => {
       expect(seg!.toY).toBeCloseTo(50);
     });
 
-    it("goto pen width is zoom-scaled", () => {
+    it("goto coordinates and pen width are zoom-scaled", () => {
       state.zoomScale = 1 / 4;
       state.applyCommand({ type: "penwidth", width: 8 });
       const seg = state.applyCommand({ type: "goto", x: 50, y: 50 });
       expect(seg).not.toBeNull();
+      // Coordinates scaled: 50 * 0.25 = 12.5
+      expect(seg!.toX).toBeCloseTo(12.5);
+      expect(seg!.toY).toBeCloseTo(12.5);
+      expect(state.x).toBeCloseTo(12.5);
+      expect(state.y).toBeCloseTo(12.5);
       // Pen width scaled: 8 * 0.25 = 2
       expect(seg!.pen.width).toBeCloseTo(2);
+    });
+
+    it("goto(100,0) at zoom 0.5 produces 200-unit position", () => {
+      state.zoomScale = 1 / 0.5;
+      state.applyCommand({ type: "penup" });
+      state.applyCommand({ type: "goto", x: 100, y: 0 });
+      // 100 * 2 = 200
+      expect(state.x).toBeCloseTo(200);
+      expect(state.y).toBeCloseTo(0);
+    });
+
+    it("goto coordinates scale relative to origin", () => {
+      state.setOrigin(100, 100);
+      state.reset(); // moves to origin
+      state.zoomScale = 1 / 2;
+      state.applyCommand({ type: "penup" });
+      // goto(200, 200): offset from origin is (100, 100), scaled by 0.5 = (50, 50)
+      // final position = origin + scaled offset = (150, 150)
+      state.applyCommand({ type: "goto", x: 200, y: 200 });
+      expect(state.x).toBeCloseTo(150);
+      expect(state.y).toBeCloseTo(150);
     });
 
     it("reset clears worldSpace flag", () => {
@@ -362,6 +388,24 @@ describe("TurtleState", () => {
     it("set_world_space returns null (non-movement)", () => {
       const seg = state.applyCommand({ type: "set_world_space", enabled: true });
       expect(seg).toBeNull();
+    });
+
+    it("zoom scale is clamped at extreme high zoom (very small zoomScale)", () => {
+      // 162676x zoom → zoomScale = 1/162676 ≈ 6e-6, clamped to 1e-3
+      state.zoomScale = 1 / 162676;
+      const seg = state.applyCommand({ type: "forward", distance: 100 });
+      // Clamped to 1e-3: 100 * 0.001 = 0.1 (not 100 * 6e-6 = 0.0006)
+      expect(state.y).toBeCloseTo(-0.1);
+      expect(seg!.toY).toBeCloseTo(-0.1);
+    });
+
+    it("zoom scale is clamped at extreme low zoom (very large zoomScale)", () => {
+      // 0.0001x zoom → zoomScale = 10000, clamped to 1000
+      state.zoomScale = 10000;
+      const seg = state.applyCommand({ type: "forward", distance: 100 });
+      // Clamped to 1e3: 100 * 1000 = 100000
+      expect(state.y).toBeCloseTo(-100000);
+      expect(seg!.toY).toBeCloseTo(-100000);
     });
   });
 

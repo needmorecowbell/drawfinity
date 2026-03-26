@@ -69,9 +69,14 @@ export class TurtleState implements TurtleStateQuery {
     this.worldSpace = enabled;
   }
 
-  /** Returns the effective zoom scale: 1 if worldSpace, otherwise zoomScale. */
+  /**
+   * Returns the effective zoom scale: 1 if worldSpace, otherwise zoomScale
+   * clamped to [1e-3, 1e3] to avoid floating-point precision issues at
+   * extreme zoom levels (WebGL uses 32-bit floats for vertex data).
+   */
   private effectiveZoomScale(): number {
-    return this.worldSpace ? 1 : this.zoomScale;
+    if (this.worldSpace) return 1;
+    return Math.max(1e-3, Math.min(1e3, this.zoomScale));
   }
 
   /** Reset state to initial values. */
@@ -189,10 +194,12 @@ export class TurtleState implements TurtleStateQuery {
   private moveTo(x: number, y: number): MovementSegment | null {
     const fromX = this.x;
     const fromY = this.y;
-    this.x = x;
-    this.y = y;
+    const scale = this.effectiveZoomScale();
+    // Scale target coordinates relative to the origin so goto() positions
+    // are proportional to the user's visible zoom level, just like forward().
+    this.x = this.originX + (x - this.originX) * scale;
+    this.y = this.originY + (y - this.originY) * scale;
     if (this.pen.down) {
-      const scale = this.effectiveZoomScale();
       return {
         fromX,
         fromY,

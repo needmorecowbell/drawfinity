@@ -19,6 +19,7 @@
     "fs:allow-document-write-recursive",
     "dialog:default",
     "dialog:allow-open",
-    "dialog:allow-save"
+    "dialog:allow-save",
+    "http:default"
   ]
 }

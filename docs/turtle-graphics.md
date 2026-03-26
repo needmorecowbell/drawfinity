@@ -465,6 +465,148 @@ pencolor(128, 0, 128)
 sierpinski(256, 5)
 ```
 
+### Architecture — Building a Scene with Shapes and Erasing
+
+Build a house scene using shape commands for walls, roof, and windows, then use the eraser to cut a doorway:
+
+```lua
+speed(0)
+
+-- Ground
+pencolor("#558855")
+fillcolor("#558855")
+penup()
+goto_pos(0, 120)
+pendown()
+rectangle(500, 40)
+
+-- Main house body
+pencolor("#884422")
+fillcolor("#ddbb88")
+penup()
+goto_pos(0, 20)
+pendown()
+rectangle(200, 160)
+
+-- Roof (triangle)
+pencolor("#882222")
+fillcolor("#cc4444")
+penup()
+goto_pos(0, -80)
+pendown()
+polygon(3, 120)
+
+-- Left window
+pencolor("#336699")
+fillcolor("#aaddff")
+penup()
+goto_pos(-50, 10)
+pendown()
+ellipse(40, 40)
+
+-- Right window
+penup()
+goto_pos(50, 10)
+pendown()
+ellipse(40, 40)
+
+-- Door frame
+pencolor("#553311")
+fillcolor("#774422")
+penup()
+goto_pos(0, 60)
+pendown()
+rectangle(40, 70)
+
+-- Chimney
+pencolor("#666666")
+fillcolor("#888888")
+penup()
+goto_pos(70, -100)
+pendown()
+rectangle(25, 50)
+
+-- Sun
+pencolor("#ffaa00")
+fillcolor(255, 220, 50)
+penup()
+goto_pos(-180, -120)
+pendown()
+star(8, 40, 18)
+
+-- Erase a doorway opening in the door
+penmode("erase")
+penwidth(30)
+penup()
+goto_pos(0, 55)
+pendown()
+goto_pos(0, 95)
+
+-- Back to draw mode — add a doorknob
+penmode("draw")
+penwidth(2)
+pencolor("#ffcc00")
+fillcolor("#ffcc00")
+penup()
+goto_pos(10, 65)
+pendown()
+ellipse(6, 6)
+```
+
+### Brush Sampler — Comparing Brush Presets
+
+Draw the same spiral pattern with each brush preset side by side to visualize the differences:
+
+```lua
+speed(0)
+
+local presets = {"pen", "pencil", "marker", "highlighter"}
+local colors = {"#2244cc", "#cc4422", "#22aa44", "#ff8800"}
+local labels = {"Pen", "Pencil", "Marker", "Highlighter"}
+
+for i, preset in ipairs(presets) do
+  -- Position each sample in a row
+  local offsetX = -225 + (i - 1) * 150
+
+  -- Label
+  penpreset(nil)
+  pencolor("#000000")
+  penwidth(2)
+  penopacity(1.0)
+  penup()
+  goto_pos(offsetX, -100)
+  pendown()
+
+  -- Draw label as a small underline
+  forward(0)
+  penup()
+  goto_pos(offsetX - 30, -85)
+  pendown()
+  goto_pos(offsetX + 30, -85)
+
+  -- Apply the preset and draw a spiral
+  penpreset(preset)
+  pencolor(colors[i])
+  penwidth(3)
+  penup()
+  goto_pos(offsetX, 0)
+  pendown()
+
+  -- Save heading, draw spiral from this position
+  local cx, cy = offsetX, 0
+  for step = 1, 60 do
+    local angle = step * 0.15
+    local radius = step * 1.0
+    local nx = cx + math.cos(angle) * radius
+    local ny = cy + math.sin(angle) * radius
+    goto_pos(nx, ny)
+  end
+end
+
+-- Reset preset
+penpreset(nil)
+```
+
 ### Shape Scene with Selective Erasing
 
 Build a scene with shapes, then use the eraser to cut patterns through it:

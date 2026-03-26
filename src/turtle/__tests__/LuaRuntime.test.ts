@@ -758,7 +758,7 @@ describe("LuaRuntime", () => {
     });
 
     it("stub methods raise not-yet-implemented errors", async () => {
-      for (const method of ["penmode", "penpreset", "rectangle", "ellipse", "polygon", "star", "fillcolor"]) {
+      for (const method of ["rectangle", "ellipse", "polygon", "star", "fillcolor"]) {
         const freshRuntime = new LuaRuntime();
         await freshRuntime.init();
         freshRuntime.setSpawnContext(registry, scriptId, doc);
@@ -773,7 +773,7 @@ describe("LuaRuntime", () => {
     });
 
     it("stub methods raise not-yet-implemented errors for remaining stubs", async () => {
-      for (const method of ["penmode", "penpreset", "rectangle", "ellipse", "polygon", "star", "fillcolor"]) {
+      for (const method of ["rectangle", "ellipse", "polygon", "star", "fillcolor"]) {
         const freshRuntime = new LuaRuntime();
         await freshRuntime.init();
         freshRuntime.setSpawnContext(registry, scriptId, doc);
@@ -1310,6 +1310,190 @@ describe("LuaRuntime", () => {
       runtime.setActiveTurtle("child1");
       await runtime.execute("hide()");
       expect(runtime.getCommands()[0]).toEqual({ type: "hide", turtleId: "child1" });
+    });
+  });
+
+  describe("penmode()", () => {
+    it("produces penmode draw command", async () => {
+      await runtime.execute('penmode("draw")');
+      expect(runtime.getCommands()).toEqual([
+        { type: "penmode", mode: "draw", turtleOnly: false },
+      ]);
+    });
+
+    it("produces penmode erase command", async () => {
+      await runtime.execute('penmode("erase")');
+      expect(runtime.getCommands()).toEqual([
+        { type: "penmode", mode: "erase", turtleOnly: false },
+      ]);
+    });
+
+    it("accepts turtle_only option when erasing", async () => {
+      await runtime.execute('penmode("erase", {turtle_only=true})');
+      expect(runtime.getCommands()).toEqual([
+        { type: "penmode", mode: "erase", turtleOnly: true },
+      ]);
+    });
+
+    it("ignores turtle_only when mode is draw", async () => {
+      await runtime.execute('penmode("draw", {turtle_only=true})');
+      expect(runtime.getCommands()).toEqual([
+        { type: "penmode", mode: "draw", turtleOnly: false },
+      ]);
+    });
+
+    it("defaults turtle_only to false when not provided", async () => {
+      await runtime.execute('penmode("erase", {})');
+      expect(runtime.getCommands()).toEqual([
+        { type: "penmode", mode: "erase", turtleOnly: false },
+      ]);
+    });
+
+    it("throws on invalid mode string", async () => {
+      const result = await runtime.execute('penmode("fill")');
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('"draw" or "erase"');
+    });
+
+    it("throws on non-string argument", async () => {
+      const result = await runtime.execute("penmode(42)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('"draw" or "erase"');
+    });
+
+    it("throws when called with no arguments", async () => {
+      const result = await runtime.execute("penmode()");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('"draw" or "erase"');
+    });
+  });
+
+  describe("penpreset()", () => {
+    it("produces penpreset command with valid preset name", async () => {
+      await runtime.execute('penpreset("pen")');
+      expect(runtime.getCommands()).toEqual([
+        { type: "penpreset", preset: "pen" },
+      ]);
+    });
+
+    it("produces penpreset command for each valid preset", async () => {
+      for (const name of ["pen", "pencil", "marker", "highlighter"]) {
+        runtime.close();
+        runtime = new LuaRuntime();
+        await runtime.init();
+        await runtime.execute(`penpreset("${name}")`);
+        expect(runtime.getCommands()).toEqual([
+          { type: "penpreset", preset: name },
+        ]);
+      }
+    });
+
+    it("produces penpreset null command when called with nil", async () => {
+      await runtime.execute("penpreset(nil)");
+      expect(runtime.getCommands()).toEqual([
+        { type: "penpreset", preset: null },
+      ]);
+    });
+
+    it("passes through invalid preset names (TurtleState handles validation)", async () => {
+      await runtime.execute('penpreset("nonexistent")');
+      expect(runtime.getCommands()).toEqual([
+        { type: "penpreset", preset: "nonexistent" },
+      ]);
+    });
+
+    it("throws on non-string non-nil argument", async () => {
+      const result = await runtime.execute("penpreset(42)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("string name or nil");
+    });
+  });
+
+  describe("penmode/penpreset on spawn handles", () => {
+    let registry: TurtleRegistry;
+    const mockDoc: DocumentModel = {
+      strokes: [],
+      addStroke: () => "test-id",
+      removeStroke: () => {},
+      getStroke: () => undefined,
+    };
+
+    beforeEach(() => {
+      registry = new TurtleRegistry();
+      runtime.setSpawnContext(registry, "test-script", mockDoc);
+      // Eagerly create main turtle
+      registry.spawn("main", "test-script", mockDoc);
+    });
+
+    it("spawn handle penmode produces tagged command", async () => {
+      const result = await runtime.execute(`
+        local t = spawn("child1")
+        t.penmode("erase")
+      `);
+      expect(result.success).toBe(true);
+      const cmds = runtime.getCommands();
+      const penmodeCmd = cmds.find(c => c.type === "penmode");
+      expect(penmodeCmd).toEqual({
+        type: "penmode",
+        mode: "erase",
+        turtleOnly: false,
+        turtleId: "child1",
+      });
+    });
+
+    it("spawn handle penmode with turtle_only produces tagged command", async () => {
+      const result = await runtime.execute(`
+        local t = spawn("child1")
+        t.penmode("erase", {turtle_only=true})
+      `);
+      expect(result.success).toBe(true);
+      const cmds = runtime.getCommands();
+      const penmodeCmd = cmds.find(c => c.type === "penmode");
+      expect(penmodeCmd).toEqual({
+        type: "penmode",
+        mode: "erase",
+        turtleOnly: true,
+        turtleId: "child1",
+      });
+    });
+
+    it("spawn handle penmode validates mode string", async () => {
+      const result = await runtime.execute(`
+        local t = spawn("child1")
+        t.penmode("invalid")
+      `);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('"draw" or "erase"');
+    });
+
+    it("spawn handle penpreset produces tagged command", async () => {
+      const result = await runtime.execute(`
+        local t = spawn("child1")
+        t.penpreset("marker")
+      `);
+      expect(result.success).toBe(true);
+      const cmds = runtime.getCommands();
+      const presetCmd = cmds.find(c => c.type === "penpreset");
+      expect(presetCmd).toEqual({
+        type: "penpreset",
+        preset: "marker",
+        turtleId: "child1",
+      });
+    });
+
+    it("spawn handle penpreset nil resets preset", async () => {
+      const result = await runtime.execute(`
+        local t = spawn("child1")
+        t.penpreset(nil)
+      `);
+      expect(result.success).toBe(true);
+      const cmds = runtime.getCommands();
+      const presetCmd = cmds.find(c => c.type === "penpreset");
+      expect(presetCmd).toEqual({
+        type: "penpreset",
+        preset: null,
+        turtleId: "child1",
+      });
     });
   });
 });

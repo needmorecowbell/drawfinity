@@ -284,6 +284,33 @@ export class LuaRuntime {
       push({ type: "set_world_space", enabled: !!enabled });
     });
 
+    // Pen mode (draw / erase)
+    g.set("penmode", (mode: unknown, options?: unknown) => {
+      if (typeof mode !== "string" || (mode !== "draw" && mode !== "erase")) {
+        throw new Error('penmode() requires "draw" or "erase" as first argument');
+      }
+      let turtleOnly = false;
+      if (mode === "erase" && options != null && typeof options === "object") {
+        const opts = options as Record<string, unknown>;
+        if (opts.turtle_only != null) {
+          turtleOnly = !!opts.turtle_only;
+        }
+      }
+      push({ type: "penmode", mode, turtleOnly });
+    });
+
+    // Brush preset
+    g.set("penpreset", (name: unknown) => {
+      if (name === null || name === undefined) {
+        push({ type: "penpreset", preset: null });
+        return;
+      }
+      if (typeof name !== "string") {
+        throw new Error("penpreset() requires a string name or nil");
+      }
+      push({ type: "penpreset", preset: name });
+    });
+
     // Indicator visibility (main turtle)
     g.set("hide", () => {
       push({ type: "hide" });
@@ -463,6 +490,29 @@ export class LuaRuntime {
           case "show":
             pushTagged(turtleId, { type: "show" });
             break;
+          case "penmode": {
+            const mode = arg1 as string;
+            if (mode !== "draw" && mode !== "erase") {
+              throw new Error('penmode() requires "draw" or "erase" as first argument');
+            }
+            let turtleOnly = false;
+            if (mode === "erase" && arg2 != null && typeof arg2 === "object") {
+              const opts = arg2 as Record<string, unknown>;
+              if (opts.turtle_only != null) {
+                turtleOnly = !!opts.turtle_only;
+              }
+            }
+            pushTagged(turtleId, { type: "penmode", mode, turtleOnly });
+            break;
+          }
+          case "penpreset": {
+            if (arg1 === null || arg1 === undefined) {
+              pushTagged(turtleId, { type: "penpreset", preset: null });
+            } else {
+              pushTagged(turtleId, { type: "penpreset", preset: arg1 as string });
+            }
+            break;
+          }
         }
       },
     );
@@ -691,8 +741,15 @@ export class LuaRuntime {
         h.isdown = function() return _tquery(id, "isdown") end
         h.hide = function() _tcmd(id, "hide") end
         h.show = function() _tcmd(id, "show") end
-        h.penmode = function() error("penmode() not yet implemented") end
-        h.penpreset = function() error("penpreset() not yet implemented") end
+        h.penmode = function(mode, opts)
+          if type(mode) ~= "string" or (mode ~= "draw" and mode ~= "erase") then
+            error('penmode() requires "draw" or "erase" as first argument')
+          end
+          _tcmd(id, "penmode", mode, opts)
+        end
+        h.penpreset = function(name)
+          _tcmd(id, "penpreset", name)
+        end
         h.rectangle = function() error("rectangle() not yet implemented") end
         h.ellipse = function() error("ellipse() not yet implemented") end
         h.polygon = function() error("polygon() not yet implemented") end

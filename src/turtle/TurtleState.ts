@@ -64,6 +64,11 @@ export class TurtleState implements TurtleStateQuery {
   /**
    * Enable or disable world-space mode.
    * When enabled, `zoomScale` is forced to `1` so all distances use raw world units.
+   *
+   * **Note:** changing this while the pen is down and the turtle is not at the
+   * origin will cause a visual discontinuity, because the world-space rendering
+   * of the current logical position changes. Call this before any drawing commands
+   * or after a `penup()`.
    */
   setWorldSpace(enabled: boolean): void {
     this.worldSpace = enabled;

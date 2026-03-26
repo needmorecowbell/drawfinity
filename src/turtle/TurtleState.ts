@@ -239,7 +239,10 @@ export class TurtleState implements TurtleStateQuery {
       case "show":
         this.visible = true;
         return null;
+      case "step_boundary":
+        return null;
     }
+    return null;
   }
 
   // -- TurtleStateQuery interface --

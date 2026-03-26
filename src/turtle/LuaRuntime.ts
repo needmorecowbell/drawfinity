@@ -36,7 +36,8 @@ type TurtleCommandVariant =
   | { type: "rectangle"; width: number; height: number }
   | { type: "ellipse"; width: number; height: number }
   | { type: "polygon"; sides: number; radius: number }
-  | { type: "star"; points: number; outerRadius: number; innerRadius: number };
+  | { type: "star"; points: number; outerRadius: number; innerRadius: number }
+  | { type: "step_boundary"; step: number };
 
 /** A command produced by a turtle API call, optionally tagged with a turtle ID. */
 export type TurtleCommand = TurtleCommandVariant & { turtleId?: string };
@@ -84,6 +85,10 @@ export class LuaRuntime {
   /** Messaging context set by TurtleExecutor before script execution. */
   private messageBus: MessageBus | null = null;
   private blackboard: Blackboard | null = null;
+  /** Current simulation step number (0 when not inside simulate()). */
+  private currentStep = 0;
+  /** Maximum steps allowed in simulate() (default 10000). */
+  private maxSimulateSteps = 10000;
 
   constructor() {
     this.factory = new LuaFactory();
@@ -116,6 +121,16 @@ export class LuaRuntime {
   setMessagingContext(messageBus: MessageBus, blackboard: Blackboard): void {
     this.messageBus = messageBus;
     this.blackboard = blackboard;
+  }
+
+  /** Get the maximum steps allowed in simulate(). */
+  getMaxSimulateSteps(): number {
+    return this.maxSimulateSteps;
+  }
+
+  /** Set the maximum steps allowed in simulate(). */
+  setMaxSimulateSteps(n: number): void {
+    this.maxSimulateSteps = n;
   }
 
   /** Initialize the Lua engine. Must be called once before execute(). */
@@ -158,6 +173,7 @@ export class LuaRuntime {
 
     this.commands = [];
     this.spawnedThisExecution.clear();
+    this.currentStep = 0;
 
     try {
       await this.engine.doString(script);
@@ -939,6 +955,45 @@ export class LuaRuntime {
       return msg.board.keys();
     });
 
+    // Internal: get_step() — return current simulation step number
+    g.set("_get_step_impl", () => {
+      return this.currentStep;
+    });
+
+    // Internal: simulate(steps, stepFn) — multi-generation execution
+    g.set("_simulate_impl", (steps: unknown, stepFn: unknown) => {
+      if (typeof steps !== "number" || !Number.isInteger(steps) || steps < 1) {
+        throw new Error("simulate() requires a positive integer for steps");
+      }
+      if (typeof stepFn !== "function") {
+        throw new Error("simulate() requires a function as second argument");
+      }
+      if (steps > this.maxSimulateSteps) {
+        throw new Error(
+          `simulate() steps (${steps}) exceeds maximum (${this.maxSimulateSteps})`,
+        );
+      }
+      if (this.currentStep > 0) {
+        throw new Error("simulate() cannot be called recursively");
+      }
+
+      for (let i = 1; i <= steps; i++) {
+        this.currentStep = i;
+        // Insert step boundary marker so executor knows when to deliver messages
+        this.pushCommand({ type: "step_boundary", step: i } as TurtleCommandVariant);
+        (stepFn as (n: number) => void)(i);
+      }
+      this.currentStep = 0;
+    });
+
+    // Internal: set_max_steps(n) — configure max simulate steps
+    g.set("_set_max_steps_impl", (n: unknown) => {
+      if (typeof n !== "number" || !Number.isInteger(n) || n < 1) {
+        throw new Error("set_max_steps() requires a positive integer");
+      }
+      this.maxSimulateSteps = n;
+    });
+
     // Register `goto` as an alias (goto is a Lua keyword in 5.4, so we use a wrapper)
     engine.doStringSync(`
       -- 'goto' is a reserved keyword in Lua, so we alias via goto_pos
@@ -1023,6 +1078,21 @@ export class LuaRuntime {
       -- board_keys() — list all blackboard keys
       function board_keys()
         return _board_keys_impl()
+      end
+
+      -- get_step() — return current simulation step number (0 if not in simulate)
+      function get_step()
+        return _get_step_impl()
+      end
+
+      -- simulate(steps, fn) — multi-generation execution with message delivery between steps
+      function simulate(steps, fn)
+        _simulate_impl(steps, fn)
+      end
+
+      -- set_max_steps(n) — configure maximum simulate steps
+      function set_max_steps(n)
+        _set_max_steps_impl(n)
       end
 
       -- spawn(id, opts?) — create a new turtle and return a handle table

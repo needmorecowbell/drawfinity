@@ -198,6 +198,15 @@ export class TurtleExecutor {
         if (idx >= queue.length) continue;
 
         const cmd = queue[idx];
+
+        // Step boundary: deliver messages between simulation steps
+        if (cmd.type === "step_boundary") {
+          // Note: step_boundary is only in the main queue, skip for others
+          indices.set(turtleId, idx + 1);
+          processedAny = true;
+          continue;
+        }
+
         this.processCommand(cmd);
 
         const delay = this.getStepDelay(cmd);
@@ -249,6 +258,9 @@ export class TurtleExecutor {
   }
 
   private processCommand(cmd: TurtleCommand): void {
+    // Step boundary markers are handled by replayCommands, not here
+    if (cmd.type === "step_boundary") return;
+
     // Handle spawn commands — create or re-initialize the turtle
     if (cmd.type === "spawn") {
       const fullId = `${this.scriptId}:${cmd.id}`;

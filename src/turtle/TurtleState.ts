@@ -45,6 +45,12 @@ export class TurtleState implements TurtleStateQuery {
    */
   zoomScale = 1;
 
+  /**
+   * When true, zoom scaling is disabled — all distances and pen widths
+   * use raw world units. Set via `set_world_space(true)` in Lua.
+   */
+  worldSpace = false;
+
   /** Origin coordinates used for `home()`. Defaults to (0, 0). */
   private originX = 0;
   private originY = 0;
@@ -53,6 +59,19 @@ export class TurtleState implements TurtleStateQuery {
   setOrigin(x: number, y: number): void {
     this.originX = x;
     this.originY = y;
+  }
+
+  /**
+   * Enable or disable world-space mode.
+   * When enabled, `zoomScale` is forced to `1` so all distances use raw world units.
+   */
+  setWorldSpace(enabled: boolean): void {
+    this.worldSpace = enabled;
+  }
+
+  /** Returns the effective zoom scale: 1 if worldSpace, otherwise zoomScale. */
+  private effectiveZoomScale(): number {
+    return this.worldSpace ? 1 : this.zoomScale;
   }
 
   /** Reset state to initial values. */
@@ -145,17 +164,19 @@ export class TurtleState implements TurtleStateQuery {
   private moveForward(distance: number): MovementSegment | null {
     const fromX = this.x;
     const fromY = this.y;
+    const scale = this.effectiveZoomScale();
+    const scaledDistance = distance * scale;
     // Heading 0 = up (negative Y in screen coords), clockwise positive
     const rad = (this.angle * Math.PI) / 180;
-    this.x += distance * Math.sin(rad);
-    this.y -= distance * Math.cos(rad);
+    this.x += scaledDistance * Math.sin(rad);
+    this.y -= scaledDistance * Math.cos(rad);
     if (this.pen.down) {
       return {
         fromX,
         fromY,
         toX: this.x,
         toY: this.y,
-        pen: { ...this.pen },
+        pen: { ...this.pen, width: this.pen.width * scale },
       };
     }
     return null;
@@ -167,12 +188,13 @@ export class TurtleState implements TurtleStateQuery {
     this.x = x;
     this.y = y;
     if (this.pen.down) {
+      const scale = this.effectiveZoomScale();
       return {
         fromX,
         fromY,
         toX: this.x,
         toY: this.y,
-        pen: { ...this.pen },
+        pen: { ...this.pen, width: this.pen.width * scale },
       };
     }
     return null;

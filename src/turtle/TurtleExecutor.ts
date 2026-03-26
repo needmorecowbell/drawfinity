@@ -149,22 +149,82 @@ export class TurtleExecutor {
     return replayResult;
   }
 
+  /**
+   * Replay commands with interleaved multi-turtle execution.
+   *
+   * Commands are organized into per-turtle queues. On each tick, one command
+   * is advanced for every active turtle that has remaining commands (round-robin).
+   * Animation delay is applied once per tick (not per turtle), using the maximum
+   * delay across all turtles that executed in that tick.
+   *
+   * When a SpawnCommand is encountered, the new turtle's queue becomes active
+   * starting on the next tick.
+   */
   private async replayCommands(
     commands: TurtleCommand[],
   ): Promise<ExecutionResult> {
-    for (let i = 0; i < commands.length; i++) {
+    // Build per-turtle command queues
+    const queues = new Map<string, TurtleCommand[]>();
+    for (const cmd of commands) {
+      const id = cmd.turtleId ?? "main";
+      if (!queues.has(id)) {
+        queues.set(id, []);
+      }
+      queues.get(id)!.push(cmd);
+    }
+
+    // Track active turtle queues and their current position
+    const activeTurtles: string[] = ["main"];
+    const indices = new Map<string, number>();
+    for (const id of queues.keys()) {
+      indices.set(id, 0);
+    }
+
+    // Interleaved replay: one command per active turtle per tick
+    while (true) {
       if (this.stopRequested) {
         return { success: false, error: "Execution stopped by user" };
       }
 
-      const cmd = commands[i];
-      this.processCommand(cmd);
+      let processedAny = false;
+      let maxDelay = 0;
+      const newlySpawned: string[] = [];
+
+      // Process one command for each active turtle
+      for (const turtleId of activeTurtles) {
+        const queue = queues.get(turtleId);
+        if (!queue) continue;
+        const idx = indices.get(turtleId) ?? 0;
+        if (idx >= queue.length) continue;
+
+        const cmd = queue[idx];
+        this.processCommand(cmd);
+
+        const delay = this.getStepDelay(cmd);
+        if (delay > maxDelay) maxDelay = delay;
+
+        indices.set(turtleId, idx + 1);
+        processedAny = true;
+
+        // If spawn command, activate the new turtle for the next tick
+        if (cmd.type === "spawn") {
+          newlySpawned.push(cmd.id);
+        }
+      }
+
+      if (!processedAny) break;
+
+      // Activate newly spawned turtles after this tick completes
+      for (const id of newlySpawned) {
+        if (!activeTurtles.includes(id)) {
+          activeTurtles.push(id);
+        }
+      }
+
       this.events.onStep?.();
 
-      // Yield to the browser between steps based on speed
-      const delay = this.getStepDelay(cmd);
-      if (delay > 0) {
-        await this.wait(delay);
+      if (maxDelay > 0) {
+        await this.wait(maxDelay);
       }
     }
 

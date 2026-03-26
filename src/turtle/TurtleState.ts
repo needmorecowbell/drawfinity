@@ -54,6 +54,12 @@ export class TurtleState implements TurtleStateQuery {
   /** Whether the turtle indicator is visible. Toggled by hide()/show(). */
   visible = true;
 
+  /** Pen mode: "draw" creates strokes, "erase" removes strokes under the path. */
+  penMode: "draw" | "erase" = "draw";
+
+  /** When true and penMode is "erase", only turtle-drawn strokes are erased. */
+  eraseTurtleOnly = false;
+
   /** Origin coordinates used for `home()`. Defaults to (0, 0). */
   private originX = 0;
   private originY = 0;
@@ -99,6 +105,8 @@ export class TurtleState implements TurtleStateQuery {
     this.angle = 0;
     this.pen = { down: true, color: "#000000", width: 3, opacity: 1.0 };
     this.speed = 5;
+    this.penMode = "draw";
+    this.eraseTurtleOnly = false;
     this.worldSpace = false;
     this.zoomScale = 1;
     this.visible = true;
@@ -127,8 +135,12 @@ export class TurtleState implements TurtleStateQuery {
         return null;
       case "goto":
         return this.moveTo(cmd.x, cmd.y);
-      case "home":
-        return this.moveTo(this.originX, this.originY);
+      case "home": {
+        const seg = this.moveTo(this.originX, this.originY);
+        this.penMode = "draw";
+        this.eraseTurtleOnly = false;
+        return seg;
+      }
       case "penup":
         this.pen.down = false;
         return null;
@@ -146,6 +158,10 @@ export class TurtleState implements TurtleStateQuery {
         return null;
       case "speed":
         this.speed = cmd.value;
+        return null;
+      case "penmode":
+        this.penMode = cmd.mode;
+        this.eraseTurtleOnly = cmd.turtleOnly;
         return null;
       case "set_world_space":
         this.setWorldSpace(cmd.enabled);

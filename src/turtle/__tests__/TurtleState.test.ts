@@ -188,6 +188,51 @@ describe("TurtleState", () => {
     });
   });
 
+  describe("pen mode", () => {
+    it("defaults to draw mode", () => {
+      expect(state.penMode).toBe("draw");
+      expect(state.eraseTurtleOnly).toBe(false);
+    });
+
+    it("switches to erase mode", () => {
+      state.applyCommand({ type: "penmode", mode: "erase", turtleOnly: false });
+      expect(state.penMode).toBe("erase");
+      expect(state.eraseTurtleOnly).toBe(false);
+    });
+
+    it("switches to erase mode with turtle_only flag", () => {
+      state.applyCommand({ type: "penmode", mode: "erase", turtleOnly: true });
+      expect(state.penMode).toBe("erase");
+      expect(state.eraseTurtleOnly).toBe(true);
+    });
+
+    it("switches back to draw mode", () => {
+      state.applyCommand({ type: "penmode", mode: "erase", turtleOnly: true });
+      state.applyCommand({ type: "penmode", mode: "draw", turtleOnly: false });
+      expect(state.penMode).toBe("draw");
+      expect(state.eraseTurtleOnly).toBe(false);
+    });
+
+    it("resets penMode and eraseTurtleOnly on home()", () => {
+      state.applyCommand({ type: "penmode", mode: "erase", turtleOnly: true });
+      state.applyCommand({ type: "home" });
+      expect(state.penMode).toBe("draw");
+      expect(state.eraseTurtleOnly).toBe(false);
+    });
+
+    it("resets penMode and eraseTurtleOnly on reset()", () => {
+      state.applyCommand({ type: "penmode", mode: "erase", turtleOnly: true });
+      state.reset();
+      expect(state.penMode).toBe("draw");
+      expect(state.eraseTurtleOnly).toBe(false);
+    });
+
+    it("returns null (non-movement command)", () => {
+      const seg = state.applyCommand({ type: "penmode", mode: "erase", turtleOnly: false });
+      expect(seg).toBeNull();
+    });
+  });
+
   describe("speed", () => {
     it("sets speed value", () => {
       state.applyCommand({ type: "speed", value: 0 });
@@ -205,6 +250,7 @@ describe("TurtleState", () => {
       { type: "penwidth", width: 1 },
       { type: "penopacity", opacity: 0.5 },
       { type: "speed", value: 3 },
+      { type: "penmode", mode: "erase", turtleOnly: false } as TurtleCommand,
       { type: "clear" },
       { type: "sleep", ms: 100 },
       { type: "print", message: "hello" },

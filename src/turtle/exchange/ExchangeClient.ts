@@ -9,6 +9,17 @@ const DEFAULT_BASE_URL =
   "https://raw.githubusercontent.com/needmorecowbell/drawfinity_turtle_exchange/main/";
 
 const INDEX_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const INDEX_TIMEOUT_MS = 8000;
+const SCRIPT_TIMEOUT_MS = 5000;
+
+/** Fetch with an AbortController-based timeout. */
+function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { signal: controller.signal }).finally(() =>
+    clearTimeout(timer),
+  );
+}
 
 /** Descriptive error for exchange fetch failures. */
 export class ExchangeError extends Error {
@@ -63,8 +74,11 @@ export class ExchangeClient {
     const url = `${this.baseUrl}index.json`;
     let response: Response;
     try {
-      response = await fetch(url);
+      response = await fetchWithTimeout(url, INDEX_TIMEOUT_MS);
     } catch (err) {
+      if ((err as Error).name === "AbortError") {
+        throw new ExchangeError("Request timed out fetching exchange index");
+      }
       throw new ExchangeError(
         `Network error fetching exchange index: ${(err as Error).message}`,
       );
@@ -99,8 +113,13 @@ export class ExchangeClient {
     const url = `${this.baseUrl}${entry.path}/${entry.id}.lua`;
     let response: Response;
     try {
-      response = await fetch(url);
+      response = await fetchWithTimeout(url, SCRIPT_TIMEOUT_MS);
     } catch (err) {
+      if ((err as Error).name === "AbortError") {
+        throw new ExchangeError(
+          `Request timed out fetching script "${entry.title}"`,
+        );
+      }
       throw new ExchangeError(
         `Network error fetching script "${entry.title}": ${(err as Error).message}`,
       );

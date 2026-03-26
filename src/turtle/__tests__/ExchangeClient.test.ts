@@ -105,6 +105,7 @@ describe("ExchangeClient", () => {
 
       expect(fetchMock).toHaveBeenCalledWith(
         "https://test.example.com/repo/main/index.json",
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
       expect(result).toEqual(MOCK_INDEX);
     });
@@ -145,6 +146,24 @@ describe("ExchangeClient", () => {
       await expect(client.fetchIndex()).rejects.toThrow("Network error");
     });
 
+    it("passes an AbortSignal to fetch for timeout protection", async () => {
+      const fetchMock = mockFetchOk(MOCK_INDEX);
+      vi.stubGlobal("fetch", fetchMock);
+
+      await client.fetchIndex();
+
+      const signal = fetchMock.mock.calls[0][1]?.signal;
+      expect(signal).toBeInstanceOf(AbortSignal);
+    });
+
+    it("throws ExchangeError with 'timed out' message when fetch is aborted", async () => {
+      const abortError = new DOMException("The operation was aborted", "AbortError");
+      vi.stubGlobal("fetch", vi.fn().mockRejectedValue(abortError));
+
+      await expect(client.fetchIndex()).rejects.toThrow(ExchangeError);
+      await expect(client.fetchIndex()).rejects.toThrow("timed out");
+    });
+
     it("throws ExchangeError on malformed JSON", async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
@@ -167,6 +186,7 @@ describe("ExchangeClient", () => {
 
       expect(fetchMock).toHaveBeenCalledWith(
         "https://test.example.com/repo/main/scripts/koch-curve/koch-curve.lua",
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
       expect(code).toBe(MOCK_SCRIPT);
     });
@@ -195,6 +215,28 @@ describe("ExchangeClient", () => {
 
       await expect(client.fetchScript(MOCK_INDEX.scripts[0])).rejects.toThrow(
         "Network error",
+      );
+    });
+
+    it("passes an AbortSignal to fetch for timeout protection", async () => {
+      const fetchMock = mockFetchOk(MOCK_SCRIPT);
+      vi.stubGlobal("fetch", fetchMock);
+
+      await client.fetchScript(MOCK_INDEX.scripts[0]);
+
+      const signal = fetchMock.mock.calls[0][1]?.signal;
+      expect(signal).toBeInstanceOf(AbortSignal);
+    });
+
+    it("throws ExchangeError with 'timed out' message when fetch is aborted", async () => {
+      const abortError = new DOMException("The operation was aborted", "AbortError");
+      vi.stubGlobal("fetch", vi.fn().mockRejectedValue(abortError));
+
+      await expect(client.fetchScript(MOCK_INDEX.scripts[0])).rejects.toThrow(
+        ExchangeError,
+      );
+      await expect(client.fetchScript(MOCK_INDEX.scripts[1])).rejects.toThrow(
+        "timed out",
       );
     });
 
@@ -424,6 +466,7 @@ describe("ExchangeClient", () => {
       await noSlash.fetchIndex();
       expect(fetchMock).toHaveBeenCalledWith(
         "https://example.com/repo/index.json",
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
   });

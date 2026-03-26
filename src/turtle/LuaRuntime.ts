@@ -16,7 +16,8 @@ export type TurtleCommand =
   | { type: "speed"; value: number }
   | { type: "clear" }
   | { type: "sleep"; ms: number }
-  | { type: "print"; message: string };
+  | { type: "print"; message: string }
+  | { type: "set_world_space"; enabled: boolean };
 
 /** Callback queried between steps to support stop button. */
 export type StopCheck = () => boolean;
@@ -224,6 +225,10 @@ export class LuaRuntime {
     g.set("print", (...args: unknown[]) => {
       const message = args.map(String).join("\t");
       push({ type: "print", message });
+    });
+
+    g.set("set_world_space", (enabled: boolean) => {
+      push({ type: "set_world_space", enabled: !!enabled });
     });
 
     g.set("repeat_n", (n: number, fn: () => void) => {

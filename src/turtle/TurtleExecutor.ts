@@ -63,8 +63,13 @@ export class TurtleExecutor {
    * 1. Reset turtle state
    * 2. Run the Lua script to collect all commands
    * 3. Replay commands one-by-one with speed-based delays
+   *
+   * @param script  Lua source code to execute
+   * @param zoom    Current camera zoom level (default 1). Movement distances
+   *                and pen width are scaled by `1/zoom` so that turtle output
+   *                is proportional to what the user sees on screen.
    */
-  async run(script: string): Promise<ExecutionResult> {
+  async run(script: string, zoom = 1): Promise<ExecutionResult> {
     if (this.running) {
       return { success: false, error: "A script is already running" };
     }
@@ -72,6 +77,7 @@ export class TurtleExecutor {
     this.running = true;
     this.stopRequested = false;
     this.state.reset();
+    this.state.zoomScale = zoom > 0 ? 1 / zoom : 1;
     this.events.onStart?.();
 
     // Phase 1: Execute Lua to collect commands

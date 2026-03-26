@@ -34,7 +34,7 @@ Turtle-drawn strokes are real document strokes — they persist when you save, s
 - **Origin:** The turtle starts at position (0, 0), which defaults to the camera center. You can reposition the origin by clicking the **Place** button and then clicking on the canvas.
 - **Axes:** X increases to the right, Y increases downward.
 - **Heading:** 0 degrees points up. Angles increase clockwise (so `right(90)` faces east).
-- **Units:** Distances are in canvas pixels (before zoom).
+- **Units:** Distances are in logical pixels. Turtle output is automatically scaled by the camera zoom so drawings look the same size on screen at any zoom level. Use [`set_world_space(true)`](#set-world-space) to opt out and work in raw world units.
 
 ## API Reference
 
@@ -220,6 +220,19 @@ forward(100)
 sleep(1000)    -- wait 1 second
 forward(100)
 ```
+
+### Zoom Control
+
+#### `set_world_space(enabled)` {#set-world-space}
+
+By default, turtle distances and pen widths are scaled by the camera zoom so that drawings appear the same visual size on screen. Call `set_world_space(true)` at the start of your script to disable this and use raw world-space units instead.
+
+```lua
+set_world_space(true)   -- all distances are now in raw world units
+forward(100)            -- always 100 world-space pixels, regardless of zoom
+```
+
+> **Tip:** Most scripts should leave this at the default. Use world-space mode when you need to align turtle output with existing content on the canvas.
 
 ### Output
 
@@ -411,3 +424,4 @@ The [Turtle Exchange](/turtle-exchange) is a community library of turtle scripts
 - The `math` library is your friend: `math.sin`, `math.cos`, and `math.pi` are essential for circular and spiral patterns.
 - Call `clear()` at the start of a script during development to clean up previous runs.
 - Turtle strokes are regular canvas strokes — you can draw over them, erase parts with the eraser, and undo individual runs.
+- Turtle output is zoom-aware by default — a script produces the same visual result whether you're zoomed in or out. Call `set_world_space(true)` if you need exact world-space positioning.

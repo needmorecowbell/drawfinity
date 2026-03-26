@@ -64,8 +64,9 @@ export class TurtleIndicator {
     if (!this.visible) return;
 
     const [vw, vh] = this.camera.getViewportSize();
-    const screenX = (this.state.x - this.camera.x) * this.camera.zoom + vw / 2;
-    const screenY = (this.state.y - this.camera.y) * this.camera.zoom + vh / 2;
+    const world = this.state.getWorldPosition();
+    const screenX = (world.x - this.camera.x) * this.camera.zoom + vw / 2;
+    const screenY = (world.y - this.camera.y) * this.camera.zoom + vh / 2;
 
     this.container.style.color = this.state.pen.color;
     // Translate to screen position, then rotate by heading (offset by -12,-12 to center the SVG)

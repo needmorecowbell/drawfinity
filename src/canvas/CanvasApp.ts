@@ -563,7 +563,7 @@ export class CanvasApp {
         if (!this.turtleOriginPlaced) {
           this.turtleState.setOrigin(this.camera.x, this.camera.y);
         }
-        this.turtleExecutor.run(script);
+        this.turtleExecutor.run(script, this.camera.zoom);
       },
       onStop: () => {
         this.turtleExecutor.stop();

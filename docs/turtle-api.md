@@ -38,7 +38,7 @@ When a script starts, the turtle has the following state:
 - **X axis:** increases to the right.
 - **Y axis:** increases downward.
 - **Heading:** `0°` points up. Angles increase clockwise — `right(90)` faces east, `right(180)` faces down.
-- **Units:** canvas pixels (before zoom).
+- **Units:** logical pixels. By default, turtle output is **zoom-scaled** so that a `forward(100)` looks the same size on screen regardless of the current camera zoom. If you need raw world-space units, call [`set_world_space(true)`](#set-world-space) at the start of your script.
 
 ---
 
@@ -302,6 +302,31 @@ forward(100)
 
 ---
 
+### Zoom Control {#zoom-control}
+
+#### `set_world_space(enabled)` {#set-world-space}
+
+Enable or disable world-space mode. By default, turtle distances and pen widths are automatically scaled by the inverse of the camera zoom so that drawings appear the same visual size on screen regardless of zoom level. Calling `set_world_space(true)` disables this — all distances use raw world-space units.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `enabled` | `boolean` | `true` to use raw world units, `false` to use zoom-scaled units (default) |
+
+```lua
+set_world_space(true)   -- distances are in raw world units
+forward(100)            -- always exactly 100 world-space pixels
+```
+
+::: tip When to use
+Most scripts should leave zoom scaling enabled (the default). Use `set_world_space(true)` when you need pixel-precise control over world-space coordinates — for example, to align turtle output with existing hand-drawn content.
+:::
+
+::: warning
+Call this at the **beginning** of your script (before any drawing commands) or after a `penup()`. Toggling mid-drawing while the pen is down will cause a visual discontinuity in the stroke path.
+:::
+
+---
+
 ### Output {#output}
 
 #### `print(...)` {#print}
@@ -388,5 +413,6 @@ The following modules and globals are **not available**:
 | [`clear()`](#clear) | Canvas | Remove turtle strokes |
 | [`speed(n)`](#speed) | Execution | Set animation speed |
 | [`sleep(ms)`](#sleep) | Execution | Pause execution |
+| [`set_world_space(enabled)`](#set-world-space) | Zoom Control | Toggle zoom-scaled vs raw world units |
 | [`print(...)`](#print) | Output | Print to console |
 | [`repeat_n(n, fn)`](#repeat-n) | Utility | Repeat a function N times |

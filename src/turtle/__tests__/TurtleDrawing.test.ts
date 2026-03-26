@@ -2,10 +2,12 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { TurtleDrawing } from "../TurtleDrawing";
 import { MovementSegment, PenState } from "../TurtleState";
 import { Stroke, DocumentModel } from "../../model/Stroke";
+import type { Shape } from "../../model/Shape";
 
 /** Minimal in-memory document for testing. */
 class MockDocument implements DocumentModel {
   strokes: Stroke[] = [];
+  shapes: Shape[] = [];
 
   addStroke(stroke: Stroke): void {
     this.strokes.push(stroke);
@@ -19,6 +21,21 @@ class MockDocument implements DocumentModel {
     const idx = this.strokes.findIndex((s) => s.id === strokeId);
     if (idx === -1) return false;
     this.strokes.splice(idx, 1);
+    return true;
+  }
+
+  addShape(shape: Shape): void {
+    this.shapes.push(shape);
+  }
+
+  getShapes(): Shape[] {
+    return this.shapes;
+  }
+
+  removeShape(shapeId: string): boolean {
+    const idx = this.shapes.findIndex((s) => s.id === shapeId);
+    if (idx === -1) return false;
+    this.shapes.splice(idx, 1);
     return true;
   }
 }
@@ -229,6 +246,155 @@ describe("TurtleDrawing", () => {
       expect(doc.strokes[0].points).toHaveLength(3);
       // Second stroke from the non-batched segment
       expect(doc.strokes[1].points).toHaveLength(2);
+    });
+  });
+
+  describe("createShape", () => {
+    it("creates a rectangle shape in the document", () => {
+      drawing.createShape({
+        type: "rectangle",
+        x: 100,
+        y: 200,
+        width: 50,
+        height: 30,
+        rotation: 0,
+        strokeColor: "#ff0000",
+        strokeWidth: 2,
+        fillColor: "#00ff00",
+        opacity: 0.8,
+      });
+
+      expect(doc.shapes).toHaveLength(1);
+      const shape = doc.shapes[0];
+      expect(shape.type).toBe("rectangle");
+      expect(shape.x).toBe(100);
+      expect(shape.y).toBe(200);
+      expect(shape.width).toBe(50);
+      expect(shape.height).toBe(30);
+      expect(shape.strokeColor).toBe("#ff0000");
+      expect(shape.strokeWidth).toBe(2);
+      expect(shape.fillColor).toBe("#00ff00");
+      expect(shape.opacity).toBe(0.8);
+      expect(shape.id).toMatch(/^shape-/);
+    });
+
+    it("creates polygon with sides parameter", () => {
+      drawing.createShape({
+        type: "polygon",
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        rotation: 0,
+        strokeColor: "#000",
+        strokeWidth: 1,
+        fillColor: null,
+        opacity: 1,
+        sides: 6,
+      });
+
+      expect(doc.shapes).toHaveLength(1);
+      expect(doc.shapes[0].type).toBe("polygon");
+      expect(doc.shapes[0].sides).toBe(6);
+    });
+
+    it("creates star with sides and starInnerRadius", () => {
+      drawing.createShape({
+        type: "star",
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        rotation: 0,
+        strokeColor: "#000",
+        strokeWidth: 1,
+        fillColor: null,
+        opacity: 1,
+        sides: 5,
+        starInnerRadius: 0.4,
+      });
+
+      expect(doc.shapes).toHaveLength(1);
+      expect(doc.shapes[0].type).toBe("star");
+      expect(doc.shapes[0].sides).toBe(5);
+      expect(doc.shapes[0].starInnerRadius).toBe(0.4);
+    });
+
+    it("tracks shape IDs for later cleanup", () => {
+      drawing.createShape({
+        type: "ellipse",
+        x: 0, y: 0, width: 50, height: 50,
+        rotation: 0, strokeColor: "#000", strokeWidth: 1,
+        fillColor: null, opacity: 1,
+      });
+      drawing.createShape({
+        type: "rectangle",
+        x: 10, y: 10, width: 20, height: 20,
+        rotation: 0, strokeColor: "#000", strokeWidth: 1,
+        fillColor: null, opacity: 1,
+      });
+
+      const ids = drawing.getShapeIds();
+      expect(ids).toHaveLength(2);
+      expect(ids[0]).not.toBe(ids[1]);
+    });
+
+    it("returns a copy of shape IDs", () => {
+      drawing.createShape({
+        type: "rectangle",
+        x: 0, y: 0, width: 10, height: 10,
+        rotation: 0, strokeColor: "#000", strokeWidth: 1,
+        fillColor: null, opacity: 1,
+      });
+      const ids = drawing.getShapeIds();
+      ids.push("fake");
+      expect(drawing.getShapeIds()).toHaveLength(1);
+    });
+  });
+
+  describe("clearTurtleStrokes with shapes", () => {
+    it("removes both strokes and shapes created by this turtle", () => {
+      drawing.addSegment(makeSegment(0, 0, 10, 0), false);
+      drawing.createShape({
+        type: "rectangle",
+        x: 0, y: 0, width: 10, height: 10,
+        rotation: 0, strokeColor: "#000", strokeWidth: 1,
+        fillColor: null, opacity: 1,
+      });
+
+      expect(doc.strokes).toHaveLength(1);
+      expect(doc.shapes).toHaveLength(1);
+
+      drawing.clearTurtleStrokes();
+
+      expect(doc.strokes).toHaveLength(0);
+      expect(doc.shapes).toHaveLength(0);
+      expect(drawing.getStrokeIds()).toHaveLength(0);
+      expect(drawing.getShapeIds()).toHaveLength(0);
+    });
+
+    it("does not remove shapes not created by this turtle", () => {
+      doc.addShape({
+        id: "manual-shape",
+        type: "rectangle",
+        x: 0, y: 0, width: 10, height: 10,
+        rotation: 0, strokeColor: "#000", strokeWidth: 1,
+        fillColor: null, opacity: 1, timestamp: Date.now(),
+      });
+
+      drawing.createShape({
+        type: "ellipse",
+        x: 0, y: 0, width: 20, height: 20,
+        rotation: 0, strokeColor: "#000", strokeWidth: 1,
+        fillColor: null, opacity: 1,
+      });
+
+      expect(doc.shapes).toHaveLength(2);
+
+      drawing.clearTurtleStrokes();
+
+      expect(doc.shapes).toHaveLength(1);
+      expect(doc.shapes[0].id).toBe("manual-shape");
     });
   });
 });

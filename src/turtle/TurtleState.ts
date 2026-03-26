@@ -1,4 +1,14 @@
 import type { TurtleCommand, TurtleStateQuery } from "./LuaRuntime";
+import { PEN, PENCIL, MARKER, HIGHLIGHTER } from "../tools";
+import type { BrushConfig } from "../tools";
+
+/** Lookup map for brush presets by lowercase name. */
+const PRESET_MAP: ReadonlyMap<string, BrushConfig> = new Map([
+  ["pen", PEN],
+  ["pencil", PENCIL],
+  ["marker", MARKER],
+  ["highlighter", HIGHLIGHTER],
+]);
 
 /** Pen state for the turtle. */
 export interface PenState {
@@ -54,6 +64,30 @@ export class TurtleState implements TurtleStateQuery {
   /** Whether the turtle indicator is visible. Toggled by hide()/show(). */
   visible = true;
 
+  /** Pen mode: "draw" creates strokes, "erase" removes strokes under the path. */
+  penMode: "draw" | "erase" = "draw";
+
+  /** When true and penMode is "erase", only turtle-drawn strokes are erased. */
+  eraseTurtleOnly = false;
+
+  /** Active brush preset name, or null for raw pen. */
+  brushPreset: string | null = null;
+
+  /**
+   * Width multiplier derived from the active brush preset's pressureCurve(1.0).
+   * Applied by TurtleDrawing when creating strokes. 1.0 when no preset is active.
+   */
+  presetWidthMultiplier = 1.0;
+
+  /**
+   * Opacity derived from the active brush preset's opacityCurve(1.0).
+   * Applied by TurtleDrawing when creating strokes. 1.0 when no preset is active.
+   */
+  presetOpacity = 1.0;
+
+  /** Fill color for shape commands, or null for no fill (outline only). */
+  fillColor: string | null = null;
+
   /** Origin coordinates used for `home()`. Defaults to (0, 0). */
   private originX = 0;
   private originY = 0;
@@ -99,6 +133,12 @@ export class TurtleState implements TurtleStateQuery {
     this.angle = 0;
     this.pen = { down: true, color: "#000000", width: 3, opacity: 1.0 };
     this.speed = 5;
+    this.penMode = "draw";
+    this.eraseTurtleOnly = false;
+    this.brushPreset = null;
+    this.presetWidthMultiplier = 1.0;
+    this.presetOpacity = 1.0;
+    this.fillColor = null;
     this.worldSpace = false;
     this.zoomScale = 1;
     this.visible = true;
@@ -127,8 +167,16 @@ export class TurtleState implements TurtleStateQuery {
         return null;
       case "goto":
         return this.moveTo(cmd.x, cmd.y);
-      case "home":
-        return this.moveTo(this.originX, this.originY);
+      case "home": {
+        const seg = this.moveTo(this.originX, this.originY);
+        this.penMode = "draw";
+        this.eraseTurtleOnly = false;
+        this.brushPreset = null;
+        this.presetWidthMultiplier = 1.0;
+        this.presetOpacity = 1.0;
+        this.fillColor = null;
+        return seg;
+      }
       case "penup":
         this.pen.down = false;
         return null;
@@ -146,6 +194,35 @@ export class TurtleState implements TurtleStateQuery {
         return null;
       case "speed":
         this.speed = cmd.value;
+        return null;
+      case "penmode":
+        this.penMode = cmd.mode;
+        this.eraseTurtleOnly = cmd.turtleOnly;
+        return null;
+      case "penpreset": {
+        if (cmd.preset === null) {
+          this.brushPreset = null;
+          this.presetWidthMultiplier = 1.0;
+          this.presetOpacity = 1.0;
+        } else {
+          const config = PRESET_MAP.get(cmd.preset.toLowerCase());
+          if (config) {
+            this.brushPreset = cmd.preset.toLowerCase();
+            this.presetWidthMultiplier = config.pressureCurve(1.0);
+            this.presetOpacity = config.opacityCurve(1.0);
+          }
+          // Invalid names are silently ignored per spec
+        }
+        return null;
+      }
+      case "fillcolor":
+        this.fillColor = cmd.color;
+        return null;
+      case "rectangle":
+      case "ellipse":
+      case "polygon":
+      case "star":
+        // Shape commands do not move the turtle; replay handles shape creation.
         return null;
       case "set_world_space":
         this.setWorldSpace(cmd.enabled);
@@ -224,7 +301,11 @@ export class TurtleState implements TurtleStateQuery {
         fromY: this.toWorld(fromY, this.originY),
         toX: this.toWorld(this.x, this.originX),
         toY: this.toWorld(this.y, this.originY),
-        pen: { ...this.pen, width: this.pen.width * scale },
+        pen: {
+          ...this.pen,
+          width: this.pen.width * scale * this.presetWidthMultiplier,
+          opacity: this.pen.opacity * this.presetOpacity,
+        },
       };
     }
     return null;
@@ -243,7 +324,11 @@ export class TurtleState implements TurtleStateQuery {
         fromY: this.toWorld(fromY, this.originY),
         toX: this.toWorld(this.x, this.originX),
         toY: this.toWorld(this.y, this.originY),
-        pen: { ...this.pen, width: this.pen.width * scale },
+        pen: {
+          ...this.pen,
+          width: this.pen.width * scale * this.presetWidthMultiplier,
+          opacity: this.pen.opacity * this.presetOpacity,
+        },
       };
     }
     return null;

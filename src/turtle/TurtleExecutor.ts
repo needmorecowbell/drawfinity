@@ -329,8 +329,81 @@ export class TurtleExecutor {
     // but speed still needs to update state
     const segment = entry.state.applyCommand(cmd);
     if (segment) {
-      const batching = entry.state.speed === 0;
-      entry.drawing.addSegment(segment, batching);
+      if (entry.state.penMode === "erase") {
+        // Flush all turtles' pending segments so they can be erased
+        const owned = this.registry.getOwned(this.scriptId);
+        for (const [, ownedEntry] of owned) {
+          ownedEntry.drawing.flush();
+        }
+        // Erase mode: remove strokes along the movement path
+        const eraseScale = entry.state.worldSpace ? 1 : Math.max(1e-3, Math.min(1e3, entry.state.zoomScale));
+        const radius = (entry.state.pen.width * eraseScale) / 2;
+        let turtleStrokeIds: Set<string> | null = null;
+        if (entry.state.eraseTurtleOnly) {
+          // Collect all turtle-drawn stroke IDs across all turtles
+          turtleStrokeIds = new Set<string>();
+          const allTurtles = this.registry.getAll();
+          for (const [, tEntry] of allTurtles) {
+            for (const id of tEntry.drawing.getStrokeIds()) {
+              turtleStrokeIds.add(id);
+            }
+          }
+        }
+        entry.drawing.eraseAlongSegment(segment, radius, turtleStrokeIds);
+      } else {
+        const batching = entry.state.speed === 0;
+        entry.drawing.addSegment(segment, batching);
+      }
+    }
+
+    // Handle shape commands — create shapes at the turtle's current position
+    if (cmd.type === "rectangle" || cmd.type === "ellipse" || cmd.type === "polygon" || cmd.type === "star") {
+      const worldPos = entry.state.getWorldPosition();
+      const scale = entry.state.worldSpace ? 1 : Math.max(1e-3, Math.min(1e3, entry.state.zoomScale));
+      const headingRad = (entry.state.angle * Math.PI) / 180;
+      const baseOpts = {
+        x: worldPos.x,
+        y: worldPos.y,
+        rotation: headingRad,
+        strokeColor: entry.state.pen.color,
+        strokeWidth: entry.state.pen.width * scale * entry.state.presetWidthMultiplier,
+        fillColor: entry.state.fillColor,
+        opacity: entry.state.pen.opacity * entry.state.presetOpacity,
+      };
+      if (cmd.type === "rectangle") {
+        entry.drawing.createShape({
+          ...baseOpts,
+          type: "rectangle",
+          width: cmd.width * scale,
+          height: cmd.height * scale,
+        });
+      } else if (cmd.type === "ellipse") {
+        entry.drawing.createShape({
+          ...baseOpts,
+          type: "ellipse",
+          width: cmd.width * scale,
+          height: cmd.height * scale,
+        });
+      } else if (cmd.type === "polygon") {
+        const diameter = cmd.radius * 2 * scale;
+        entry.drawing.createShape({
+          ...baseOpts,
+          type: "polygon",
+          width: diameter,
+          height: diameter,
+          sides: cmd.sides,
+        });
+      } else if (cmd.type === "star") {
+        const diameter = cmd.outerRadius * 2 * scale;
+        entry.drawing.createShape({
+          ...baseOpts,
+          type: "star",
+          width: diameter,
+          height: diameter,
+          sides: cmd.points,
+          starInnerRadius: cmd.innerRadius / cmd.outerRadius,
+        });
+      }
     }
   }
 

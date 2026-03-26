@@ -757,34 +757,36 @@ describe("LuaRuntime", () => {
       });
     });
 
-    it("stub methods raise not-yet-implemented errors", async () => {
-      for (const method of ["penmode", "penpreset", "rectangle", "ellipse", "polygon", "star", "fillcolor"]) {
+    it("shape methods validate arguments on spawn handles", async () => {
+      // rectangle, ellipse require 2 numbers; polygon requires int>=3 + number; star requires 3 numbers
+      for (const [method, errFragment] of [
+        ["rectangle", "rectangle()"],
+        ["ellipse", "ellipse()"],
+        ["polygon", "polygon()"],
+        ["star", "star()"],
+      ] as const) {
         const freshRuntime = new LuaRuntime();
         await freshRuntime.init();
         freshRuntime.setSpawnContext(registry, scriptId, doc);
         const result = await freshRuntime.execute(`
-          local t = spawn("stub_${method}")
+          local t = spawn("val_${method}")
           t.${method}()
         `);
         expect(result.success).toBe(false);
-        expect(result.error).toContain("not yet implemented");
+        expect(result.error).toContain(errFragment);
         freshRuntime.close();
       }
     });
 
-    it("stub methods raise not-yet-implemented errors for remaining stubs", async () => {
-      for (const method of ["penmode", "penpreset", "rectangle", "ellipse", "polygon", "star", "fillcolor"]) {
-        const freshRuntime = new LuaRuntime();
-        await freshRuntime.init();
-        freshRuntime.setSpawnContext(registry, scriptId, doc);
-        const result = await freshRuntime.execute(`
-          local t = spawn("stub2_${method}")
-          t.${method}()
-        `);
-        expect(result.success).toBe(false);
-        expect(result.error).toContain("not yet implemented");
-        freshRuntime.close();
-      }
+    it("fillcolor on spawn handle accepts nil without error", async () => {
+      await runtime.execute(`
+        local t = spawn("fc_nil")
+        t.fillcolor(nil)
+      `);
+      const cmds = runtime.getCommands();
+      const fc = cmds.find(c => c.type === "fillcolor");
+      expect(fc).toBeDefined();
+      expect((fc as any).color).toBeNull();
     });
 
     it("handle.hide pushes tagged hide command", async () => {
@@ -1310,6 +1312,477 @@ describe("LuaRuntime", () => {
       runtime.setActiveTurtle("child1");
       await runtime.execute("hide()");
       expect(runtime.getCommands()[0]).toEqual({ type: "hide", turtleId: "child1" });
+    });
+  });
+
+  describe("penmode()", () => {
+    it("produces penmode draw command", async () => {
+      await runtime.execute('penmode("draw")');
+      expect(runtime.getCommands()).toEqual([
+        { type: "penmode", mode: "draw", turtleOnly: false },
+      ]);
+    });
+
+    it("produces penmode erase command", async () => {
+      await runtime.execute('penmode("erase")');
+      expect(runtime.getCommands()).toEqual([
+        { type: "penmode", mode: "erase", turtleOnly: false },
+      ]);
+    });
+
+    it("accepts turtle_only option when erasing", async () => {
+      await runtime.execute('penmode("erase", {turtle_only=true})');
+      expect(runtime.getCommands()).toEqual([
+        { type: "penmode", mode: "erase", turtleOnly: true },
+      ]);
+    });
+
+    it("ignores turtle_only when mode is draw", async () => {
+      await runtime.execute('penmode("draw", {turtle_only=true})');
+      expect(runtime.getCommands()).toEqual([
+        { type: "penmode", mode: "draw", turtleOnly: false },
+      ]);
+    });
+
+    it("defaults turtle_only to false when not provided", async () => {
+      await runtime.execute('penmode("erase", {})');
+      expect(runtime.getCommands()).toEqual([
+        { type: "penmode", mode: "erase", turtleOnly: false },
+      ]);
+    });
+
+    it("throws on invalid mode string", async () => {
+      const result = await runtime.execute('penmode("fill")');
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('"draw" or "erase"');
+    });
+
+    it("throws on non-string argument", async () => {
+      const result = await runtime.execute("penmode(42)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('"draw" or "erase"');
+    });
+
+    it("throws when called with no arguments", async () => {
+      const result = await runtime.execute("penmode()");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('"draw" or "erase"');
+    });
+  });
+
+  describe("penpreset()", () => {
+    it("produces penpreset command with valid preset name", async () => {
+      await runtime.execute('penpreset("pen")');
+      expect(runtime.getCommands()).toEqual([
+        { type: "penpreset", preset: "pen" },
+      ]);
+    });
+
+    it("produces penpreset command for each valid preset", async () => {
+      for (const name of ["pen", "pencil", "marker", "highlighter"]) {
+        runtime.close();
+        runtime = new LuaRuntime();
+        await runtime.init();
+        await runtime.execute(`penpreset("${name}")`);
+        expect(runtime.getCommands()).toEqual([
+          { type: "penpreset", preset: name },
+        ]);
+      }
+    });
+
+    it("produces penpreset null command when called with nil", async () => {
+      await runtime.execute("penpreset(nil)");
+      expect(runtime.getCommands()).toEqual([
+        { type: "penpreset", preset: null },
+      ]);
+    });
+
+    it("passes through invalid preset names (TurtleState handles validation)", async () => {
+      await runtime.execute('penpreset("nonexistent")');
+      expect(runtime.getCommands()).toEqual([
+        { type: "penpreset", preset: "nonexistent" },
+      ]);
+    });
+
+    it("throws on non-string non-nil argument", async () => {
+      const result = await runtime.execute("penpreset(42)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("string name or nil");
+    });
+  });
+
+  describe("penmode/penpreset on spawn handles", () => {
+    let registry: TurtleRegistry;
+    const mockDoc: DocumentModel = {
+      strokes: [],
+      addStroke: () => "test-id",
+      removeStroke: () => true,
+      getStroke: () => undefined,
+    } as unknown as DocumentModel;
+
+    beforeEach(() => {
+      registry = new TurtleRegistry();
+      runtime.setSpawnContext(registry, "test-script", mockDoc);
+      // Eagerly create main turtle
+      registry.spawn("main", "test-script", mockDoc);
+    });
+
+    it("spawn handle penmode produces tagged command", async () => {
+      const result = await runtime.execute(`
+        local t = spawn("child1")
+        t.penmode("erase")
+      `);
+      expect(result.success).toBe(true);
+      const cmds = runtime.getCommands();
+      const penmodeCmd = cmds.find(c => c.type === "penmode");
+      expect(penmodeCmd).toEqual({
+        type: "penmode",
+        mode: "erase",
+        turtleOnly: false,
+        turtleId: "child1",
+      });
+    });
+
+    it("spawn handle penmode with turtle_only produces tagged command", async () => {
+      const result = await runtime.execute(`
+        local t = spawn("child1")
+        t.penmode("erase", {turtle_only=true})
+      `);
+      expect(result.success).toBe(true);
+      const cmds = runtime.getCommands();
+      const penmodeCmd = cmds.find(c => c.type === "penmode");
+      expect(penmodeCmd).toEqual({
+        type: "penmode",
+        mode: "erase",
+        turtleOnly: true,
+        turtleId: "child1",
+      });
+    });
+
+    it("spawn handle penmode validates mode string", async () => {
+      const result = await runtime.execute(`
+        local t = spawn("child1")
+        t.penmode("invalid")
+      `);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('"draw" or "erase"');
+    });
+
+    it("spawn handle penpreset produces tagged command", async () => {
+      const result = await runtime.execute(`
+        local t = spawn("child1")
+        t.penpreset("marker")
+      `);
+      expect(result.success).toBe(true);
+      const cmds = runtime.getCommands();
+      const presetCmd = cmds.find(c => c.type === "penpreset");
+      expect(presetCmd).toEqual({
+        type: "penpreset",
+        preset: "marker",
+        turtleId: "child1",
+      });
+    });
+
+    it("spawn handle penpreset nil resets preset", async () => {
+      const result = await runtime.execute(`
+        local t = spawn("child1")
+        t.penpreset(nil)
+      `);
+      expect(result.success).toBe(true);
+      const cmds = runtime.getCommands();
+      const presetCmd = cmds.find(c => c.type === "penpreset");
+      expect(presetCmd).toEqual({
+        type: "penpreset",
+        preset: null,
+        turtleId: "child1",
+      });
+    });
+  });
+
+  describe("fillcolor()", () => {
+    it("produces fillcolor command with hex string", async () => {
+      await runtime.execute('fillcolor("#ff0000")');
+      expect(runtime.getCommands()).toEqual([
+        { type: "fillcolor", color: "#ff0000" },
+      ]);
+    });
+
+    it("produces fillcolor command with r, g, b numbers", async () => {
+      await runtime.execute("fillcolor(255, 128, 0)");
+      expect(runtime.getCommands()).toEqual([
+        { type: "fillcolor", color: "#ff8000" },
+      ]);
+    });
+
+    it("clamps r, g, b to 0-255", async () => {
+      await runtime.execute("fillcolor(300, -10, 128)");
+      expect(runtime.getCommands()).toEqual([
+        { type: "fillcolor", color: "#ff0080" },
+      ]);
+    });
+
+    it("produces fillcolor null when called with nil", async () => {
+      await runtime.execute("fillcolor(nil)");
+      expect(runtime.getCommands()).toEqual([
+        { type: "fillcolor", color: null },
+      ]);
+    });
+
+    it("throws on invalid argument type", async () => {
+      const result = await runtime.execute("fillcolor(true)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("fillcolor()");
+    });
+  });
+
+  describe("rectangle()", () => {
+    it("produces rectangle command", async () => {
+      await runtime.execute("rectangle(100, 50)");
+      expect(runtime.getCommands()).toEqual([
+        { type: "rectangle", width: 100, height: 50 },
+      ]);
+    });
+
+    it("throws on non-number arguments", async () => {
+      const result = await runtime.execute('rectangle("a", 50)');
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("rectangle()");
+    });
+
+    it("throws on zero width", async () => {
+      const result = await runtime.execute("rectangle(0, 50)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("positive");
+    });
+
+    it("throws on negative height", async () => {
+      const result = await runtime.execute("rectangle(100, -1)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("positive");
+    });
+  });
+
+  describe("ellipse()", () => {
+    it("produces ellipse command", async () => {
+      await runtime.execute("ellipse(80, 60)");
+      expect(runtime.getCommands()).toEqual([
+        { type: "ellipse", width: 80, height: 60 },
+      ]);
+    });
+
+    it("throws on non-number arguments", async () => {
+      const result = await runtime.execute("ellipse(nil, 60)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("ellipse()");
+    });
+
+    it("throws on zero dimensions", async () => {
+      const result = await runtime.execute("ellipse(0, 60)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("positive");
+    });
+  });
+
+  describe("polygon()", () => {
+    it("produces polygon command", async () => {
+      await runtime.execute("polygon(6, 50)");
+      expect(runtime.getCommands()).toEqual([
+        { type: "polygon", sides: 6, radius: 50 },
+      ]);
+    });
+
+    it("throws on non-integer sides", async () => {
+      const result = await runtime.execute("polygon(3.5, 50)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("integer");
+    });
+
+    it("throws on sides < 3", async () => {
+      const result = await runtime.execute("polygon(2, 50)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("integer >= 3");
+    });
+
+    it("throws on zero radius", async () => {
+      const result = await runtime.execute("polygon(6, 0)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("positive");
+    });
+
+    it("throws on non-number arguments", async () => {
+      const result = await runtime.execute('polygon("six", 50)');
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("polygon()");
+    });
+  });
+
+  describe("star()", () => {
+    it("produces star command", async () => {
+      await runtime.execute("star(5, 50, 25)");
+      expect(runtime.getCommands()).toEqual([
+        { type: "star", points: 5, outerRadius: 50, innerRadius: 25 },
+      ]);
+    });
+
+    it("throws on non-integer points", async () => {
+      const result = await runtime.execute("star(3.5, 50, 25)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("integer");
+    });
+
+    it("throws on points < 2", async () => {
+      const result = await runtime.execute("star(1, 50, 25)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("integer >= 2");
+    });
+
+    it("throws on zero outerRadius", async () => {
+      const result = await runtime.execute("star(5, 0, 25)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("positive");
+    });
+
+    it("throws on negative innerRadius", async () => {
+      const result = await runtime.execute("star(5, 50, -10)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("positive");
+    });
+
+    it("throws on non-number arguments", async () => {
+      const result = await runtime.execute('star("five", 50, 25)');
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("star()");
+    });
+  });
+
+  describe("shape/fillcolor on spawn handles", () => {
+    let registry: TurtleRegistry;
+    const scriptId = "test-shapes";
+    const doc: DocumentModel = {
+      addStroke: () => {},
+      getStrokes: () => [],
+    };
+
+    beforeEach(() => {
+      registry = new TurtleRegistry();
+      registry.spawn("main", scriptId, doc);
+      runtime.setSpawnContext(registry, scriptId, doc);
+    });
+
+    it("spawn handle fillcolor produces tagged command", async () => {
+      await runtime.execute(`
+        local t = spawn("sh1")
+        t.fillcolor("#00ff00")
+      `);
+      const cmds = runtime.getCommands();
+      const fc = cmds.find(c => c.type === "fillcolor");
+      expect(fc).toEqual({
+        type: "fillcolor",
+        color: "#00ff00",
+        turtleId: "sh1",
+      });
+    });
+
+    it("spawn handle fillcolor nil clears fill", async () => {
+      await runtime.execute(`
+        local t = spawn("sh2")
+        t.fillcolor(nil)
+      `);
+      const cmds = runtime.getCommands();
+      const fc = cmds.find(c => c.type === "fillcolor");
+      expect(fc).toEqual({
+        type: "fillcolor",
+        color: null,
+        turtleId: "sh2",
+      });
+    });
+
+    it("spawn handle rectangle produces tagged command", async () => {
+      await runtime.execute(`
+        local t = spawn("sh3")
+        t.rectangle(100, 50)
+      `);
+      const cmds = runtime.getCommands();
+      const rect = cmds.find(c => c.type === "rectangle");
+      expect(rect).toEqual({
+        type: "rectangle",
+        width: 100,
+        height: 50,
+        turtleId: "sh3",
+      });
+    });
+
+    it("spawn handle ellipse produces tagged command", async () => {
+      await runtime.execute(`
+        local t = spawn("sh4")
+        t.ellipse(80, 60)
+      `);
+      const cmds = runtime.getCommands();
+      const ell = cmds.find(c => c.type === "ellipse");
+      expect(ell).toEqual({
+        type: "ellipse",
+        width: 80,
+        height: 60,
+        turtleId: "sh4",
+      });
+    });
+
+    it("spawn handle polygon produces tagged command", async () => {
+      await runtime.execute(`
+        local t = spawn("sh5")
+        t.polygon(6, 50)
+      `);
+      const cmds = runtime.getCommands();
+      const poly = cmds.find(c => c.type === "polygon");
+      expect(poly).toEqual({
+        type: "polygon",
+        sides: 6,
+        radius: 50,
+        turtleId: "sh5",
+      });
+    });
+
+    it("spawn handle star produces tagged command", async () => {
+      await runtime.execute(`
+        local t = spawn("sh6")
+        t.star(5, 50, 25)
+      `);
+      const cmds = runtime.getCommands();
+      const s = cmds.find(c => c.type === "star");
+      expect(s).toEqual({
+        type: "star",
+        points: 5,
+        outerRadius: 50,
+        innerRadius: 25,
+        turtleId: "sh6",
+      });
+    });
+
+    it("spawn handle rectangle validates arguments", async () => {
+      const result = await runtime.execute(`
+        local t = spawn("sh7")
+        t.rectangle(0, 50)
+      `);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("positive");
+    });
+
+    it("spawn handle polygon validates sides", async () => {
+      const result = await runtime.execute(`
+        local t = spawn("sh8")
+        t.polygon(2, 50)
+      `);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("integer >= 3");
+    });
+
+    it("spawn handle star validates points", async () => {
+      const result = await runtime.execute(`
+        local t = spawn("sh9")
+        t.star(1, 50, 25)
+      `);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("integer >= 2");
     });
   });
 });

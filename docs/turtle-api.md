@@ -87,7 +87,7 @@ Also available as `turtle_goto(x, y)` — an alias provided because `goto` is a 
 
 #### `home()` {#home}
 
-Return the turtle to `(0, 0)` and reset the heading to `0` (facing up). Draws a line if the pen is down.
+Return the turtle to `(0, 0)` and reset the heading to `0` (facing up). Draws a line if the pen is down. Also resets pen mode to `"draw"`, clears the active brush preset (`penpreset(nil)`), and clears the fill color (`fillcolor(nil)`).
 
 ```lua
 home()  -- return to origin, face up
@@ -205,6 +205,159 @@ Set the pen opacity. **Clamped** to the range `[0.0, 1.0]`.
 ```lua
 penopacity(0.5)   -- semi-transparent
 penopacity(1.0)   -- fully opaque (default)
+```
+
+#### `penmode(mode, options?)` {#penmode}
+
+Set the pen mode. In `"draw"` mode (the default), movement commands create strokes. In `"erase"` mode, movement commands erase any strokes under the turtle's path within the current pen width radius.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `mode` | `string` | `"draw"` or `"erase"` |
+| `options` | `table?` | Optional settings table |
+
+**Options table fields:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `turtle_only` | `boolean` | `false` | When `true`, only erase turtle-drawn strokes — hand-drawn strokes are left untouched |
+
+**Errors:** Throws if `mode` is not `"draw"` or `"erase"`.
+
+The mode resets to `"draw"` when `home()` is called.
+
+```lua
+-- Erase everything under the turtle's path
+penmode("erase")
+forward(100)         -- erases all strokes along this line
+
+-- Only erase turtle-drawn strokes
+penmode("erase", {turtle_only = true})
+forward(100)         -- hand-drawn strokes survive
+
+-- Switch back to drawing
+penmode("draw")
+forward(100)         -- draws a line again
+```
+
+#### `penpreset(name)` {#penpreset}
+
+Apply a named brush preset. Each preset adjusts the pen's width multiplier and opacity based on the brush's pressure and opacity curves evaluated at pressure 1.0 (turtle strokes have uniform pressure). Pass `nil` to clear the preset and return to raw pen settings.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | `string` or `nil` | Preset name: `"pen"`, `"pencil"`, `"marker"`, `"highlighter"`, or `nil` to clear |
+
+```lua
+penpreset("marker")      -- apply marker brush preset
+forward(100)             -- draws with marker-style width and opacity
+
+penpreset("highlighter") -- semi-transparent highlighting
+forward(100)
+
+penpreset(nil)           -- back to raw pen settings
+```
+
+#### `fillcolor(r, g, b)` {#fillcolor-rgb}
+
+Set the fill color for shape commands using RGB integer values. Each component is clamped to **0–255**.
+
+| Parameter | Type | Range | Description |
+|-----------|------|-------|-------------|
+| `r` | `number` | 0–255 | Red component |
+| `g` | `number` | 0–255 | Green component |
+| `b` | `number` | 0–255 | Blue component |
+
+```lua
+fillcolor(255, 200, 0)   -- golden yellow fill
+rectangle(80, 60)
+```
+
+#### `fillcolor(hex)` {#fillcolor-hex}
+
+Set the fill color using a hex string.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hex` | `string` | Color in `"#rrggbb"` format |
+
+```lua
+fillcolor("#ff6600")   -- orange fill
+ellipse(100, 60)
+```
+
+#### `fillcolor(nil)` {#fillcolor-nil}
+
+Clear the fill color so shapes are drawn with stroke only (no fill). This is the default.
+
+```lua
+fillcolor(nil)         -- no fill
+rectangle(80, 60)      -- outline only
+```
+
+---
+
+### Shapes {#shapes}
+
+Shape commands create geometric shapes centered at the turtle's current position. They use the current `pencolor`, `penwidth`, `penopacity`, and `fillcolor`. Shapes do **not** move the turtle and are oriented by the turtle's current heading.
+
+#### `rectangle(width, height)` {#rectangle}
+
+Draw a rectangle centered at the turtle's position.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `width` | `number` | Width in pixels (must be positive) |
+| `height` | `number` | Height in pixels (must be positive) |
+
+```lua
+fillcolor(200, 220, 255)
+rectangle(120, 80)    -- 120×80 rectangle at current position
+```
+
+#### `ellipse(width, height)` {#ellipse}
+
+Draw an ellipse centered at the turtle's position.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `width` | `number` | Horizontal diameter in pixels (must be positive) |
+| `height` | `number` | Vertical diameter in pixels (must be positive) |
+
+```lua
+fillcolor("#ffcc00")
+ellipse(100, 60)     -- horizontal ellipse
+```
+
+#### `polygon(sides, radius)` {#polygon}
+
+Draw a regular polygon centered at the turtle's position.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `sides` | `number` | Number of sides (integer, must be ≥ 3) |
+| `radius` | `number` | Radius from center to vertex in pixels (must be positive) |
+
+```lua
+fillcolor(100, 200, 100)
+polygon(6, 50)       -- hexagon with radius 50
+polygon(3, 80)       -- equilateral triangle with radius 80
+```
+
+#### `star(points, outerRadius, innerRadius)` {#star}
+
+Draw a star centered at the turtle's position.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `points` | `number` | Number of star points (integer, must be ≥ 2) |
+| `outerRadius` | `number` | Radius to outer points in pixels (must be positive) |
+| `innerRadius` | `number` | Radius to inner points in pixels (must be positive) |
+
+```lua
+fillcolor(255, 215, 0)
+star(5, 60, 25)      -- classic 5-pointed star
+star(8, 40, 20)      -- 8-pointed star
 ```
 
 ---
@@ -455,6 +608,13 @@ Every handle returned by `spawn()` has the following methods. They behave identi
 | `h.pencolor(r, g, b)` or `h.pencolor(hex)` | Set pen color |
 | `h.penwidth(width)` | Set pen width |
 | `h.penopacity(opacity)` | Set pen opacity |
+| `h.penmode(mode, options?)` | Set pen to draw or erase mode |
+| `h.penpreset(name)` | Apply a named brush preset |
+| `h.fillcolor(r, g, b)` or `h.fillcolor(hex)` or `h.fillcolor(nil)` | Set or clear shape fill color |
+| `h.rectangle(width, height)` | Draw a rectangle |
+| `h.ellipse(width, height)` | Draw an ellipse |
+| `h.polygon(sides, radius)` | Draw a regular polygon |
+| `h.star(points, outerR, innerR)` | Draw a star |
 | `h.speed(n)` | Set animation speed |
 | `h.goto_pos(x, y)` | Move to absolute position |
 | `h.home()` | Return to origin |
@@ -605,6 +765,15 @@ You can observe but not control turtles from other scripts. Calling control meth
 | [`pencolor(hex)`](#pencolor-hex) | Pen Control | Set color (hex string) |
 | [`penwidth(width)`](#penwidth) | Pen Control | Set stroke width |
 | [`penopacity(opacity)`](#penopacity) | Pen Control | Set stroke opacity |
+| [`penmode(mode, options?)`](#penmode) | Pen Control | Set pen to draw or erase mode |
+| [`penpreset(name)`](#penpreset) | Pen Control | Apply a named brush preset |
+| [`fillcolor(r, g, b)`](#fillcolor-rgb) | Pen Control | Set shape fill color (RGB) |
+| [`fillcolor(hex)`](#fillcolor-hex) | Pen Control | Set shape fill color (hex string) |
+| [`fillcolor(nil)`](#fillcolor-nil) | Pen Control | Clear shape fill color |
+| [`rectangle(width, height)`](#rectangle) | Shapes | Draw a rectangle |
+| [`ellipse(width, height)`](#ellipse) | Shapes | Draw an ellipse |
+| [`polygon(sides, radius)`](#polygon) | Shapes | Draw a regular polygon |
+| [`star(points, outerR, innerR)`](#star) | Shapes | Draw a star |
 | [`position()`](#position) | State Query | Get current position |
 | [`heading()`](#heading) | State Query | Get current heading |
 | [`isdown()`](#isdown) | State Query | Check if pen is down |

@@ -68,7 +68,7 @@ goto_pos(200, 150)  -- move to position (200, 150)
 
 #### `home()`
 
-Return the turtle to the origin (0, 0) and reset the heading to 0 (facing up). Draws a line if the pen is down.
+Return the turtle to the origin (0, 0) and reset the heading to 0 (facing up). Draws a line if the pen is down. Also resets pen mode to `"draw"`, clears the active brush preset, and clears the fill color.
 
 ```lua
 home()
@@ -149,6 +149,72 @@ Set the pen opacity. `0.0` is fully transparent, `1.0` is fully opaque. Values a
 
 ```lua
 penopacity(0.5)   -- semi-transparent
+```
+
+#### `penmode(mode, options?)`
+
+Switch the pen between draw and erase modes. In `"erase"` mode, movement erases strokes under the turtle's path instead of drawing new ones.
+
+```lua
+penmode("erase")                          -- erase all strokes under path
+penmode("erase", {turtle_only = true})    -- only erase turtle-drawn strokes
+penmode("draw")                           -- back to normal drawing
+```
+
+#### `penpreset(name)`
+
+Apply a named brush preset (`"pen"`, `"pencil"`, `"marker"`, `"highlighter"`). Pass `nil` to clear.
+
+```lua
+penpreset("marker")
+forward(100)             -- marker-style stroke
+penpreset(nil)           -- back to raw pen
+```
+
+#### `fillcolor(r, g, b)` / `fillcolor(hex)` / `fillcolor(nil)`
+
+Set the fill color for shape commands. Pass `nil` to clear (outline only).
+
+```lua
+fillcolor(255, 200, 0)   -- set fill color
+fillcolor("#ff6600")      -- hex format
+fillcolor(nil)            -- no fill
+```
+
+### Shapes
+
+Shape commands create geometric objects at the turtle's current position without moving the turtle. They use the current pen color, width, opacity, heading, and fill color.
+
+#### `rectangle(width, height)`
+
+Draw a rectangle centered at the turtle.
+
+```lua
+rectangle(120, 80)
+```
+
+#### `ellipse(width, height)`
+
+Draw an ellipse centered at the turtle.
+
+```lua
+ellipse(100, 60)
+```
+
+#### `polygon(sides, radius)`
+
+Draw a regular polygon. `sides` must be ≥ 3.
+
+```lua
+polygon(6, 50)   -- hexagon
+```
+
+#### `star(points, outerRadius, innerRadius)`
+
+Draw a star. `points` must be ≥ 2.
+
+```lua
+star(5, 60, 25)  -- classic 5-pointed star
 ```
 
 ### State Queries
@@ -397,6 +463,198 @@ end
 
 pencolor(128, 0, 128)
 sierpinski(256, 5)
+```
+
+### Architecture — Building a Scene with Shapes and Erasing
+
+Build a house scene using shape commands for walls, roof, and windows, then use the eraser to cut a doorway:
+
+```lua
+speed(0)
+
+-- Ground
+pencolor("#558855")
+fillcolor("#558855")
+penup()
+goto_pos(0, 120)
+pendown()
+rectangle(500, 40)
+
+-- Main house body
+pencolor("#884422")
+fillcolor("#ddbb88")
+penup()
+goto_pos(0, 20)
+pendown()
+rectangle(200, 160)
+
+-- Roof (triangle)
+pencolor("#882222")
+fillcolor("#cc4444")
+penup()
+goto_pos(0, -80)
+pendown()
+polygon(3, 120)
+
+-- Left window
+pencolor("#336699")
+fillcolor("#aaddff")
+penup()
+goto_pos(-50, 10)
+pendown()
+ellipse(40, 40)
+
+-- Right window
+penup()
+goto_pos(50, 10)
+pendown()
+ellipse(40, 40)
+
+-- Door frame
+pencolor("#553311")
+fillcolor("#774422")
+penup()
+goto_pos(0, 60)
+pendown()
+rectangle(40, 70)
+
+-- Chimney
+pencolor("#666666")
+fillcolor("#888888")
+penup()
+goto_pos(70, -100)
+pendown()
+rectangle(25, 50)
+
+-- Sun
+pencolor("#ffaa00")
+fillcolor(255, 220, 50)
+penup()
+goto_pos(-180, -120)
+pendown()
+star(8, 40, 18)
+
+-- Erase a doorway opening in the door
+penmode("erase")
+penwidth(30)
+penup()
+goto_pos(0, 55)
+pendown()
+goto_pos(0, 95)
+
+-- Back to draw mode — add a doorknob
+penmode("draw")
+penwidth(2)
+pencolor("#ffcc00")
+fillcolor("#ffcc00")
+penup()
+goto_pos(10, 65)
+pendown()
+ellipse(6, 6)
+```
+
+### Brush Sampler — Comparing Brush Presets
+
+Draw the same spiral pattern with each brush preset side by side to visualize the differences:
+
+```lua
+speed(0)
+
+local presets = {"pen", "pencil", "marker", "highlighter"}
+local colors = {"#2244cc", "#cc4422", "#22aa44", "#ff8800"}
+local labels = {"Pen", "Pencil", "Marker", "Highlighter"}
+
+for i, preset in ipairs(presets) do
+  -- Position each sample in a row
+  local offsetX = -225 + (i - 1) * 150
+
+  -- Label
+  penpreset(nil)
+  pencolor("#000000")
+  penwidth(2)
+  penopacity(1.0)
+  penup()
+  goto_pos(offsetX, -100)
+  pendown()
+
+  -- Draw label as a small underline
+  forward(0)
+  penup()
+  goto_pos(offsetX - 30, -85)
+  pendown()
+  goto_pos(offsetX + 30, -85)
+
+  -- Apply the preset and draw a spiral
+  penpreset(preset)
+  pencolor(colors[i])
+  penwidth(3)
+  penup()
+  goto_pos(offsetX, 0)
+  pendown()
+
+  -- Save heading, draw spiral from this position
+  local cx, cy = offsetX, 0
+  for step = 1, 60 do
+    local angle = step * 0.15
+    local radius = step * 1.0
+    local nx = cx + math.cos(angle) * radius
+    local ny = cy + math.sin(angle) * radius
+    goto_pos(nx, ny)
+  end
+end
+
+-- Reset preset
+penpreset(nil)
+```
+
+### Shape Scene with Selective Erasing
+
+Build a scene with shapes, then use the eraser to cut patterns through it:
+
+```lua
+speed(0)
+
+-- Draw a row of colored rectangles
+penwidth(2)
+for i = 0, 4 do
+  penup()
+  goto_pos(-200 + i * 100, 0)
+  pendown()
+
+  -- Alternate colors
+  local colors = {"#ff4444", "#44aa44", "#4444ff", "#ffaa00", "#aa44aa"}
+  pencolor(colors[i + 1])
+  fillcolor(colors[i + 1])
+  rectangle(80, 120)
+end
+
+-- Add stars on top
+fillcolor(255, 215, 0)
+pencolor("#ffdd00")
+for i = 0, 4 do
+  penup()
+  goto_pos(-200 + i * 100, -40)
+  pendown()
+  star(5, 20, 8)
+end
+
+-- Now erase a diagonal slash through the scene
+penmode("erase")
+penwidth(15)
+penup()
+goto_pos(-250, 80)
+pendown()
+goto_pos(250, -80)
+
+-- Switch back to draw mode and add a polygon
+penmode("draw")
+penwidth(3)
+pencolor("#000000")
+fillcolor(nil)
+penup()
+goto_pos(0, 100)
+pendown()
+polygon(6, 40)
 ```
 
 ## Turtle Herding

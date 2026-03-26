@@ -76,11 +76,17 @@ export class ExchangeClient {
     try {
       response = await fetchWithTimeout(url, INDEX_TIMEOUT_MS);
     } catch (err) {
-      if ((err as Error).name === "AbortError") {
+      const e = err as Error;
+      console.warn("[Exchange] fetch failed for index", {
+        url,
+        name: e.name,
+        message: e.message,
+      });
+      if (e.name === "AbortError") {
         throw new ExchangeError("Request timed out fetching exchange index");
       }
       throw new ExchangeError(
-        `Network error fetching exchange index: ${(err as Error).message}`,
+        `Network error fetching exchange index: ${e.message}`,
       );
     }
 
@@ -115,13 +121,20 @@ export class ExchangeClient {
     try {
       response = await fetchWithTimeout(url, SCRIPT_TIMEOUT_MS);
     } catch (err) {
-      if ((err as Error).name === "AbortError") {
+      const e = err as Error;
+      console.warn("[Exchange] fetch failed for script", {
+        url,
+        script: entry.title,
+        name: e.name,
+        message: e.message,
+      });
+      if (e.name === "AbortError") {
         throw new ExchangeError(
           `Request timed out fetching script "${entry.title}"`,
         );
       }
       throw new ExchangeError(
-        `Network error fetching script "${entry.title}": ${(err as Error).message}`,
+        `Network error fetching script "${entry.title}": ${e.message}`,
       );
     }
 

@@ -151,6 +151,72 @@ Set the pen opacity. `0.0` is fully transparent, `1.0` is fully opaque. Values a
 penopacity(0.5)   -- semi-transparent
 ```
 
+#### `penmode(mode, options?)`
+
+Switch the pen between draw and erase modes. In `"erase"` mode, movement erases strokes under the turtle's path instead of drawing new ones.
+
+```lua
+penmode("erase")                          -- erase all strokes under path
+penmode("erase", {turtle_only = true})    -- only erase turtle-drawn strokes
+penmode("draw")                           -- back to normal drawing
+```
+
+#### `penpreset(name)`
+
+Apply a named brush preset (`"pen"`, `"pencil"`, `"marker"`, `"highlighter"`). Pass `nil` to clear.
+
+```lua
+penpreset("marker")
+forward(100)             -- marker-style stroke
+penpreset(nil)           -- back to raw pen
+```
+
+#### `fillcolor(r, g, b)` / `fillcolor(hex)` / `fillcolor(nil)`
+
+Set the fill color for shape commands. Pass `nil` to clear (outline only).
+
+```lua
+fillcolor(255, 200, 0)   -- set fill color
+fillcolor("#ff6600")      -- hex format
+fillcolor(nil)            -- no fill
+```
+
+### Shapes
+
+Shape commands create geometric objects at the turtle's current position without moving the turtle. They use the current pen color, width, opacity, heading, and fill color.
+
+#### `rectangle(width, height)`
+
+Draw a rectangle centered at the turtle.
+
+```lua
+rectangle(120, 80)
+```
+
+#### `ellipse(width, height)`
+
+Draw an ellipse centered at the turtle.
+
+```lua
+ellipse(100, 60)
+```
+
+#### `polygon(sides, radius)`
+
+Draw a regular polygon. `sides` must be ≥ 3.
+
+```lua
+polygon(6, 50)   -- hexagon
+```
+
+#### `star(points, outerRadius, innerRadius)`
+
+Draw a star. `points` must be ≥ 2.
+
+```lua
+star(5, 60, 25)  -- classic 5-pointed star
+```
+
 ### State Queries
 
 #### `position()`
@@ -397,6 +463,56 @@ end
 
 pencolor(128, 0, 128)
 sierpinski(256, 5)
+```
+
+### Shape Scene with Selective Erasing
+
+Build a scene with shapes, then use the eraser to cut patterns through it:
+
+```lua
+speed(0)
+
+-- Draw a row of colored rectangles
+penwidth(2)
+for i = 0, 4 do
+  penup()
+  goto_pos(-200 + i * 100, 0)
+  pendown()
+
+  -- Alternate colors
+  local colors = {"#ff4444", "#44aa44", "#4444ff", "#ffaa00", "#aa44aa"}
+  pencolor(colors[i + 1])
+  fillcolor(colors[i + 1])
+  rectangle(80, 120)
+end
+
+-- Add stars on top
+fillcolor(255, 215, 0)
+pencolor("#ffdd00")
+for i = 0, 4 do
+  penup()
+  goto_pos(-200 + i * 100, -40)
+  pendown()
+  star(5, 20, 8)
+end
+
+-- Now erase a diagonal slash through the scene
+penmode("erase")
+penwidth(15)
+penup()
+goto_pos(-250, 80)
+pendown()
+goto_pos(250, -80)
+
+-- Switch back to draw mode and add a polygon
+penmode("draw")
+penwidth(3)
+pencolor("#000000")
+fillcolor(nil)
+penup()
+goto_pos(0, 100)
+pendown()
+polygon(6, 40)
 ```
 
 ## Turtle Herding

@@ -201,6 +201,8 @@ export class TurtleRegistry {
 
   /** Remove a turtle and all its descendants recursively. */
   private removeWithDescendants(id: string): void {
+    // Read entry BEFORE deleting so we can clean up the parent's child set
+    const entry = this.turtles.get(id);
     const childSet = this.children.get(id);
     if (childSet) {
       for (const childId of childSet) {
@@ -210,7 +212,6 @@ export class TurtleRegistry {
     this.turtles.delete(id);
     this.children.delete(id);
     // Remove from parent's child set
-    const entry = this.turtles.get(id);
     if (entry?.parentId) {
       this.children.get(entry.parentId)?.delete(id);
     }

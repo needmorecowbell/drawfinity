@@ -895,6 +895,12 @@ export class CanvasApp {
       }
       const wp = entry.state.getWorldPosition();
       this.turtleIndicator.updateTurtle(localId, wp.x, wp.y, entry.state.angle, entry.state.pen.color);
+      // Sync per-turtle visibility with state
+      if (entry.state.visible) {
+        this.turtleIndicator.showTurtle(localId);
+      } else {
+        this.turtleIndicator.hideTurtle(localId);
+      }
     }
   }
 

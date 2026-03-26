@@ -312,8 +312,11 @@ export class TurtleExecutor {
       return;
     }
 
-    // hide/show are indicator commands — no state change, handled by onStep sync
+    // hide/show update state.visible so syncTurtleIndicators can reflect it
     if (cmd.type === "hide" || cmd.type === "show") {
+      if (entry) {
+        entry.state.applyCommand(cmd);
+      }
       return;
     }
 

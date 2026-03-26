@@ -1,6 +1,7 @@
 import { LuaFactory, LuaEngine, LuaLibraries, LuaMultiReturn } from "wasmoon";
 import type { TurtleRegistry } from "./TurtleRegistry";
 import type { DocumentModel } from "../model/Stroke";
+import type { MessageBus, Blackboard } from "./TurtleMessaging";
 
 /**
  * Base command variants produced by turtle API calls during script execution.
@@ -80,6 +81,9 @@ export class LuaRuntime {
   private spawnDoc: DocumentModel | null = null;
   /** Tracks turtle IDs spawned during current collection to detect duplicates. */
   private spawnedThisExecution = new Set<string>();
+  /** Messaging context set by TurtleExecutor before script execution. */
+  private messageBus: MessageBus | null = null;
+  private blackboard: Blackboard | null = null;
 
   constructor() {
     this.factory = new LuaFactory();
@@ -103,6 +107,15 @@ export class LuaRuntime {
     this.spawnRegistry = registry;
     this.spawnScriptId = scriptId;
     this.spawnDoc = doc;
+  }
+
+  /**
+   * Set the messaging context so spatial/messaging Lua functions can operate.
+   * Called by TurtleExecutor before each script execution.
+   */
+  setMessagingContext(messageBus: MessageBus, blackboard: Blackboard): void {
+    this.messageBus = messageBus;
+    this.blackboard = blackboard;
   }
 
   /** Initialize the Lua engine. Must be called once before execute(). */
@@ -767,6 +780,165 @@ export class LuaRuntime {
       ctx.registry.setMaxDepth(Math.floor(n));
     });
 
+    // --- Spatial queries & messaging ---
+
+    const getMessaging = () => ({
+      bus: this.messageBus,
+      board: this.blackboard,
+    });
+
+    // Resolve the full turtle ID for the currently active turtle
+    const getFullTurtleId = () => {
+      const ctx = getSpawnCtx();
+      return ctx.scriptId ? `${ctx.scriptId}:${this.activeTurtleId}` : this.activeTurtleId;
+    };
+
+    // Internal: nearby_turtles(radius)
+    g.set("_nearby_turtles_impl", (radius: unknown) => {
+      if (typeof radius !== "number" || radius < 0) {
+        throw new Error("nearby_turtles() requires a non-negative number radius");
+      }
+      const ctx = getSpawnCtx();
+      if (!ctx.registry) {
+        throw new Error("Spawn context not set — cannot query nearby turtles");
+      }
+      const fullId = getFullTurtleId();
+      if (!ctx.registry.has(fullId)) return [];
+      const results = ctx.registry.nearbyTurtles(fullId, radius);
+      // Convert full IDs to local IDs for the Lua API
+      return results.map((t) => {
+        const colonIdx = t.id.indexOf(":");
+        return {
+          id: colonIdx >= 0 ? t.id.substring(colonIdx + 1) : t.id,
+          x: t.x,
+          y: t.y,
+          heading: t.heading,
+          distance: t.distance,
+        };
+      });
+    });
+
+    // Internal: nearby_strokes(radius)
+    g.set("_nearby_strokes_impl", (radius: unknown) => {
+      if (typeof radius !== "number" || radius < 0) {
+        throw new Error("nearby_strokes() requires a non-negative number radius");
+      }
+      const ctx = getSpawnCtx();
+      if (!ctx.registry || !ctx.doc) {
+        throw new Error("Spawn context not set — cannot query nearby strokes");
+      }
+      const fullId = getFullTurtleId();
+      const entry = ctx.registry.get(fullId);
+      if (!entry) return [];
+      return ctx.registry.nearbyStrokes(entry.state.x, entry.state.y, radius, ctx.doc);
+    });
+
+    // Internal: distance_to(id)
+    g.set("_distance_to_impl", (targetId: unknown) => {
+      if (typeof targetId !== "string" || targetId.length === 0) {
+        throw new Error("distance_to() requires a non-empty string turtle ID");
+      }
+      const ctx = getSpawnCtx();
+      if (!ctx.registry || !ctx.scriptId) {
+        throw new Error("Spawn context not set — cannot query distance");
+      }
+      const fullSelf = getFullTurtleId();
+      const fullTarget = `${ctx.scriptId}:${targetId}`;
+      return ctx.registry.distanceTo(fullSelf, fullTarget);
+    });
+
+    // Internal: send(targetId, data)
+    g.set("_send_impl", (targetId: unknown, data: unknown) => {
+      if (typeof targetId !== "string" || targetId.length === 0) {
+        throw new Error("send() requires a non-empty string target turtle ID");
+      }
+      const msg = getMessaging();
+      if (!msg.bus) {
+        throw new Error("Messaging context not set — cannot send messages");
+      }
+      const ctx = getSpawnCtx();
+      const fromFull = getFullTurtleId();
+      const toFull = ctx.scriptId ? `${ctx.scriptId}:${targetId}` : targetId;
+      msg.bus.send(fromFull, toFull, data);
+    });
+
+    // Internal: receive()
+    g.set("_receive_impl", () => {
+      const msg = getMessaging();
+      if (!msg.bus) {
+        throw new Error("Messaging context not set — cannot receive messages");
+      }
+      const fullId = getFullTurtleId();
+      const message = msg.bus.receive(fullId);
+      if (!message) return undefined;
+      // Convert full IDs to local IDs
+      const fromColon = message.fromId.indexOf(":");
+      return {
+        from: fromColon >= 0 ? message.fromId.substring(fromColon + 1) : message.fromId,
+        data: message.data,
+      };
+    });
+
+    // Internal: peek()
+    g.set("_peek_impl", () => {
+      const msg = getMessaging();
+      if (!msg.bus) {
+        throw new Error("Messaging context not set — cannot peek messages");
+      }
+      const fullId = getFullTurtleId();
+      const message = msg.bus.peek(fullId);
+      if (!message) return undefined;
+      const fromColon = message.fromId.indexOf(":");
+      return {
+        from: fromColon >= 0 ? message.fromId.substring(fromColon + 1) : message.fromId,
+        data: message.data,
+      };
+    });
+
+    // Internal: broadcast(data)
+    g.set("_broadcast_impl", (data: unknown) => {
+      const msg = getMessaging();
+      if (!msg.bus) {
+        throw new Error("Messaging context not set — cannot broadcast messages");
+      }
+      const fullId = getFullTurtleId();
+      msg.bus.broadcast(fullId, data);
+    });
+
+    // Internal: publish(key, value)
+    g.set("_publish_impl", (key: unknown, value: unknown) => {
+      if (typeof key !== "string") {
+        throw new Error("publish() requires a string key");
+      }
+      const msg = getMessaging();
+      if (!msg.board) {
+        throw new Error("Messaging context not set — cannot publish to blackboard");
+      }
+      msg.board.publish(key, value);
+    });
+
+    // Internal: read_board(key)
+    g.set("_read_board_impl", (key: unknown) => {
+      if (typeof key !== "string") {
+        throw new Error("read_board() requires a string key");
+      }
+      const msg = getMessaging();
+      if (!msg.board) {
+        throw new Error("Messaging context not set — cannot read from blackboard");
+      }
+      const val = msg.board.read(key);
+      return val === undefined ? undefined : val;
+    });
+
+    // Internal: board_keys()
+    g.set("_board_keys_impl", () => {
+      const msg = getMessaging();
+      if (!msg.board) {
+        throw new Error("Messaging context not set — cannot list blackboard keys");
+      }
+      return msg.board.keys();
+    });
+
     // Register `goto` as an alias (goto is a Lua keyword in 5.4, so we use a wrapper)
     engine.doStringSync(`
       -- 'goto' is a reserved keyword in Lua, so we alias via goto_pos
@@ -801,6 +973,56 @@ export class LuaRuntime {
       -- environment_turtles() — return all turtles across all scripts
       function environment_turtles()
         return _environment_turtles_impl()
+      end
+
+      -- nearby_turtles(radius) — return table of nearby turtle info
+      function nearby_turtles(radius)
+        return _nearby_turtles_impl(radius)
+      end
+
+      -- nearby_strokes(radius) — return table of nearby stroke IDs
+      function nearby_strokes(radius)
+        return _nearby_strokes_impl(radius)
+      end
+
+      -- distance_to(id) — distance to another turtle
+      function distance_to(id)
+        return _distance_to_impl(id)
+      end
+
+      -- send(targetId, data) — send message to another turtle
+      function send(targetId, data)
+        _send_impl(targetId, data)
+      end
+
+      -- receive() — receive next message
+      function receive()
+        return _receive_impl()
+      end
+
+      -- peek() — peek at next message without consuming
+      function peek()
+        return _peek_impl()
+      end
+
+      -- broadcast(data) — send to all other turtles
+      function broadcast(data)
+        _broadcast_impl(data)
+      end
+
+      -- publish(key, value) — write to blackboard
+      function publish(key, value)
+        _publish_impl(key, value)
+      end
+
+      -- read_board(key) — read from blackboard
+      function read_board(key)
+        return _read_board_impl(key)
+      end
+
+      -- board_keys() — list all blackboard keys
+      function board_keys()
+        return _board_keys_impl()
       end
 
       -- spawn(id, opts?) — create a new turtle and return a handle table

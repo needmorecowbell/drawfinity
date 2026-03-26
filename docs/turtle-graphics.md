@@ -795,19 +795,19 @@ branch(0, 0, 180, 80, 6)
 
 ### Example: Flocking (Boid Rules)
 
-Spawn 20 turtles that use `nearby_turtles()` to implement simple boid rules — separation, alignment, and cohesion — over 200 simulation steps:
+Spawn 20 turtles that use `activate()` and `nearby_turtles()` to implement simple boid rules — separation, alignment, and cohesion — over 200 simulation steps:
 
 ```lua
 speed(0)
 math.randomseed(os.clock())
 
 local count = 20
-local turtles = {}
+local ids = {}
 
 -- Spawn turtles in a cluster
 for i = 1, count do
-  local id = "boid" .. i
-  local t = spawn(id, {
+  ids[i] = "boid" .. i
+  spawn(ids[i], {
     x = math.random(-150, 150),
     y = math.random(-150, 150),
     heading = math.random(0, 359),
@@ -815,15 +815,17 @@ for i = 1, count do
       math.random(100, 255), math.random(50, 200), math.random(50, 200)),
     width = 2,
   })
-  turtles[i] = {id = id, handle = t}
 end
 
 -- Simulate 200 generations of flocking
 simulate(200, function(step)
   for i = 1, count do
+    activate(ids[i])  -- switch context so queries/commands affect this boid
     local neighbors = nearby_turtles(80)
 
     if #neighbors > 0 then
+      local myX, myY = position()
+      local myH = heading()
       local sepX, sepY = 0, 0     -- separation
       local avgHdg = 0            -- alignment
       local avgX, avgY = 0, 0     -- cohesion
@@ -831,9 +833,8 @@ simulate(200, function(step)
       for _, n in ipairs(neighbors) do
         -- Separation: steer away from very close neighbors
         if n.distance < 30 and n.distance > 0 then
-          local tx, ty = position()
-          sepX = sepX + (tx - n.x)
-          sepY = sepY + (ty - n.y)
+          sepX = sepX + (myX - n.x)
+          sepY = sepY + (myY - n.y)
         end
         avgHdg = avgHdg + n.heading
         avgX = avgX + n.x
@@ -850,8 +851,7 @@ simulate(200, function(step)
 
       -- Alignment: steer toward average heading
       avgHdg = avgHdg / #neighbors
-      local h = heading()
-      local diff = avgHdg - h
+      local diff = avgHdg - myH
       turn = turn + diff * 0.05
 
       -- Clamp turn
@@ -863,6 +863,7 @@ simulate(200, function(step)
 
     forward(4)
   end
+  activate("main")
 end)
 ```
 
@@ -897,6 +898,7 @@ send("relay1", "#ff0000")
 -- Each step, turtles check for messages and pass them along
 simulate(chain_len + 5, function(step)
   for i = 1, chain_len do
+    activate(ids[i])  -- switch to this turtle for receive/draw
     local msg = receive()
     if msg then
       -- Use the received color to draw
@@ -919,6 +921,7 @@ simulate(chain_len + 5, function(step)
       end
     end
   end
+  activate("main")
 end)
 ```
 
@@ -961,12 +964,29 @@ publish("generation", 1)
 local gen = read_board("generation")
 ```
 
+### Switching Active Turtle
+
+By default, global functions like `forward()`, `receive()`, and `nearby_turtles()` operate on the main turtle. Use `activate(id)` to switch context to a spawned turtle, then call `activate("main")` to switch back. This is essential inside `simulate()` loops where each turtle needs to act independently.
+
+```lua
+spawn("scout", { x = 50, y = 0 })
+
+simulate(20, function(step)
+  activate("scout")
+  local near = nearby_turtles(100)
+  forward(5)       -- moves scout, not main
+  activate("main")
+  forward(3)       -- moves main
+end)
+```
+
 ### Multi-Step Simulation
 
-`simulate(steps, fn)` runs a step function over multiple generations. Between steps, messages are delivered and state is updated. This is essential for patterns like Game of Life.
+`simulate(steps, fn)` runs a step function over multiple generations. During simulate, movement commands eagerly update turtle state so spatial queries reflect real-time positions. This is essential for reactive patterns like flocking and cellular automata.
 
 ```lua
 simulate(100, function(step)
+  activate("worker")
   local near = nearby_turtles(30)
   if #near > 3 then
     pencolor(255, 0, 0)   -- crowded = red
@@ -974,6 +994,7 @@ simulate(100, function(step)
     pencolor(0, 255, 0)   -- sparse = green
   end
   forward(5)
+  activate("main")
 end)
 ```
 

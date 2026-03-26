@@ -210,64 +210,89 @@ export class LuaRuntime {
     this.commands.push({ ...cmd, turtleId });
   }
 
+  /**
+   * Get the active turtle's TurtleState from the registry (for eager updates).
+   * Returns null if no registry or the turtle isn't found.
+   */
+  private getActiveTurtleState(): import("./TurtleState").TurtleState | null {
+    if (!this.spawnRegistry || !this.spawnScriptId) return null;
+    const fullId = `${this.spawnScriptId}:${this.activeTurtleId}`;
+    return this.spawnRegistry.get(fullId)?.state ?? null;
+  }
+
+  /**
+   * Push a command and, when inside simulate(), eagerly apply it to the
+   * active turtle's state so that spatial queries reflect current positions.
+   */
+  private pushAndApply(cmd: TurtleCommandVariant): void {
+    this.pushCommand(cmd);
+    if (this.currentStep > 0) {
+      const state = this.getActiveTurtleState();
+      if (state) {
+        state.applyCommand(cmd as TurtleCommand);
+      }
+    }
+  }
+
   private registerTurtleAPI(): void {
     const engine = this.engine!;
     const g = engine.global;
     const push = this.pushCommand.bind(this);
+    const pushApply = this.pushAndApply.bind(this);
     const getQuery = () => this.stateQuery;
 
-    // Movement
+    // Movement — eagerly update state during simulate() so spatial queries work
     g.set("forward", (distance: number) => {
-      push({ type: "forward", distance });
+      pushApply({ type: "forward", distance });
     });
 
     g.set("backward", (distance: number) => {
-      push({ type: "backward", distance });
+      pushApply({ type: "backward", distance });
     });
 
     g.set("right", (angle: number) => {
-      push({ type: "right", angle });
+      pushApply({ type: "right", angle });
     });
 
     g.set("left", (angle: number) => {
-      push({ type: "left", angle });
+      pushApply({ type: "left", angle });
     });
 
     g.set("goto_pos", (x: number, y: number) => {
-      push({ type: "goto", x, y });
+      pushApply({ type: "goto", x, y });
     });
 
     g.set("home", () => {
-      push({ type: "home" });
+      pushApply({ type: "home" });
     });
 
-    // Pen control
+    // Pen control — also eagerly apply so state queries (isdown) are accurate
     g.set("penup", () => {
-      push({ type: "penup" });
+      pushApply({ type: "penup" });
     });
 
     g.set("pendown", () => {
-      push({ type: "pendown" });
+      pushApply({ type: "pendown" });
     });
 
     g.set("pencolor", (rOrHex: number | string, gVal?: number, b?: number) => {
       if (typeof rOrHex === "string") {
-        push({ type: "pencolor", color: rOrHex });
+        pushApply({ type: "pencolor", color: rOrHex });
       } else {
         const r = Math.round(Math.max(0, Math.min(255, rOrHex)));
         const gC = Math.round(Math.max(0, Math.min(255, gVal ?? 0)));
         const bC = Math.round(Math.max(0, Math.min(255, b ?? 0)));
         const hex = `#${r.toString(16).padStart(2, "0")}${gC.toString(16).padStart(2, "0")}${bC.toString(16).padStart(2, "0")}`;
-        push({ type: "pencolor", color: hex });
+        pushApply({ type: "pencolor", color: hex });
       }
     });
 
     g.set("penwidth", (w: number) => {
-      push({ type: "penwidth", width: w });
+      pushApply({ type: "penwidth", width: w });
     });
 
     g.set("penopacity", (o: number) => {
-      push({ type: "penopacity", opacity: Math.max(0, Math.min(1, o)) });
+      pushApply({ type: "penopacity", opacity: Math.max(0, Math.min(1, o)) });
     });
 
     // State queries
@@ -429,6 +454,17 @@ export class LuaRuntime {
     // --- Spawn infrastructure ---
 
     const pushTagged = this.pushTaggedCommand.bind(this);
+    /** Push a tagged command and eagerly apply state during simulate(). */
+    const pushTaggedApply = (turtleId: string, cmd: TurtleCommandVariant) => {
+      pushTagged(turtleId, cmd);
+      if (this.currentStep > 0 && this.spawnRegistry && this.spawnScriptId) {
+        const fullId = `${this.spawnScriptId}:${turtleId}`;
+        const entry = this.spawnRegistry.get(fullId);
+        if (entry) {
+          entry.state.applyCommand(cmd as TurtleCommand);
+        }
+      }
+    };
     const getSpawnCtx = () => ({
       registry: this.spawnRegistry,
       scriptId: this.spawnScriptId,
@@ -492,12 +528,39 @@ export class LuaRuntime {
         }
         ctx.spawned.add(id);
 
+        // Register spawned turtle with message bus if messaging is available
+        const messaging = getMessaging();
+        if (messaging.bus) {
+          const spawnedFullId = `${ctx.scriptId}:${id}`;
+          messaging.bus.register(spawnedFullId);
+        }
+
         // Push spawn command for executor replay
         push({ type: "spawn", id, ...options });
 
         return id;
       },
     );
+
+    // Internal: activate(id) — switch the active turtle context
+    g.set("_activate_impl", (id: unknown) => {
+      if (typeof id !== "string" || id.length === 0) {
+        throw new Error("activate() requires a non-empty string turtle ID");
+      }
+      const ctx = getSpawnCtx();
+      if (id !== "main" && !ctx.spawned.has(id)) {
+        throw new Error(`activate(): unknown turtle "${id}"`);
+      }
+      this.activeTurtleId = id;
+      // Update state query to point at the activated turtle
+      if (ctx.registry && ctx.scriptId) {
+        const fullId = `${ctx.scriptId}:${id}`;
+        const entry = ctx.registry.get(fullId);
+        if (entry) {
+          this.stateQuery = entry.state;
+        }
+      }
+    });
 
     // Internal: generic command dispatcher for turtle handle methods
     g.set(
@@ -523,54 +586,54 @@ export class LuaRuntime {
         }
         switch (cmdType) {
           case "forward":
-            pushTagged(turtleId, { type: "forward", distance: arg1 as number });
+            pushTaggedApply(turtleId, { type: "forward", distance: arg1 as number });
             break;
           case "backward":
-            pushTagged(turtleId, { type: "backward", distance: arg1 as number });
+            pushTaggedApply(turtleId, { type: "backward", distance: arg1 as number });
             break;
           case "right":
-            pushTagged(turtleId, { type: "right", angle: arg1 as number });
+            pushTaggedApply(turtleId, { type: "right", angle: arg1 as number });
             break;
           case "left":
-            pushTagged(turtleId, { type: "left", angle: arg1 as number });
+            pushTaggedApply(turtleId, { type: "left", angle: arg1 as number });
             break;
           case "penup":
-            pushTagged(turtleId, { type: "penup" });
+            pushTaggedApply(turtleId, { type: "penup" });
             break;
           case "pendown":
-            pushTagged(turtleId, { type: "pendown" });
+            pushTaggedApply(turtleId, { type: "pendown" });
             break;
           case "pencolor":
             if (typeof arg1 === "string") {
-              pushTagged(turtleId, { type: "pencolor", color: arg1 });
+              pushTaggedApply(turtleId, { type: "pencolor", color: arg1 });
             } else {
               const r = Math.round(Math.max(0, Math.min(255, arg1 as number)));
               const gC = Math.round(Math.max(0, Math.min(255, (arg2 as number) ?? 0)));
               const bC = Math.round(Math.max(0, Math.min(255, (arg3 as number) ?? 0)));
               const hex = `#${r.toString(16).padStart(2, "0")}${gC.toString(16).padStart(2, "0")}${bC.toString(16).padStart(2, "0")}`;
-              pushTagged(turtleId, { type: "pencolor", color: hex });
+              pushTaggedApply(turtleId, { type: "pencolor", color: hex });
             }
             break;
           case "penwidth":
-            pushTagged(turtleId, { type: "penwidth", width: arg1 as number });
+            pushTaggedApply(turtleId, { type: "penwidth", width: arg1 as number });
             break;
           case "penopacity":
-            pushTagged(turtleId, {
+            pushTaggedApply(turtleId, {
               type: "penopacity",
               opacity: Math.max(0, Math.min(1, arg1 as number)),
             });
             break;
           case "speed":
-            pushTagged(turtleId, {
+            pushTaggedApply(turtleId, {
               type: "speed",
               value: Math.max(0, Math.min(10, arg1 as number)),
             });
             break;
           case "goto":
-            pushTagged(turtleId, { type: "goto", x: arg1 as number, y: arg2 as number });
+            pushTaggedApply(turtleId, { type: "goto", x: arg1 as number, y: arg2 as number });
             break;
           case "home":
-            pushTagged(turtleId, { type: "home" });
+            pushTaggedApply(turtleId, { type: "home" });
             break;
           case "clear":
             pushTagged(turtleId, { type: "clear" });
@@ -1124,6 +1187,11 @@ export class LuaRuntime {
       -- set_max_steps(n) — configure maximum simulate steps
       function set_max_steps(n)
         _set_max_steps_impl(n)
+      end
+
+      -- activate(id) — switch active turtle context for global functions
+      function activate(id)
+        _activate_impl(id)
       end
 
       -- collides_with(id) — check if active turtle collides with target

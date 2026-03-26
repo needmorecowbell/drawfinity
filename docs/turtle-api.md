@@ -748,6 +748,34 @@ You can observe but not control turtles from other scripts. Calling control meth
 
 ---
 
+### Active Turtle Context {#context}
+
+#### `activate(id)` {#activate}
+
+Switch the active turtle context. After calling `activate(id)`, all global functions (`forward()`, `right()`, `receive()`, `nearby_turtles()`, etc.) operate on the specified turtle instead of the main turtle. Call `activate("main")` to switch back.
+
+This is essential inside `simulate()` loops where you iterate over spawned turtles and want each to act independently.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | `string` | Turtle ID to activate (`"main"` or a spawned turtle ID) |
+
+**Errors:** Throws if the ID doesn't match a known turtle.
+
+```lua
+spawn("helper", { x = 50, y = 0 })
+
+simulate(10, function(step)
+  activate("helper")
+  forward(5)           -- moves helper, not main
+  local n = nearby_turtles(100)  -- queries from helper's position
+  activate("main")     -- switch back
+  forward(5)           -- moves main
+end)
+```
+
+---
+
 ## Communication & Awareness {#communication}
 
 Turtles can sense their environment, exchange messages, and share state through a global blackboard. These capabilities enable emergent multi-turtle behaviors like flocking, cellular automata, and relay patterns.
@@ -1052,6 +1080,7 @@ set_collision_radius(20)   -- larger collision area
 | [`set_spawn_limit(n)`](#set-spawn-limit) | Turtle Herding | Set max turtle count |
 | [`set_spawn_depth(n)`](#set-spawn-depth) | Turtle Herding | Set max spawn nesting depth |
 | [`environment_turtles()`](#environment-turtles) | Turtle Herding | List all turtles across scripts |
+| [`activate(id)`](#activate) | Context | Switch active turtle for global functions |
 | [`nearby_turtles(radius)`](#nearby-turtles) | Communication | Find turtles within radius |
 | [`nearby_strokes(radius)`](#nearby-strokes) | Communication | Find strokes within radius |
 | [`distance_to(id)`](#distance-to) | Communication | Distance to another turtle |

@@ -40,6 +40,7 @@ class FakeLuaRuntime {
   setStateQuery(): void {}
   setActiveTurtle(): void {}
   setSpawnContext(): void {}
+  setMessagingContext(): void {}
 
   async execute() {
     return { success: true as const };

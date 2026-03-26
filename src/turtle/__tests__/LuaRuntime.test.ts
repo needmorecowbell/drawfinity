@@ -2477,4 +2477,130 @@ describe("LuaRuntime", () => {
       expect(rectCmds.length).toBeGreaterThan(0);
     });
   });
+
+  describe("Langton's Ant example script", () => {
+    let bus: MessageBus;
+    let board: Blackboard;
+
+    // Small Langton's Ant script for testing (10 steps)
+    const antScript = `
+      speed(0)
+      hide()
+
+      local ox, oy = position()
+      local CELL = 6
+      local STEPS = 10
+
+      local ax, ay = 0, 0
+      local dir = 0
+
+      local dx = {[0] = 0, [1] = 1, [2] = 0, [3] = -1}
+      local dy = {[0] = -1, [1] = 0, [2] = 1, [3] = 0}
+
+      simulate(STEPS, function(step)
+        local key = ax .. "_" .. ay
+        local wx = ox + ax * CELL
+        local wy = oy + ay * CELL
+        local state = read_board(key)
+
+        if state == 1 then
+          dir = (dir + 3) % 4
+          publish(key, 0)
+          penup()
+          goto_pos(wx, wy)
+          pendown()
+          fillcolor("#eff1f5")
+          pencolor("#eff1f5")
+          rectangle(CELL, CELL)
+        else
+          dir = (dir + 1) % 4
+          publish(key, 1)
+          penup()
+          goto_pos(wx, wy)
+          pendown()
+          fillcolor("#1e1e2e")
+          pencolor("#1e1e2e")
+          rectangle(CELL, CELL)
+        end
+
+        ax = ax + dx[dir]
+        ay = ay + dy[dir]
+      end)
+    `;
+
+    beforeEach(() => {
+      bus = new MessageBus();
+      board = new Blackboard();
+      runtime.setMessagingContext(bus, board);
+      runtime.setStateQuery({
+        getPosition: () => ({ x: 0, y: 0 }),
+        getHeading: () => 0,
+        isDown: () => true,
+      });
+    });
+
+    it("executes Langton's Ant with 10 steps without errors", async () => {
+      const result = await runtime.execute(antScript);
+      expect(result.success).toBe(true);
+    });
+
+    it("generates step_boundary markers for 10 steps", async () => {
+      await runtime.execute(antScript);
+      const cmds = runtime.getCommands();
+      const stepCmds = cmds.filter((c) => c.type === "step_boundary");
+      expect(stepCmds.length).toBe(10);
+    });
+
+    it("generates rectangle commands for each step", async () => {
+      await runtime.execute(antScript);
+      const cmds = runtime.getCommands();
+      const rectCmds = cmds.filter((c) => c.type === "rectangle");
+      // One rectangle per step (each step flips one cell)
+      expect(rectCmds.length).toBe(10);
+    });
+
+    it("correctly flips cell state via blackboard after 5 steps", async () => {
+      // After 5 steps of Langton's Ant starting at (0,0) facing up:
+      // Step 1: (0,0) white → right, black, move to (1,0)
+      // Step 2: (1,0) white → right, black, move to (1,1)
+      // Step 3: (1,1) white → right, black, move to (0,1)
+      // Step 4: (0,1) white → right, black, move to (0,0)
+      // Step 5: (0,0) black → left, white, move to (-1,0)
+      const fiveStepScript = `
+        speed(0)
+        hide()
+        local ax, ay = 0, 0
+        local dir = 0
+        local dx = {[0] = 0, [1] = 1, [2] = 0, [3] = -1}
+        local dy = {[0] = -1, [1] = 0, [2] = 1, [3] = 0}
+
+        simulate(5, function(step)
+          local key = ax .. "_" .. ay
+          local state = read_board(key)
+          if state == 1 then
+            dir = (dir + 3) % 4
+            publish(key, 0)
+          else
+            dir = (dir + 1) % 4
+            publish(key, 1)
+          end
+          ax = ax + dx[dir]
+          ay = ay + dy[dir]
+        end)
+      `;
+      await runtime.execute(fiveStepScript);
+      // After 5 steps: (0,0) flipped back to white (0), others remain black (1)
+      expect(board.read("0_0")).toBe(0);
+      expect(board.read("1_0")).toBe(1);
+      expect(board.read("1_1")).toBe(1);
+      expect(board.read("0_1")).toBe(1);
+    });
+
+    it("does not spawn any turtles (single-turtle automaton)", async () => {
+      await runtime.execute(antScript);
+      const cmds = runtime.getCommands();
+      const spawnCmds = cmds.filter((c) => c.type === "spawn");
+      expect(spawnCmds.length).toBe(0);
+    });
+  });
 });

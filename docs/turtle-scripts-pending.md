@@ -554,3 +554,84 @@ simulate(GENS, function(gen)
   end
 end)
 ```
+
+## 9. Langton's Ant (Cellular Automaton)
+
+**Tags:** cellular-automata, simulate, blackboard, advanced
+**Description:** Langton's Ant — a single turtle walks on an infinite grid flipping cell colors. On a white cell: turn right 90°, color black, advance. On a black cell: turn left 90°, color white, advance. Cell state is tracked via `publish()`/`read_board()` blackboard. Uses `simulate()` for stepping through 10000 iterations. After the initial chaotic phase (~10000 steps), the ant produces the characteristic diagonal "highway" pattern — order emerging from two simple rules. Red ellipse markers show the ant's start and end positions.
+**Status:** Added to exchange snapshot.
+
+```lua
+-- Langton's Ant
+-- A single turtle (the ant) walks on an infinite grid, flipping cell colors.
+-- White cell: turn right 90, color black, advance.
+-- Black cell: turn left 90, color white, advance.
+-- After ~10000 steps the ant breaks free of chaotic scribbling and
+-- builds a diagonal "highway" — order emerging from simple rules.
+
+speed(0)
+hide()
+set_max_steps(11000)
+
+local ox, oy = position()
+local CELL = 6
+local STEPS = 10000
+
+-- Ant state: grid position and direction (0=up,1=right,2=down,3=left)
+local ax, ay = 0, 0
+local dir = 0
+
+local dx = {[0] = 0, [1] = 1, [2] = 0, [3] = -1}
+local dy = {[0] = -1, [1] = 0, [2] = 1, [3] = 0}
+
+local BLACK_COLOR = "#1e1e2e"
+local WHITE_COLOR = "#eff1f5"
+
+-- Mark ant starting position
+pencolor("#e64553")
+fillcolor("#e64553")
+penup()
+goto_pos(ox, oy)
+pendown()
+ellipse(2, 2)
+
+simulate(STEPS, function(step)
+  local key = ax .. "_" .. ay
+  local wx = ox + ax * CELL
+  local wy = oy + ay * CELL
+  local state = read_board(key)
+
+  if state == 1 then
+    -- Black cell: turn left, flip to white
+    dir = (dir + 3) % 4
+    publish(key, 0)
+    penup()
+    goto_pos(wx, wy)
+    pendown()
+    fillcolor(WHITE_COLOR)
+    pencolor(WHITE_COLOR)
+    rectangle(CELL, CELL)
+  else
+    -- White cell: turn right, flip to black
+    dir = (dir + 1) % 4
+    publish(key, 1)
+    penup()
+    goto_pos(wx, wy)
+    pendown()
+    fillcolor(BLACK_COLOR)
+    pencolor(BLACK_COLOR)
+    rectangle(CELL, CELL)
+  end
+
+  ax = ax + dx[dir]
+  ay = ay + dy[dir]
+end)
+
+-- Mark ant final position
+pencolor("#e64553")
+fillcolor("#e64553")
+penup()
+goto_pos(ox + ax * CELL, oy + ay * CELL)
+pendown()
+ellipse(3, 3)
+```

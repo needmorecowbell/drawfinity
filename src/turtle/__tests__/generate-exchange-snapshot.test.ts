@@ -43,7 +43,7 @@ describe("exchange-snapshot.json", () => {
     }
   });
 
-  it("contains the expected 8 seeded scripts", () => {
+  it("contains the expected 9 seeded scripts", () => {
     const raw = readFileSync(SNAPSHOT_PATH, "utf-8");
     const snapshot: ExchangeSnapshot = JSON.parse(raw);
     const ids = snapshot.scripts.map((s) => s.id).sort();
@@ -51,6 +51,7 @@ describe("exchange-snapshot.json", () => {
       "fractal-zoom-tree",
       "game-of-life",
       "koch-curve",
+      "langtons-ant",
       "sierpinski-triangle",
       "sierpinski-zoom",
       "spiral",

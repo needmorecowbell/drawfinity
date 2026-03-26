@@ -36,11 +36,21 @@ export const DEFAULT_BACKGROUND_COLOR = "#FAFAF8";
  * doc.onStrokesChanged(() => renderer.redraw());
  * ```
  */
+/** A turtle script shared by a collaborator via the Yjs document. */
+export interface SharedScript {
+  id: string;
+  title: string;
+  code: string;
+  author: string;
+  sharedAt: number;
+}
+
 export class DrawfinityDoc implements DocumentModel {
   private doc: Y.Doc;
   private items: Y.Array<Y.Map<unknown>>;
   private meta: Y.Map<string>;
   private bookmarks: Y.Array<Y.Map<unknown>>;
+  private sharedScripts: Y.Map<string>;
 
   /**
    * Creates a new DrawfinityDoc, optionally wrapping an existing Yjs document.
@@ -53,6 +63,7 @@ export class DrawfinityDoc implements DocumentModel {
     this.items = this.doc.getArray<Y.Map<unknown>>("strokes");
     this.meta = this.doc.getMap<string>("meta");
     this.bookmarks = this.doc.getArray<Y.Map<unknown>>("bookmarks");
+    this.sharedScripts = this.doc.getMap<string>("shared-scripts");
   }
 
   /**
@@ -340,5 +351,60 @@ export class DrawfinityDoc implements DocumentModel {
    */
   getBookmarksArray(): Y.Array<Y.Map<unknown>> {
     return this.bookmarks;
+  }
+
+  /**
+   * Shares a turtle script into the document's shared-scripts map.
+   *
+   * @param script - The shared script entry including id, title, code, and author.
+   */
+  shareScript(script: SharedScript): void {
+    this.doc.transact(() => {
+      this.sharedScripts.set(script.id, JSON.stringify(script));
+    });
+  }
+
+  /**
+   * Removes a shared script by ID.
+   *
+   * @param id - The unique identifier of the shared script to remove.
+   */
+  removeSharedScript(id: string): void {
+    this.doc.transact(() => {
+      this.sharedScripts.delete(id);
+    });
+  }
+
+  /**
+   * Returns all shared scripts in the document.
+   *
+   * @returns An array of {@link SharedScript} objects.
+   */
+  getSharedScripts(): SharedScript[] {
+    const scripts: SharedScript[] = [];
+    this.sharedScripts.forEach((value) => {
+      try {
+        scripts.push(JSON.parse(value) as SharedScript);
+      } catch {
+        // Ignore corrupt entries
+      }
+    });
+    return scripts.sort((a, b) => b.sharedAt - a.sharedAt);
+  }
+
+  /**
+   * Registers a callback that fires whenever shared scripts change.
+   *
+   * @param callback - A function invoked on every change to the shared scripts map.
+   */
+  onSharedScriptsChanged(callback: () => void): void {
+    this.sharedScripts.observe(callback);
+  }
+
+  /**
+   * Returns the raw Yjs map backing shared scripts.
+   */
+  getSharedScriptsMap(): Y.Map<string> {
+    return this.sharedScripts;
   }
 }

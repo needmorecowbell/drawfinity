@@ -27,6 +27,7 @@ export interface SpawnOptions {
   heading?: number;
   color?: string;
   width?: number;
+  scale?: number;
 }
 
 /**
@@ -86,6 +87,13 @@ export class TurtleRegistry {
     if (options?.heading !== undefined) state.angle = options.heading;
     if (options?.color !== undefined) state.pen.color = options.color;
     if (options?.width !== undefined) state.pen.width = options.width;
+    if (options?.scale !== undefined) state.scaleFactor = options.scale;
+
+    // Compound scale with parent's scale factor
+    const parentEntry = this.turtles.get(resolvedParentId);
+    if (parentEntry) {
+      state.scaleFactor = parentEntry.state.scaleFactor * (options?.scale ?? 1);
+    }
 
     const drawing = new TurtleDrawing(doc);
     this.turtles.set(id, {

@@ -25,7 +25,8 @@ type TurtleCommandVariant =
   | { type: "sleep"; ms: number }
   | { type: "print"; message: string }
   | { type: "set_world_space"; enabled: boolean }
-  | { type: "spawn"; id: string; x?: number; y?: number; heading?: number; color?: string; width?: number }
+  | { type: "scale_pen"; enabled: boolean }
+  | { type: "spawn"; id: string; x?: number; y?: number; heading?: number; color?: string; width?: number; scale?: number }
   | { type: "kill"; id: string }
   | { type: "killall" }
   | { type: "hide" }
@@ -343,6 +344,10 @@ export class LuaRuntime {
       push({ type: "set_world_space", enabled: !!enabled });
     });
 
+    g.set("scale_pen", (enabled: boolean) => {
+      pushApply({ type: "scale_pen", enabled: !!enabled });
+    });
+
     // Pen mode (draw / erase)
     g.set("penmode", (mode: unknown, options?: unknown) => {
       if (typeof mode !== "string" || (mode !== "draw" && mode !== "erase")) {
@@ -482,6 +487,7 @@ export class LuaRuntime {
         heading?: number | null,
         color?: string | null,
         width?: number | null,
+        scale?: number | null,
       ) => {
         const ctx = getSpawnCtx();
         if (!ctx.registry || !ctx.scriptId || !ctx.doc) {
@@ -504,12 +510,13 @@ export class LuaRuntime {
           );
         }
 
-        const options: { x?: number; y?: number; heading?: number; color?: string; width?: number } = {};
+        const options: { x?: number; y?: number; heading?: number; color?: string; width?: number; scale?: number } = {};
         if (x != null) options.x = x;
         if (y != null) options.y = y;
         if (heading != null) options.heading = heading;
         if (color != null) options.color = color;
         if (width != null) options.width = width;
+        if (scale != null) options.scale = scale;
 
         // Create turtle eagerly so state queries work during collection.
         // Spawn x/y are offsets from origin — inherit origin from main turtle.
@@ -646,6 +653,9 @@ export class LuaRuntime {
             break;
           case "set_world_space":
             pushTagged(turtleId, { type: "set_world_space", enabled: !!arg1 });
+            break;
+          case "scale_pen":
+            pushTaggedApply(turtleId, { type: "scale_pen", enabled: !!arg1 });
             break;
           case "hide":
             pushTagged(turtleId, { type: "hide" });
@@ -1215,7 +1225,7 @@ export class LuaRuntime {
           error("spawn() requires a non-empty string ID")
         end
         opts = opts or {}
-        _spawn_impl(id, opts.x, opts.y, opts.heading, opts.color, opts.width)
+        _spawn_impl(id, opts.x, opts.y, opts.heading, opts.color, opts.width, opts.scale)
 
         local h = {}
         h.forward = function(d) _tcmd(id, "forward", d) end
@@ -1233,6 +1243,7 @@ export class LuaRuntime {
         h.clear = function() _tcmd(id, "clear") end
         h.sleep = function(ms) _tcmd(id, "sleep", ms) end
         h.set_world_space = function(e) _tcmd(id, "set_world_space", e) end
+        h.scale_pen = function(e) _tcmd(id, "scale_pen", e) end
         h.print = function(...)
           local parts = {}
           for i = 1, select("#", ...) do
@@ -1299,6 +1310,11 @@ export class LuaRuntime {
         end
 
         return h
+      end
+
+      -- spawn_at_scale(id, scale, x, y) — convenience for spawn with scale
+      function spawn_at_scale(id, scale, x, y)
+        return spawn(id, {x = x, y = y, scale = scale})
       end
     `);
   }

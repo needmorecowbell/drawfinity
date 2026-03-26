@@ -290,7 +290,7 @@ export class TurtleExecutor {
       const fullId = `${this.scriptId}:${cmd.id}`;
       if (!this.registry.has(fullId)) {
         this.registry.spawn(cmd.id, this.scriptId, this.doc, undefined, {
-          x: cmd.x, y: cmd.y, heading: cmd.heading, color: cmd.color, width: cmd.width,
+          x: cmd.x, y: cmd.y, heading: cmd.heading, color: cmd.color, width: cmd.width, scale: cmd.scale,
         });
       } else {
         // Turtle was created during collection — reset to spawn options
@@ -301,6 +301,10 @@ export class TurtleExecutor {
         if (cmd.heading !== undefined) entry.state.angle = cmd.heading;
         if (cmd.color !== undefined) entry.state.pen.color = cmd.color;
         if (cmd.width !== undefined) entry.state.pen.width = cmd.width;
+        // Compound scale with parent
+        const mainEntry = this.registry.get(`${this.scriptId}:main`);
+        const parentScale = mainEntry?.state.scaleFactor ?? 1;
+        entry.state.scaleFactor = parentScale * (cmd.scale ?? 1);
       }
       // Inherit origin and zoom scale from main turtle so spawned turtles
       // respect placement and zoom-aware scaling. Spawn x/y are treated as
@@ -396,13 +400,15 @@ export class TurtleExecutor {
     if (cmd.type === "rectangle" || cmd.type === "ellipse" || cmd.type === "polygon" || cmd.type === "star") {
       const worldPos = entry.state.getWorldPosition();
       const scale = entry.state.worldSpace ? 1 : Math.max(1e-3, Math.min(1e3, entry.state.zoomScale));
+      const sf = entry.state.scaleFactor;
+      const penScale = entry.state.scalePen ? sf : 1;
       const headingRad = (entry.state.angle * Math.PI) / 180;
       const baseOpts = {
         x: worldPos.x,
         y: worldPos.y,
         rotation: headingRad,
         strokeColor: entry.state.pen.color,
-        strokeWidth: entry.state.pen.width * scale * entry.state.presetWidthMultiplier,
+        strokeWidth: entry.state.pen.width * scale * entry.state.presetWidthMultiplier * penScale,
         fillColor: entry.state.fillColor,
         opacity: entry.state.pen.opacity * entry.state.presetOpacity,
       };
@@ -410,18 +416,18 @@ export class TurtleExecutor {
         entry.drawing.createShape({
           ...baseOpts,
           type: "rectangle",
-          width: cmd.width * scale,
-          height: cmd.height * scale,
+          width: cmd.width * scale * sf,
+          height: cmd.height * scale * sf,
         });
       } else if (cmd.type === "ellipse") {
         entry.drawing.createShape({
           ...baseOpts,
           type: "ellipse",
-          width: cmd.width * scale,
-          height: cmd.height * scale,
+          width: cmd.width * scale * sf,
+          height: cmd.height * scale * sf,
         });
       } else if (cmd.type === "polygon") {
-        const diameter = cmd.radius * 2 * scale;
+        const diameter = cmd.radius * 2 * scale * sf;
         entry.drawing.createShape({
           ...baseOpts,
           type: "polygon",
@@ -430,7 +436,7 @@ export class TurtleExecutor {
           sides: cmd.sides,
         });
       } else if (cmd.type === "star") {
-        const diameter = cmd.outerRadius * 2 * scale;
+        const diameter = cmd.outerRadius * 2 * scale * sf;
         entry.drawing.createShape({
           ...baseOpts,
           type: "star",

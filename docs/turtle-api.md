@@ -390,6 +390,202 @@ The following modules and globals are **not available**:
 
 ---
 
+## Multi-Turtle Spawning {#spawning}
+
+Turtle scripts can spawn additional turtles, each with independent state. Spawned turtles draw concurrently during the replay phase using interleaved (round-robin) execution.
+
+### Concepts {#spawning-concepts}
+
+- **Handle-based control:** `spawn()` returns a handle table with the same methods as the global turtle API. Commands on a handle target that specific turtle.
+- **Interleaved replay:** During the replay phase, all active turtles advance one command per tick in round-robin order. A turtle spawned mid-replay begins executing on the next tick.
+- **Ownership:** A script can only control turtles it spawned. Turtles from other scripts are observable but not controllable.
+- **Global registry:** All turtles across all scripts share a global `TurtleRegistry`. Turtles from one script remain visible to other scripts until cleared.
+
+---
+
+### `spawn(id, options?)` {#spawn}
+
+Create a new turtle and return a handle table for controlling it. The turtle starts at the origin (or specified position) with pen down.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | `string` | Unique identifier for the turtle (must be non-empty, cannot be `"main"`) |
+| `options` | `table?` | Optional initial state |
+
+**Options table fields:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `x` | `number` | `0` | Initial X position |
+| `y` | `number` | `0` | Initial Y position |
+| `heading` | `number` | `0` | Initial heading in degrees |
+| `color` | `string` | `"#000000"` | Pen color as hex string |
+| `width` | `number` | `2` | Pen width in pixels |
+
+**Returns:** A handle table with methods mirroring the global turtle API.
+
+**Errors:** Throws if the ID is empty, equals `"main"`, is already in use, or the spawn limit is exceeded.
+
+```lua
+-- Spawn at default position
+local t = spawn("helper")
+t.forward(100)
+t.right(90)
+t.forward(50)
+
+-- Spawn with options
+local t2 = spawn("red", { x = 100, y = 0, heading = 45, color = "#ff0000", width = 3 })
+t2.forward(200)
+```
+
+#### Handle Methods {#handle-methods}
+
+Every handle returned by `spawn()` has the following methods. They behave identically to the global functions but target the spawned turtle.
+
+| Method | Description |
+|--------|-------------|
+| `h.forward(distance)` | Move forward |
+| `h.backward(distance)` | Move backward |
+| `h.right(angle)` | Turn clockwise |
+| `h.left(angle)` | Turn counter-clockwise |
+| `h.penup()` | Lift pen |
+| `h.pendown()` | Lower pen |
+| `h.pencolor(r, g, b)` or `h.pencolor(hex)` | Set pen color |
+| `h.penwidth(width)` | Set pen width |
+| `h.penopacity(opacity)` | Set pen opacity |
+| `h.speed(n)` | Set animation speed |
+| `h.goto_pos(x, y)` | Move to absolute position |
+| `h.home()` | Return to origin |
+| `h.clear()` | Clear strokes drawn by this turtle |
+| `h.print(...)` | Print to console |
+| `h.sleep(ms)` | Pause execution |
+| `h.set_world_space(enabled)` | Toggle zoom scaling |
+| `h.position()` | Returns `x, y` |
+| `h.heading()` | Returns heading in degrees |
+| `h.isdown()` | Returns `true` if pen is down |
+| `h.hide()` | Hide this turtle's indicator |
+| `h.show()` | Show this turtle's indicator |
+
+---
+
+### `kill(id)` {#kill}
+
+Remove a spawned turtle and its indicator. Cannot kill the main turtle or turtles owned by other scripts.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | `string` | ID of the turtle to remove |
+
+**Errors:** Throws if the ID is `"main"`, does not exist, or is not owned by the current script.
+
+```lua
+local t = spawn("temp")
+t.forward(100)
+kill("temp")   -- turtle and its indicator are removed
+```
+
+### `killall()` {#killall}
+
+Remove all spawned turtles owned by the current script. The main turtle is not affected.
+
+```lua
+spawn("a")
+spawn("b")
+spawn("c")
+killall()   -- removes a, b, c — main turtle remains
+```
+
+### `list_turtles()` {#list-turtles}
+
+Returns an array of turtle IDs owned by the current script (including `"main"`).
+
+**Returns:** `table` — array of string IDs.
+
+```lua
+spawn("helper")
+local ids = list_turtles()
+-- ids = {"main", "helper"}
+for _, id in ipairs(ids) do
+  print(id)
+end
+```
+
+### `hide()` / `show()` {#hide-show}
+
+Toggle the main turtle's indicator visibility. Also available as handle methods for spawned turtles.
+
+```lua
+hide()        -- hide the main turtle indicator
+show()        -- show it again
+
+local t = spawn("ghost")
+t.hide()      -- hide the spawned turtle's indicator
+```
+
+---
+
+### Spawn Limits {#spawn-limits}
+
+#### `set_spawn_limit(n)` {#set-spawn-limit}
+
+Set the maximum number of turtles allowed across all scripts. Default is **1000**.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `n` | `number` | Maximum total turtles (≥ 1) |
+
+```lua
+set_spawn_limit(50)   -- allow at most 50 turtles
+```
+
+#### `set_spawn_depth(n)` {#set-spawn-depth}
+
+Set the maximum nesting depth for turtle spawning. Default is **10**.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `n` | `number` | Maximum spawn depth (≥ 1) |
+
+```lua
+set_spawn_depth(5)   -- limit recursive spawning to 5 levels
+```
+
+---
+
+### Cross-Script Observation {#cross-script}
+
+#### `environment_turtles()` {#environment-turtles}
+
+Returns a table of **all** turtles across all scripts, including turtles you don't own.
+
+**Returns:** `table` — array of entries with the following fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Turtle's local ID |
+| `x` | `number` | X position |
+| `y` | `number` | Y position |
+| `heading` | `number` | Heading in degrees |
+| `color` | `string` | Pen color hex string |
+| `visible` | `boolean` | Whether the turtle indicator is visible |
+| `owned` | `boolean` | `true` if owned by the current script |
+
+```lua
+local all = environment_turtles()
+for _, t in ipairs(all) do
+  if not t.owned then
+    -- React to another script's turtle
+    print("Foreign turtle at " .. t.x .. ", " .. t.y)
+  end
+end
+```
+
+::: warning
+You can observe but not control turtles from other scripts. Calling control methods on an unowned turtle raises a Lua error.
+:::
+
+---
+
 ## Function Summary {#summary}
 
 | Function | Category | Description |
@@ -416,3 +612,12 @@ The following modules and globals are **not available**:
 | [`set_world_space(enabled)`](#set-world-space) | Zoom Control | Toggle zoom-scaled vs raw world units |
 | [`print(...)`](#print) | Output | Print to console |
 | [`repeat_n(n, fn)`](#repeat-n) | Utility | Repeat a function N times |
+| [`spawn(id, options?)`](#spawn) | Spawning | Create a new turtle, return handle |
+| [`kill(id)`](#kill) | Spawning | Remove a spawned turtle |
+| [`killall()`](#killall) | Spawning | Remove all spawned turtles |
+| [`list_turtles()`](#list-turtles) | Spawning | List owned turtle IDs |
+| [`hide()`](#hide-show) | Spawning | Hide main turtle indicator |
+| [`show()`](#hide-show) | Spawning | Show main turtle indicator |
+| [`set_spawn_limit(n)`](#set-spawn-limit) | Spawning | Set max turtle count |
+| [`set_spawn_depth(n)`](#set-spawn-depth) | Spawning | Set max spawn nesting depth |
+| [`environment_turtles()`](#environment-turtles) | Spawning | List all turtles across scripts |

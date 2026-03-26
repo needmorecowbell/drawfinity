@@ -715,8 +715,13 @@ export class TurtlePanel {
     btn.textContent = "Loading\u2026";
     btn.disabled = true;
 
+    const slowTimer = setTimeout(() => {
+      btn.textContent = "Loading\u2026 (slow)";
+    }, 2000);
+
     try {
       const code = await this.exchangeClient.fetchScript(entry);
+      clearTimeout(slowTimer);
       this.setScript(code);
 
       // If this was an update, remove from update result and re-render
@@ -735,6 +740,7 @@ export class TurtlePanel {
       onUpdate?.();
       this.closeExchangeBrowser();
     } catch {
+      clearTimeout(slowTimer);
       // Update failed but we have a cached version — use it
       if (cached) {
         this.setScript(cached.code);

@@ -500,6 +500,48 @@ describe("TurtlePanel Unified Script Browser", () => {
     expect(importBtn.textContent).toBe(origText);
   });
 
+  it("shows 'Loading… (slow)' after 2s when fetch is slow", async () => {
+    // Set up index with scripts but don't cache any
+    storageMap.set(
+      "drawfinity:exchange:index",
+      JSON.stringify({ ...MOCK_INDEX, cachedAt: Date.now() }),
+    );
+
+    // Fetch that never resolves (simulates slow network)
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(() => new Promise(() => {})),
+    );
+
+    vi.useFakeTimers();
+
+    // Open exchange
+    const buttons = document.querySelectorAll(".turtle-btn-secondary");
+    const scriptsBtn = Array.from(buttons).find(
+      (b) => b.textContent?.startsWith("Scripts"),
+    ) as HTMLButtonElement;
+    scriptsBtn.dispatchEvent(
+      new PointerEvent("pointerdown", { bubbles: true }),
+    );
+
+    // Click Import on a script
+    const importBtn = document.querySelector(
+      ".turtle-exchange-import-btn",
+    ) as HTMLButtonElement;
+    importBtn.dispatchEvent(
+      new PointerEvent("pointerdown", { bubbles: true }),
+    );
+
+    // Initially shows "Loading…"
+    expect(importBtn.textContent).toBe("Loading\u2026");
+
+    // Advance 2 seconds — should now show slow indicator
+    vi.advanceTimersByTime(2000);
+    expect(importBtn.textContent).toBe("Loading\u2026 (slow)");
+
+    vi.useRealTimers();
+  });
+
   it("shows Update button for scripts with update-available status", () => {
     // Set up cached index and update result
     storageMap.set(

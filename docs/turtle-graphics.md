@@ -399,6 +399,144 @@ pencolor(128, 0, 128)
 sierpinski(256, 5)
 ```
 
+## Turtle Herding
+
+Scripts can spawn additional turtles that draw concurrently — we call this **turtle herding**. Each spawned turtle has its own position, heading, pen color, and width. During replay, all active turtles execute one command per tick in round-robin order, creating visually interleaved animations. A single script can coordinate dozens or hundreds of turtles to produce complex patterns that would be difficult to express with a single turtle.
+
+### Spawning Turtles
+
+Call `spawn(id)` to create a new turtle and get a handle for controlling it:
+
+```lua
+local t = spawn("helper")
+t.pencolor(255, 0, 0)
+t.forward(100)
+t.right(90)
+t.forward(100)
+```
+
+You can also pass an options table with initial state:
+
+```lua
+local t = spawn("offset", { x = 50, y = 50, heading = 45, color = "#00ff00", width = 3 })
+t.forward(200)
+```
+
+The main turtle (your global `forward`, `right`, etc.) continues to work as normal alongside spawned turtles.
+
+### Lifecycle Management
+
+```lua
+kill("helper")         -- remove a specific turtle
+killall()              -- remove all spawned turtles (keeps main)
+local ids = list_turtles()  -- get list of active turtle IDs
+```
+
+### Visibility
+
+```lua
+hide()           -- hide the main turtle indicator
+show()           -- show it again
+local t = spawn("ghost")
+t.hide()         -- hide a spawned turtle's indicator
+```
+
+### Spawn Limits
+
+To prevent runaway spawning, limits are enforced globally:
+
+```lua
+set_spawn_limit(100)   -- max 100 turtles total (default: 1000)
+set_spawn_depth(5)     -- max 5 levels of nesting (default: 10)
+```
+
+### Cross-Script Observation
+
+When multiple scripts are running, turtles from one script are visible to another. Use `environment_turtles()` to query all turtles in the environment:
+
+```lua
+local all = environment_turtles()
+for _, t in ipairs(all) do
+  print(t.id, t.x, t.y, t.owned)
+end
+```
+
+Each entry has `id`, `x`, `y`, `heading`, `color`, `visible`, and `owned` fields. You can observe but not control turtles from other scripts.
+
+### Example: Parallel Spirals
+
+Spawn 4 turtles at cardinal directions, each drawing a spiral simultaneously:
+
+```lua
+speed(0)
+
+local colors = {"#ff0000", "#00cc00", "#0066ff", "#ff9900"}
+local offsets = {
+  {x = 0, y = -100, heading = 0},
+  {x = 100, y = 0, heading = 90},
+  {x = 0, y = 100, heading = 180},
+  {x = -100, y = 0, heading = 270},
+}
+
+local turtles = {}
+for i = 1, 4 do
+  local t = spawn("spiral" .. i, {
+    x = offsets[i].x,
+    y = offsets[i].y,
+    heading = offsets[i].heading,
+    color = colors[i],
+    width = 2,
+  })
+  turtles[i] = t
+end
+
+-- Each turtle draws a spiral
+for step = 1, 80 do
+  for i = 1, 4 do
+    turtles[i].forward(step * 2)
+    turtles[i].right(91)
+  end
+end
+```
+
+### Example: Recursive Branching
+
+A fractal tree where each branch tip spawns child turtles that continue the pattern. Since `position()` returns the pre-movement state during the collection phase, tip positions are calculated mathematically:
+
+```lua
+speed(0)
+local count = 0
+
+function branch(x, y, hdg, size, depth)
+  if depth == 0 or size < 4 then return end
+
+  count = count + 1
+  local t = spawn("b" .. count, {x = x, y = y, heading = hdg})
+  t.penwidth(math.max(1, depth * 1.2))
+  if depth <= 2 then
+    t.pencolor(34, 139, 34)    -- green leaves
+  else
+    t.pencolor(139, 69, 19)    -- brown trunk
+  end
+  t.forward(size)
+
+  -- Calculate tip position (heading 0 = up, clockwise)
+  local rad = math.rad(hdg)
+  local tipX = x + math.sin(rad) * size
+  local tipY = y - math.cos(rad) * size
+
+  branch(tipX, tipY, hdg - 25, size * 0.7, depth - 1)
+  branch(tipX, tipY, hdg + 25, size * 0.7, depth - 1)
+end
+
+-- Start the tree growing downward from origin
+branch(0, 0, 180, 80, 6)
+```
+
+> **Tip:** Use `speed(0)` when spawning many turtles — interleaved animation with dozens of turtles can be slow.
+
+For complete API details, see the [Turtle API Reference](/turtle-api#spawning).
+
 ## Panel Controls
 
 | Control | Action |

@@ -109,24 +109,29 @@ vi.mock("../../persistence", () => ({
 }));
 
 // Mock turtle module to avoid wasmoon WASM loading in jsdom
-vi.mock("../../turtle", () => ({
+vi.mock("../../turtle", () => {
+  const mockMainState = {
+    x: 0,
+    y: 0,
+    heading: 0,
+    penDown: true,
+    speed: 5,
+    setOrigin: vi.fn(),
+    reset: vi.fn(),
+  };
+  return {
   LuaRuntime: class MockLuaRuntime {
     init = vi.fn().mockResolvedValue(undefined);
     execute = vi.fn().mockResolvedValue({ success: true });
     close = vi.fn();
     setStateQuery = vi.fn();
   },
-  TurtleState: class MockTurtleState {
-    x = 0;
-    y = 0;
-    heading = 0;
-    penDown = true;
-    speed = 5;
-    setOrigin = vi.fn();
-    reset = vi.fn();
-  },
-  TurtleDrawing: class MockTurtleDrawing {
-    constructor() {}
+  TurtleRegistry: class MockTurtleRegistry {
+    createMain = vi.fn();
+    clearScript = vi.fn();
+    get = vi.fn();
+    getOwned = vi.fn(() => new Map());
+    has = vi.fn(() => false);
     clear = vi.fn();
   },
   TurtleExecutor: class MockTurtleExecutor {
@@ -134,12 +139,18 @@ vi.mock("../../turtle", () => ({
     run = vi.fn();
     stop = vi.fn();
     isRunning = vi.fn(() => false);
+    ensureMainTurtle = vi.fn(() => "default:main");
+    getMainState = vi.fn(() => mockMainState);
   },
   TurtleIndicator: class MockTurtleIndicator {
     constructor() {}
     show = vi.fn();
     hide = vi.fn();
-    update = vi.fn();
+    addTurtle = vi.fn();
+    removeTurtle = vi.fn();
+    hasTurtle = vi.fn(() => false);
+    updateTurtle = vi.fn();
+    clear = vi.fn();
     destroy = vi.fn();
   },
   ExchangeClient: class MockExchangeClient {
@@ -152,7 +163,8 @@ vi.mock("../../turtle", () => ({
     getScript = vi.fn(() => null);
   },
   ExchangeError: class extends Error {},
-}));
+};
+});
 
 // Mock y-websocket
 vi.mock("y-websocket", () => ({

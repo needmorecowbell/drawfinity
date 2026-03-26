@@ -9,7 +9,7 @@ import { StrokeCapture, ShapeCapture, MagnifyCapture } from "../input";
 import { ToolManager, BRUSH_PRESETS, isShapeTool } from "../tools";
 import type { ToolType } from "../tools";
 import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel, TurtlePanel, BookmarkPanel } from "../ui";
-import { LuaRuntime, TurtleState, TurtleDrawing, TurtleExecutor, TurtleIndicator } from "../turtle";
+import { LuaRuntime, TurtleRegistry, TurtleExecutor, TurtleIndicator } from "../turtle";
 import { ICONS } from "../ui/ToolbarIcons";
 import { renderExport, downloadCanvas } from "../ui/ExportRenderer";
 import type { ExportDialogResult } from "../ui/ExportDialog";
@@ -113,8 +113,7 @@ export class CanvasApp {
   private turtlePanel!: TurtlePanel;
   private turtleButton!: HTMLButtonElement;
   private turtleRuntime!: LuaRuntime;
-  private turtleState!: TurtleState;
-  private turtleDrawing!: TurtleDrawing;
+  private turtleRegistry!: TurtleRegistry;
   private turtleExecutor!: TurtleExecutor;
   private turtleIndicator!: TurtleIndicator;
   private turtlePlacing = false;
@@ -530,18 +529,17 @@ export class CanvasApp {
 
     // Turtle graphics pipeline
     this.turtleRuntime = new LuaRuntime();
-    this.turtleState = new TurtleState();
-    this.turtleDrawing = new TurtleDrawing(this.doc);
-    this.turtleIndicator = new TurtleIndicator(canvas.parentElement!, this.camera, this.turtleState);
-    this.turtleExecutor = new TurtleExecutor(this.turtleRuntime, this.turtleState, this.turtleDrawing, {
+    this.turtleRegistry = new TurtleRegistry();
+    this.turtleExecutor = new TurtleExecutor(this.turtleRuntime, this.turtleRegistry, "default", this.doc, {
       onPrint: (msg) => this.turtlePanel.appendConsole(msg, "output"),
       onStart: () => {
         this.turtlePanel.setRunning(true);
         this.turtleButton.classList.add("turtle-executing");
+        this.turtleIndicator.addTurtle("main", true);
         this.turtleIndicator.show();
       },
       onStep: () => {
-        this.turtleIndicator.update();
+        this.syncTurtleIndicators();
       },
       onComplete: (result) => {
         this.turtlePanel.setRunning(false);
@@ -554,6 +552,9 @@ export class CanvasApp {
         }
       },
     });
+    // Eagerly create the main turtle so origin placement has a stable state reference
+    this.turtleExecutor.ensureMainTurtle();
+    this.turtleIndicator = new TurtleIndicator(canvas.parentElement!, this.camera);
     this.turtleRuntime.init();
 
     this.turtlePanel = new TurtlePanel(drawingId, {
@@ -561,7 +562,7 @@ export class CanvasApp {
         this.turtlePanel.clearConsole();
         // Only set origin to camera center if not explicitly placed
         if (!this.turtleOriginPlaced) {
-          this.turtleState.setOrigin(this.camera.x, this.camera.y);
+          this.turtleExecutor.getMainState()?.setOrigin(this.camera.x, this.camera.y);
         }
         this.turtleExecutor.run(script, this.camera.zoom);
       },
@@ -569,7 +570,8 @@ export class CanvasApp {
         this.turtleExecutor.stop();
       },
       onSpeedChange: (speed) => {
-        this.turtleState.speed = speed;
+        const ms = this.turtleExecutor.getMainState();
+        if (ms) ms.speed = speed;
       },
       onPlaceRequest: () => {
         this.turtlePlacing = !this.turtlePlacing;
@@ -585,15 +587,19 @@ export class CanvasApp {
             const [vw, vh] = this.camera.getViewportSize();
             const worldX = (screenX - vw / 2) / this.camera.zoom + this.camera.x;
             const worldY = (screenY - vh / 2) / this.camera.zoom + this.camera.y;
-            this.turtleState.setOrigin(worldX, worldY);
-            this.turtleState.x = worldX;
-            this.turtleState.y = worldY;
+            const ts = this.turtleExecutor.getMainState()!;
+            ts.setOrigin(worldX, worldY);
+            ts.x = worldX;
+            ts.y = worldY;
             this.turtleOriginPlaced = true;
             this.turtlePlacing = false;
             this.turtlePanel.setPlacing(false);
             canvas.style.cursor = "";
             this.cursorManager.updateCursor();
             // Flash the indicator briefly at the placed position
+            this.turtleIndicator.addTurtle("main", true);
+            const wp = ts.getWorldPosition();
+            this.turtleIndicator.updateTurtle("main", wp.x, wp.y, ts.angle, ts.pen.color);
             this.turtleIndicator.show();
             setTimeout(() => {
               if (!this.turtleExecutor.isRunning()) {
@@ -876,6 +882,26 @@ export class CanvasApp {
   connectToRoom(serverUrl: string, roomId: string, roomName?: string): void {
     this.connectionPanel.setRoomInfo(roomId, roomName);
     this.syncManager.connect(serverUrl, roomId);
+  }
+
+  /** Sync turtle indicators with the registry — add/remove/update as needed. */
+  private syncTurtleIndicators(): void {
+    const owned = this.turtleRegistry.getOwned("default");
+    // Add indicators for newly spawned turtles
+    for (const [fullId, entry] of owned) {
+      const localId = fullId.replace("default:", "");
+      if (!this.turtleIndicator.hasTurtle(localId)) {
+        this.turtleIndicator.addTurtle(localId, localId === "main");
+      }
+      const wp = entry.state.getWorldPosition();
+      this.turtleIndicator.updateTurtle(localId, wp.x, wp.y, entry.state.angle, entry.state.pen.color);
+      // Sync per-turtle visibility with state
+      if (entry.state.visible) {
+        this.turtleIndicator.showTurtle(localId);
+      } else {
+        this.turtleIndicator.hideTurtle(localId);
+      }
+    }
   }
 
   private switchTool(tool: ToolType): void {

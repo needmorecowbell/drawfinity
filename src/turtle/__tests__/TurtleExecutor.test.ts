@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { TurtleExecutor, TurtleExecutorEvents } from "../TurtleExecutor";
-import { TurtleState } from "../TurtleState";
-import { TurtleDrawing } from "../TurtleDrawing";
+import { TurtleRegistry } from "../TurtleRegistry";
 import { TurtleCommand } from "../LuaRuntime";
 import { Stroke, DocumentModel } from "../../model/Stroke";
 
@@ -47,6 +46,14 @@ class FakeLuaRuntime {
     // no-op for testing
   }
 
+  setActiveTurtle(): void {
+    // no-op for testing
+  }
+
+  setSpawnContext(): void {
+    // no-op for testing
+  }
+
   async execute(_script: string) {
     if (this.shouldFail) {
       return { success: false as const, error: this.errorMessage };
@@ -65,14 +72,13 @@ class FakeLuaRuntime {
 
 describe("TurtleExecutor", () => {
   let doc: MockDocument;
-  let state: TurtleState;
-  let drawing: TurtleDrawing;
+  let registry: TurtleRegistry;
   let runtime: FakeLuaRuntime;
+  const scriptId = "test-script";
 
   beforeEach(() => {
     doc = new MockDocument();
-    state = new TurtleState();
-    drawing = new TurtleDrawing(doc);
+    registry = new TurtleRegistry();
     runtime = new FakeLuaRuntime();
     vi.useFakeTimers();
   });
@@ -80,8 +86,9 @@ describe("TurtleExecutor", () => {
   function createExecutor(events: TurtleExecutorEvents = {}) {
     return new TurtleExecutor(
       runtime as unknown as import("../LuaRuntime").LuaRuntime,
-      state,
-      drawing,
+      registry,
+      scriptId,
+      doc,
       events,
     );
   }
@@ -319,8 +326,9 @@ describe("TurtleExecutor", () => {
       await p1;
 
       // Turtle should be at (0, -100) after forward(100)
-      expect(state.x).toBeCloseTo(0);
-      expect(state.y).toBeCloseTo(-100);
+      const state1 = executor.getMainState()!;
+      expect(state1.x).toBeCloseTo(0);
+      expect(state1.y).toBeCloseTo(-100);
 
       // Run again — state should reset
       const p2 = executor.run("second");
@@ -328,8 +336,9 @@ describe("TurtleExecutor", () => {
       await p2;
 
       // Same result because state was reset
-      expect(state.x).toBeCloseTo(0);
-      expect(state.y).toBeCloseTo(-100);
+      const state2 = executor.getMainState()!;
+      expect(state2.x).toBeCloseTo(0);
+      expect(state2.y).toBeCloseTo(-100);
     });
 
     it("handles clear command by removing turtle strokes", async () => {
@@ -387,6 +396,392 @@ describe("TurtleExecutor", () => {
       expect(doc.strokes.length).toBe(1);
       // Only the second forward creates a stroke
       expect(doc.strokes[0].points).toHaveLength(2);
+    });
+  });
+
+  describe("registry integration", () => {
+    it("creates main turtle in registry on run", async () => {
+      runtime.setCommands([{ type: "speed", value: 0 }]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      expect(registry.has(`${scriptId}:main`)).toBe(true);
+    });
+
+    it("clears spawned turtles on re-run but keeps main", async () => {
+      runtime.setCommands([{ type: "speed", value: 0 }]);
+
+      const executor = createExecutor();
+      const p1 = executor.run("first");
+      await vi.runAllTimersAsync();
+      await p1;
+
+      // Manually spawn an extra turtle to verify it gets cleaned up
+      registry.spawn("extra", scriptId, doc);
+      expect(registry.count()).toBe(2);
+
+      const p2 = executor.run("second");
+      await vi.runAllTimersAsync();
+      await p2;
+
+      // Only main should remain (extra was cleared), main state reference is stable
+      expect(registry.count()).toBe(1);
+      expect(registry.has(`${scriptId}:main`)).toBe(true);
+    });
+
+    it("preserves main turtle state reference across runs", async () => {
+      runtime.setCommands([{ type: "speed", value: 0 }]);
+
+      const executor = createExecutor();
+      const p1 = executor.run("first");
+      await vi.runAllTimersAsync();
+      await p1;
+
+      const stateRef1 = executor.getMainState();
+
+      const p2 = executor.run("second");
+      await vi.runAllTimersAsync();
+      await p2;
+
+      const stateRef2 = executor.getMainState();
+      // Same object reference — stable for TurtleIndicator
+      expect(stateRef2).toBe(stateRef1);
+    });
+
+    it("does not affect other scripts' turtles on re-run", async () => {
+      // Create turtles for another script
+      registry.createMain("other-script", doc);
+      registry.spawn("child", "other-script", doc);
+
+      runtime.setCommands([{ type: "speed", value: 0 }]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      // Other script's turtles are untouched
+      expect(registry.has("other-script:main")).toBe(true);
+      expect(registry.has("other-script:child")).toBe(true);
+    });
+
+    it("dispatches commands to correct turtle by turtleId", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "forward", distance: 100 },
+      ] as TurtleCommand[]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      const mainEntry = registry.get(`${scriptId}:main`)!;
+      expect(mainEntry.state.y).toBeCloseTo(-100);
+    });
+
+    it("getMainState returns main turtle state", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "forward", distance: 50 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      const mainState = executor.getMainState();
+      expect(mainState).not.toBeNull();
+      expect(mainState!.y).toBeCloseTo(-50);
+    });
+
+    it("getMainState returns null before first run", () => {
+      const executor = createExecutor();
+      expect(executor.getMainState()).toBeNull();
+    });
+  });
+
+  describe("interleaved multi-turtle replay", () => {
+    it("interleaves commands from multiple turtles one per tick", async () => {
+      // Spawn a child turtle, then both main and child issue commands.
+      // With interleaved replay, commands should alternate.
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "spawn", id: "t1" },
+        { type: "forward", distance: 10 },                        // main
+        { type: "forward", distance: 20, turtleId: "t1" },        // t1
+        { type: "forward", distance: 30 },                        // main
+        { type: "forward", distance: 40, turtleId: "t1" },        // t1
+      ]);
+
+      const stepLog: string[] = [];
+      const executor = createExecutor({
+        onStep: () => {
+          const mainState = registry.get(`${scriptId}:main`)!.state;
+          const t1Entry = registry.get(`${scriptId}:t1`);
+          stepLog.push(
+            `main:${mainState.y.toFixed(0)},t1:${t1Entry?.state.y.toFixed(0) ?? "N/A"}`,
+          );
+        },
+      });
+
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+
+      // Tick 1: main processes speed(0) — only main active
+      // Tick 2: main processes spawn("t1") — t1 becomes active next tick
+      // Tick 3: main forward(10) + t1 forward(20) — interleaved
+      // Tick 4: main forward(30) + t1 forward(40) — interleaved
+      expect(stepLog).toHaveLength(4);
+
+      // After tick 3: main y=-10, t1 y=-20
+      expect(stepLog[2]).toBe("main:-10,t1:-20");
+      // After tick 4: main y=-40, t1 y=-60
+      expect(stepLog[3]).toBe("main:-40,t1:-60");
+    });
+
+    it("spawned turtle starts on the next tick after spawn command", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "spawn", id: "child" },
+        { type: "speed", value: 0, turtleId: "child" },
+        { type: "forward", distance: 50 },                          // main
+        { type: "forward", distance: 100, turtleId: "child" },      // child
+      ]);
+
+      let tickCount = 0;
+      let childStartedTick = -1;
+      const executor = createExecutor({
+        onStep: () => {
+          tickCount++;
+          const childEntry = registry.get(`${scriptId}:child`);
+          // Child gets its first command (speed) when both are active
+          if (childEntry && childEntry.state.y !== 0 && childStartedTick === -1) {
+            childStartedTick = tickCount;
+          }
+        },
+      });
+
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      // Tick 1: speed(0) on main only
+      // Tick 2: spawn("child") on main only — child activated
+      // Tick 3: main forward(50) + child speed(0) — interleaved
+      // Tick 4: child forward(100) — child only (main queue exhausted)
+      expect(tickCount).toBe(4);
+    });
+
+    it("applies delay once per tick based on max across turtles", async () => {
+      const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+
+      // Main at speed 10 (1ms delay), child at speed 1 (100ms delay)
+      runtime.setCommands([
+        { type: "speed", value: 10 },
+        { type: "spawn", id: "slow" },
+        { type: "speed", value: 1, turtleId: "slow" },
+        { type: "forward", distance: 10 },                       // main (1ms)
+        { type: "forward", distance: 10, turtleId: "slow" },     // slow (100ms)
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      // During the interleaved tick where both turtles move,
+      // the delay should be max(1, 100) = 100
+      const delays = setTimeoutSpy.mock.calls
+        .map((call: unknown[]) => call[1])
+        .filter((d: unknown) => typeof d === "number" && d > 0);
+      expect(delays).toContain(100);
+
+      setTimeoutSpy.mockRestore();
+    });
+
+    it("continues until all turtle queues are empty", async () => {
+      // Main has 2 commands, child has 4 — should keep going for child
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "spawn", id: "longer" },
+        { type: "speed", value: 0, turtleId: "longer" },
+        { type: "forward", distance: 10 },                            // main
+        { type: "forward", distance: 10, turtleId: "longer" },        // longer
+        { type: "forward", distance: 20, turtleId: "longer" },        // longer
+        { type: "forward", distance: 30, turtleId: "longer" },        // longer
+      ]);
+
+      let tickCount = 0;
+      const executor = createExecutor({
+        onStep: () => tickCount++,
+      });
+
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+
+      // Final state: main moved 10, longer moved 10+20+30=60
+      const mainState = registry.get(`${scriptId}:main`)!.state;
+      const longerState = registry.get(`${scriptId}:longer`)!.state;
+      expect(mainState.y).toBeCloseTo(-10);
+      expect(longerState.y).toBeCloseTo(-60);
+    });
+
+    it("handles commands for nonexistent turtles gracefully", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "forward", distance: 50, turtleId: "ghost" },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      // Commands for unknown turtles are silently skipped
+      expect(result.success).toBe(true);
+    });
+
+    it("flushes drawing for all owned turtles after interleaved replay", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "spawn", id: "drawer" },
+        { type: "speed", value: 0, turtleId: "drawer" },
+        { type: "forward", distance: 50 },                          // main draws
+        { type: "forward", distance: 100, turtleId: "drawer" },     // drawer draws
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      // Both turtles' strokes should be flushed to the document
+      expect(doc.strokes.length).toBe(2);
+    });
+
+    it("single-turtle scripts behave identically to before", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "forward", distance: 100 },
+        { type: "right", angle: 90 },
+        { type: "forward", distance: 50 },
+      ]);
+
+      let stepCount = 0;
+      const executor = createExecutor({
+        onStep: () => stepCount++,
+      });
+
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      expect(stepCount).toBe(4); // One step per command, same as sequential
+      expect(doc.strokes.length).toBe(1);
+      expect(doc.strokes[0].points).toHaveLength(3);
+    });
+  });
+
+  describe("kill and killall during replay", () => {
+    it("kill command removes turtle from registry during replay", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "spawn", id: "doomed" },
+        { type: "forward", distance: 10, turtleId: "doomed" },
+        { type: "kill", id: "doomed" },
+        { type: "forward", distance: 20, turtleId: "doomed" }, // should be skipped
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      expect(registry.has(`${scriptId}:doomed`)).toBe(false);
+    });
+
+    it("kill deactivates turtle from interleaved replay", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "spawn", id: "temp" },
+        { type: "speed", value: 0, turtleId: "temp" },
+        { type: "forward", distance: 10 },                          // main
+        { type: "forward", distance: 10, turtleId: "temp" },        // temp
+        { type: "kill", id: "temp" },                                // main kills temp
+        { type: "forward", distance: 20 },                          // main continues
+        { type: "forward", distance: 20, turtleId: "temp" },        // temp: skipped
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      expect(registry.has(`${scriptId}:temp`)).toBe(false);
+      // Main should have moved: -10 + -20 = -30
+      const mainState = registry.get(`${scriptId}:main`)!.state;
+      expect(mainState.y).toBeCloseTo(-30);
+    });
+
+    it("killall removes all non-main turtles during replay", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "spawn", id: "a" },
+        { type: "spawn", id: "b" },
+        { type: "speed", value: 0, turtleId: "a" },
+        { type: "speed", value: 0, turtleId: "b" },
+        { type: "forward", distance: 10 },
+        { type: "forward", distance: 10, turtleId: "a" },
+        { type: "forward", distance: 10, turtleId: "b" },
+        { type: "killall" },
+        { type: "forward", distance: 20 },                          // main continues
+        { type: "forward", distance: 20, turtleId: "a" },           // skipped
+        { type: "forward", distance: 20, turtleId: "b" },           // skipped
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      expect(registry.has(`${scriptId}:main`)).toBe(true);
+      expect(registry.has(`${scriptId}:a`)).toBe(false);
+      expect(registry.has(`${scriptId}:b`)).toBe(false);
+    });
+
+    it("hide and show commands are processed without error", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "hide" },
+        { type: "forward", distance: 50 },
+        { type: "show" },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      // Forward should still work after hide/show
+      const mainState = registry.get(`${scriptId}:main`)!.state;
+      expect(mainState.y).toBeCloseTo(-50);
     });
   });
 

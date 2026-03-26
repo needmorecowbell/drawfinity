@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { LuaRuntime } from "../LuaRuntime";
-import { TurtleState } from "../TurtleState";
-import { TurtleDrawing } from "../TurtleDrawing";
+import { TurtleRegistry } from "../TurtleRegistry";
 import { TurtleExecutor } from "../TurtleExecutor";
 import { Stroke, DocumentModel } from "../../model/Stroke";
 
@@ -27,17 +26,16 @@ class MockDocument implements DocumentModel {
 
 describe("Turtle Integration", () => {
   let runtime: LuaRuntime;
-  let state: TurtleState;
+  let registry: TurtleRegistry;
   let doc: MockDocument;
-  let drawing: TurtleDrawing;
+  const scriptId = "integration-test";
 
   beforeEach(async () => {
     vi.useFakeTimers();
     runtime = new LuaRuntime();
     await runtime.init();
-    state = new TurtleState();
+    registry = new TurtleRegistry();
     doc = new MockDocument();
-    drawing = new TurtleDrawing(doc);
   });
 
   afterEach(() => {
@@ -46,7 +44,7 @@ describe("Turtle Integration", () => {
   });
 
   it("runs a simple script and produces strokes in the document", async () => {
-    const executor = new TurtleExecutor(runtime, state, drawing);
+    const executor = new TurtleExecutor(runtime, registry, scriptId, doc);
     const resultPromise = executor.run(`
       speed(0)
       forward(100)
@@ -63,7 +61,7 @@ describe("Turtle Integration", () => {
   });
 
   it("draws a square and returns to origin", async () => {
-    const executor = new TurtleExecutor(runtime, state, drawing);
+    const executor = new TurtleExecutor(runtime, registry, scriptId, doc);
     const resultPromise = executor.run(`
       speed(0)
       for i = 1, 4 do
@@ -79,12 +77,13 @@ describe("Turtle Integration", () => {
     expect(doc.strokes.length).toBe(1);
     expect(doc.strokes[0].points).toHaveLength(5);
     // Turtle should be back at origin
+    const state = executor.getMainState()!;
     expect(state.x).toBeCloseTo(0, 5);
     expect(state.y).toBeCloseTo(0, 5);
   });
 
   it("pen state changes affect stroke properties", async () => {
-    const executor = new TurtleExecutor(runtime, state, drawing);
+    const executor = new TurtleExecutor(runtime, registry, scriptId, doc);
     const resultPromise = executor.run(`
       speed(0)
       pencolor("#ff0000")
@@ -102,7 +101,7 @@ describe("Turtle Integration", () => {
   });
 
   it("penup prevents drawing; pendown resumes", async () => {
-    const executor = new TurtleExecutor(runtime, state, drawing);
+    const executor = new TurtleExecutor(runtime, registry, scriptId, doc);
     const resultPromise = executor.run(`
       speed(0)
       forward(50)
@@ -122,11 +121,12 @@ describe("Turtle Integration", () => {
     // but same pen state keeps them batched)
     expect(doc.strokes[0].points).toHaveLength(3);
     // Turtle moved 50 up, 50 up (no draw), 50 up (draw) → total at y=-150
+    const state = executor.getMainState()!;
     expect(state.y).toBeCloseTo(-150);
   });
 
   it("color change mid-script creates separate strokes", async () => {
-    const executor = new TurtleExecutor(runtime, state, drawing);
+    const executor = new TurtleExecutor(runtime, registry, scriptId, doc);
     const resultPromise = executor.run(`
       speed(0)
       pencolor("#ff0000")
@@ -143,7 +143,7 @@ describe("Turtle Integration", () => {
   });
 
   it("clear removes turtle-drawn strokes", async () => {
-    const executor = new TurtleExecutor(runtime, state, drawing);
+    const executor = new TurtleExecutor(runtime, registry, scriptId, doc);
     const resultPromise = executor.run(`
       speed(0)
       forward(50)
@@ -160,7 +160,7 @@ describe("Turtle Integration", () => {
 
   it("print commands are captured via onPrint callback", async () => {
     const messages: string[] = [];
-    const executor = new TurtleExecutor(runtime, state, drawing, {
+    const executor = new TurtleExecutor(runtime, registry, scriptId, doc, {
       onPrint: (msg) => messages.push(msg),
     });
     const resultPromise = executor.run(`
@@ -176,7 +176,7 @@ describe("Turtle Integration", () => {
   });
 
   it("Lua errors are reported as failures", async () => {
-    const executor = new TurtleExecutor(runtime, state, drawing);
+    const executor = new TurtleExecutor(runtime, registry, scriptId, doc);
     const result = await executor.run("if then end end");
 
     expect(result.success).toBe(false);
@@ -184,7 +184,7 @@ describe("Turtle Integration", () => {
   });
 
   it("user-defined functions work end-to-end", async () => {
-    const executor = new TurtleExecutor(runtime, state, drawing);
+    const executor = new TurtleExecutor(runtime, registry, scriptId, doc);
     const resultPromise = executor.run(`
       speed(0)
       function triangle(size)
@@ -201,12 +201,13 @@ describe("Turtle Integration", () => {
     expect(result.success).toBe(true);
     expect(doc.strokes.length).toBeGreaterThan(0);
     // Turtle returns to start after an equilateral triangle
+    const state = executor.getMainState()!;
     expect(state.x).toBeCloseTo(0, 4);
     expect(state.y).toBeCloseTo(0, 4);
   });
 
   it("RGB pencolor converts correctly end-to-end", async () => {
-    const executor = new TurtleExecutor(runtime, state, drawing);
+    const executor = new TurtleExecutor(runtime, registry, scriptId, doc);
     const resultPromise = executor.run(`
       speed(0)
       pencolor(255, 128, 0)
@@ -220,7 +221,7 @@ describe("Turtle Integration", () => {
 
   it("position() reflects state during script execution", async () => {
     const messages: string[] = [];
-    const executor = new TurtleExecutor(runtime, state, drawing, {
+    const executor = new TurtleExecutor(runtime, registry, scriptId, doc, {
       onPrint: (msg) => messages.push(msg),
     });
     const resultPromise = executor.run(`
@@ -239,7 +240,7 @@ describe("Turtle Integration", () => {
   });
 
   it("stop halts execution mid-script", async () => {
-    const executor = new TurtleExecutor(runtime, state, drawing, {
+    const executor = new TurtleExecutor(runtime, registry, scriptId, doc, {
       onStep: () => {
         // Stop after first step
         executor.stop();

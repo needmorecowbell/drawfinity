@@ -9,7 +9,7 @@ export { LuaRuntime } from "./LuaRuntime";
 export type { PenState, TurtleSnapshot, MovementSegment } from "./TurtleState";
 export { TurtleState } from "./TurtleState";
 export { TurtleDrawing } from "./TurtleDrawing";
-export type { TurtleExecutorEvents } from "./TurtleExecutor";
+export type { TurtleExecutorEvents, TaggedCommand } from "./TurtleExecutor";
 export { TurtleExecutor } from "./TurtleExecutor";
 export { TurtleIndicator } from "./TurtleIndicator";
 export type {
@@ -22,3 +22,9 @@ export type {
   UpdateCheckResult,
 } from "./exchange";
 export { ExchangeClient, ExchangeError, ExchangeCache } from "./exchange";
+export type { TurtleEntry, SpawnOptions } from "./TurtleRegistry";
+export {
+  TurtleRegistry,
+  getTurtleRegistry,
+  resetTurtleRegistry,
+} from "./TurtleRegistry";

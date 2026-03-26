@@ -23,9 +23,9 @@ export interface TurtleSnapshot {
  * can create strokes from the resulting movement segments.
  */
 export class TurtleState implements TurtleStateQuery {
-  /** World-space X coordinate. */
+  /** Logical X coordinate (unscaled). */
   x = 0;
-  /** World-space Y coordinate. */
+  /** Logical Y coordinate (unscaled). */
   y = 0;
   /** Heading in degrees. 0 = up, clockwise positive. */
   angle = 0;
@@ -87,6 +87,7 @@ export class TurtleState implements TurtleStateQuery {
     this.pen = { down: true, color: "#000000", width: 3, opacity: 1.0 };
     this.speed = 5;
     this.worldSpace = false;
+    this.zoomScale = 1;
   }
 
   /**
@@ -148,6 +149,14 @@ export class TurtleState implements TurtleStateQuery {
     return { x: this.x, y: this.y };
   }
 
+  /** Returns the turtle's position in world-space (scaled for rendering). */
+  getWorldPosition(): { x: number; y: number } {
+    return {
+      x: this.toWorld(this.x, this.originX),
+      y: this.toWorld(this.y, this.originY),
+    };
+  }
+
   getHeading(): number {
     return this.angle;
   }
@@ -170,21 +179,29 @@ export class TurtleState implements TurtleStateQuery {
 
   // -- Internal movement helpers --
 
+  /**
+   * Convert a logical coordinate to world-space by scaling the offset
+   * from the origin. At zoomScale=1 this is a no-op.
+   */
+  private toWorld(logical: number, origin: number): number {
+    return origin + (logical - origin) * this.effectiveZoomScale();
+  }
+
   private moveForward(distance: number): MovementSegment | null {
     const fromX = this.x;
     const fromY = this.y;
-    const scale = this.effectiveZoomScale();
-    const scaledDistance = distance * scale;
     // Heading 0 = up (negative Y in screen coords), clockwise positive
     const rad = (this.angle * Math.PI) / 180;
-    this.x += scaledDistance * Math.sin(rad);
-    this.y -= scaledDistance * Math.cos(rad);
+    // Store logical (unscaled) position
+    this.x += distance * Math.sin(rad);
+    this.y -= distance * Math.cos(rad);
     if (this.pen.down) {
+      const scale = this.effectiveZoomScale();
       return {
-        fromX,
-        fromY,
-        toX: this.x,
-        toY: this.y,
+        fromX: this.toWorld(fromX, this.originX),
+        fromY: this.toWorld(fromY, this.originY),
+        toX: this.toWorld(this.x, this.originX),
+        toY: this.toWorld(this.y, this.originY),
         pen: { ...this.pen, width: this.pen.width * scale },
       };
     }
@@ -194,17 +211,16 @@ export class TurtleState implements TurtleStateQuery {
   private moveTo(x: number, y: number): MovementSegment | null {
     const fromX = this.x;
     const fromY = this.y;
-    const scale = this.effectiveZoomScale();
-    // Scale target coordinates relative to the origin so goto() positions
-    // are proportional to the user's visible zoom level, just like forward().
-    this.x = this.originX + (x - this.originX) * scale;
-    this.y = this.originY + (y - this.originY) * scale;
+    // Store logical (unscaled) position
+    this.x = x;
+    this.y = y;
     if (this.pen.down) {
+      const scale = this.effectiveZoomScale();
       return {
-        fromX,
-        fromY,
-        toX: this.x,
-        toY: this.y,
+        fromX: this.toWorld(fromX, this.originX),
+        fromY: this.toWorld(fromY, this.originY),
+        toX: this.toWorld(this.x, this.originX),
+        toY: this.toWorld(this.y, this.originY),
         pen: { ...this.pen, width: this.pen.width * scale },
       };
     }

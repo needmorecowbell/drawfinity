@@ -317,6 +317,71 @@ describe("TurtleState", () => {
     });
   });
 
+  describe("fill color", () => {
+    it("defaults to null (no fill)", () => {
+      expect(state.fillColor).toBeNull();
+    });
+
+    it("sets fill color with hex string", () => {
+      state.applyCommand({ type: "fillcolor", color: "#ff0000" });
+      expect(state.fillColor).toBe("#ff0000");
+    });
+
+    it("clears fill color with null", () => {
+      state.applyCommand({ type: "fillcolor", color: "#ff0000" });
+      state.applyCommand({ type: "fillcolor", color: null });
+      expect(state.fillColor).toBeNull();
+    });
+
+    it("resets on home()", () => {
+      state.applyCommand({ type: "fillcolor", color: "#ff0000" });
+      state.applyCommand({ type: "home" });
+      expect(state.fillColor).toBeNull();
+    });
+
+    it("resets on reset()", () => {
+      state.applyCommand({ type: "fillcolor", color: "#ff0000" });
+      state.reset();
+      expect(state.fillColor).toBeNull();
+    });
+
+    it("returns null (non-movement command)", () => {
+      const seg = state.applyCommand({ type: "fillcolor", color: "#ff0000" });
+      expect(seg).toBeNull();
+    });
+  });
+
+  describe("shape commands", () => {
+    it("rectangle returns null (no movement)", () => {
+      const seg = state.applyCommand({ type: "rectangle", width: 100, height: 50 });
+      expect(seg).toBeNull();
+    });
+
+    it("ellipse returns null (no movement)", () => {
+      const seg = state.applyCommand({ type: "ellipse", width: 80, height: 60 });
+      expect(seg).toBeNull();
+    });
+
+    it("polygon returns null (no movement)", () => {
+      const seg = state.applyCommand({ type: "polygon", sides: 6, radius: 50 });
+      expect(seg).toBeNull();
+    });
+
+    it("star returns null (no movement)", () => {
+      const seg = state.applyCommand({ type: "star", points: 5, outerRadius: 50, innerRadius: 25 });
+      expect(seg).toBeNull();
+    });
+
+    it("shape commands do not change turtle position", () => {
+      state.applyCommand({ type: "forward", distance: 50 });
+      const xBefore = state.x;
+      const yBefore = state.y;
+      state.applyCommand({ type: "rectangle", width: 100, height: 50 });
+      expect(state.x).toBe(xBefore);
+      expect(state.y).toBe(yBefore);
+    });
+  });
+
   describe("speed", () => {
     it("sets speed value", () => {
       state.applyCommand({ type: "speed", value: 0 });
@@ -336,6 +401,11 @@ describe("TurtleState", () => {
       { type: "speed", value: 3 },
       { type: "penmode", mode: "erase", turtleOnly: false } as TurtleCommand,
       { type: "penpreset", preset: "pen" } as TurtleCommand,
+      { type: "fillcolor", color: "#ff0000" } as TurtleCommand,
+      { type: "rectangle", width: 100, height: 50 } as TurtleCommand,
+      { type: "ellipse", width: 80, height: 60 } as TurtleCommand,
+      { type: "polygon", sides: 6, radius: 50 } as TurtleCommand,
+      { type: "star", points: 5, outerRadius: 50, innerRadius: 25 } as TurtleCommand,
       { type: "clear" },
       { type: "sleep", ms: 100 },
       { type: "print", message: "hello" },

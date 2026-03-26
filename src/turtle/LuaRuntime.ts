@@ -30,7 +30,12 @@ type TurtleCommandVariant =
   | { type: "hide" }
   | { type: "show" }
   | { type: "penmode"; mode: "draw" | "erase"; turtleOnly: boolean }
-  | { type: "penpreset"; preset: string | null };
+  | { type: "penpreset"; preset: string | null }
+  | { type: "fillcolor"; color: string | null }
+  | { type: "rectangle"; width: number; height: number }
+  | { type: "ellipse"; width: number; height: number }
+  | { type: "polygon"; sides: number; radius: number }
+  | { type: "star"; points: number; outerRadius: number; innerRadius: number };
 
 /** A command produced by a turtle API call, optionally tagged with a turtle ID. */
 export type TurtleCommand = TurtleCommandVariant & { turtleId?: string };
@@ -311,6 +316,72 @@ export class LuaRuntime {
       push({ type: "penpreset", preset: name });
     });
 
+    // Fill color for shapes
+    g.set("fillcolor", (rOrHex: unknown, gVal?: unknown, b?: unknown) => {
+      if (rOrHex === null || rOrHex === undefined) {
+        push({ type: "fillcolor", color: null });
+        return;
+      }
+      if (typeof rOrHex === "string") {
+        push({ type: "fillcolor", color: rOrHex });
+      } else if (typeof rOrHex === "number") {
+        const r = Math.round(Math.max(0, Math.min(255, rOrHex)));
+        const gC = Math.round(Math.max(0, Math.min(255, (gVal as number) ?? 0)));
+        const bC = Math.round(Math.max(0, Math.min(255, (b as number) ?? 0)));
+        const hex = `#${r.toString(16).padStart(2, "0")}${gC.toString(16).padStart(2, "0")}${bC.toString(16).padStart(2, "0")}`;
+        push({ type: "fillcolor", color: hex });
+      } else {
+        throw new Error("fillcolor() requires a hex string, (r, g, b) numbers, or nil");
+      }
+    });
+
+    // Shape commands
+    g.set("rectangle", (width: unknown, height: unknown) => {
+      if (typeof width !== "number" || typeof height !== "number") {
+        throw new Error("rectangle() requires two number arguments: width, height");
+      }
+      if (width <= 0 || height <= 0) {
+        throw new Error("rectangle() width and height must be positive");
+      }
+      push({ type: "rectangle", width, height });
+    });
+
+    g.set("ellipse", (width: unknown, height: unknown) => {
+      if (typeof width !== "number" || typeof height !== "number") {
+        throw new Error("ellipse() requires two number arguments: width, height");
+      }
+      if (width <= 0 || height <= 0) {
+        throw new Error("ellipse() width and height must be positive");
+      }
+      push({ type: "ellipse", width, height });
+    });
+
+    g.set("polygon", (sides: unknown, radius: unknown) => {
+      if (typeof sides !== "number" || typeof radius !== "number") {
+        throw new Error("polygon() requires two number arguments: sides, radius");
+      }
+      if (sides < 3 || !Number.isInteger(sides)) {
+        throw new Error("polygon() sides must be an integer >= 3");
+      }
+      if (radius <= 0) {
+        throw new Error("polygon() radius must be positive");
+      }
+      push({ type: "polygon", sides, radius });
+    });
+
+    g.set("star", (points: unknown, outerRadius: unknown, innerRadius: unknown) => {
+      if (typeof points !== "number" || typeof outerRadius !== "number" || typeof innerRadius !== "number") {
+        throw new Error("star() requires three number arguments: points, outerRadius, innerRadius");
+      }
+      if (points < 2 || !Number.isInteger(points)) {
+        throw new Error("star() points must be an integer >= 2");
+      }
+      if (outerRadius <= 0 || innerRadius <= 0) {
+        throw new Error("star() outerRadius and innerRadius must be positive");
+      }
+      push({ type: "star", points, outerRadius, innerRadius });
+    });
+
     // Indicator visibility (main turtle)
     g.set("hide", () => {
       push({ type: "hide" });
@@ -513,6 +584,31 @@ export class LuaRuntime {
             }
             break;
           }
+          case "fillcolor":
+            if (arg1 === null || arg1 === undefined) {
+              pushTagged(turtleId, { type: "fillcolor", color: null });
+            } else if (typeof arg1 === "string") {
+              pushTagged(turtleId, { type: "fillcolor", color: arg1 });
+            } else if (typeof arg1 === "number") {
+              const r = Math.round(Math.max(0, Math.min(255, arg1)));
+              const gC = Math.round(Math.max(0, Math.min(255, (arg2 as number) ?? 0)));
+              const bC = Math.round(Math.max(0, Math.min(255, (arg3 as number) ?? 0)));
+              const hex = `#${r.toString(16).padStart(2, "0")}${gC.toString(16).padStart(2, "0")}${bC.toString(16).padStart(2, "0")}`;
+              pushTagged(turtleId, { type: "fillcolor", color: hex });
+            }
+            break;
+          case "rectangle":
+            pushTagged(turtleId, { type: "rectangle", width: arg1 as number, height: arg2 as number });
+            break;
+          case "ellipse":
+            pushTagged(turtleId, { type: "ellipse", width: arg1 as number, height: arg2 as number });
+            break;
+          case "polygon":
+            pushTagged(turtleId, { type: "polygon", sides: arg1 as number, radius: arg2 as number });
+            break;
+          case "star":
+            pushTagged(turtleId, { type: "star", points: arg1 as number, outerRadius: arg2 as number, innerRadius: arg3 as number });
+            break;
         }
       },
     );
@@ -750,11 +846,49 @@ export class LuaRuntime {
         h.penpreset = function(name)
           _tcmd(id, "penpreset", name)
         end
-        h.rectangle = function() error("rectangle() not yet implemented") end
-        h.ellipse = function() error("ellipse() not yet implemented") end
-        h.polygon = function() error("polygon() not yet implemented") end
-        h.star = function() error("star() not yet implemented") end
-        h.fillcolor = function() error("fillcolor() not yet implemented") end
+        h.fillcolor = function(r, g, b) _tcmd(id, "fillcolor", r, g, b) end
+        h.rectangle = function(w, ht)
+          if type(w) ~= "number" or type(ht) ~= "number" then
+            error("rectangle() requires two number arguments: width, height")
+          end
+          if w <= 0 or ht <= 0 then
+            error("rectangle() width and height must be positive")
+          end
+          _tcmd(id, "rectangle", w, ht)
+        end
+        h.ellipse = function(w, ht)
+          if type(w) ~= "number" or type(ht) ~= "number" then
+            error("ellipse() requires two number arguments: width, height")
+          end
+          if w <= 0 or ht <= 0 then
+            error("ellipse() width and height must be positive")
+          end
+          _tcmd(id, "ellipse", w, ht)
+        end
+        h.polygon = function(s, r)
+          if type(s) ~= "number" or type(r) ~= "number" then
+            error("polygon() requires two number arguments: sides, radius")
+          end
+          if s < 3 or s ~= math.floor(s) then
+            error("polygon() sides must be an integer >= 3")
+          end
+          if r <= 0 then
+            error("polygon() radius must be positive")
+          end
+          _tcmd(id, "polygon", s, r)
+        end
+        h.star = function(p, outer, inner)
+          if type(p) ~= "number" or type(outer) ~= "number" or type(inner) ~= "number" then
+            error("star() requires three number arguments: points, outerRadius, innerRadius")
+          end
+          if p < 2 or p ~= math.floor(p) then
+            error("star() points must be an integer >= 2")
+          end
+          if outer <= 0 or inner <= 0 then
+            error("star() outerRadius and innerRadius must be positive")
+          end
+          _tcmd(id, "star", p, outer, inner)
+        end
 
         return h
       end

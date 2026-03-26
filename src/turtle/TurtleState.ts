@@ -85,6 +85,9 @@ export class TurtleState implements TurtleStateQuery {
    */
   presetOpacity = 1.0;
 
+  /** Fill color for shape commands, or null for no fill (outline only). */
+  fillColor: string | null = null;
+
   /** Origin coordinates used for `home()`. Defaults to (0, 0). */
   private originX = 0;
   private originY = 0;
@@ -135,6 +138,7 @@ export class TurtleState implements TurtleStateQuery {
     this.brushPreset = null;
     this.presetWidthMultiplier = 1.0;
     this.presetOpacity = 1.0;
+    this.fillColor = null;
     this.worldSpace = false;
     this.zoomScale = 1;
     this.visible = true;
@@ -170,6 +174,7 @@ export class TurtleState implements TurtleStateQuery {
         this.brushPreset = null;
         this.presetWidthMultiplier = 1.0;
         this.presetOpacity = 1.0;
+        this.fillColor = null;
         return seg;
       }
       case "penup":
@@ -210,6 +215,15 @@ export class TurtleState implements TurtleStateQuery {
         }
         return null;
       }
+      case "fillcolor":
+        this.fillColor = cmd.color;
+        return null;
+      case "rectangle":
+      case "ellipse":
+      case "polygon":
+      case "star":
+        // Shape commands do not move the turtle; replay handles shape creation.
+        return null;
       case "set_world_space":
         this.setWorldSpace(cmd.enabled);
         return null;

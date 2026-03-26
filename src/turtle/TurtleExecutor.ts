@@ -44,6 +44,7 @@ export class TurtleExecutor {
   private blackboard: Blackboard;
   private running = false;
   private stopRequested = false;
+  private cameraZoom = 1;
 
   constructor(
     runtime: LuaRuntime,
@@ -111,6 +112,7 @@ export class TurtleExecutor {
 
     this.running = true;
     this.stopRequested = false;
+    this.cameraZoom = zoom > 0 ? zoom : 1;
 
     // Clear spawned (non-main) turtles, keep the main turtle's state stable
     this.clearSpawnedTurtles();
@@ -368,6 +370,18 @@ export class TurtleExecutor {
     // sleep and speed are handled via the command replay timing
     // but speed still needs to update state
     const segment = entry.state.applyCommand(cmd);
+
+    // LOD skip: if the movement segment is too small in screen pixels, skip drawing
+    if (entry.state.minPixelSize > 0 && segment) {
+      const dx = segment.toX - segment.fromX;
+      const dy = segment.toY - segment.fromY;
+      const worldDist = Math.sqrt(dx * dx + dy * dy);
+      const effectivePixels = worldDist * this.cameraZoom;
+      if (effectivePixels < entry.state.minPixelSize) {
+        return; // skip drawing, position already updated
+      }
+    }
+
     if (segment) {
       if (entry.state.penMode === "erase") {
         // Flush all turtles' pending segments so they can be erased
@@ -393,6 +407,24 @@ export class TurtleExecutor {
       } else {
         const batching = entry.state.speed === 0;
         entry.drawing.addSegment(segment, batching);
+      }
+    }
+
+    // LOD skip for shapes: if the shape is too small in screen pixels, skip drawing
+    if ((cmd.type === "rectangle" || cmd.type === "ellipse" || cmd.type === "polygon" || cmd.type === "star") && entry.state.minPixelSize > 0) {
+      let shapeWorldSize: number;
+      const sf = entry.state.scaleFactor;
+      const scale = entry.state.worldSpace ? 1 : Math.max(1e-3, Math.min(1e3, entry.state.zoomScale));
+      if (cmd.type === "rectangle" || cmd.type === "ellipse") {
+        shapeWorldSize = Math.max(cmd.width, cmd.height) * scale * sf;
+      } else if (cmd.type === "polygon") {
+        shapeWorldSize = cmd.radius * 2 * scale * sf;
+      } else {
+        shapeWorldSize = cmd.outerRadius * 2 * scale * sf;
+      }
+      const effectivePixels = shapeWorldSize * this.cameraZoom;
+      if (effectivePixels < entry.state.minPixelSize) {
+        return;
       }
     }
 

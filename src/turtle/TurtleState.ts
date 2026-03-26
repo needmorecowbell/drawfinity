@@ -107,6 +107,13 @@ export class TurtleState implements TurtleStateQuery {
    */
   scalePen = false;
 
+  /**
+   * Minimum effective pixel size for LOD-aware drawing skip.
+   * When > 0, movements and shapes smaller than this many pixels
+   * (world size * camera zoom) are skipped during replay.
+   */
+  minPixelSize = 0;
+
   /** Origin coordinates used for `home()`. Defaults to (0, 0). */
   private originX = 0;
   private originY = 0;
@@ -164,6 +171,7 @@ export class TurtleState implements TurtleStateQuery {
     this.visible = true;
     this.scaleFactor = 1.0;
     this.scalePen = false;
+    this.minPixelSize = 0;
   }
 
   /**
@@ -263,6 +271,9 @@ export class TurtleState implements TurtleStateQuery {
         return null;
       case "scale_pen":
         this.scalePen = cmd.enabled;
+        return null;
+      case "min_pixel_size":
+        this.minPixelSize = cmd.pixels;
         return null;
       case "step_boundary":
         return null;

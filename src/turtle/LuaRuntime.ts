@@ -38,7 +38,8 @@ type TurtleCommandVariant =
   | { type: "ellipse"; width: number; height: number }
   | { type: "polygon"; sides: number; radius: number }
   | { type: "star"; points: number; outerRadius: number; innerRadius: number }
-  | { type: "step_boundary"; step: number };
+  | { type: "step_boundary"; step: number }
+  | { type: "min_pixel_size"; pixels: number };
 
 /** A command produced by a turtle API call, optionally tagged with a turtle ID. */
 export type TurtleCommand = TurtleCommandVariant & { turtleId?: string };
@@ -346,6 +347,13 @@ export class LuaRuntime {
 
     g.set("scale_pen", (enabled: boolean) => {
       pushApply({ type: "scale_pen", enabled: !!enabled });
+    });
+
+    g.set("min_pixel_size", (pixels: unknown) => {
+      if (typeof pixels !== "number" || pixels < 0) {
+        throw new Error("min_pixel_size() requires a non-negative number");
+      }
+      pushApply({ type: "min_pixel_size", pixels });
     });
 
     // Pen mode (draw / erase)
@@ -656,6 +664,9 @@ export class LuaRuntime {
             break;
           case "scale_pen":
             pushTaggedApply(turtleId, { type: "scale_pen", enabled: !!arg1 });
+            break;
+          case "min_pixel_size":
+            pushTaggedApply(turtleId, { type: "min_pixel_size", pixels: arg1 as number });
             break;
           case "hide":
             pushTagged(turtleId, { type: "hide" });
@@ -1244,6 +1255,7 @@ export class LuaRuntime {
         h.sleep = function(ms) _tcmd(id, "sleep", ms) end
         h.set_world_space = function(e) _tcmd(id, "set_world_space", e) end
         h.scale_pen = function(e) _tcmd(id, "scale_pen", e) end
+        h.min_pixel_size = function(p) _tcmd(id, "min_pixel_size", p) end
         h.print = function(...)
           local parts = {}
           for i = 1, select("#", ...) do

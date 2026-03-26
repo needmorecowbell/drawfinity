@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { LuaRuntime, TurtleCommand } from "../LuaRuntime";
 import { TurtleRegistry } from "../TurtleRegistry";
+import { MessageBus, Blackboard } from "../TurtleMessaging";
 import { Stroke, DocumentModel } from "../../model/Stroke";
 
 describe("LuaRuntime", () => {
@@ -2296,6 +2297,184 @@ describe("LuaRuntime", () => {
       const leftCmds = cmds.filter((c) => c.type === "left" && c.turtleId === "tri");
       expect(fwdCmds.length).toBe(3);
       expect(leftCmds.length).toBe(3);
+    });
+  });
+
+  describe("Game of Life example script", () => {
+    let registry: TurtleRegistry;
+    let bus: MessageBus;
+    let board: Blackboard;
+    let doc: { strokes: Stroke[]; addStroke: (s: Stroke) => void; getStrokes: () => Stroke[]; removeStroke: (id: string) => boolean };
+    const scriptId = "gol-test";
+
+    // Small Game of Life script for testing (5x5 grid, 3 generations, blinker pattern)
+    const golScript = `
+      speed(0)
+      hide()
+      set_spawn_limit(100)
+      local ROWS = 5
+      local COLS = 5
+      local CELL = 15
+      local RADIUS = CELL * 1.5
+
+      local alive = {}
+      for r = 1, ROWS do
+        alive[r] = {}
+        for c = 1, COLS do
+          alive[r][c] = false
+        end
+      end
+
+      -- Blinker: vertical line in center
+      alive[2][3] = true
+      alive[3][3] = true
+      alive[4][3] = true
+
+      local cells = {}
+      for r = 1, ROWS do
+        cells[r] = {}
+        for c = 1, COLS do
+          local id = "c" .. r .. "_" .. c
+          local x = (c - 1) * CELL
+          local y = (r - 1) * CELL
+          cells[r][c] = spawn(id, {x = x, y = y})
+          cells[r][c].hide()
+          publish(id, alive[r][c] and 1 or 0)
+        end
+      end
+
+      for r = 1, ROWS do
+        for c = 1, COLS do
+          if alive[r][c] then
+            local t = cells[r][c]
+            t.fillcolor("#1e1e2e")
+            t.pencolor("#1e1e2e")
+            t.rectangle(CELL, CELL)
+          end
+        end
+      end
+
+      simulate(3, function(gen)
+        local next_alive = {}
+        for r = 1, ROWS do
+          next_alive[r] = {}
+          for c = 1, COLS do
+            local id = "c" .. r .. "_" .. c
+            activate(id)
+            local neighbors = nearby_turtles(RADIUS)
+            local live_count = 0
+            for _, n in ipairs(neighbors) do
+              if n.id ~= "main" then
+                local state = read_board(n.id)
+                if state == 1 then
+                  live_count = live_count + 1
+                end
+              end
+            end
+            if alive[r][c] then
+              next_alive[r][c] = (live_count == 2 or live_count == 3)
+            else
+              next_alive[r][c] = (live_count == 3)
+            end
+          end
+        end
+        for r = 1, ROWS do
+          for c = 1, COLS do
+            if next_alive[r][c] ~= alive[r][c] then
+              local t = cells[r][c]
+              if next_alive[r][c] then
+                t.penmode("draw")
+                t.fillcolor("#1e1e2e")
+                t.pencolor("#1e1e2e")
+                t.rectangle(CELL, CELL)
+              else
+                t.penmode("erase")
+                t.forward(CELL)
+                t.penmode("draw")
+                t.penup()
+                t.backward(CELL)
+                t.pendown()
+              end
+            end
+            alive[r][c] = next_alive[r][c]
+            publish("c" .. r .. "_" .. c, alive[r][c] and 1 or 0)
+          end
+        end
+      end)
+    `;
+
+    beforeEach(() => {
+      registry = new TurtleRegistry();
+      doc = {
+        strokes: [],
+        addStroke(s: Stroke) { this.strokes.push(s); },
+        getStrokes() { return this.strokes; },
+        removeStroke(id: string) {
+          const idx = this.strokes.findIndex((s) => s.id === id);
+          if (idx === -1) return false;
+          this.strokes.splice(idx, 1);
+          return true;
+        },
+      };
+      bus = new MessageBus();
+      board = new Blackboard();
+      registry.createMain(scriptId, doc);
+      runtime.setSpawnContext(registry, scriptId, doc);
+      runtime.setMessagingContext(bus, board);
+      runtime.setStateQuery({
+        getPosition: () => ({ x: 0, y: 0 }),
+        getHeading: () => 0,
+        isDown: () => true,
+      });
+      bus.register(`${scriptId}:main`);
+    });
+
+    it("executes 5x5 Game of Life with blinker without errors", async () => {
+      const result = await runtime.execute(golScript);
+      expect(result.success).toBe(true);
+    });
+
+    it("spawns 25 cell turtles for 5x5 grid", async () => {
+      await runtime.execute(golScript);
+      const cmds = runtime.getCommands();
+      const spawnCmds = cmds.filter((c) => c.type === "spawn");
+      expect(spawnCmds.length).toBe(25);
+    });
+
+    it("generates step_boundary markers for 3 generations", async () => {
+      await runtime.execute(golScript);
+      const cmds = runtime.getCommands();
+      const stepCmds = cmds.filter((c) => c.type === "step_boundary");
+      expect(stepCmds.length).toBe(3);
+    });
+
+    it("blinker oscillates: vertical→horizontal→vertical after 2 gens", async () => {
+      await runtime.execute(golScript);
+      // After gen 1, blinker should become horizontal: (3,2), (3,3), (3,4)
+      // Check blackboard state reflects this after simulation
+      // Gen 1: vertical (2,3)(3,3)(4,3) → horizontal (3,2)(3,3)(3,4)
+      // Gen 2: horizontal → vertical again
+      // Gen 3: vertical → horizontal again
+      // After 3 gens (odd), blinker is horizontal: (3,2),(3,3),(3,4)
+      expect(board.read("c3_2")).toBe(1);
+      expect(board.read("c3_3")).toBe(1);
+      expect(board.read("c3_4")).toBe(1);
+      // Original vertical cells (except center) should be dead
+      expect(board.read("c2_3")).toBe(0);
+      expect(board.read("c4_3")).toBe(0);
+    });
+
+    it("uses penmode erase for dead cells and rectangle for alive cells", async () => {
+      await runtime.execute(golScript);
+      const cmds = runtime.getCommands();
+      // Should have penmode erase commands (cells that died)
+      const eraseCmds = cmds.filter(
+        (c) => c.type === "penmode" && (c as TurtleCommand & { type: "penmode"; mode: string }).mode === "erase"
+      );
+      expect(eraseCmds.length).toBeGreaterThan(0);
+      // Should have rectangle commands (alive cells drawing)
+      const rectCmds = cmds.filter((c) => c.type === "rectangle");
+      expect(rectCmds.length).toBeGreaterThan(0);
     });
   });
 });

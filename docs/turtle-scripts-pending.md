@@ -409,3 +409,148 @@ end
 
 branch(4, ox, oy, 0, 1)
 ```
+
+## 8. Game of Life (Conway's Cellular Automaton)
+
+**Tags:** cellular-automata, spawn, simulate, blackboard, advanced
+**Description:** Conway's Game of Life using turtle spawning and blackboard communication. Each cell is a spawned turtle on a 20x20 grid. Cells use `nearby_turtles()` to count live neighbors and `read_board()` to check their alive/dead state. B3/S23 rules: a dead cell with exactly 3 live neighbors is born; a live cell with 2-3 neighbors survives; all others die. Initial pattern is the R-pentomino (produces chaotic growth). Alive cells draw filled rectangles; dead cells use `penmode("erase")` to remove their rectangle. After erasing, turtles return to their grid position so `nearby_turtles()` works correctly in subsequent generations.
+**Status:** Added to exchange snapshot.
+
+```lua
+-- Conway's Game of Life
+-- Each cell is a spawned turtle on a grid. Cells use nearby_turtles()
+-- to find neighbors and read_board() to check their alive/dead state.
+-- B3/S23 rules: birth with 3 neighbors, survive with 2 or 3.
+-- Initial pattern: R-pentomino (produces chaotic growth).
+
+speed(0)
+hide()
+set_spawn_limit(500)
+
+local ox, oy = position()
+local ROWS = 20
+local COLS = 20
+local CELL = 15
+local GENS = 30
+local RADIUS = CELL * 1.5
+
+-- Colors for alive cells by generation parity
+local ALIVE_COLOR = "#1e1e2e"
+local GRID_COLOR = "#ccd0da"
+
+-- Initialize grid state
+local alive = {}
+for r = 1, ROWS do
+  alive[r] = {}
+  for c = 1, COLS do
+    alive[r][c] = false
+  end
+end
+
+-- R-pentomino in center
+local mr = math.floor(ROWS / 2)
+local mc = math.floor(COLS / 2)
+alive[mr][mc + 1]     = true
+alive[mr][mc + 2]     = true
+alive[mr + 1][mc]     = true
+alive[mr + 1][mc + 1] = true
+alive[mr + 2][mc + 1] = true
+
+-- Spawn cell turtles at grid positions
+local cells = {}
+for r = 1, ROWS do
+  cells[r] = {}
+  for c = 1, COLS do
+    local id = "c" .. r .. "_" .. c
+    local x = (c - 1) * CELL - (COLS * CELL / 2)
+    local y = (r - 1) * CELL - (ROWS * CELL / 2)
+    cells[r][c] = spawn(id, {x = x, y = y})
+    cells[r][c].hide()
+    publish(id, alive[r][c] and 1 or 0)
+  end
+end
+
+-- Draw grid lines
+pencolor(GRID_COLOR)
+penwidth(1)
+local gw = COLS * CELL
+local gh = ROWS * CELL
+for r = 0, ROWS do
+  penup()
+  goto_pos(ox - gw / 2, oy - gh / 2 + r * CELL)
+  pendown()
+  goto_pos(ox + gw / 2, oy - gh / 2 + r * CELL)
+end
+for c = 0, COLS do
+  penup()
+  goto_pos(ox - gw / 2 + c * CELL, oy - gh / 2)
+  pendown()
+  goto_pos(ox - gw / 2 + c * CELL, oy + gh / 2)
+end
+
+-- Draw initial alive cells
+for r = 1, ROWS do
+  for c = 1, COLS do
+    if alive[r][c] then
+      local t = cells[r][c]
+      t.fillcolor(ALIVE_COLOR)
+      t.pencolor(ALIVE_COLOR)
+      t.rectangle(CELL, CELL)
+    end
+  end
+end
+
+-- Run simulation
+simulate(GENS, function(gen)
+  -- Count neighbors for each cell using nearby_turtles
+  local next_alive = {}
+  for r = 1, ROWS do
+    next_alive[r] = {}
+    for c = 1, COLS do
+      local id = "c" .. r .. "_" .. c
+      activate(id)
+      local neighbors = nearby_turtles(RADIUS)
+      local live_count = 0
+      for _, n in ipairs(neighbors) do
+        if n.id ~= "main" then
+          local state = read_board(n.id)
+          if state == 1 then
+            live_count = live_count + 1
+          end
+        end
+      end
+
+      -- B3/S23 rules
+      if alive[r][c] then
+        next_alive[r][c] = (live_count == 2 or live_count == 3)
+      else
+        next_alive[r][c] = (live_count == 3)
+      end
+    end
+  end
+
+  -- Update state and draw/erase changed cells
+  for r = 1, ROWS do
+    for c = 1, COLS do
+      if next_alive[r][c] ~= alive[r][c] then
+        local t = cells[r][c]
+        if next_alive[r][c] then
+          t.penmode("draw")
+          t.fillcolor(ALIVE_COLOR)
+          t.pencolor(ALIVE_COLOR)
+          t.rectangle(CELL, CELL)
+        else
+          t.penmode("erase")
+          t.forward(CELL)
+          t.penmode("draw")
+          t.penup()
+          t.backward(CELL)
+          t.pendown()
+        end
+      end
+      alive[r][c] = next_alive[r][c]
+      publish("c" .. r .. "_" .. c, alive[r][c] and 1 or 0)
+    end
+  end
+end)
+```

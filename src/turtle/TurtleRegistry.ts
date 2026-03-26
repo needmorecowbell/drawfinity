@@ -257,6 +257,25 @@ export class TurtleRegistry {
     return results;
   }
 
+  /**
+   * Returns true if two turtles are within collision range of each other.
+   * The collision radius for each turtle is either its custom `collisionRadius`
+   * or `pen.width / 2` by default. Collision occurs when distance <= sum of radii.
+   */
+  collidesWith(id1: string, id2: string): boolean {
+    const t1 = this.turtles.get(id1);
+    const t2 = this.turtles.get(id2);
+    if (!t1) throw new Error(`Unknown turtle "${id1}"`);
+    if (!t2) throw new Error(`Unknown turtle "${id2}"`);
+    const r1 = t1.state.collisionRadius ?? t1.state.pen.width / 2;
+    const r2 = t2.state.collisionRadius ?? t2.state.pen.width / 2;
+    const dx = t2.state.x - t1.state.x;
+    const dy = t2.state.y - t1.state.y;
+    const dist2 = dx * dx + dy * dy;
+    const threshold = r1 + r2;
+    return dist2 <= threshold * threshold;
+  }
+
   /** Euclidean distance between two turtles. */
   distanceTo(id1: string, id2: string): number {
     const t1 = this.turtles.get(id1);

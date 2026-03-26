@@ -994,6 +994,37 @@ export class LuaRuntime {
       this.maxSimulateSteps = n;
     });
 
+    // Internal: collides_with(targetId) — immediate collision check
+    g.set("_collides_with_impl", (targetId: unknown) => {
+      if (typeof targetId !== "string" || targetId.length === 0) {
+        throw new Error("collides_with() requires a non-empty string turtle ID");
+      }
+      const ctx = getSpawnCtx();
+      if (!ctx.registry || !ctx.scriptId) {
+        throw new Error("Spawn context not set — cannot check collision");
+      }
+      const fullSelf = getFullTurtleId();
+      const fullTarget = `${ctx.scriptId}:${targetId}`;
+      return ctx.registry.collidesWith(fullSelf, fullTarget);
+    });
+
+    // Internal: set_collision_radius(r) — override collision radius for active turtle
+    g.set("_set_collision_radius_impl", (r: unknown) => {
+      if (typeof r !== "number" || r < 0) {
+        throw new Error("set_collision_radius() requires a non-negative number");
+      }
+      const ctx = getSpawnCtx();
+      if (!ctx.registry) {
+        throw new Error("Spawn context not set — cannot set collision radius");
+      }
+      const fullId = getFullTurtleId();
+      const entry = ctx.registry.get(fullId);
+      if (!entry) {
+        throw new Error(`Turtle not found: ${fullId}`);
+      }
+      entry.state.collisionRadius = r;
+    });
+
     // Register `goto` as an alias (goto is a Lua keyword in 5.4, so we use a wrapper)
     engine.doStringSync(`
       -- 'goto' is a reserved keyword in Lua, so we alias via goto_pos
@@ -1093,6 +1124,16 @@ export class LuaRuntime {
       -- set_max_steps(n) — configure maximum simulate steps
       function set_max_steps(n)
         _set_max_steps_impl(n)
+      end
+
+      -- collides_with(id) — check if active turtle collides with target
+      function collides_with(id)
+        return _collides_with_impl(id)
+      end
+
+      -- set_collision_radius(r) — override collision radius for active turtle
+      function set_collision_radius(r)
+        _set_collision_radius_impl(r)
       end
 
       -- spawn(id, opts?) — create a new turtle and return a handle table

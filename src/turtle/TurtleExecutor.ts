@@ -114,8 +114,10 @@ export class TurtleExecutor {
     mainEntry.state.reset();
     mainEntry.state.zoomScale = zoom > 0 ? 1 / zoom : 1;
 
-    // Wire up state query so Lua can read position/heading/isdown of main turtle
+    // Wire up state query and spawn context for Lua
     this.runtime.setStateQuery(mainEntry.state);
+    this.runtime.setActiveTurtle("main");
+    this.runtime.setSpawnContext(this.registry, this.scriptId, this.doc);
 
     this.events.onStart?.();
 
@@ -170,6 +172,32 @@ export class TurtleExecutor {
   }
 
   private processCommand(cmd: TurtleCommand): void {
+    // Handle spawn commands — create or re-initialize the turtle
+    if (cmd.type === "spawn") {
+      const fullId = `${this.scriptId}:${cmd.id}`;
+      if (!this.registry.has(fullId)) {
+        this.registry.spawn(cmd.id, this.scriptId, this.doc, undefined, {
+          x: cmd.x, y: cmd.y, heading: cmd.heading, color: cmd.color, width: cmd.width,
+        });
+      } else {
+        // Turtle was created during collection — reset to spawn options
+        const entry = this.registry.get(fullId)!;
+        entry.state.reset();
+        if (cmd.x !== undefined) entry.state.x = cmd.x;
+        if (cmd.y !== undefined) entry.state.y = cmd.y;
+        if (cmd.heading !== undefined) entry.state.angle = cmd.heading;
+        if (cmd.color !== undefined) entry.state.pen.color = cmd.color;
+        if (cmd.width !== undefined) entry.state.pen.width = cmd.width;
+      }
+      // Inherit zoom scale from main turtle
+      const spawnedEntry = this.registry.get(fullId);
+      const mainEntry = this.registry.get(`${this.scriptId}:main`);
+      if (spawnedEntry && mainEntry) {
+        spawnedEntry.state.zoomScale = mainEntry.state.zoomScale;
+      }
+      return;
+    }
+
     // Resolve turtle ID: default to "main", prefix with scriptId
     const localId = cmd.turtleId ?? "main";
     const fullId = `${this.scriptId}:${localId}`;

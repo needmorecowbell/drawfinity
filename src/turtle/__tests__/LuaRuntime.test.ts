@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { LuaRuntime, TurtleCommand } from "../LuaRuntime";
+import { TurtleRegistry } from "../TurtleRegistry";
+import { Stroke, DocumentModel } from "../../model/Stroke";
 
 describe("LuaRuntime", () => {
   let runtime: LuaRuntime;
@@ -429,6 +431,358 @@ describe("LuaRuntime", () => {
 
       expect(mainCmds[0].turtleId).toBeUndefined();
       expect(childCmds[0].turtleId).toBe("child");
+    });
+  });
+
+  describe("spawn()", () => {
+    /** Minimal in-memory document for testing. */
+    class MockDocument implements DocumentModel {
+      strokes: Stroke[] = [];
+      addStroke(stroke: Stroke): void {
+        this.strokes.push(stroke);
+      }
+      getStrokes(): Stroke[] {
+        return this.strokes;
+      }
+      removeStroke(strokeId: string): boolean {
+        const idx = this.strokes.findIndex((s) => s.id === strokeId);
+        if (idx === -1) return false;
+        this.strokes.splice(idx, 1);
+        return true;
+      }
+    }
+
+    let registry: TurtleRegistry;
+    let doc: MockDocument;
+    const scriptId = "test-script";
+
+    beforeEach(() => {
+      registry = new TurtleRegistry();
+      doc = new MockDocument();
+      // Create main turtle so spawn has a parent
+      registry.createMain(scriptId, doc);
+      runtime.setSpawnContext(registry, scriptId, doc);
+    });
+
+    it("spawns a turtle and returns a handle", async () => {
+      const result = await runtime.execute(`
+        local t = spawn("child1")
+        assert(t ~= nil, "spawn should return a handle")
+      `);
+      expect(result.success).toBe(true);
+    });
+
+    it("pushes a spawn command with default options", async () => {
+      await runtime.execute('spawn("t1")');
+      const cmds = runtime.getCommands();
+      expect(cmds).toHaveLength(1);
+      expect(cmds[0].type).toBe("spawn");
+      if (cmds[0].type === "spawn") {
+        expect(cmds[0].id).toBe("t1");
+      }
+    });
+
+    it("pushes a spawn command with position and heading options", async () => {
+      await runtime.execute('spawn("t1", {x=100, y=200, heading=45})');
+      const cmds = runtime.getCommands();
+      expect(cmds).toHaveLength(1);
+      if (cmds[0].type === "spawn") {
+        expect(cmds[0].id).toBe("t1");
+        expect(cmds[0].x).toBe(100);
+        expect(cmds[0].y).toBe(200);
+        expect(cmds[0].heading).toBe(45);
+      }
+    });
+
+    it("pushes a spawn command with color and width options", async () => {
+      await runtime.execute('spawn("t1", {color="#ff0000", width=5})');
+      const cmds = runtime.getCommands();
+      if (cmds[0].type === "spawn") {
+        expect(cmds[0].color).toBe("#ff0000");
+        expect(cmds[0].width).toBe(5);
+      }
+    });
+
+    it("creates turtle in registry eagerly during collection", async () => {
+      await runtime.execute('spawn("child1")');
+      expect(registry.has(`${scriptId}:child1`)).toBe(true);
+    });
+
+    it("sets initial state from spawn options", async () => {
+      await runtime.execute('spawn("t1", {x=50, y=-30, heading=90})');
+      const entry = registry.get(`${scriptId}:t1`);
+      expect(entry).toBeDefined();
+      expect(entry!.state.x).toBe(50);
+      expect(entry!.state.y).toBe(-30);
+      expect(entry!.state.angle).toBe(90);
+    });
+
+    it("handle.forward pushes tagged command", async () => {
+      await runtime.execute(`
+        local t = spawn("child1")
+        t.forward(100)
+      `);
+      const cmds = runtime.getCommands();
+      expect(cmds).toHaveLength(2); // spawn + forward
+      expect(cmds[1]).toEqual({
+        type: "forward",
+        distance: 100,
+        turtleId: "child1",
+      });
+    });
+
+    it("handle.backward pushes tagged command", async () => {
+      await runtime.execute(`
+        local t = spawn("child1")
+        t.backward(50)
+      `);
+      const cmds = runtime.getCommands();
+      expect(cmds[1]).toEqual({
+        type: "backward",
+        distance: 50,
+        turtleId: "child1",
+      });
+    });
+
+    it("handle.right and handle.left push tagged commands", async () => {
+      await runtime.execute(`
+        local t = spawn("t1")
+        t.right(90)
+        t.left(45)
+      `);
+      const cmds = runtime.getCommands();
+      expect(cmds[1]).toEqual({ type: "right", angle: 90, turtleId: "t1" });
+      expect(cmds[2]).toEqual({ type: "left", angle: 45, turtleId: "t1" });
+    });
+
+    it("handle pen methods push tagged commands", async () => {
+      await runtime.execute(`
+        local t = spawn("t1")
+        t.penup()
+        t.pendown()
+        t.pencolor("#00ff00")
+        t.penwidth(5)
+        t.penopacity(0.5)
+      `);
+      const cmds = runtime.getCommands();
+      expect(cmds[1]).toEqual({ type: "penup", turtleId: "t1" });
+      expect(cmds[2]).toEqual({ type: "pendown", turtleId: "t1" });
+      expect(cmds[3]).toEqual({ type: "pencolor", color: "#00ff00", turtleId: "t1" });
+      expect(cmds[4]).toEqual({ type: "penwidth", width: 5, turtleId: "t1" });
+      expect(cmds[5]).toEqual({ type: "penopacity", opacity: 0.5, turtleId: "t1" });
+    });
+
+    it("handle.pencolor with RGB values", async () => {
+      await runtime.execute(`
+        local t = spawn("t1")
+        t.pencolor(255, 128, 0)
+      `);
+      const cmds = runtime.getCommands();
+      expect(cmds[1]).toEqual({
+        type: "pencolor",
+        color: "#ff8000",
+        turtleId: "t1",
+      });
+    });
+
+    it("handle.goto_pos pushes tagged goto command", async () => {
+      await runtime.execute(`
+        local t = spawn("t1")
+        t.goto_pos(100, 200)
+      `);
+      const cmds = runtime.getCommands();
+      expect(cmds[1]).toEqual({ type: "goto", x: 100, y: 200, turtleId: "t1" });
+    });
+
+    it("handle.home pushes tagged home command", async () => {
+      await runtime.execute(`
+        local t = spawn("t1")
+        t.home()
+      `);
+      const cmds = runtime.getCommands();
+      expect(cmds[1]).toEqual({ type: "home", turtleId: "t1" });
+    });
+
+    it("handle.speed pushes tagged speed command", async () => {
+      await runtime.execute(`
+        local t = spawn("t1")
+        t.speed(8)
+      `);
+      const cmds = runtime.getCommands();
+      expect(cmds[1]).toEqual({ type: "speed", value: 8, turtleId: "t1" });
+    });
+
+    it("handle.clear pushes tagged clear command", async () => {
+      await runtime.execute(`
+        local t = spawn("t1")
+        t.clear()
+      `);
+      const cmds = runtime.getCommands();
+      expect(cmds[1]).toEqual({ type: "clear", turtleId: "t1" });
+    });
+
+    it("handle.sleep pushes tagged sleep command", async () => {
+      await runtime.execute(`
+        local t = spawn("t1")
+        t.sleep(100)
+      `);
+      const cmds = runtime.getCommands();
+      expect(cmds[1]).toEqual({ type: "sleep", ms: 100, turtleId: "t1" });
+    });
+
+    it("handle.print pushes tagged print command", async () => {
+      await runtime.execute(`
+        local t = spawn("t1")
+        t.print("hello from child")
+      `);
+      const cmds = runtime.getCommands();
+      expect(cmds[1]).toEqual({
+        type: "print",
+        message: "hello from child",
+        turtleId: "t1",
+      });
+    });
+
+    it("handle.position returns initial position", async () => {
+      await runtime.execute(`
+        local t = spawn("t1", {x=42, y=77})
+        local x, y = t.position()
+        print(x .. "," .. y)
+      `);
+      const cmds = runtime.getCommands();
+      const printCmd = cmds.find(
+        (c): c is TurtleCommand & { type: "print" } => c.type === "print" && !c.turtleId,
+      );
+      expect(printCmd!.message).toBe("42,77");
+    });
+
+    it("handle.heading returns initial heading", async () => {
+      await runtime.execute(`
+        local t = spawn("t1", {heading=90})
+        print(t.heading())
+      `);
+      const cmds = runtime.getCommands();
+      const printCmd = cmds.find(
+        (c): c is TurtleCommand & { type: "print" } => c.type === "print" && !c.turtleId,
+      );
+      expect(printCmd!.message).toBe("90");
+    });
+
+    it("handle.isdown returns default true", async () => {
+      await runtime.execute(`
+        local t = spawn("t1")
+        print(tostring(t.isdown()))
+      `);
+      const cmds = runtime.getCommands();
+      const printCmd = cmds.find(
+        (c): c is TurtleCommand & { type: "print" } => c.type === "print" && !c.turtleId,
+      );
+      expect(printCmd!.message).toBe("true");
+    });
+
+    it("multiple spawned turtles produce independently tagged commands", async () => {
+      await runtime.execute(`
+        local a = spawn("alpha")
+        local b = spawn("beta")
+        a.forward(10)
+        b.forward(20)
+        forward(30) -- main turtle
+      `);
+      const cmds = runtime.getCommands();
+      // spawn alpha, spawn beta, a.forward, b.forward, main.forward
+      expect(cmds).toHaveLength(5);
+      expect(cmds[2]).toEqual({ type: "forward", distance: 10, turtleId: "alpha" });
+      expect(cmds[3]).toEqual({ type: "forward", distance: 20, turtleId: "beta" });
+      expect(cmds[4]).toEqual({ type: "forward", distance: 30 }); // main, no turtleId
+    });
+
+    it("errors on empty string ID", async () => {
+      const result = await runtime.execute('spawn("")');
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("non-empty string");
+    });
+
+    it("errors on non-string ID", async () => {
+      const result = await runtime.execute("spawn(123)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("non-empty string");
+    });
+
+    it('errors on reserved "main" ID', async () => {
+      const result = await runtime.execute('spawn("main")');
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("reserved");
+    });
+
+    it("errors on duplicate turtle ID within same execution", async () => {
+      const result = await runtime.execute(`
+        spawn("dup")
+        spawn("dup")
+      `);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("already exists");
+    });
+
+    it("enforces max turtle limit", async () => {
+      registry.setMaxTurtles(3); // main + 2 spawned = 3 max
+      const result = await runtime.execute(`
+        spawn("t1")
+        spawn("t2")
+        spawn("t3") -- should fail: registry has main + t1 + t2 = 3
+      `);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Maximum turtle limit");
+    });
+
+    it("errors when spawn context not set", async () => {
+      const freshRuntime = new LuaRuntime();
+      await freshRuntime.init();
+      // Don't set spawn context
+      const result = await freshRuntime.execute('spawn("t1")');
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Spawn context not set");
+      freshRuntime.close();
+    });
+
+    it("handle.set_world_space pushes tagged command", async () => {
+      await runtime.execute(`
+        local t = spawn("t1")
+        t.set_world_space(true)
+      `);
+      const cmds = runtime.getCommands();
+      expect(cmds[1]).toEqual({
+        type: "set_world_space",
+        enabled: true,
+        turtleId: "t1",
+      });
+    });
+
+    it("stub methods raise not-yet-implemented errors", async () => {
+      for (const method of ["hide", "show", "penmode", "penpreset", "rectangle", "ellipse", "polygon", "star", "fillcolor"]) {
+        const freshRuntime = new LuaRuntime();
+        await freshRuntime.init();
+        freshRuntime.setSpawnContext(registry, scriptId, doc);
+        const result = await freshRuntime.execute(`
+          local t = spawn("stub_${method}")
+          t.${method}()
+        `);
+        expect(result.success).toBe(false);
+        expect(result.error).toContain("not yet implemented");
+        freshRuntime.close();
+      }
+    });
+
+    it("clears spawned tracking between executions", async () => {
+      await runtime.execute('spawn("t1")');
+      expect(runtime.getCommands()).toHaveLength(1);
+
+      // Clear the turtle from registry so next spawn can succeed
+      registry.clearScript(scriptId);
+      registry.createMain(scriptId, doc);
+
+      // Second execution should allow same ID
+      const result = await runtime.execute('spawn("t1")');
+      expect(result.success).toBe(true);
     });
   });
 });

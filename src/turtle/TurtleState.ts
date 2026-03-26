@@ -127,6 +127,9 @@ export class TurtleState implements TurtleStateQuery {
       case "speed":
         this.speed = cmd.value;
         return null;
+      case "set_world_space":
+        this.setWorldSpace(cmd.enabled);
+        return null;
       case "clear":
       case "sleep":
       case "print":

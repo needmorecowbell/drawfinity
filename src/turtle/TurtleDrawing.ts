@@ -1,5 +1,6 @@
 import { DocumentModel, Stroke, generateStrokeId } from "../model/Stroke";
 import { MovementSegment, PenState } from "./TurtleState";
+import { lineIntersectsStroke } from "./turtleEraseUtils";
 
 /**
  * Converts turtle movement segments into CRDT strokes and adds them
@@ -64,6 +65,54 @@ export class TurtleDrawing {
   /** Get IDs of all strokes created by this turtle session. */
   getStrokeIds(): string[] {
     return [...this.strokeIds];
+  }
+
+  /**
+   * Erase strokes along a movement segment. Finds all strokes within
+   * `radius` of the line from (fromX,fromY) to (toX,toY) and removes
+   * or splits them.
+   *
+   * @param segment - The movement segment defining the erase path.
+   * @param radius - The erase radius (typically pen width / 2).
+   * @param turtleStrokeIds - When provided, only erase strokes whose IDs
+   *   are in this set (for turtle_only mode). When null, erase all strokes.
+   */
+  eraseAlongSegment(
+    segment: MovementSegment,
+    radius: number,
+    turtleStrokeIds: Set<string> | null,
+  ): void {
+    // Flush pending segments so they can be erased too
+    this.flush();
+    const strokes = this.doc.getStrokes();
+    const erasedIds: string[] = [];
+
+    for (const stroke of strokes) {
+      if (turtleStrokeIds && !turtleStrokeIds.has(stroke.id)) {
+        continue;
+      }
+      if (
+        lineIntersectsStroke(
+          segment.fromX, segment.fromY,
+          segment.toX, segment.toY,
+          stroke,
+          radius,
+        )
+      ) {
+        erasedIds.push(stroke.id);
+      }
+    }
+
+    for (const id of erasedIds) {
+      if (this.doc.removeStroke) {
+        this.doc.removeStroke(id);
+      }
+      // Remove from our tracked stroke IDs if it was a turtle stroke
+      const idx = this.strokeIds.indexOf(id);
+      if (idx !== -1) {
+        this.strokeIds.splice(idx, 1);
+      }
+    }
   }
 
   private commitSegments(segments: MovementSegment[]): void {

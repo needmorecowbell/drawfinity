@@ -329,8 +329,30 @@ export class TurtleExecutor {
     // but speed still needs to update state
     const segment = entry.state.applyCommand(cmd);
     if (segment) {
-      const batching = entry.state.speed === 0;
-      entry.drawing.addSegment(segment, batching);
+      if (entry.state.penMode === "erase") {
+        // Flush all turtles' pending segments so they can be erased
+        const owned = this.registry.getOwned(this.scriptId);
+        for (const [, ownedEntry] of owned) {
+          ownedEntry.drawing.flush();
+        }
+        // Erase mode: remove strokes along the movement path
+        const radius = entry.state.pen.width / 2;
+        let turtleStrokeIds: Set<string> | null = null;
+        if (entry.state.eraseTurtleOnly) {
+          // Collect all turtle-drawn stroke IDs across all turtles
+          turtleStrokeIds = new Set<string>();
+          const allTurtles = this.registry.getAll();
+          for (const [, tEntry] of allTurtles) {
+            for (const id of tEntry.drawing.getStrokeIds()) {
+              turtleStrokeIds.add(id);
+            }
+          }
+        }
+        entry.drawing.eraseAlongSegment(segment, radius, turtleStrokeIds);
+      } else {
+        const batching = entry.state.speed === 0;
+        entry.drawing.addSegment(segment, batching);
+      }
     }
   }
 

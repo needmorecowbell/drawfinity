@@ -23,6 +23,7 @@ export type {
 } from "./exchange";
 export { ExchangeClient, ExchangeError, ExchangeCache } from "./exchange";
 export type { TurtleEntry, SpawnOptions } from "./TurtleRegistry";
+export { lineIntersectsStroke, segmentToSegmentDistance } from "./turtleEraseUtils";
 export {
   TurtleRegistry,
   getTurtleRegistry,

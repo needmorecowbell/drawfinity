@@ -335,3 +335,77 @@ end
 
 sierpinski(6, ox, oy, 1)
 ```
+
+## 7. Fractal Zoom Tree
+
+**Tags:** fractal, spawn, zoom, scale, advanced
+**Description:** Recursive branching tree that reveals hidden detail as you zoom in. Each branch tip spawns a child tree at 1/10 scale — what looks like a dot becomes an entire tree when magnified. Uses `min_pixel_size(1)` for LOD optimization and `scale_pen(true)` so pen width scales with the tree. 5 depth-based colors from brown trunk to purple tips. Depth 4 produces ~73 turtles.
+**Status:** Added to exchange snapshot.
+
+```lua
+-- Fractal Zoom Tree
+-- A recursive branching tree where each branch tip spawns a child
+-- tree at 1/10 scale. Zoom into any tip to discover a whole new tree.
+-- Depth 4: up to 73 turtles (1 + 3 + 9 + 27 + 33 tips spawn children).
+
+speed(0)
+hide()
+
+local ox, oy = position()
+
+-- Depth colors: dark trunk to bright tips
+local colors = {
+  [4] = "#5c3d2e",
+  [3] = "#7c5f3a",
+  [2] = "#40a02b",
+  [1] = "#209fb5",
+  [0] = "#8839ef",
+}
+
+local count = 0
+
+function branch(depth, wx, wy, angle, s)
+  count = count + 1
+  local t = spawn("b" .. count, {
+    x = wx - ox, y = wy - oy,
+    scale = s, heading = angle
+  })
+  t.pencolor(colors[depth] or "#333333")
+  t.penwidth(math.max(1, depth))
+  t.min_pixel_size(1)
+  t.scale_pen(true)
+
+  -- Draw trunk segment
+  local len = 80
+  t.forward(len)
+
+  if depth > 0 then
+    -- Branch into 3 sub-branches
+    local bx = wx + math.cos(math.rad(angle - 90)) * len * s
+    local by = wy + math.sin(math.rad(angle - 90)) * len * s
+    branch(depth - 1, bx, by, angle - 30, s * 0.65)
+    branch(depth - 1, bx, by, angle,      s * 0.65)
+    branch(depth - 1, bx, by, angle + 30, s * 0.65)
+  else
+    -- At the tips, spawn a zoomed-in copy at 1/10 scale
+    local tipX = wx + math.cos(math.rad(angle - 90)) * len * s
+    local tipY = wy + math.sin(math.rad(angle - 90)) * len * s
+    count = count + 1
+    local child = spawn("z" .. count, {
+      x = tipX - ox, y = tipY - oy,
+      scale = s * 0.1, heading = 0
+    })
+    child.pencolor("#e64553")
+    child.penwidth(2)
+    child.min_pixel_size(1)
+    child.scale_pen(true)
+    -- Draw a small signature pattern at the tip
+    for i = 1, 4 do
+      child.forward(60)
+      child.right(90)
+    end
+  end
+end
+
+branch(4, ox, oy, 0, 1)
+```

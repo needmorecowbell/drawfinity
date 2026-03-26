@@ -1936,6 +1936,208 @@ describe("LuaRuntime", () => {
     });
   });
 
+  describe("Fractal zoom tree example script", () => {
+    let registry: TurtleRegistry;
+    let doc: { strokes: Stroke[]; addStroke: (s: Stroke) => void; getStrokes: () => Stroke[]; removeStroke: (id: string) => boolean };
+    const scriptId = "fractal-zoom-tree-test";
+
+    beforeEach(() => {
+      registry = new TurtleRegistry();
+      doc = {
+        strokes: [],
+        addStroke(s: Stroke) { this.strokes.push(s); },
+        getStrokes() { return this.strokes; },
+        removeStroke(id: string) {
+          const idx = this.strokes.findIndex((s) => s.id === id);
+          if (idx === -1) return false;
+          this.strokes.splice(idx, 1);
+          return true;
+        },
+      };
+      registry.createMain(scriptId, doc);
+      runtime.setSpawnContext(registry, scriptId, doc);
+    });
+
+    it("executes depth-2 fractal zoom tree without errors", async () => {
+      const result = await runtime.execute(`
+        speed(0)
+        hide()
+        local ox, oy = position()
+        local count = 0
+
+        function branch(depth, wx, wy, angle, s)
+          count = count + 1
+          local t = spawn("b" .. count, {
+            x = wx - ox, y = wy - oy,
+            scale = s, heading = angle
+          })
+          t.penwidth(math.max(1, depth))
+          t.min_pixel_size(1)
+          t.scale_pen(true)
+          t.forward(80)
+
+          if depth > 0 then
+            local bx = wx + math.cos(math.rad(angle - 90)) * 80 * s
+            local by = wy + math.sin(math.rad(angle - 90)) * 80 * s
+            branch(depth - 1, bx, by, angle - 30, s * 0.65)
+            branch(depth - 1, bx, by, angle,      s * 0.65)
+            branch(depth - 1, bx, by, angle + 30, s * 0.65)
+          else
+            local tipX = wx + math.cos(math.rad(angle - 90)) * 80 * s
+            local tipY = wy + math.sin(math.rad(angle - 90)) * 80 * s
+            count = count + 1
+            local child = spawn("z" .. count, {
+              x = tipX - ox, y = tipY - oy,
+              scale = s * 0.1, heading = 0
+            })
+            child.penwidth(2)
+            child.min_pixel_size(1)
+            child.scale_pen(true)
+            for i = 1, 4 do
+              child.forward(60)
+              child.right(90)
+            end
+          end
+        end
+
+        branch(2, ox, oy, 0, 1)
+      `);
+      expect(result.success).toBe(true);
+    });
+
+    it("spawns branch turtles and tip turtles for depth 2", async () => {
+      await runtime.execute(`
+        speed(0)
+        hide()
+        local ox, oy = position()
+        local count = 0
+
+        function branch(depth, wx, wy, angle, s)
+          count = count + 1
+          local t = spawn("b" .. count, {
+            x = wx - ox, y = wy - oy,
+            scale = s, heading = angle
+          })
+          t.penwidth(math.max(1, depth))
+          t.forward(80)
+
+          if depth > 0 then
+            local bx = wx + math.cos(math.rad(angle - 90)) * 80 * s
+            local by = wy + math.sin(math.rad(angle - 90)) * 80 * s
+            branch(depth - 1, bx, by, angle - 30, s * 0.65)
+            branch(depth - 1, bx, by, angle,      s * 0.65)
+            branch(depth - 1, bx, by, angle + 30, s * 0.65)
+          else
+            local tipX = wx + math.cos(math.rad(angle - 90)) * 80 * s
+            local tipY = wy + math.sin(math.rad(angle - 90)) * 80 * s
+            count = count + 1
+            local child = spawn("z" .. count, {
+              x = tipX - ox, y = tipY - oy,
+              scale = s * 0.1, heading = 0
+            })
+            child.penwidth(2)
+            for i = 1, 4 do
+              child.forward(60)
+              child.right(90)
+            end
+          end
+        end
+
+        branch(2, ox, oy, 0, 1)
+      `);
+      const cmds = runtime.getCommands();
+      const spawnCmds = cmds.filter((c) => c.type === "spawn");
+      // Depth 2: 1 root + 3 depth-1 + 9 depth-0 branches + 9 tip children = 22
+      expect(spawnCmds.length).toBe(22);
+    });
+
+    it("tip turtles have 1/10 scale relative to their parent branch", async () => {
+      await runtime.execute(`
+        speed(0)
+        hide()
+        local ox, oy = position()
+        local count = 0
+
+        function branch(depth, wx, wy, angle, s)
+          count = count + 1
+          local t = spawn("b" .. count, {
+            x = wx - ox, y = wy - oy,
+            scale = s, heading = angle
+          })
+          t.forward(80)
+
+          if depth > 0 then
+            local bx = wx + math.cos(math.rad(angle - 90)) * 80 * s
+            local by = wy + math.sin(math.rad(angle - 90)) * 80 * s
+            branch(depth - 1, bx, by, angle - 30, s * 0.65)
+            branch(depth - 1, bx, by, angle,      s * 0.65)
+            branch(depth - 1, bx, by, angle + 30, s * 0.65)
+          else
+            local tipX = wx + math.cos(math.rad(angle - 90)) * 80 * s
+            local tipY = wy + math.sin(math.rad(angle - 90)) * 80 * s
+            count = count + 1
+            local child = spawn("z" .. count, {
+              x = tipX - ox, y = tipY - oy,
+              scale = s * 0.1, heading = 0
+            })
+            child.forward(60)
+          end
+        end
+
+        branch(1, ox, oy, 0, 1)
+      `);
+      const cmds = runtime.getCommands();
+      const spawnCmds = cmds.filter((c): c is TurtleCommand & { type: "spawn" } => c.type === "spawn");
+      // Depth 1 spawns at scale 0.65, those tips spawn children at 0.65 * 0.1 = 0.065
+      const tipSpawns = spawnCmds.filter((c) => c.id.startsWith("z"));
+      expect(tipSpawns.length).toBe(3);
+      for (const tip of tipSpawns) {
+        expect(tip.scale).toBeCloseTo(0.065, 5);
+      }
+    });
+
+    it("uses different colors per depth level", async () => {
+      const result = await runtime.execute(`
+        speed(0)
+        hide()
+        local ox, oy = position()
+        local colors = {
+          [4] = "#5c3d2e",
+          [3] = "#7c5f3a",
+          [2] = "#40a02b",
+          [1] = "#209fb5",
+          [0] = "#8839ef",
+        }
+        local count = 0
+
+        function branch(depth, wx, wy, angle, s)
+          count = count + 1
+          local t = spawn("b" .. count, {
+            x = wx - ox, y = wy - oy,
+            scale = s, heading = angle
+          })
+          t.pencolor(colors[depth] or "#333333")
+          t.forward(80)
+
+          if depth > 0 then
+            local bx = wx + math.cos(math.rad(angle - 90)) * 80 * s
+            local by = wy + math.sin(math.rad(angle - 90)) * 80 * s
+            branch(depth - 1, bx, by, angle - 30, s * 0.65)
+            branch(depth - 1, bx, by, angle,      s * 0.65)
+            branch(depth - 1, bx, by, angle + 30, s * 0.65)
+          end
+        end
+
+        branch(2, ox, oy, 0, 1)
+      `);
+      expect(result.success).toBe(true);
+      const cmds = runtime.getCommands();
+      const pencolorCmds = cmds.filter((c) => c.type === "pencolor");
+      const uniqueColors = new Set(pencolorCmds.map((c) => (c as any).color));
+      expect(uniqueColors.size).toBeGreaterThanOrEqual(3);
+    });
+  });
+
   describe("Sierpinski zoom example script", () => {
     let registry: TurtleRegistry;
     let doc: { strokes: Stroke[]; addStroke: (s: Stroke) => void; getStrokes: () => Stroke[]; removeStroke: (id: string) => boolean };

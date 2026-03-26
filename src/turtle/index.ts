@@ -22,10 +22,12 @@ export type {
   UpdateCheckResult,
 } from "./exchange";
 export { ExchangeClient, ExchangeError, ExchangeCache } from "./exchange";
-export type { TurtleEntry, SpawnOptions } from "./TurtleRegistry";
+export type { TurtleEntry, SpawnOptions, NearbyTurtle } from "./TurtleRegistry";
 export { lineIntersectsStroke, segmentToSegmentDistance } from "./turtleEraseUtils";
 export {
   TurtleRegistry,
   getTurtleRegistry,
   resetTurtleRegistry,
 } from "./TurtleRegistry";
+export type { TurtleMessage } from "./TurtleMessaging";
+export { MessageBus, Blackboard } from "./TurtleMessaging";

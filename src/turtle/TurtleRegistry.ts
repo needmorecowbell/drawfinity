@@ -1,6 +1,7 @@
 import { TurtleState } from "./TurtleState";
 import { TurtleDrawing } from "./TurtleDrawing";
 import type { DocumentModel } from "../model/Stroke";
+import { computeStrokeBounds } from "../renderer/SpatialIndex";
 
 /** Entry for a single turtle in the registry. */
 export interface TurtleEntry {
@@ -8,6 +9,15 @@ export interface TurtleEntry {
   drawing: TurtleDrawing;
   scriptId: string;
   parentId: string | null;
+}
+
+/** Result of a nearby-turtle spatial query. */
+export interface NearbyTurtle {
+  id: string;
+  x: number;
+  y: number;
+  heading: number;
+  distance: number;
 }
 
 /** Options for spawning a new turtle. */
@@ -181,6 +191,101 @@ export class TurtleRegistry {
   /** Get the current maximum depth limit. */
   getMaxDepth(): number {
     return this.maxDepth;
+  }
+
+  /**
+   * Returns all turtles within `radius` of the given turtle's position.
+   * Results are sorted by distance (ascending).
+   */
+  nearbyTurtles(turtleId: string, radius: number): NearbyTurtle[] {
+    const origin = this.turtles.get(turtleId);
+    if (!origin) {
+      throw new Error(`Unknown turtle "${turtleId}"`);
+    }
+    const ox = origin.state.x;
+    const oy = origin.state.y;
+    const r2 = radius * radius;
+    const results: NearbyTurtle[] = [];
+
+    for (const [id, entry] of this.turtles) {
+      if (id === turtleId) continue;
+      if (entry.scriptId !== origin.scriptId) continue;
+      const dx = entry.state.x - ox;
+      const dy = entry.state.y - oy;
+      const dist2 = dx * dx + dy * dy;
+      if (dist2 <= r2) {
+        results.push({
+          id,
+          x: entry.state.x,
+          y: entry.state.y,
+          heading: entry.state.angle,
+          distance: Math.sqrt(dist2),
+        });
+      }
+    }
+
+    results.sort((a, b) => a.distance - b.distance);
+    return results;
+  }
+
+  /**
+   * Returns stroke IDs whose bounding boxes intersect a circle at (x, y)
+   * with the given radius. Uses brute-force AABB-circle intersection over
+   * the document's strokes.
+   */
+  nearbyStrokes(
+    x: number,
+    y: number,
+    radius: number,
+    document: DocumentModel,
+  ): string[] {
+    const strokes = document.getStrokes();
+    const results: string[] = [];
+
+    for (const stroke of strokes) {
+      if (stroke.points.length === 0) continue;
+      const bounds = computeStrokeBounds(stroke);
+      // Find closest point on AABB to circle center
+      const closestX = Math.max(bounds.minX, Math.min(x, bounds.maxX));
+      const closestY = Math.max(bounds.minY, Math.min(y, bounds.maxY));
+      const dx = closestX - x;
+      const dy = closestY - y;
+      if (dx * dx + dy * dy <= radius * radius) {
+        results.push(stroke.id);
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Returns true if two turtles are within collision range of each other.
+   * The collision radius for each turtle is either its custom `collisionRadius`
+   * or `pen.width / 2` by default. Collision occurs when distance <= sum of radii.
+   */
+  collidesWith(id1: string, id2: string): boolean {
+    const t1 = this.turtles.get(id1);
+    const t2 = this.turtles.get(id2);
+    if (!t1) throw new Error(`Unknown turtle "${id1}"`);
+    if (!t2) throw new Error(`Unknown turtle "${id2}"`);
+    const r1 = t1.state.collisionRadius ?? t1.state.pen.width / 2;
+    const r2 = t2.state.collisionRadius ?? t2.state.pen.width / 2;
+    const dx = t2.state.x - t1.state.x;
+    const dy = t2.state.y - t1.state.y;
+    const dist2 = dx * dx + dy * dy;
+    const threshold = r1 + r2;
+    return dist2 <= threshold * threshold;
+  }
+
+  /** Euclidean distance between two turtles. */
+  distanceTo(id1: string, id2: string): number {
+    const t1 = this.turtles.get(id1);
+    const t2 = this.turtles.get(id2);
+    if (!t1) throw new Error(`Unknown turtle "${id1}"`);
+    if (!t2) throw new Error(`Unknown turtle "${id2}"`);
+    const dx = t2.state.x - t1.state.x;
+    const dy = t2.state.y - t1.state.y;
+    return Math.sqrt(dx * dx + dy * dy);
   }
 
   /** Calculate the depth of a turtle in the parent-child tree. */

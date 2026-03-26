@@ -793,7 +793,223 @@ branch(0, 0, 180, 80, 6)
 
 > **Tip:** Use `speed(0)` when spawning many turtles — interleaved animation with dozens of turtles can be slow.
 
+### Example: Flocking (Boid Rules)
+
+Spawn 20 turtles that use `activate()` and `nearby_turtles()` to implement simple boid rules — separation, alignment, and cohesion — over 200 simulation steps:
+
+```lua
+speed(0)
+math.randomseed(os.clock())
+
+local count = 20
+local ids = {}
+
+-- Spawn turtles in a cluster
+for i = 1, count do
+  ids[i] = "boid" .. i
+  spawn(ids[i], {
+    x = math.random(-150, 150),
+    y = math.random(-150, 150),
+    heading = math.random(0, 359),
+    color = string.format("#%02x%02x%02x",
+      math.random(100, 255), math.random(50, 200), math.random(50, 200)),
+    width = 2,
+  })
+end
+
+-- Simulate 200 generations of flocking
+simulate(200, function(step)
+  for i = 1, count do
+    activate(ids[i])  -- switch context so queries/commands affect this boid
+    local neighbors = nearby_turtles(80)
+
+    if #neighbors > 0 then
+      local myX, myY = position()
+      local myH = heading()
+      local sepX, sepY = 0, 0     -- separation
+      local avgHdg = 0            -- alignment
+      local avgX, avgY = 0, 0     -- cohesion
+
+      for _, n in ipairs(neighbors) do
+        -- Separation: steer away from very close neighbors
+        if n.distance < 30 and n.distance > 0 then
+          sepX = sepX + (myX - n.x)
+          sepY = sepY + (myY - n.y)
+        end
+        avgHdg = avgHdg + n.heading
+        avgX = avgX + n.x
+        avgY = avgY + n.y
+      end
+
+      -- Apply a gentle turn based on combined forces
+      local turn = 0
+
+      -- Separation: turn away from crowded areas
+      if math.abs(sepX) + math.abs(sepY) > 1 then
+        turn = turn + math.atan(sepY, sepX) * 2
+      end
+
+      -- Alignment: steer toward average heading
+      avgHdg = avgHdg / #neighbors
+      local diff = avgHdg - myH
+      turn = turn + diff * 0.05
+
+      -- Clamp turn
+      if turn > 15 then turn = 15 end
+      if turn < -15 then turn = -15 end
+
+      right(turn)
+    end
+
+    forward(4)
+  end
+  activate("main")
+end)
+```
+
+### Example: Message Relay
+
+Spawn a chain of turtles that pass a color value down the line via `send()`/`receive()`. Each turtle draws a segment in the color it receives:
+
+```lua
+speed(0)
+
+local chain_len = 8
+local spacing = 60
+local seg_len = 50
+
+-- Spawn a chain of turtles in a row
+local ids = {}
+for i = 1, chain_len do
+  local id = "relay" .. i
+  ids[i] = id
+  spawn(id, {
+    x = (i - 1) * spacing - (chain_len - 1) * spacing / 2,
+    y = 0,
+    heading = 180,   -- face down
+    color = "#888888",
+    width = 3,
+  })
+end
+
+-- Seed the first turtle with a color message
+send("relay1", "#ff0000")
+
+-- Each step, turtles check for messages and pass them along
+simulate(chain_len + 5, function(step)
+  for i = 1, chain_len do
+    activate(ids[i])  -- switch to this turtle for receive/draw
+    local msg = receive()
+    if msg then
+      -- Use the received color to draw
+      pencolor(msg.data)
+      forward(seg_len)
+
+      -- Pass a shifted color to the next turtle in the chain
+      if i < chain_len then
+        -- Shift hue by rotating RGB components
+        local hex = msg.data
+        local r = tonumber(hex:sub(2, 3), 16) or 0
+        local g = tonumber(hex:sub(4, 5), 16) or 0
+        local b = tonumber(hex:sub(6, 7), 16) or 0
+        -- Rotate: shift red -> green -> blue
+        local nr = math.floor((r + 80) % 256)
+        local ng = math.floor((g + 40) % 256)
+        local nb = math.floor((b + 120) % 256)
+        local newColor = string.format("#%02x%02x%02x", nr, ng, nb)
+        send(ids[i + 1], newColor)
+      end
+    end
+  end
+  activate("main")
+end)
+```
+
 For complete API details, see the [Turtle API Reference](/turtle-api#spawning).
+
+## Communication & Awareness
+
+When multiple turtles are spawned, they can sense their environment, exchange messages, and share state through a global blackboard. These capabilities enable emergent behaviors like flocking, cellular automata, and cooperative drawing.
+
+### Spatial Awareness
+
+Turtles can query their surroundings with `nearby_turtles(radius)`, `nearby_strokes(radius)`, and `distance_to(id)`. These execute immediately — turtles can read the world and make decisions in the same tick.
+
+```lua
+local neighbors = nearby_turtles(100)
+for _, t in ipairs(neighbors) do
+  print(t.id .. " at distance " .. t.distance)
+end
+```
+
+### Messaging
+
+Use `send(id, data)` and `receive()` for point-to-point communication. `broadcast(data)` sends to all turtles. Messages carry any Lua value — strings, numbers, or tables.
+
+```lua
+send("helper", {action = "move", amount = 50})
+
+local msg = receive()
+if msg then
+  print("Got: " .. tostring(msg.data) .. " from " .. msg.from)
+end
+```
+
+### Shared Blackboard
+
+The blackboard is a global key-value store accessible to all turtles via `publish(key, value)`, `read_board(key)`, and `board_keys()`.
+
+```lua
+publish("generation", 1)
+local gen = read_board("generation")
+```
+
+### Switching Active Turtle
+
+By default, global functions like `forward()`, `receive()`, and `nearby_turtles()` operate on the main turtle. Use `activate(id)` to switch context to a spawned turtle, then call `activate("main")` to switch back. This is essential inside `simulate()` loops where each turtle needs to act independently.
+
+```lua
+spawn("scout", { x = 50, y = 0 })
+
+simulate(20, function(step)
+  activate("scout")
+  local near = nearby_turtles(100)
+  forward(5)       -- moves scout, not main
+  activate("main")
+  forward(3)       -- moves main
+end)
+```
+
+### Multi-Step Simulation
+
+`simulate(steps, fn)` runs a step function over multiple generations. During simulate, movement commands eagerly update turtle state so spatial queries reflect real-time positions. This is essential for reactive patterns like flocking and cellular automata.
+
+```lua
+simulate(100, function(step)
+  activate("worker")
+  local near = nearby_turtles(30)
+  if #near > 3 then
+    pencolor(255, 0, 0)   -- crowded = red
+  else
+    pencolor(0, 255, 0)   -- sparse = green
+  end
+  forward(5)
+  activate("main")
+end)
+```
+
+### Collision Detection
+
+`collides_with(id)` checks if two turtles overlap based on pen width. Use `set_collision_radius(r)` for custom hit areas.
+
+```lua
+if collides_with("enemy") then
+  pencolor(255, 0, 0)
+  print("Hit!")
+end
+```
+
+For the complete API reference, see [Communication & Awareness](/turtle-api#communication).
 
 ## Panel Controls
 

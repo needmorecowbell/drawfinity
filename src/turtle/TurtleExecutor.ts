@@ -1,5 +1,6 @@
 import { LuaRuntime, TurtleCommand, ExecutionResult } from "./LuaRuntime";
 import { TurtleRegistry } from "./TurtleRegistry";
+import { MessageBus, Blackboard } from "./TurtleMessaging";
 import type { DocumentModel } from "../model/Stroke";
 
 /** Events emitted by TurtleExecutor during script execution. */
@@ -39,6 +40,8 @@ export class TurtleExecutor {
   private doc: DocumentModel;
   private events: TurtleExecutorEvents;
 
+  private messageBus: MessageBus;
+  private blackboard: Blackboard;
   private running = false;
   private stopRequested = false;
 
@@ -54,6 +57,8 @@ export class TurtleExecutor {
     this.scriptId = scriptId;
     this.doc = doc;
     this.events = events;
+    this.messageBus = new MessageBus();
+    this.blackboard = new Blackboard();
   }
 
   /** Whether a script is currently executing. */
@@ -114,10 +119,16 @@ export class TurtleExecutor {
     mainEntry.state.reset();
     mainEntry.state.zoomScale = zoom > 0 ? 1 / zoom : 1;
 
-    // Wire up state query and spawn context for Lua
+    // Reset messaging state between runs and register the main turtle
+    this.messageBus.clear();
+    this.blackboard.clear();
+    this.messageBus.register(mainId);
+
+    // Wire up state query, spawn context, and messaging for Lua
     this.runtime.setStateQuery(mainEntry.state);
     this.runtime.setActiveTurtle("main");
     this.runtime.setSpawnContext(this.registry, this.scriptId, this.doc);
+    this.runtime.setMessagingContext(this.messageBus, this.blackboard);
 
     this.events.onStart?.();
 
@@ -135,12 +146,25 @@ export class TurtleExecutor {
 
     const commands = this.runtime.getCommands();
 
+    // Reset all turtle states before replay. During simulate(), commands
+    // eagerly update state so spatial queries work during collection.
+    // Replay must start from clean state to avoid double-application.
+    mainEntry.state.reset();
+    mainEntry.state.zoomScale = zoom > 0 ? 1 / zoom : 1;
+    const owned = this.registry.getOwned(this.scriptId);
+    for (const [id, entry] of owned) {
+      if (id !== mainId) {
+        entry.state.reset();
+        entry.state.zoomScale = mainEntry.state.zoomScale;
+      }
+    }
+
     // Phase 2: Replay commands with animation
     const replayResult = await this.replayCommands(commands);
 
     // Flush any remaining batched segments for all owned turtles
-    const owned = this.registry.getOwned(this.scriptId);
-    for (const [, entry] of owned) {
+    const ownedAfterReplay = this.registry.getOwned(this.scriptId);
+    for (const [, entry] of ownedAfterReplay) {
       entry.drawing.flush();
     }
 
@@ -198,6 +222,15 @@ export class TurtleExecutor {
         if (idx >= queue.length) continue;
 
         const cmd = queue[idx];
+
+        // Step boundary: deliver messages between simulation steps
+        if (cmd.type === "step_boundary") {
+          // Note: step_boundary is only in the main queue, skip for others
+          indices.set(turtleId, idx + 1);
+          processedAny = true;
+          continue;
+        }
+
         this.processCommand(cmd);
 
         const delay = this.getStepDelay(cmd);
@@ -249,6 +282,9 @@ export class TurtleExecutor {
   }
 
   private processCommand(cmd: TurtleCommand): void {
+    // Step boundary markers are handled by replayCommands, not here
+    if (cmd.type === "step_boundary") return;
+
     // Handle spawn commands — create or re-initialize the turtle
     if (cmd.type === "spawn") {
       const fullId = `${this.scriptId}:${cmd.id}`;

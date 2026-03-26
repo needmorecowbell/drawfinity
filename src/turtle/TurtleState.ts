@@ -88,6 +88,12 @@ export class TurtleState implements TurtleStateQuery {
   /** Fill color for shape commands, or null for no fill (outline only). */
   fillColor: string | null = null;
 
+  /**
+   * Custom collision radius override. When set, `collides_with()` uses this
+   * instead of the default `pen.width / 2`. Null means use pen-width default.
+   */
+  collisionRadius: number | null = null;
+
   /** Origin coordinates used for `home()`. Defaults to (0, 0). */
   private originX = 0;
   private originY = 0;
@@ -139,6 +145,7 @@ export class TurtleState implements TurtleStateQuery {
     this.presetWidthMultiplier = 1.0;
     this.presetOpacity = 1.0;
     this.fillColor = null;
+    this.collisionRadius = null;
     this.worldSpace = false;
     this.zoomScale = 1;
     this.visible = true;
@@ -239,7 +246,10 @@ export class TurtleState implements TurtleStateQuery {
       case "show":
         this.visible = true;
         return null;
+      case "step_boundary":
+        return null;
     }
+    return null;
   }
 
   // -- TurtleStateQuery interface --

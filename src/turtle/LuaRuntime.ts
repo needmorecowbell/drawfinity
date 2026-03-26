@@ -1,6 +1,7 @@
 import { LuaFactory, LuaEngine, LuaLibraries, LuaMultiReturn } from "wasmoon";
 import type { TurtleRegistry } from "./TurtleRegistry";
 import type { DocumentModel } from "../model/Stroke";
+import type { MessageBus, Blackboard } from "./TurtleMessaging";
 
 /**
  * Base command variants produced by turtle API calls during script execution.
@@ -35,7 +36,8 @@ type TurtleCommandVariant =
   | { type: "rectangle"; width: number; height: number }
   | { type: "ellipse"; width: number; height: number }
   | { type: "polygon"; sides: number; radius: number }
-  | { type: "star"; points: number; outerRadius: number; innerRadius: number };
+  | { type: "star"; points: number; outerRadius: number; innerRadius: number }
+  | { type: "step_boundary"; step: number };
 
 /** A command produced by a turtle API call, optionally tagged with a turtle ID. */
 export type TurtleCommand = TurtleCommandVariant & { turtleId?: string };
@@ -80,6 +82,13 @@ export class LuaRuntime {
   private spawnDoc: DocumentModel | null = null;
   /** Tracks turtle IDs spawned during current collection to detect duplicates. */
   private spawnedThisExecution = new Set<string>();
+  /** Messaging context set by TurtleExecutor before script execution. */
+  private messageBus: MessageBus | null = null;
+  private blackboard: Blackboard | null = null;
+  /** Current simulation step number (0 when not inside simulate()). */
+  private currentStep = 0;
+  /** Maximum steps allowed in simulate() (default 10000). */
+  private maxSimulateSteps = 10000;
 
   constructor() {
     this.factory = new LuaFactory();
@@ -103,6 +112,25 @@ export class LuaRuntime {
     this.spawnRegistry = registry;
     this.spawnScriptId = scriptId;
     this.spawnDoc = doc;
+  }
+
+  /**
+   * Set the messaging context so spatial/messaging Lua functions can operate.
+   * Called by TurtleExecutor before each script execution.
+   */
+  setMessagingContext(messageBus: MessageBus, blackboard: Blackboard): void {
+    this.messageBus = messageBus;
+    this.blackboard = blackboard;
+  }
+
+  /** Get the maximum steps allowed in simulate(). */
+  getMaxSimulateSteps(): number {
+    return this.maxSimulateSteps;
+  }
+
+  /** Set the maximum steps allowed in simulate(). */
+  setMaxSimulateSteps(n: number): void {
+    this.maxSimulateSteps = n;
   }
 
   /** Initialize the Lua engine. Must be called once before execute(). */
@@ -145,6 +173,7 @@ export class LuaRuntime {
 
     this.commands = [];
     this.spawnedThisExecution.clear();
+    this.currentStep = 0;
 
     try {
       await this.engine.doString(script);
@@ -181,64 +210,89 @@ export class LuaRuntime {
     this.commands.push({ ...cmd, turtleId });
   }
 
+  /**
+   * Get the active turtle's TurtleState from the registry (for eager updates).
+   * Returns null if no registry or the turtle isn't found.
+   */
+  private getActiveTurtleState(): import("./TurtleState").TurtleState | null {
+    if (!this.spawnRegistry || !this.spawnScriptId) return null;
+    const fullId = `${this.spawnScriptId}:${this.activeTurtleId}`;
+    return this.spawnRegistry.get(fullId)?.state ?? null;
+  }
+
+  /**
+   * Push a command and, when inside simulate(), eagerly apply it to the
+   * active turtle's state so that spatial queries reflect current positions.
+   */
+  private pushAndApply(cmd: TurtleCommandVariant): void {
+    this.pushCommand(cmd);
+    if (this.currentStep > 0) {
+      const state = this.getActiveTurtleState();
+      if (state) {
+        state.applyCommand(cmd as TurtleCommand);
+      }
+    }
+  }
+
   private registerTurtleAPI(): void {
     const engine = this.engine!;
     const g = engine.global;
     const push = this.pushCommand.bind(this);
+    const pushApply = this.pushAndApply.bind(this);
     const getQuery = () => this.stateQuery;
 
-    // Movement
+    // Movement — eagerly update state during simulate() so spatial queries work
     g.set("forward", (distance: number) => {
-      push({ type: "forward", distance });
+      pushApply({ type: "forward", distance });
     });
 
     g.set("backward", (distance: number) => {
-      push({ type: "backward", distance });
+      pushApply({ type: "backward", distance });
     });
 
     g.set("right", (angle: number) => {
-      push({ type: "right", angle });
+      pushApply({ type: "right", angle });
     });
 
     g.set("left", (angle: number) => {
-      push({ type: "left", angle });
+      pushApply({ type: "left", angle });
     });
 
     g.set("goto_pos", (x: number, y: number) => {
-      push({ type: "goto", x, y });
+      pushApply({ type: "goto", x, y });
     });
 
     g.set("home", () => {
-      push({ type: "home" });
+      pushApply({ type: "home" });
     });
 
-    // Pen control
+    // Pen control — also eagerly apply so state queries (isdown) are accurate
     g.set("penup", () => {
-      push({ type: "penup" });
+      pushApply({ type: "penup" });
     });
 
     g.set("pendown", () => {
-      push({ type: "pendown" });
+      pushApply({ type: "pendown" });
     });
 
     g.set("pencolor", (rOrHex: number | string, gVal?: number, b?: number) => {
       if (typeof rOrHex === "string") {
-        push({ type: "pencolor", color: rOrHex });
+        pushApply({ type: "pencolor", color: rOrHex });
       } else {
         const r = Math.round(Math.max(0, Math.min(255, rOrHex)));
         const gC = Math.round(Math.max(0, Math.min(255, gVal ?? 0)));
         const bC = Math.round(Math.max(0, Math.min(255, b ?? 0)));
         const hex = `#${r.toString(16).padStart(2, "0")}${gC.toString(16).padStart(2, "0")}${bC.toString(16).padStart(2, "0")}`;
-        push({ type: "pencolor", color: hex });
+        pushApply({ type: "pencolor", color: hex });
       }
     });
 
     g.set("penwidth", (w: number) => {
-      push({ type: "penwidth", width: w });
+      pushApply({ type: "penwidth", width: w });
     });
 
     g.set("penopacity", (o: number) => {
-      push({ type: "penopacity", opacity: Math.max(0, Math.min(1, o)) });
+      pushApply({ type: "penopacity", opacity: Math.max(0, Math.min(1, o)) });
     });
 
     // State queries
@@ -400,6 +454,17 @@ export class LuaRuntime {
     // --- Spawn infrastructure ---
 
     const pushTagged = this.pushTaggedCommand.bind(this);
+    /** Push a tagged command and eagerly apply state during simulate(). */
+    const pushTaggedApply = (turtleId: string, cmd: TurtleCommandVariant) => {
+      pushTagged(turtleId, cmd);
+      if (this.currentStep > 0 && this.spawnRegistry && this.spawnScriptId) {
+        const fullId = `${this.spawnScriptId}:${turtleId}`;
+        const entry = this.spawnRegistry.get(fullId);
+        if (entry) {
+          entry.state.applyCommand(cmd as TurtleCommand);
+        }
+      }
+    };
     const getSpawnCtx = () => ({
       registry: this.spawnRegistry,
       scriptId: this.spawnScriptId,
@@ -463,12 +528,39 @@ export class LuaRuntime {
         }
         ctx.spawned.add(id);
 
+        // Register spawned turtle with message bus if messaging is available
+        const messaging = getMessaging();
+        if (messaging.bus) {
+          const spawnedFullId = `${ctx.scriptId}:${id}`;
+          messaging.bus.register(spawnedFullId);
+        }
+
         // Push spawn command for executor replay
         push({ type: "spawn", id, ...options });
 
         return id;
       },
     );
+
+    // Internal: activate(id) — switch the active turtle context
+    g.set("_activate_impl", (id: unknown) => {
+      if (typeof id !== "string" || id.length === 0) {
+        throw new Error("activate() requires a non-empty string turtle ID");
+      }
+      const ctx = getSpawnCtx();
+      if (id !== "main" && !ctx.spawned.has(id)) {
+        throw new Error(`activate(): unknown turtle "${id}"`);
+      }
+      this.activeTurtleId = id;
+      // Update state query to point at the activated turtle
+      if (ctx.registry && ctx.scriptId) {
+        const fullId = `${ctx.scriptId}:${id}`;
+        const entry = ctx.registry.get(fullId);
+        if (entry) {
+          this.stateQuery = entry.state;
+        }
+      }
+    });
 
     // Internal: generic command dispatcher for turtle handle methods
     g.set(
@@ -494,54 +586,54 @@ export class LuaRuntime {
         }
         switch (cmdType) {
           case "forward":
-            pushTagged(turtleId, { type: "forward", distance: arg1 as number });
+            pushTaggedApply(turtleId, { type: "forward", distance: arg1 as number });
             break;
           case "backward":
-            pushTagged(turtleId, { type: "backward", distance: arg1 as number });
+            pushTaggedApply(turtleId, { type: "backward", distance: arg1 as number });
             break;
           case "right":
-            pushTagged(turtleId, { type: "right", angle: arg1 as number });
+            pushTaggedApply(turtleId, { type: "right", angle: arg1 as number });
             break;
           case "left":
-            pushTagged(turtleId, { type: "left", angle: arg1 as number });
+            pushTaggedApply(turtleId, { type: "left", angle: arg1 as number });
             break;
           case "penup":
-            pushTagged(turtleId, { type: "penup" });
+            pushTaggedApply(turtleId, { type: "penup" });
             break;
           case "pendown":
-            pushTagged(turtleId, { type: "pendown" });
+            pushTaggedApply(turtleId, { type: "pendown" });
             break;
           case "pencolor":
             if (typeof arg1 === "string") {
-              pushTagged(turtleId, { type: "pencolor", color: arg1 });
+              pushTaggedApply(turtleId, { type: "pencolor", color: arg1 });
             } else {
               const r = Math.round(Math.max(0, Math.min(255, arg1 as number)));
               const gC = Math.round(Math.max(0, Math.min(255, (arg2 as number) ?? 0)));
               const bC = Math.round(Math.max(0, Math.min(255, (arg3 as number) ?? 0)));
               const hex = `#${r.toString(16).padStart(2, "0")}${gC.toString(16).padStart(2, "0")}${bC.toString(16).padStart(2, "0")}`;
-              pushTagged(turtleId, { type: "pencolor", color: hex });
+              pushTaggedApply(turtleId, { type: "pencolor", color: hex });
             }
             break;
           case "penwidth":
-            pushTagged(turtleId, { type: "penwidth", width: arg1 as number });
+            pushTaggedApply(turtleId, { type: "penwidth", width: arg1 as number });
             break;
           case "penopacity":
-            pushTagged(turtleId, {
+            pushTaggedApply(turtleId, {
               type: "penopacity",
               opacity: Math.max(0, Math.min(1, arg1 as number)),
             });
             break;
           case "speed":
-            pushTagged(turtleId, {
+            pushTaggedApply(turtleId, {
               type: "speed",
               value: Math.max(0, Math.min(10, arg1 as number)),
             });
             break;
           case "goto":
-            pushTagged(turtleId, { type: "goto", x: arg1 as number, y: arg2 as number });
+            pushTaggedApply(turtleId, { type: "goto", x: arg1 as number, y: arg2 as number });
             break;
           case "home":
-            pushTagged(turtleId, { type: "home" });
+            pushTaggedApply(turtleId, { type: "home" });
             break;
           case "clear":
             pushTagged(turtleId, { type: "clear" });
@@ -767,6 +859,240 @@ export class LuaRuntime {
       ctx.registry.setMaxDepth(Math.floor(n));
     });
 
+    // --- Spatial queries & messaging ---
+
+    const getMessaging = () => ({
+      bus: this.messageBus,
+      board: this.blackboard,
+    });
+
+    // Resolve the full turtle ID for the currently active turtle
+    const getFullTurtleId = () => {
+      const ctx = getSpawnCtx();
+      return ctx.scriptId ? `${ctx.scriptId}:${this.activeTurtleId}` : this.activeTurtleId;
+    };
+
+    // Internal: nearby_turtles(radius)
+    g.set("_nearby_turtles_impl", (radius: unknown) => {
+      if (typeof radius !== "number" || radius < 0) {
+        throw new Error("nearby_turtles() requires a non-negative number radius");
+      }
+      const ctx = getSpawnCtx();
+      if (!ctx.registry) {
+        throw new Error("Spawn context not set — cannot query nearby turtles");
+      }
+      const fullId = getFullTurtleId();
+      if (!ctx.registry.has(fullId)) return [];
+      const results = ctx.registry.nearbyTurtles(fullId, radius);
+      // Convert full IDs to local IDs for the Lua API
+      return results.map((t) => {
+        const colonIdx = t.id.indexOf(":");
+        return {
+          id: colonIdx >= 0 ? t.id.substring(colonIdx + 1) : t.id,
+          x: t.x,
+          y: t.y,
+          heading: t.heading,
+          distance: t.distance,
+        };
+      });
+    });
+
+    // Internal: nearby_strokes(radius)
+    g.set("_nearby_strokes_impl", (radius: unknown) => {
+      if (typeof radius !== "number" || radius < 0) {
+        throw new Error("nearby_strokes() requires a non-negative number radius");
+      }
+      const ctx = getSpawnCtx();
+      if (!ctx.registry || !ctx.doc) {
+        throw new Error("Spawn context not set — cannot query nearby strokes");
+      }
+      const fullId = getFullTurtleId();
+      const entry = ctx.registry.get(fullId);
+      if (!entry) return [];
+      const worldPos = entry.state.getWorldPosition();
+      return ctx.registry.nearbyStrokes(worldPos.x, worldPos.y, radius, ctx.doc);
+    });
+
+    // Internal: distance_to(id)
+    g.set("_distance_to_impl", (targetId: unknown) => {
+      if (typeof targetId !== "string" || targetId.length === 0) {
+        throw new Error("distance_to() requires a non-empty string turtle ID");
+      }
+      const ctx = getSpawnCtx();
+      if (!ctx.registry || !ctx.scriptId) {
+        throw new Error("Spawn context not set — cannot query distance");
+      }
+      const fullSelf = getFullTurtleId();
+      const fullTarget = `${ctx.scriptId}:${targetId}`;
+      return ctx.registry.distanceTo(fullSelf, fullTarget);
+    });
+
+    // Internal: send(targetId, data)
+    g.set("_send_impl", (targetId: unknown, data: unknown) => {
+      if (typeof targetId !== "string" || targetId.length === 0) {
+        throw new Error("send() requires a non-empty string target turtle ID");
+      }
+      const msg = getMessaging();
+      if (!msg.bus) {
+        throw new Error("Messaging context not set — cannot send messages");
+      }
+      const ctx = getSpawnCtx();
+      const fromFull = getFullTurtleId();
+      const toFull = ctx.scriptId ? `${ctx.scriptId}:${targetId}` : targetId;
+      msg.bus.send(fromFull, toFull, data);
+    });
+
+    // Internal: receive()
+    g.set("_receive_impl", () => {
+      const msg = getMessaging();
+      if (!msg.bus) {
+        throw new Error("Messaging context not set — cannot receive messages");
+      }
+      const fullId = getFullTurtleId();
+      const message = msg.bus.receive(fullId);
+      if (!message) return undefined;
+      // Convert full IDs to local IDs
+      const fromColon = message.fromId.indexOf(":");
+      return {
+        from: fromColon >= 0 ? message.fromId.substring(fromColon + 1) : message.fromId,
+        data: message.data,
+      };
+    });
+
+    // Internal: peek()
+    g.set("_peek_impl", () => {
+      const msg = getMessaging();
+      if (!msg.bus) {
+        throw new Error("Messaging context not set — cannot peek messages");
+      }
+      const fullId = getFullTurtleId();
+      const message = msg.bus.peek(fullId);
+      if (!message) return undefined;
+      const fromColon = message.fromId.indexOf(":");
+      return {
+        from: fromColon >= 0 ? message.fromId.substring(fromColon + 1) : message.fromId,
+        data: message.data,
+      };
+    });
+
+    // Internal: broadcast(data)
+    g.set("_broadcast_impl", (data: unknown) => {
+      const msg = getMessaging();
+      if (!msg.bus) {
+        throw new Error("Messaging context not set — cannot broadcast messages");
+      }
+      const fullId = getFullTurtleId();
+      msg.bus.broadcast(fullId, data);
+    });
+
+    // Internal: publish(key, value)
+    g.set("_publish_impl", (key: unknown, value: unknown) => {
+      if (typeof key !== "string") {
+        throw new Error("publish() requires a string key");
+      }
+      const msg = getMessaging();
+      if (!msg.board) {
+        throw new Error("Messaging context not set — cannot publish to blackboard");
+      }
+      msg.board.publish(key, value);
+    });
+
+    // Internal: read_board(key)
+    g.set("_read_board_impl", (key: unknown) => {
+      if (typeof key !== "string") {
+        throw new Error("read_board() requires a string key");
+      }
+      const msg = getMessaging();
+      if (!msg.board) {
+        throw new Error("Messaging context not set — cannot read from blackboard");
+      }
+      const val = msg.board.read(key);
+      return val === undefined ? undefined : val;
+    });
+
+    // Internal: board_keys()
+    g.set("_board_keys_impl", () => {
+      const msg = getMessaging();
+      if (!msg.board) {
+        throw new Error("Messaging context not set — cannot list blackboard keys");
+      }
+      return msg.board.keys();
+    });
+
+    // Internal: get_step() — return current simulation step number
+    g.set("_get_step_impl", () => {
+      return this.currentStep;
+    });
+
+    // Internal: simulate(steps, stepFn) — multi-generation execution
+    g.set("_simulate_impl", (steps: unknown, stepFn: unknown) => {
+      if (typeof steps !== "number" || !Number.isInteger(steps) || steps < 1) {
+        throw new Error("simulate() requires a positive integer for steps");
+      }
+      if (typeof stepFn !== "function") {
+        throw new Error("simulate() requires a function as second argument");
+      }
+      if (steps > this.maxSimulateSteps) {
+        throw new Error(
+          `simulate() steps (${steps}) exceeds maximum (${this.maxSimulateSteps})`,
+        );
+      }
+      if (this.currentStep > 0) {
+        throw new Error("simulate() cannot be called recursively");
+      }
+
+      for (let i = 1; i <= steps; i++) {
+        this.currentStep = i;
+        // Insert step boundary marker so executor knows when to deliver messages
+        this.pushCommand({ type: "step_boundary", step: i } as TurtleCommandVariant);
+        (stepFn as (n: number) => void)(i);
+      }
+      this.currentStep = 0;
+      // Reset active context back to main so post-simulate code is not surprised
+      this.activeTurtleId = "main";
+      const mainEntry = this.spawnRegistry?.get(`${this.spawnScriptId}:main`);
+      if (mainEntry) this.stateQuery = mainEntry.state;
+    });
+
+    // Internal: set_max_steps(n) — configure max simulate steps
+    g.set("_set_max_steps_impl", (n: unknown) => {
+      if (typeof n !== "number" || !Number.isInteger(n) || n < 1) {
+        throw new Error("set_max_steps() requires a positive integer");
+      }
+      this.maxSimulateSteps = n;
+    });
+
+    // Internal: collides_with(targetId) — immediate collision check
+    g.set("_collides_with_impl", (targetId: unknown) => {
+      if (typeof targetId !== "string" || targetId.length === 0) {
+        throw new Error("collides_with() requires a non-empty string turtle ID");
+      }
+      const ctx = getSpawnCtx();
+      if (!ctx.registry || !ctx.scriptId) {
+        throw new Error("Spawn context not set — cannot check collision");
+      }
+      const fullSelf = getFullTurtleId();
+      const fullTarget = `${ctx.scriptId}:${targetId}`;
+      return ctx.registry.collidesWith(fullSelf, fullTarget);
+    });
+
+    // Internal: set_collision_radius(r) — override collision radius for active turtle
+    g.set("_set_collision_radius_impl", (r: unknown) => {
+      if (typeof r !== "number" || r < 0) {
+        throw new Error("set_collision_radius() requires a non-negative number");
+      }
+      const ctx = getSpawnCtx();
+      if (!ctx.registry) {
+        throw new Error("Spawn context not set — cannot set collision radius");
+      }
+      const fullId = getFullTurtleId();
+      const entry = ctx.registry.get(fullId);
+      if (!entry) {
+        throw new Error(`Turtle not found: ${fullId}`);
+      }
+      entry.state.collisionRadius = r;
+    });
+
     // Register `goto` as an alias (goto is a Lua keyword in 5.4, so we use a wrapper)
     engine.doStringSync(`
       -- 'goto' is a reserved keyword in Lua, so we alias via goto_pos
@@ -801,6 +1127,86 @@ export class LuaRuntime {
       -- environment_turtles() — return all turtles across all scripts
       function environment_turtles()
         return _environment_turtles_impl()
+      end
+
+      -- nearby_turtles(radius) — return table of nearby turtle info
+      function nearby_turtles(radius)
+        return _nearby_turtles_impl(radius)
+      end
+
+      -- nearby_strokes(radius) — return table of nearby stroke IDs
+      function nearby_strokes(radius)
+        return _nearby_strokes_impl(radius)
+      end
+
+      -- distance_to(id) — distance to another turtle
+      function distance_to(id)
+        return _distance_to_impl(id)
+      end
+
+      -- send(targetId, data) — send message to another turtle
+      function send(targetId, data)
+        _send_impl(targetId, data)
+      end
+
+      -- receive() — receive next message
+      function receive()
+        return _receive_impl()
+      end
+
+      -- peek() — peek at next message without consuming
+      function peek()
+        return _peek_impl()
+      end
+
+      -- broadcast(data) — send to all other turtles
+      function broadcast(data)
+        _broadcast_impl(data)
+      end
+
+      -- publish(key, value) — write to blackboard
+      function publish(key, value)
+        _publish_impl(key, value)
+      end
+
+      -- read_board(key) — read from blackboard
+      function read_board(key)
+        return _read_board_impl(key)
+      end
+
+      -- board_keys() — list all blackboard keys
+      function board_keys()
+        return _board_keys_impl()
+      end
+
+      -- get_step() — return current simulation step number (0 if not in simulate)
+      function get_step()
+        return _get_step_impl()
+      end
+
+      -- simulate(steps, fn) — multi-generation execution with message delivery between steps
+      function simulate(steps, fn)
+        _simulate_impl(steps, fn)
+      end
+
+      -- set_max_steps(n) — configure maximum simulate steps
+      function set_max_steps(n)
+        _set_max_steps_impl(n)
+      end
+
+      -- activate(id) — switch active turtle context for global functions
+      function activate(id)
+        _activate_impl(id)
+      end
+
+      -- collides_with(id) — check if active turtle collides with target
+      function collides_with(id)
+        return _collides_with_impl(id)
+      end
+
+      -- set_collision_radius(r) — override collision radius for active turtle
+      function set_collision_radius(r)
+        _set_collision_radius_impl(r)
       end
 
       -- spawn(id, opts?) — create a new turtle and return a handle table

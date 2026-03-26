@@ -399,4 +399,216 @@ describe("TurtleRegistry", () => {
       expect(b.count()).toBe(0);
     });
   });
+
+  describe("nearbyTurtles", () => {
+    beforeEach(() => {
+      registry.createMain("s1", doc);
+    });
+
+    it("returns empty array when no other turtles exist", () => {
+      const result = registry.nearbyTurtles("s1:main", 100);
+      expect(result).toEqual([]);
+    });
+
+    it("finds turtles within radius", () => {
+      registry.spawn("a", "s1", doc, undefined, { x: 30, y: 40 }); // distance 50
+      registry.spawn("b", "s1", doc, undefined, { x: 100, y: 0 }); // distance 100
+      const result = registry.nearbyTurtles("s1:main", 60);
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe("s1:a");
+      expect(result[0].distance).toBeCloseTo(50);
+    });
+
+    it("includes turtles exactly at the radius boundary", () => {
+      registry.spawn("a", "s1", doc, undefined, { x: 100, y: 0 });
+      const result = registry.nearbyTurtles("s1:main", 100);
+      expect(result).toHaveLength(1);
+    });
+
+    it("excludes turtles outside radius", () => {
+      registry.spawn("far", "s1", doc, undefined, { x: 1000, y: 1000 });
+      const result = registry.nearbyTurtles("s1:main", 10);
+      expect(result).toEqual([]);
+    });
+
+    it("returns results sorted by distance ascending", () => {
+      registry.spawn("far", "s1", doc, undefined, { x: 90, y: 0 });
+      registry.spawn("close", "s1", doc, undefined, { x: 10, y: 0 });
+      registry.spawn("mid", "s1", doc, undefined, { x: 50, y: 0 });
+      const result = registry.nearbyTurtles("s1:main", 100);
+      expect(result.map((r) => r.id)).toEqual([
+        "s1:close",
+        "s1:mid",
+        "s1:far",
+      ]);
+    });
+
+    it("returns correct x, y, heading, distance fields", () => {
+      registry.spawn("a", "s1", doc, undefined, {
+        x: 3,
+        y: 4,
+        heading: 90,
+      });
+      const result = registry.nearbyTurtles("s1:main", 10);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        id: "s1:a",
+        x: 3,
+        y: 4,
+        heading: 90,
+        distance: 5,
+      });
+    });
+
+    it("excludes turtles from other scripts", () => {
+      registry.createMain("s2", doc);
+      // s2:main is at (5,0), within radius but owned by a different script
+      const entry = registry.get("s2:main")!;
+      entry.state.x = 5;
+      entry.state.y = 0;
+      const result = registry.nearbyTurtles("s1:main", 10);
+      expect(result).toHaveLength(0);
+    });
+
+    it("throws for unknown turtle ID", () => {
+      expect(() => registry.nearbyTurtles("nonexistent", 10)).toThrow(
+        'Unknown turtle "nonexistent"',
+      );
+    });
+
+    it("does not include the querying turtle itself", () => {
+      // s1:main is at origin, spawn another at origin too
+      registry.spawn("same", "s1", doc, undefined, { x: 0, y: 0 });
+      const result = registry.nearbyTurtles("s1:main", 100);
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe("s1:same");
+    });
+  });
+
+  describe("nearbyStrokes", () => {
+    it("returns empty array when no strokes exist", () => {
+      const result = registry.nearbyStrokes(0, 0, 100, doc);
+      expect(result).toEqual([]);
+    });
+
+    it("finds strokes whose bounding boxes intersect the query circle", () => {
+      doc.addStroke({
+        id: "s1",
+        points: [
+          { x: 10, y: 10, pressure: 1 },
+          { x: 20, y: 20, pressure: 1 },
+        ],
+        color: "#000",
+        width: 2,
+        timestamp: 1,
+      });
+      const result = registry.nearbyStrokes(15, 15, 10, doc);
+      expect(result).toEqual(["s1"]);
+    });
+
+    it("excludes strokes outside the radius", () => {
+      doc.addStroke({
+        id: "far",
+        points: [
+          { x: 500, y: 500, pressure: 1 },
+          { x: 510, y: 510, pressure: 1 },
+        ],
+        color: "#000",
+        width: 2,
+        timestamp: 1,
+      });
+      const result = registry.nearbyStrokes(0, 0, 10, doc);
+      expect(result).toEqual([]);
+    });
+
+    it("accounts for stroke width in bounding box", () => {
+      // Stroke at x=100 with width=20 means AABB extends to x=90
+      doc.addStroke({
+        id: "wide",
+        points: [{ x: 100, y: 0, pressure: 1 }],
+        color: "#000",
+        width: 20,
+        timestamp: 1,
+      });
+      // Query circle at origin with radius 95 — should reach the stroke's expanded AABB
+      const result = registry.nearbyStrokes(0, 0, 95, doc);
+      expect(result).toEqual(["wide"]);
+    });
+
+    it("returns multiple matching stroke IDs", () => {
+      doc.addStroke({
+        id: "a",
+        points: [{ x: 5, y: 5, pressure: 1 }],
+        color: "#000",
+        width: 2,
+        timestamp: 1,
+      });
+      doc.addStroke({
+        id: "b",
+        points: [{ x: -5, y: -5, pressure: 1 }],
+        color: "#000",
+        width: 2,
+        timestamp: 2,
+      });
+      const result = registry.nearbyStrokes(0, 0, 20, doc);
+      expect(result).toContain("a");
+      expect(result).toContain("b");
+      expect(result).toHaveLength(2);
+    });
+
+    it("skips strokes with no points", () => {
+      doc.addStroke({
+        id: "empty",
+        points: [],
+        color: "#000",
+        width: 2,
+        timestamp: 1,
+      });
+      const result = registry.nearbyStrokes(0, 0, 1000, doc);
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe("distanceTo", () => {
+    beforeEach(() => {
+      registry.createMain("s1", doc);
+    });
+
+    it("returns 0 for turtles at the same position", () => {
+      registry.spawn("a", "s1", doc, undefined, { x: 0, y: 0 });
+      expect(registry.distanceTo("s1:main", "s1:a")).toBe(0);
+    });
+
+    it("computes correct Euclidean distance", () => {
+      registry.spawn("a", "s1", doc, undefined, { x: 3, y: 4 });
+      expect(registry.distanceTo("s1:main", "s1:a")).toBeCloseTo(5);
+    });
+
+    it("is symmetric", () => {
+      registry.spawn("a", "s1", doc, undefined, { x: 10, y: 20 });
+      const d1 = registry.distanceTo("s1:main", "s1:a");
+      const d2 = registry.distanceTo("s1:a", "s1:main");
+      expect(d1).toBeCloseTo(d2);
+    });
+
+    it("throws for unknown first turtle", () => {
+      expect(() => registry.distanceTo("nonexistent", "s1:main")).toThrow(
+        'Unknown turtle "nonexistent"',
+      );
+    });
+
+    it("throws for unknown second turtle", () => {
+      expect(() => registry.distanceTo("s1:main", "nonexistent")).toThrow(
+        'Unknown turtle "nonexistent"',
+      );
+    });
+
+    it("works across scripts", () => {
+      registry.createMain("s2", doc);
+      const entry = registry.get("s2:main")!;
+      entry.state.x = 6;
+      entry.state.y = 8;
+      expect(registry.distanceTo("s1:main", "s2:main")).toBeCloseTo(10);
+    });
+  });
 });

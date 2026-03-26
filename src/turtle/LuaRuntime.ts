@@ -346,8 +346,21 @@ export class LuaRuntime {
         if (color != null) options.color = color;
         if (width != null) options.width = width;
 
-        // Create turtle eagerly so state queries work during collection
+        // Create turtle eagerly so state queries work during collection.
+        // Spawn x/y are offsets from origin — inherit origin from main turtle.
         ctx.registry.spawn(id, ctx.scriptId, ctx.doc, undefined, options);
+        const mainFullId = `${ctx.scriptId}:main`;
+        const mainEntry = ctx.registry.get(mainFullId);
+        if (mainEntry) {
+          const spawnedFullId = `${ctx.scriptId}:${id}`;
+          const spawnedEntry = ctx.registry.get(spawnedFullId);
+          if (spawnedEntry) {
+            const mainOrigin = mainEntry.state.getOrigin();
+            spawnedEntry.state.setOrigin(mainOrigin.x, mainOrigin.y);
+            spawnedEntry.state.x = mainOrigin.x + (options.x ?? 0);
+            spawnedEntry.state.y = mainOrigin.y + (options.y ?? 0);
+          }
+        }
         ctx.spawned.add(id);
 
         // Push spawn command for executor replay

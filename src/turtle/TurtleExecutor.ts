@@ -266,10 +266,16 @@ export class TurtleExecutor {
         if (cmd.color !== undefined) entry.state.pen.color = cmd.color;
         if (cmd.width !== undefined) entry.state.pen.width = cmd.width;
       }
-      // Inherit zoom scale from main turtle
+      // Inherit origin and zoom scale from main turtle so spawned turtles
+      // respect placement and zoom-aware scaling. Spawn x/y are treated as
+      // offsets from origin — (0,0) means "at the main turtle's origin".
       const spawnedEntry = this.registry.get(fullId);
       const mainEntry = this.registry.get(`${this.scriptId}:main`);
       if (spawnedEntry && mainEntry) {
+        const mainOrigin = mainEntry.state.getOrigin();
+        spawnedEntry.state.setOrigin(mainOrigin.x, mainOrigin.y);
+        spawnedEntry.state.x = mainOrigin.x + (cmd.x ?? 0);
+        spawnedEntry.state.y = mainOrigin.y + (cmd.y ?? 0);
         spawnedEntry.state.zoomScale = mainEntry.state.zoomScale;
       }
       return;

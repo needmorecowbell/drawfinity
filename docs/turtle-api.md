@@ -390,9 +390,9 @@ The following modules and globals are **not available**:
 
 ---
 
-## Multi-Turtle Spawning {#spawning}
+## Turtle Herding {#spawning}
 
-Turtle scripts can spawn additional turtles, each with independent state. Spawned turtles draw concurrently during the replay phase using interleaved (round-robin) execution.
+Turtle herding lets scripts spawn additional turtles, each with independent state. Spawned turtles draw concurrently during the replay phase using interleaved (round-robin) execution. A single script can coordinate dozens or hundreds of turtles to produce complex patterns.
 
 ### Concepts {#spawning-concepts}
 
@@ -405,7 +405,7 @@ Turtle scripts can spawn additional turtles, each with independent state. Spawne
 
 ### `spawn(id, options?)` {#spawn}
 
-Create a new turtle and return a handle table for controlling it. The turtle starts at the origin (or specified position) with pen down.
+Create a new turtle and return a handle table for controlling it. The turtle starts at the specified offset from the main turtle's origin with pen down.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
@@ -416,11 +416,13 @@ Create a new turtle and return a handle table for controlling it. The turtle sta
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `x` | `number` | `0` | Initial X position |
-| `y` | `number` | `0` | Initial Y position |
+| `x` | `number` | `0` | X offset from origin (0 = same as main turtle's starting position) |
+| `y` | `number` | `0` | Y offset from origin (0 = same as main turtle's starting position) |
 | `heading` | `number` | `0` | Initial heading in degrees |
 | `color` | `string` | `"#000000"` | Pen color as hex string |
 | `width` | `number` | `2` | Pen width in pixels |
+
+> **Note:** Spawned turtles inherit the main turtle's origin. Positions `{x=0, y=0}` place the turtle at the same starting point as the main turtle, regardless of placement or camera position. This ensures scripts behave consistently when re-run at different locations or zoom levels.
 
 **Returns:** A handle table with methods mirroring the global turtle API.
 
@@ -612,12 +614,12 @@ You can observe but not control turtles from other scripts. Calling control meth
 | [`set_world_space(enabled)`](#set-world-space) | Zoom Control | Toggle zoom-scaled vs raw world units |
 | [`print(...)`](#print) | Output | Print to console |
 | [`repeat_n(n, fn)`](#repeat-n) | Utility | Repeat a function N times |
-| [`spawn(id, options?)`](#spawn) | Spawning | Create a new turtle, return handle |
-| [`kill(id)`](#kill) | Spawning | Remove a spawned turtle |
-| [`killall()`](#killall) | Spawning | Remove all spawned turtles |
-| [`list_turtles()`](#list-turtles) | Spawning | List owned turtle IDs |
-| [`hide()`](#hide-show) | Spawning | Hide main turtle indicator |
-| [`show()`](#hide-show) | Spawning | Show main turtle indicator |
-| [`set_spawn_limit(n)`](#set-spawn-limit) | Spawning | Set max turtle count |
-| [`set_spawn_depth(n)`](#set-spawn-depth) | Spawning | Set max spawn nesting depth |
-| [`environment_turtles()`](#environment-turtles) | Spawning | List all turtles across scripts |
+| [`spawn(id, options?)`](#spawn) | Turtle Herding | Create a new turtle, return handle |
+| [`kill(id)`](#kill) | Turtle Herding | Remove a spawned turtle |
+| [`killall()`](#killall) | Turtle Herding | Remove all spawned turtles |
+| [`list_turtles()`](#list-turtles) | Turtle Herding | List owned turtle IDs |
+| [`hide()`](#hide-show) | Turtle Herding | Hide main turtle indicator |
+| [`show()`](#hide-show) | Turtle Herding | Show main turtle indicator |
+| [`set_spawn_limit(n)`](#set-spawn-limit) | Turtle Herding | Set max turtle count |
+| [`set_spawn_depth(n)`](#set-spawn-depth) | Turtle Herding | Set max spawn nesting depth |
+| [`environment_turtles()`](#environment-turtles) | Turtle Herding | List all turtles across scripts |

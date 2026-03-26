@@ -64,6 +64,11 @@ export class TurtleState implements TurtleStateQuery {
     this.originY = y;
   }
 
+  /** Get the origin coordinates. */
+  getOrigin(): { x: number; y: number } {
+    return { x: this.originX, y: this.originY };
+  }
+
   /**
    * Enable or disable world-space mode.
    * When enabled, `zoomScale` is forced to `1` so all distances use raw world units.

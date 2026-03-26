@@ -399,9 +399,9 @@ pencolor(128, 0, 128)
 sierpinski(256, 5)
 ```
 
-## Multi-Turtle
+## Turtle Herding
 
-Scripts can spawn additional turtles that draw concurrently. Each spawned turtle has its own position, heading, pen color, and width. During replay, all active turtles execute one command per tick in round-robin order, creating visually interleaved animations.
+Scripts can spawn additional turtles that draw concurrently — we call this **turtle herding**. Each spawned turtle has its own position, heading, pen color, and width. During replay, all active turtles execute one command per tick in round-robin order, creating visually interleaved animations. A single script can coordinate dozens or hundreds of turtles to produce complex patterns that would be difficult to express with a single turtle.
 
 ### Spawning Turtles
 
@@ -501,47 +501,36 @@ end
 
 ### Example: Recursive Branching
 
-A tree where each branch tip spawns a child turtle that continues the pattern:
+A fractal tree where each branch tip spawns child turtles that continue the pattern. Since `position()` returns the pre-movement state during the collection phase, tip positions are calculated mathematically:
 
 ```lua
 speed(0)
 local count = 0
 
-function branch(t, size, depth)
+function branch(x, y, hdg, size, depth)
   if depth == 0 or size < 4 then return end
 
-  t.penwidth(depth)
+  count = count + 1
+  local t = spawn("b" .. count, {x = x, y = y, heading = hdg})
+  t.penwidth(math.max(1, depth * 1.2))
   if depth <= 2 then
     t.pencolor(34, 139, 34)    -- green leaves
   else
     t.pencolor(139, 69, 19)    -- brown trunk
   end
-
   t.forward(size)
 
-  -- Spawn left branch as a new turtle
-  count = count + 1
-  local left = spawn("L" .. count, {
-    x = select(1, t.position()),
-    y = select(2, t.position()),
-    heading = t.heading() - 30,
-  })
-  branch(left, size * 0.7, depth - 1)
+  -- Calculate tip position (heading 0 = up, clockwise)
+  local rad = math.rad(hdg)
+  local tipX = x + math.sin(rad) * size
+  local tipY = y - math.cos(rad) * size
 
-  -- Spawn right branch as a new turtle
-  count = count + 1
-  local right = spawn("R" .. count, {
-    x = select(1, t.position()),
-    y = select(2, t.position()),
-    heading = t.heading() + 30,
-  })
-  branch(right, size * 0.7, depth - 1)
+  branch(tipX, tipY, hdg - 25, size * 0.7, depth - 1)
+  branch(tipX, tipY, hdg + 25, size * 0.7, depth - 1)
 end
 
--- Start the tree growing upward
-left(180)
-set_spawn_limit(500)
-branch(spawn("trunk", { heading = 180 }), 80, 5)
+-- Start the tree growing downward from origin
+branch(0, 0, 180, 80, 6)
 ```
 
 > **Tip:** Use `speed(0)` when spawning many turtles — interleaved animation with dozens of turtles can be slow.

@@ -75,6 +75,10 @@ class FakeLuaRuntime {
     // no-op for testing
   }
 
+  setSyncManager(): void {
+    // no-op for testing
+  }
+
   async execute(_script: string) {
     if (this.shouldFail) {
       return { success: false as const, error: this.errorMessage };

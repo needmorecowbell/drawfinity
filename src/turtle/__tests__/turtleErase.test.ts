@@ -41,6 +41,7 @@ class FakeLuaRuntime {
   setActiveTurtle(): void {}
   setSpawnContext(): void {}
   setMessagingContext(): void {}
+  setSyncManager(): void {}
 
   async execute() {
     return { success: true as const };

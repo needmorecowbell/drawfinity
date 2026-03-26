@@ -45,6 +45,7 @@ export class TurtleExecutor {
   private messageBus: MessageBus;
   private blackboard: Blackboard;
   private awareness: TurtleAwareness | null = null;
+  private syncManager: SyncManager | null = null;
   private running = false;
   private stopRequested = false;
   /** Raw camera zoom level, used for LOD pixel-size calculations. */
@@ -71,6 +72,7 @@ export class TurtleExecutor {
    * When set, turtle states are broadcast to remote clients during replay.
    */
   setSyncManager(syncManager: SyncManager | null): void {
+    this.syncManager = syncManager;
     if (syncManager) {
       this.awareness = new TurtleAwareness(
         syncManager,
@@ -153,6 +155,7 @@ export class TurtleExecutor {
     this.runtime.setActiveTurtle("main");
     this.runtime.setSpawnContext(this.registry, this.scriptId, this.doc);
     this.runtime.setMessagingContext(this.messageBus, this.blackboard);
+    this.runtime.setSyncManager(this.syncManager);
 
     this.events.onStart?.();
 

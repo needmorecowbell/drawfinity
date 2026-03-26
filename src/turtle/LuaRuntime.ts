@@ -2,6 +2,7 @@ import { LuaFactory, LuaEngine, LuaLibraries, LuaMultiReturn } from "wasmoon";
 import type { TurtleRegistry } from "./TurtleRegistry";
 import type { DocumentModel } from "../model/Stroke";
 import type { MessageBus, Blackboard } from "./TurtleMessaging";
+import type { SyncManager } from "../sync/SyncManager";
 
 /**
  * Base command variants produced by turtle API calls during script execution.
@@ -91,6 +92,8 @@ export class LuaRuntime {
   private currentStep = 0;
   /** Maximum steps allowed in simulate() (default 10000). */
   private maxSimulateSteps = 10000;
+  /** SyncManager for accessing remote turtle states in multiplayer. */
+  private syncManager: SyncManager | null = null;
 
   constructor() {
     this.factory = new LuaFactory();
@@ -123,6 +126,14 @@ export class LuaRuntime {
   setMessagingContext(messageBus: MessageBus, blackboard: Blackboard): void {
     this.messageBus = messageBus;
     this.blackboard = blackboard;
+  }
+
+  /**
+   * Set the SyncManager for accessing remote turtle states in multiplayer.
+   * Called by TurtleExecutor before script execution.
+   */
+  setSyncManager(syncManager: SyncManager | null): void {
+    this.syncManager = syncManager;
   }
 
   /** Get the maximum steps allowed in simulate(). */
@@ -902,8 +913,8 @@ export class LuaRuntime {
       return ctx.scriptId ? `${ctx.scriptId}:${this.activeTurtleId}` : this.activeTurtleId;
     };
 
-    // Internal: nearby_turtles(radius)
-    g.set("_nearby_turtles_impl", (radius: unknown) => {
+    // Internal: nearby_turtles(radius, includeRemote?)
+    g.set("_nearby_turtles_impl", (radius: unknown, includeRemote: unknown) => {
       if (typeof radius !== "number" || radius < 0) {
         throw new Error("nearby_turtles() requires a non-negative number radius");
       }
@@ -915,7 +926,7 @@ export class LuaRuntime {
       if (!ctx.registry.has(fullId)) return [];
       const results = ctx.registry.nearbyTurtles(fullId, radius);
       // Convert full IDs to local IDs for the Lua API
-      return results.map((t) => {
+      const mapped = results.map((t) => {
         const colonIdx = t.id.indexOf(":");
         return {
           id: colonIdx >= 0 ? t.id.substring(colonIdx + 1) : t.id,
@@ -923,8 +934,42 @@ export class LuaRuntime {
           y: t.y,
           heading: t.heading,
           distance: t.distance,
+          remote: false,
         };
       });
+
+      // Optionally include remote turtles from multiplayer awareness
+      if (includeRemote && this.syncManager) {
+        const entry = ctx.registry.get(fullId);
+        if (entry) {
+          const ox = entry.state.x;
+          const oy = entry.state.y;
+          const r2 = radius * radius;
+          const remoteTurtles = this.syncManager.getRemoteTurtles();
+          for (const client of remoteTurtles) {
+            for (const rt of client.turtles) {
+              if (!rt.visible) continue;
+              const dx = rt.x - ox;
+              const dy = rt.y - oy;
+              const dist2 = dx * dx + dy * dy;
+              if (dist2 <= r2) {
+                mapped.push({
+                  id: `remote:${client.userId}:${rt.id}`,
+                  x: rt.x,
+                  y: rt.y,
+                  heading: rt.heading,
+                  distance: Math.sqrt(dist2),
+                  remote: true,
+                });
+              }
+            }
+          }
+          // Re-sort by distance after adding remote turtles
+          mapped.sort((a, b) => a.distance - b.distance);
+        }
+      }
+
+      return mapped;
     });
 
     // Internal: nearby_strokes(radius)
@@ -1159,9 +1204,9 @@ export class LuaRuntime {
         return _environment_turtles_impl()
       end
 
-      -- nearby_turtles(radius) — return table of nearby turtle info
-      function nearby_turtles(radius)
-        return _nearby_turtles_impl(radius)
+      -- nearby_turtles(radius, includeRemote?) — return table of nearby turtle info
+      function nearby_turtles(radius, includeRemote)
+        return _nearby_turtles_impl(radius, includeRemote or false)
       end
 
       -- nearby_strokes(radius) — return table of nearby stroke IDs

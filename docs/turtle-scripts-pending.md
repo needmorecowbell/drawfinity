@@ -276,3 +276,62 @@ goto_pos(ox, oy)
 pendown()
 star(8, 30, 12)
 ```
+
+## 6. Sierpinski Zoom (Fractal Zoom Spawning)
+
+**Tags:** fractal, spawn, zoom, scale, advanced
+**Description:** Fractal zoom Sierpinski triangle — each sub-triangle is a spawned turtle at half scale. Zoom into any corner to explore self-similar detail at every level. Uses `min_pixel_size(1)` for LOD optimization and depth-based coloring from red (outermost) to purple (innermost). Depth 6 produces 1093 turtles across 7 scale levels.
+**Status:** Added to exchange snapshot.
+
+```lua
+-- Sierpinski Triangle — Fractal Zoom Spawning
+-- Each sub-triangle is drawn by a spawned turtle at half scale.
+-- Zoom into any corner to see self-similar structure at every level.
+-- Depth 6: 1093 turtles across 7 scale levels.
+
+speed(0)
+set_spawn_limit(1100)
+hide()
+
+local ox, oy = position()
+local side = 400
+local sqrt3_4 = math.sqrt(3) / 4
+
+-- Depth colors: warm-to-cool spectrum
+local colors = {
+  [6] = "#e64553",
+  [5] = "#fe640b",
+  [4] = "#df8e1d",
+  [3] = "#40a02b",
+  [2] = "#209fb5",
+  [1] = "#1e66f5",
+  [0] = "#8839ef",
+}
+
+local count = 0
+
+function sierpinski(depth, wx, wy, s)
+  count = count + 1
+  local t = spawn("s" .. count, {
+    x = wx - ox, y = wy - oy,
+    scale = s, heading = 90
+  })
+  t.pencolor(colors[depth] or "#333333")
+  t.penwidth(2)
+  t.min_pixel_size(1)
+
+  for i = 1, 3 do
+    t.forward(side)
+    t.left(120)
+  end
+
+  if depth > 0 then
+    local W = side * s
+    sierpinski(depth - 1, wx,         wy,               s / 2)
+    sierpinski(depth - 1, wx + W / 2, wy,               s / 2)
+    sierpinski(depth - 1, wx + W / 4, wy - W * sqrt3_4, s / 2)
+  end
+end
+
+sierpinski(6, ox, oy, 1)
+```

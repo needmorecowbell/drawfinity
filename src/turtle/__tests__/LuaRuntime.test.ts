@@ -1935,4 +1935,165 @@ describe("LuaRuntime", () => {
       }
     });
   });
+
+  describe("Sierpinski zoom example script", () => {
+    let registry: TurtleRegistry;
+    let doc: { strokes: Stroke[]; addStroke: (s: Stroke) => void; getStrokes: () => Stroke[]; removeStroke: (id: string) => boolean };
+    const scriptId = "sierpinski-zoom-test";
+
+    beforeEach(() => {
+      registry = new TurtleRegistry();
+      doc = {
+        strokes: [],
+        addStroke(s: Stroke) { this.strokes.push(s); },
+        getStrokes() { return this.strokes; },
+        removeStroke(id: string) {
+          const idx = this.strokes.findIndex((s) => s.id === id);
+          if (idx === -1) return false;
+          this.strokes.splice(idx, 1);
+          return true;
+        },
+      };
+      registry.createMain(scriptId, doc);
+      runtime.setSpawnContext(registry, scriptId, doc);
+    });
+
+    it("executes depth-2 Sierpinski zoom without errors", async () => {
+      // Depth 2: 1 + 3 + 9 = 13 turtles — quick to run
+      const result = await runtime.execute(`
+        speed(0)
+        hide()
+        local ox, oy = position()
+        local side = 400
+        local sqrt3_4 = math.sqrt(3) / 4
+        local count = 0
+
+        function sierpinski(depth, wx, wy, s)
+          count = count + 1
+          local t = spawn("s" .. count, {
+            x = wx - ox, y = wy - oy,
+            scale = s, heading = 90
+          })
+          t.pencolor("#e64553")
+          t.penwidth(2)
+          t.min_pixel_size(1)
+          for i = 1, 3 do
+            t.forward(side)
+            t.left(120)
+          end
+          if depth > 0 then
+            local W = side * s
+            sierpinski(depth - 1, wx,         wy,               s / 2)
+            sierpinski(depth - 1, wx + W / 2, wy,               s / 2)
+            sierpinski(depth - 1, wx + W / 4, wy - W * sqrt3_4, s / 2)
+          end
+        end
+
+        sierpinski(2, ox, oy, 1)
+        print(count)
+      `);
+      expect(result.success).toBe(true);
+    });
+
+    it("spawns correct number of turtles for depth 2", async () => {
+      await runtime.execute(`
+        speed(0)
+        hide()
+        local ox, oy = position()
+        local side = 400
+        local sqrt3_4 = math.sqrt(3) / 4
+        local count = 0
+
+        function sierpinski(depth, wx, wy, s)
+          count = count + 1
+          local t = spawn("s" .. count, {
+            x = wx - ox, y = wy - oy,
+            scale = s, heading = 90
+          })
+          t.penwidth(2)
+          for i = 1, 3 do
+            t.forward(side)
+            t.left(120)
+          end
+          if depth > 0 then
+            local W = side * s
+            sierpinski(depth - 1, wx,         wy,               s / 2)
+            sierpinski(depth - 1, wx + W / 2, wy,               s / 2)
+            sierpinski(depth - 1, wx + W / 4, wy - W * sqrt3_4, s / 2)
+          end
+        end
+
+        sierpinski(2, ox, oy, 1)
+        print(count)
+      `);
+      const cmds = runtime.getCommands();
+      // 1 + 3 + 9 = 13 spawn commands
+      const spawnCmds = cmds.filter((c) => c.type === "spawn");
+      expect(spawnCmds.length).toBe(13);
+    });
+
+    it("applies correct scale factors at each depth", async () => {
+      await runtime.execute(`
+        speed(0)
+        hide()
+        local ox, oy = position()
+        local side = 400
+        local sqrt3_4 = math.sqrt(3) / 4
+        local count = 0
+
+        function sierpinski(depth, wx, wy, s)
+          count = count + 1
+          local t = spawn("s" .. count, {
+            x = wx - ox, y = wy - oy,
+            scale = s, heading = 90
+          })
+          t.penwidth(2)
+          for i = 1, 3 do
+            t.forward(side)
+            t.left(120)
+          end
+          if depth > 0 then
+            local W = side * s
+            sierpinski(depth - 1, wx,         wy,               s / 2)
+            sierpinski(depth - 1, wx + W / 2, wy,               s / 2)
+            sierpinski(depth - 1, wx + W / 4, wy - W * sqrt3_4, s / 2)
+          end
+        end
+
+        sierpinski(2, ox, oy, 1)
+      `);
+      const cmds = runtime.getCommands();
+      const spawnCmds = cmds.filter((c): c is TurtleCommand & { type: "spawn" } => c.type === "spawn");
+      // Count turtles at each scale level (DFS order, so not contiguous)
+      const scaleCounts = new Map<number, number>();
+      for (const cmd of spawnCmds) {
+        const s = cmd.scale!;
+        scaleCounts.set(s, (scaleCounts.get(s) ?? 0) + 1);
+      }
+      // Depth 2: 1 turtle at scale 1.0
+      expect(scaleCounts.get(1)).toBe(1);
+      // Depth 1: 3 turtles at scale 0.5
+      expect(scaleCounts.get(0.5)).toBe(3);
+      // Depth 0: 9 turtles at scale 0.25
+      expect(scaleCounts.get(0.25)).toBe(9);
+    });
+
+    it("each spawned turtle draws 3 forward+left segments", async () => {
+      await runtime.execute(`
+        speed(0)
+        hide()
+        local t = spawn("tri", {scale = 0.5, heading = 90})
+        t.penwidth(2)
+        for i = 1, 3 do
+          t.forward(400)
+          t.left(120)
+        end
+      `);
+      const cmds = runtime.getCommands();
+      const fwdCmds = cmds.filter((c) => c.type === "forward" && c.turtleId === "tri");
+      const leftCmds = cmds.filter((c) => c.type === "left" && c.turtleId === "tri");
+      expect(fwdCmds.length).toBe(3);
+      expect(leftCmds.length).toBe(3);
+    });
+  });
 });

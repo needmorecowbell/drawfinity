@@ -69,6 +69,22 @@
       "path": "scripts/sierpinski-triangle",
       "version": "1.0.0",
       "code": "-- Sierpinski triangle\npencolor(\"#8839ef\")\npenwidth(1)\n\nfunction sierpinski(size, depth)\n  if depth == 0 then\n    for i = 1, 3 do\n      forward(size)\n      left(120)\n    end\n  else\n    sierpinski(size / 2, depth - 1)\n    forward(size / 2)\n    sierpinski(size / 2, depth - 1)\n    backward(size / 2)\n    left(60)\n    forward(size / 2)\n    right(60)\n    sierpinski(size / 2, depth - 1)\n    left(60)\n    backward(size / 2)\n    right(60)\n  end\nend\n\nsierpinski(256, 5)\n"
+    },
+    {
+      "id": "sierpinski-zoom",
+      "title": "Sierpinski Zoom",
+      "description": "Fractal zoom Sierpinski triangle — each sub-triangle is a spawned turtle at half scale. Zoom in to explore self-similar detail.",
+      "author": "drawfinity",
+      "tags": [
+        "fractal",
+        "spawn",
+        "zoom",
+        "scale",
+        "advanced"
+      ],
+      "path": "scripts/sierpinski-zoom",
+      "version": "1.0.0",
+      "code": "-- Sierpinski Triangle — Fractal Zoom Spawning\n-- Each sub-triangle is drawn by a spawned turtle at half scale.\n-- Zoom into any corner to see self-similar structure at every level.\n-- Depth 6: 1093 turtles across 7 scale levels.\n\nspeed(0)\nset_spawn_limit(1100)\nhide()\n\nlocal ox, oy = position()\nlocal side = 400\nlocal sqrt3_4 = math.sqrt(3) / 4\n\n-- Depth colors: warm-to-cool spectrum\nlocal colors = {\n  [6] = \"#e64553\",\n  [5] = \"#fe640b\",\n  [4] = \"#df8e1d\",\n  [3] = \"#40a02b\",\n  [2] = \"#209fb5\",\n  [1] = \"#1e66f5\",\n  [0] = \"#8839ef\",\n}\n\nlocal count = 0\n\nfunction sierpinski(depth, wx, wy, s)\n  count = count + 1\n  local t = spawn(\"s\" .. count, {\n    x = wx - ox, y = wy - oy,\n    scale = s, heading = 90\n  })\n  t.pencolor(colors[depth] or \"#333333\")\n  t.penwidth(2)\n  t.min_pixel_size(1)\n\n  for i = 1, 3 do\n    t.forward(side)\n    t.left(120)\n  end\n\n  if depth > 0 then\n    local W = side * s\n    sierpinski(depth - 1, wx,         wy,               s / 2)\n    sierpinski(depth - 1, wx + W / 2, wy,               s / 2)\n    sierpinski(depth - 1, wx + W / 4, wy - W * sqrt3_4, s / 2)\n  end\nend\n\nsierpinski(6, ox, oy, 1)\n"
     }
   ]
 }

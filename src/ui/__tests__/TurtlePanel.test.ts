@@ -284,8 +284,8 @@ describe("TurtlePanel", () => {
       scriptsBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
 
       const items = document.querySelectorAll(".turtle-exchange-item");
-      // Snapshot has 5 scripts
-      expect(items.length).toBe(5);
+      // Snapshot has 6 scripts
+      expect(items.length).toBe(6);
     });
   });
 });

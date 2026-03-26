@@ -14,8 +14,10 @@ export interface TurtleExecutorEvents {
   onStep?: () => void;
 }
 
-/** A command tagged with the turtle it targets. */
-export type TaggedCommand = TurtleCommand & { turtleId?: string };
+/**
+ * @deprecated Use `TurtleCommand` directly — it now includes `turtleId?: string`.
+ */
+export type TaggedCommand = TurtleCommand;
 
 /**
  * Manages the full turtle script lifecycle: parse → run → animate → complete.
@@ -129,7 +131,7 @@ export class TurtleExecutor {
       return result;
     }
 
-    const commands = this.runtime.getCommands() as TaggedCommand[];
+    const commands = this.runtime.getCommands();
 
     // Phase 2: Replay commands with animation
     const replayResult = await this.replayCommands(commands);
@@ -146,7 +148,7 @@ export class TurtleExecutor {
   }
 
   private async replayCommands(
-    commands: TaggedCommand[],
+    commands: TurtleCommand[],
   ): Promise<ExecutionResult> {
     for (let i = 0; i < commands.length; i++) {
       if (this.stopRequested) {
@@ -167,7 +169,7 @@ export class TurtleExecutor {
     return { success: true };
   }
 
-  private processCommand(cmd: TaggedCommand): void {
+  private processCommand(cmd: TurtleCommand): void {
     // Resolve turtle ID: default to "main", prefix with scriptId
     const localId = cmd.turtleId ?? "main";
     const fullId = `${this.scriptId}:${localId}`;
@@ -205,7 +207,7 @@ export class TurtleExecutor {
    * speed(0) = 0ms (instant), speed(1) = 100ms, speed(10) = 1ms
    * Linear interpolation: delay = 100 - (speed - 1) * 11 for speed 1-10
    */
-  private getStepDelay(cmd: TaggedCommand): number {
+  private getStepDelay(cmd: TurtleCommand): number {
     // Look up the speed from the targeted turtle's state
     const localId = cmd.turtleId ?? "main";
     const fullId = `${this.scriptId}:${localId}`;

@@ -1,7 +1,11 @@
 import { LuaFactory, LuaEngine, LuaLibraries, LuaMultiReturn } from "wasmoon";
 
-/** A command produced by a turtle API call during script execution. */
-export type TurtleCommand =
+/**
+ * Base command variants produced by turtle API calls during script execution.
+ * Each command may optionally carry a `turtleId` identifying which turtle
+ * the command targets. When absent, defaults to `"main"`.
+ */
+type TurtleCommandVariant =
   | { type: "forward"; distance: number }
   | { type: "backward"; distance: number }
   | { type: "right"; angle: number }
@@ -18,6 +22,9 @@ export type TurtleCommand =
   | { type: "sleep"; ms: number }
   | { type: "print"; message: string }
   | { type: "set_world_space"; enabled: boolean };
+
+/** A command produced by a turtle API call, optionally tagged with a turtle ID. */
+export type TurtleCommand = TurtleCommandVariant & { turtleId?: string };
 
 /** Callback queried between steps to support stop button. */
 export type StopCheck = () => boolean;
@@ -51,9 +58,21 @@ export class LuaRuntime {
   private engine: LuaEngine | null = null;
   private commands: TurtleCommand[] = [];
   private stateQuery: TurtleStateQuery | null = null;
+  /** The turtle ID that new commands will be tagged with. Defaults to "main". */
+  private activeTurtleId = "main";
 
   constructor() {
     this.factory = new LuaFactory();
+  }
+
+  /** Set the active turtle ID. All subsequent commands will be tagged with this ID. */
+  setActiveTurtle(id: string): void {
+    this.activeTurtleId = id;
+  }
+
+  /** Get the current active turtle ID. */
+  getActiveTurtle(): string {
+    return this.activeTurtleId;
   }
 
   /** Initialize the Lua engine. Must be called once before execute(). */
@@ -119,8 +138,11 @@ export class LuaRuntime {
     }
   }
 
-  private pushCommand(cmd: TurtleCommand): void {
-    this.commands.push(cmd);
+  private pushCommand(cmd: TurtleCommandVariant): void {
+    const tagged: TurtleCommand = this.activeTurtleId === "main"
+      ? cmd
+      : { ...cmd, turtleId: this.activeTurtleId };
+    this.commands.push(tagged);
   }
 
   private registerTurtleAPI(): void {

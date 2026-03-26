@@ -356,4 +356,79 @@ describe("LuaRuntime", () => {
       expect(runtime.getCommands()).toHaveLength(720); // 360 forward + 360 right
     });
   });
+
+  describe("turtle ID tagging", () => {
+    it("does not add turtleId when active turtle is main (default)", async () => {
+      await runtime.execute("forward(100)");
+      const cmds = runtime.getCommands();
+      expect(cmds).toHaveLength(1);
+      expect(cmds[0]).toEqual({ type: "forward", distance: 100 });
+      expect(cmds[0].turtleId).toBeUndefined();
+    });
+
+    it("tags commands with active turtle ID when set", async () => {
+      runtime.setActiveTurtle("child1");
+      await runtime.execute("forward(50)");
+      const cmds = runtime.getCommands();
+      expect(cmds).toHaveLength(1);
+      expect(cmds[0]).toEqual({
+        type: "forward",
+        distance: 50,
+        turtleId: "child1",
+      });
+    });
+
+    it("tags all command types with active turtle ID", async () => {
+      runtime.setActiveTurtle("t2");
+      await runtime.execute(`
+        forward(10)
+        right(90)
+        pencolor("#ff0000")
+        penup()
+        speed(3)
+        print("hi")
+      `);
+      const cmds = runtime.getCommands();
+      expect(cmds).toHaveLength(6);
+      for (const cmd of cmds) {
+        expect(cmd.turtleId).toBe("t2");
+      }
+    });
+
+    it("preserves active turtle across executions until explicitly changed", async () => {
+      runtime.setActiveTurtle("child1");
+      await runtime.execute("forward(10)");
+      expect(runtime.getCommands()[0].turtleId).toBe("child1");
+
+      // Active turtle persists — caller (e.g. TurtleExecutor) resets it
+      await runtime.execute("forward(20)");
+      expect(runtime.getCommands()[0].turtleId).toBe("child1");
+
+      // Explicitly reset to main
+      runtime.setActiveTurtle("main");
+      await runtime.execute("forward(30)");
+      expect(runtime.getCommands()[0].turtleId).toBeUndefined();
+    });
+
+    it("getActiveTurtle returns current active turtle ID", () => {
+      expect(runtime.getActiveTurtle()).toBe("main");
+      runtime.setActiveTurtle("spawned1");
+      expect(runtime.getActiveTurtle()).toBe("spawned1");
+    });
+
+    it("supports switching active turtle mid-collection", async () => {
+      // Simulate what spawn() handle methods will do:
+      // push some commands as main, then switch and push as child
+      runtime.setActiveTurtle("main");
+      await runtime.execute("forward(10)");
+      const mainCmds = runtime.getCommands();
+
+      runtime.setActiveTurtle("child");
+      await runtime.execute("forward(20)");
+      const childCmds = runtime.getCommands();
+
+      expect(mainCmds[0].turtleId).toBeUndefined();
+      expect(childCmds[0].turtleId).toBe("child");
+    });
+  });
 });

@@ -210,6 +210,7 @@ export class TurtleExecutor {
     }
 
     // Interleaved replay: one command per active turtle per tick
+    let tickCount = 0;
     while (true) {
       if (this.stopRequested) {
         return { success: false, error: "Execution stopped by user" };
@@ -276,7 +277,16 @@ export class TurtleExecutor {
         }
       }
 
-      this.events.onStep?.();
+      // Throttle onStep callbacks when many turtles are active at speed(0).
+      // At high turtle counts, per-tick indicator updates are wasteful since
+      // the user sees the final result instantly anyway.
+      tickCount++;
+      const throttle = maxDelay === 0 && activeTurtles.length > 100
+        ? Math.min(activeTurtles.length, 500)
+        : 1;
+      if (tickCount % throttle === 0) {
+        this.events.onStep?.();
+      }
 
       if (maxDelay > 0) {
         await this.wait(maxDelay);
@@ -318,6 +328,8 @@ export class TurtleExecutor {
         spawnedEntry.state.x = mainOrigin.x + (cmd.x ?? 0);
         spawnedEntry.state.y = mainOrigin.y + (cmd.y ?? 0);
         spawnedEntry.state.zoomScale = mainEntry.state.zoomScale;
+        // Inherit parent's speed so spawned turtles batch at speed(0)
+        spawnedEntry.state.speed = mainEntry.state.speed;
         // Inherit parent's scaleFactor × child's own scale
         spawnedEntry.state.scaleFactor = mainEntry.state.scaleFactor * (cmd.scale ?? 1);
       }

@@ -545,6 +545,9 @@ export class LuaRuntime {
             // Inherit parent's scaleFactor × child's own scale
             const parentScale = this.getActiveTurtleState()?.scaleFactor ?? mainEntry.state.scaleFactor;
             spawnedEntry.state.scaleFactor = parentScale * (spawnScale ?? 1);
+            // Inherit parent's speed so spawned turtles batch at speed(0)
+            const parentSpeed = this.getActiveTurtleState()?.speed ?? mainEntry.state.speed;
+            spawnedEntry.state.speed = parentSpeed;
           }
         }
         ctx.spawned.add(id);

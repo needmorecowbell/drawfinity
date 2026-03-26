@@ -38,6 +38,12 @@ export class TurtleState implements TurtleStateQuery {
   };
   /** Animation speed: 0 = instant, 1 = slow, 10 = fast. */
   speed = 5;
+  /**
+   * Zoom scale factor applied to movement distances and pen width.
+   * Set to `1 / cameraZoom` at execution time so turtle output matches
+   * the user's visible scale. Forced to `1` when `worldSpace` is true.
+   */
+  zoomScale = 1;
 
   /** Origin coordinates used for `home()`. Defaults to (0, 0). */
   private originX = 0;

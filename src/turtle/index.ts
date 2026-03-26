@@ -22,3 +22,9 @@ export type {
   UpdateCheckResult,
 } from "./exchange";
 export { ExchangeClient, ExchangeError, ExchangeCache } from "./exchange";
+export type { TurtleEntry, SpawnOptions } from "./TurtleRegistry";
+export {
+  TurtleRegistry,
+  getTurtleRegistry,
+  resetTurtleRegistry,
+} from "./TurtleRegistry";

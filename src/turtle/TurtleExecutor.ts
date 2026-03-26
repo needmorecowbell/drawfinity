@@ -44,6 +44,8 @@ export class TurtleExecutor {
   private blackboard: Blackboard;
   private running = false;
   private stopRequested = false;
+  /** Raw camera zoom level, used for LOD pixel-size calculations. */
+  private cameraZoom = 1;
 
   constructor(
     runtime: LuaRuntime,
@@ -111,6 +113,9 @@ export class TurtleExecutor {
 
     this.running = true;
     this.stopRequested = false;
+
+    // Store raw camera zoom for LOD pixel-size calculations
+    this.cameraZoom = zoom > 0 ? zoom : 1;
 
     // Clear spawned (non-main) turtles, keep the main turtle's state stable
     this.clearSpawnedTurtles();
@@ -364,7 +369,7 @@ export class TurtleExecutor {
     // sleep and speed are handled via the command replay timing
     // but speed still needs to update state
     const segment = entry.state.applyCommand(cmd);
-    if (segment) {
+    if (segment && !this.isLodCulled(entry, segment)) {
       if (entry.state.penMode === "erase") {
         // Flush all turtles' pending segments so they can be erased
         const owned = this.registry.getOwned(this.scriptId);
@@ -394,6 +399,10 @@ export class TurtleExecutor {
 
     // Handle shape commands — create shapes at the turtle's current position
     if (cmd.type === "rectangle" || cmd.type === "ellipse" || cmd.type === "polygon" || cmd.type === "star") {
+      // LOD check for shapes: use the largest dimension as the reference size
+      const shapeSize = this.getShapeSize(cmd);
+      const effectiveSize = shapeSize * entry.state.scaleFactor * this.cameraZoom;
+      if (effectiveSize < entry.state.minPixelSize) return;
       const worldPos = entry.state.getWorldPosition();
       const scale = entry.state.worldSpace ? 1 : Math.max(1e-3, Math.min(1e3, entry.state.zoomScale));
       const headingRad = (entry.state.angle * Math.PI) / 180;
@@ -440,6 +449,42 @@ export class TurtleExecutor {
           starInnerRadius: cmd.innerRadius / cmd.outerRadius,
         });
       }
+    }
+  }
+
+  /**
+   * Check whether a movement segment should be LOD-culled.
+   * Returns true when the on-screen pixel size falls below
+   * the turtle's `minPixelSize` threshold.
+   */
+  private isLodCulled(
+    entry: { state: import("./TurtleState").TurtleState },
+    segment: import("./TurtleState").MovementSegment,
+  ): boolean {
+    if (entry.state.minPixelSize <= 0) return false;
+    const dx = segment.toX - segment.fromX;
+    const dy = segment.toY - segment.fromY;
+    const worldDistance = Math.sqrt(dx * dx + dy * dy);
+    // Segment is in world coords. On-screen size = worldDistance * cameraZoom.
+    // The zoom-aware system sets zoomScale=1/cameraZoom, so worldDistance already
+    // incorporates that. scaleFactor will further reduce worldDistance when
+    // fractal spawning (task 1) wires it into movement.
+    const effectiveSize = worldDistance * this.cameraZoom;
+    return effectiveSize < entry.state.minPixelSize;
+  }
+
+  /** Get the reference size for a shape command (largest dimension). */
+  private getShapeSize(cmd: TurtleCommand): number {
+    switch (cmd.type) {
+      case "rectangle":
+      case "ellipse":
+        return Math.max(cmd.width, cmd.height);
+      case "polygon":
+        return cmd.radius * 2;
+      case "star":
+        return cmd.outerRadius * 2;
+      default:
+        return 0;
     }
   }
 

@@ -1785,4 +1785,33 @@ describe("LuaRuntime", () => {
       expect(result.error).toContain("integer >= 2");
     });
   });
+
+  describe("min_pixel_size", () => {
+    it("produces min_pixel_size command", async () => {
+      const result = await runtime.execute("min_pixel_size(2.5)");
+      expect(result.success).toBe(true);
+      const cmds = runtime.getCommands();
+      expect(cmds).toHaveLength(1);
+      expect(cmds[0]).toMatchObject({ type: "min_pixel_size", pixels: 2.5 });
+    });
+
+    it("rejects negative values", async () => {
+      const result = await runtime.execute("min_pixel_size(-1)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("non-negative");
+    });
+
+    it("accepts zero to disable LOD", async () => {
+      const result = await runtime.execute("min_pixel_size(0)");
+      expect(result.success).toBe(true);
+      const cmds = runtime.getCommands();
+      expect(cmds[0]).toMatchObject({ type: "min_pixel_size", pixels: 0 });
+    });
+
+    it("rejects non-number arguments", async () => {
+      const result = await runtime.execute('min_pixel_size("big")');
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("non-negative number");
+    });
+  });
 });

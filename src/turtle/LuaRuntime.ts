@@ -37,7 +37,8 @@ type TurtleCommandVariant =
   | { type: "ellipse"; width: number; height: number }
   | { type: "polygon"; sides: number; radius: number }
   | { type: "star"; points: number; outerRadius: number; innerRadius: number }
-  | { type: "step_boundary"; step: number };
+  | { type: "step_boundary"; step: number }
+  | { type: "min_pixel_size"; pixels: number };
 
 /** A command produced by a turtle API call, optionally tagged with a turtle ID. */
 export type TurtleCommand = TurtleCommandVariant & { turtleId?: string };
@@ -343,6 +344,14 @@ export class LuaRuntime {
       push({ type: "set_world_space", enabled: !!enabled });
     });
 
+    // LOD-aware drawing skip threshold
+    g.set("min_pixel_size", (pixels: number) => {
+      if (typeof pixels !== "number" || pixels < 0) {
+        throw new Error("min_pixel_size() requires a non-negative number");
+      }
+      pushApply({ type: "min_pixel_size", pixels });
+    });
+
     // Pen mode (draw / erase)
     g.set("penmode", (mode: unknown, options?: unknown) => {
       if (typeof mode !== "string" || (mode !== "draw" && mode !== "erase")) {
@@ -646,6 +655,9 @@ export class LuaRuntime {
             break;
           case "set_world_space":
             pushTagged(turtleId, { type: "set_world_space", enabled: !!arg1 });
+            break;
+          case "min_pixel_size":
+            pushTaggedApply(turtleId, { type: "min_pixel_size", pixels: arg1 as number });
             break;
           case "hide":
             pushTagged(turtleId, { type: "hide" });

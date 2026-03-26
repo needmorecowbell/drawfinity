@@ -1017,4 +1017,144 @@ describe("TurtleExecutor", () => {
       expect(doc.shapes[1].fillColor).toBeNull();
     });
   });
+
+  describe("LOD-aware drawing skip", () => {
+    it("skips drawing when segment pixel size is below minPixelSize", async () => {
+      // At zoom=100, forward(0.005) produces world distance = 0.005/100 = 0.00005
+      // effectiveSize = 0.00005 * 100 = 0.005 pixels — below default threshold of 1
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "min_pixel_size", pixels: 1 },
+        { type: "forward", distance: 0.005 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test", 100);
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      // Segment is too small — should be culled, no strokes created
+      expect(doc.strokes).toHaveLength(0);
+    });
+
+    it("draws normally when segment pixel size exceeds minPixelSize", async () => {
+      // At zoom=1, forward(100) produces world distance = 100
+      // effectiveSize = 100 * 1 = 100 pixels — above threshold
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "min_pixel_size", pixels: 1 },
+        { type: "forward", distance: 100 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test", 1);
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      expect(doc.strokes.length).toBeGreaterThan(0);
+    });
+
+    it("still updates position when LOD-culled", async () => {
+      // Small forward at high zoom should be culled but position should update
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "min_pixel_size", pixels: 10 },
+        { type: "forward", distance: 0.001 },
+        // Now draw a visible segment to verify turtle moved
+        { type: "min_pixel_size", pixels: 0 },
+        { type: "forward", distance: 100 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test", 1);
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      // Only the second forward should create a stroke (first was LOD-culled)
+      expect(doc.strokes).toHaveLength(1);
+      // The stroke should start from the position after the culled movement
+      const stroke = doc.strokes[0];
+      expect(stroke.points.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("disables LOD culling when minPixelSize is 0", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "min_pixel_size", pixels: 0 },
+        { type: "forward", distance: 0.001 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test", 100);
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      // Even tiny segment should draw when LOD is disabled
+      expect(doc.strokes.length).toBeGreaterThan(0);
+    });
+
+    it("LOD-culls shape commands below pixel threshold", async () => {
+      // At zoom=1, rectangle 0.5x0.5 with scaleFactor=1 → effectiveSize = 0.5 pixels
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "min_pixel_size", pixels: 1 },
+        { type: "rectangle", width: 0.5, height: 0.5 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test", 1);
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      expect(doc.shapes).toHaveLength(0);
+    });
+
+    it("draws shapes that exceed pixel threshold", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "min_pixel_size", pixels: 1 },
+        { type: "rectangle", width: 50, height: 50 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test", 1);
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      expect(doc.shapes).toHaveLength(1);
+    });
+
+    it("resets minPixelSize between runs", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "min_pixel_size", pixels: 9999 },
+        { type: "forward", distance: 100 },
+      ]);
+
+      const executor = createExecutor();
+      let resultPromise = executor.run("test", 1);
+      await vi.runAllTimersAsync();
+      await resultPromise;
+      // Everything culled
+      expect(doc.strokes).toHaveLength(0);
+
+      // Second run — minPixelSize should reset to 1
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "forward", distance: 100 },
+      ]);
+      resultPromise = executor.run("test2", 1);
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      expect(doc.strokes.length).toBeGreaterThan(0);
+    });
+  });
 });

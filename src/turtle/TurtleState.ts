@@ -89,6 +89,20 @@ export class TurtleState implements TurtleStateQuery {
   fillColor: string | null = null;
 
   /**
+   * Scale factor for fractal zoom spawning. Multiplies all distances
+   * (forward, backward, goto, shape sizes) relative to parent. Defaults
+   * to 1.0 — child turtles inherit parent scale × own scale.
+   */
+  scaleFactor = 1;
+
+  /**
+   * Minimum effective pixel size for LOD culling. Drawing commands whose
+   * on-screen size (`distance * scaleFactor * cameraZoom`) falls below
+   * this threshold are skipped (position still updates). Default 1.0.
+   */
+  minPixelSize = 1;
+
+  /**
    * Custom collision radius override. When set, `collides_with()` uses this
    * instead of the default `pen.width / 2`. Null means use pen-width default.
    */
@@ -145,6 +159,8 @@ export class TurtleState implements TurtleStateQuery {
     this.presetWidthMultiplier = 1.0;
     this.presetOpacity = 1.0;
     this.fillColor = null;
+    this.scaleFactor = 1;
+    this.minPixelSize = 1;
     this.collisionRadius = null;
     this.worldSpace = false;
     this.zoomScale = 1;
@@ -233,6 +249,9 @@ export class TurtleState implements TurtleStateQuery {
         return null;
       case "set_world_space":
         this.setWorldSpace(cmd.enabled);
+        return null;
+      case "min_pixel_size":
+        this.minPixelSize = cmd.pixels;
         return null;
       case "clear":
       case "sleep":

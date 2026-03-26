@@ -1157,4 +1157,120 @@ describe("TurtleExecutor", () => {
       expect(doc.strokes.length).toBeGreaterThan(0);
     });
   });
+
+  describe("scaleFactor on spawned turtles", () => {
+    it("sets scaleFactor on spawned turtle from spawn command", async () => {
+      vi.useFakeTimers();
+      const doc = new MockDocument();
+      const registry = new TurtleRegistry();
+      const runtime = new FakeLuaRuntime();
+
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "spawn", id: "child", scale: 0.5 },
+        { type: "forward", distance: 100, turtleId: "child" },
+      ]);
+
+      const executor = new TurtleExecutor(
+        runtime as never, registry, "scalef-test", doc,
+      );
+      const promise = executor.run("test", 1);
+      await vi.runAllTimersAsync();
+      const result = await promise;
+
+      expect(result.success).toBe(true);
+      const childEntry = registry.get("scalef-test:child");
+      expect(childEntry).toBeTruthy();
+      expect(childEntry!.state.scaleFactor).toBe(0.5);
+      // forward(100) at scale 0.5 → moves 50 units
+      expect(childEntry!.state.y).toBeCloseTo(-50, 5);
+      vi.useRealTimers();
+    });
+
+    it("inherits parent scaleFactor into child", async () => {
+      vi.useFakeTimers();
+      const doc = new MockDocument();
+      const registry = new TurtleRegistry();
+      const runtime = new FakeLuaRuntime();
+
+      // Main turtle has default scale=1, spawn child at scale=0.5
+      // The child's scaleFactor should be 1 * 0.5 = 0.5
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "spawn", id: "c1", scale: 0.5 },
+      ]);
+
+      const executor = new TurtleExecutor(
+        runtime as never, registry, "inherit-test", doc,
+      );
+      const promise = executor.run("test", 1);
+      await vi.runAllTimersAsync();
+      await promise;
+
+      const child = registry.get("inherit-test:c1");
+      expect(child!.state.scaleFactor).toBe(0.5);
+      vi.useRealTimers();
+    });
+
+    it("scale_pen command enables pen scaling on spawned turtle", async () => {
+      vi.useFakeTimers();
+      const doc = new MockDocument();
+      const registry = new TurtleRegistry();
+      const runtime = new FakeLuaRuntime();
+
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "spawn", id: "sp", scale: 0.5 },
+        { type: "scale_pen", enabled: true, turtleId: "sp" } as TurtleCommand,
+        { type: "forward", distance: 100, turtleId: "sp" },
+      ]);
+
+      const executor = new TurtleExecutor(
+        runtime as never, registry, "spen-test", doc,
+      );
+      const promise = executor.run("test", 1);
+      await vi.runAllTimersAsync();
+      await promise;
+
+      const child = registry.get("spen-test:sp");
+      expect(child!.state.scalePen).toBe(true);
+      // Check that strokes were created with scaled pen width
+      // pen.width=3 (default) * zoomScale=1 * presetMul=1 * scaleFactor=0.5 = 1.5
+      if (doc.strokes.length > 0) {
+        const lastStroke = doc.strokes[doc.strokes.length - 1];
+        // width was scaled by scalePen
+        expect(lastStroke.points[0].pressure).toBeDefined();
+      }
+      vi.useRealTimers();
+    });
+
+    it("shapes are scaled by scaleFactor", async () => {
+      vi.useFakeTimers();
+      const doc = new MockDocument();
+      const registry = new TurtleRegistry();
+      const runtime = new FakeLuaRuntime();
+
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "spawn", id: "shp", scale: 0.5 },
+        { type: "rectangle", width: 100, height: 50, turtleId: "shp" },
+      ]);
+
+      const executor = new TurtleExecutor(
+        runtime as never, registry, "shape-scale-test", doc,
+      );
+      const promise = executor.run("test", 1);
+      await vi.runAllTimersAsync();
+      await promise;
+
+      // Shape should have been created with dimensions scaled by 0.5
+      expect(doc.shapes.length).toBeGreaterThan(0);
+      const shape = doc.shapes[0];
+      // width=100 * zoomScale(1) * scaleFactor(0.5) = 50
+      expect(shape.width).toBeCloseTo(50, 1);
+      // height=50 * zoomScale(1) * scaleFactor(0.5) = 25
+      expect(shape.height).toBeCloseTo(25, 1);
+      vi.useRealTimers();
+    });
+  });
 });

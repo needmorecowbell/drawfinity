@@ -96,6 +96,12 @@ export class TurtleState implements TurtleStateQuery {
   scaleFactor = 1;
 
   /**
+   * When true, pen width is also multiplied by `scaleFactor`.
+   * By default pen width stays visually consistent regardless of scale.
+   */
+  scalePen = false;
+
+  /**
    * Minimum effective pixel size for LOD culling. Drawing commands whose
    * on-screen size (`distance * scaleFactor * cameraZoom`) falls below
    * this threshold are skipped (position still updates). Default 1.0.
@@ -160,6 +166,7 @@ export class TurtleState implements TurtleStateQuery {
     this.presetOpacity = 1.0;
     this.fillColor = null;
     this.scaleFactor = 1;
+    this.scalePen = false;
     this.minPixelSize = 1;
     this.collisionRadius = null;
     this.worldSpace = false;
@@ -253,6 +260,9 @@ export class TurtleState implements TurtleStateQuery {
       case "min_pixel_size":
         this.minPixelSize = cmd.pixels;
         return null;
+      case "scale_pen":
+        this.scalePen = cmd.enabled;
+        return null;
       case "clear":
       case "sleep":
       case "print":
@@ -320,11 +330,14 @@ export class TurtleState implements TurtleStateQuery {
     const fromY = this.y;
     // Heading 0 = up (negative Y in screen coords), clockwise positive
     const rad = (this.angle * Math.PI) / 180;
+    // Scale distance by scaleFactor for fractal zoom spawning
+    const scaledDistance = distance * this.scaleFactor;
     // Store logical (unscaled) position
-    this.x += distance * Math.sin(rad);
-    this.y -= distance * Math.cos(rad);
+    this.x += scaledDistance * Math.sin(rad);
+    this.y -= scaledDistance * Math.cos(rad);
     if (this.pen.down) {
       const scale = this.effectiveZoomScale();
+      const penScale = this.scalePen ? this.scaleFactor : 1;
       return {
         fromX: this.toWorld(fromX, this.originX),
         fromY: this.toWorld(fromY, this.originY),
@@ -332,7 +345,7 @@ export class TurtleState implements TurtleStateQuery {
         toY: this.toWorld(this.y, this.originY),
         pen: {
           ...this.pen,
-          width: this.pen.width * scale * this.presetWidthMultiplier,
+          width: this.pen.width * scale * this.presetWidthMultiplier * penScale,
           opacity: this.pen.opacity * this.presetOpacity,
         },
       };
@@ -348,6 +361,7 @@ export class TurtleState implements TurtleStateQuery {
     this.y = y;
     if (this.pen.down) {
       const scale = this.effectiveZoomScale();
+      const penScale = this.scalePen ? this.scaleFactor : 1;
       return {
         fromX: this.toWorld(fromX, this.originX),
         fromY: this.toWorld(fromY, this.originY),
@@ -355,7 +369,7 @@ export class TurtleState implements TurtleStateQuery {
         toY: this.toWorld(this.y, this.originY),
         pen: {
           ...this.pen,
-          width: this.pen.width * scale * this.presetWidthMultiplier,
+          width: this.pen.width * scale * this.presetWidthMultiplier * penScale,
           opacity: this.pen.opacity * this.presetOpacity,
         },
       };

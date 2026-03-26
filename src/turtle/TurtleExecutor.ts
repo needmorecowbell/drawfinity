@@ -318,6 +318,8 @@ export class TurtleExecutor {
         spawnedEntry.state.x = mainOrigin.x + (cmd.x ?? 0);
         spawnedEntry.state.y = mainOrigin.y + (cmd.y ?? 0);
         spawnedEntry.state.zoomScale = mainEntry.state.zoomScale;
+        // Inherit parent's scaleFactor × child's own scale
+        spawnedEntry.state.scaleFactor = mainEntry.state.scaleFactor * (cmd.scale ?? 1);
       }
       return;
     }
@@ -405,13 +407,15 @@ export class TurtleExecutor {
       if (effectiveSize < entry.state.minPixelSize) return;
       const worldPos = entry.state.getWorldPosition();
       const scale = entry.state.worldSpace ? 1 : Math.max(1e-3, Math.min(1e3, entry.state.zoomScale));
+      const sf = entry.state.scaleFactor;
+      const penScale = entry.state.scalePen ? sf : 1;
       const headingRad = (entry.state.angle * Math.PI) / 180;
       const baseOpts = {
         x: worldPos.x,
         y: worldPos.y,
         rotation: headingRad,
         strokeColor: entry.state.pen.color,
-        strokeWidth: entry.state.pen.width * scale * entry.state.presetWidthMultiplier,
+        strokeWidth: entry.state.pen.width * scale * entry.state.presetWidthMultiplier * penScale,
         fillColor: entry.state.fillColor,
         opacity: entry.state.pen.opacity * entry.state.presetOpacity,
       };
@@ -419,18 +423,18 @@ export class TurtleExecutor {
         entry.drawing.createShape({
           ...baseOpts,
           type: "rectangle",
-          width: cmd.width * scale,
-          height: cmd.height * scale,
+          width: cmd.width * scale * sf,
+          height: cmd.height * scale * sf,
         });
       } else if (cmd.type === "ellipse") {
         entry.drawing.createShape({
           ...baseOpts,
           type: "ellipse",
-          width: cmd.width * scale,
-          height: cmd.height * scale,
+          width: cmd.width * scale * sf,
+          height: cmd.height * scale * sf,
         });
       } else if (cmd.type === "polygon") {
-        const diameter = cmd.radius * 2 * scale;
+        const diameter = cmd.radius * 2 * scale * sf;
         entry.drawing.createShape({
           ...baseOpts,
           type: "polygon",
@@ -439,7 +443,7 @@ export class TurtleExecutor {
           sides: cmd.sides,
         });
       } else if (cmd.type === "star") {
-        const diameter = cmd.outerRadius * 2 * scale;
+        const diameter = cmd.outerRadius * 2 * scale * sf;
         entry.drawing.createShape({
           ...baseOpts,
           type: "star",

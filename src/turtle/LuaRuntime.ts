@@ -25,7 +25,7 @@ type TurtleCommandVariant =
   | { type: "sleep"; ms: number }
   | { type: "print"; message: string }
   | { type: "set_world_space"; enabled: boolean }
-  | { type: "spawn"; id: string; x?: number; y?: number; heading?: number; color?: string; width?: number }
+  | { type: "spawn"; id: string; x?: number; y?: number; heading?: number; color?: string; width?: number; scale?: number }
   | { type: "kill"; id: string }
   | { type: "killall" }
   | { type: "hide" }
@@ -38,7 +38,8 @@ type TurtleCommandVariant =
   | { type: "polygon"; sides: number; radius: number }
   | { type: "star"; points: number; outerRadius: number; innerRadius: number }
   | { type: "step_boundary"; step: number }
-  | { type: "min_pixel_size"; pixels: number };
+  | { type: "min_pixel_size"; pixels: number }
+  | { type: "scale_pen"; enabled: boolean };
 
 /** A command produced by a turtle API call, optionally tagged with a turtle ID. */
 export type TurtleCommand = TurtleCommandVariant & { turtleId?: string };
@@ -352,6 +353,11 @@ export class LuaRuntime {
       pushApply({ type: "min_pixel_size", pixels });
     });
 
+    // Scale pen width with scaleFactor
+    g.set("scale_pen", (enabled: unknown) => {
+      pushApply({ type: "scale_pen", enabled: !!enabled });
+    });
+
     // Pen mode (draw / erase)
     g.set("penmode", (mode: unknown, options?: unknown) => {
       if (typeof mode !== "string" || (mode !== "draw" && mode !== "erase")) {
@@ -491,6 +497,7 @@ export class LuaRuntime {
         heading?: number | null,
         color?: string | null,
         width?: number | null,
+        scale?: number | null,
       ) => {
         const ctx = getSpawnCtx();
         if (!ctx.registry || !ctx.scriptId || !ctx.doc) {
@@ -520,6 +527,8 @@ export class LuaRuntime {
         if (color != null) options.color = color;
         if (width != null) options.width = width;
 
+        const spawnScale = (scale != null && scale > 0) ? scale : undefined;
+
         // Create turtle eagerly so state queries work during collection.
         // Spawn x/y are offsets from origin — inherit origin from main turtle.
         ctx.registry.spawn(id, ctx.scriptId, ctx.doc, undefined, options);
@@ -533,6 +542,9 @@ export class LuaRuntime {
             spawnedEntry.state.setOrigin(mainOrigin.x, mainOrigin.y);
             spawnedEntry.state.x = mainOrigin.x + (options.x ?? 0);
             spawnedEntry.state.y = mainOrigin.y + (options.y ?? 0);
+            // Inherit parent's scaleFactor × child's own scale
+            const parentScale = this.getActiveTurtleState()?.scaleFactor ?? mainEntry.state.scaleFactor;
+            spawnedEntry.state.scaleFactor = parentScale * (spawnScale ?? 1);
           }
         }
         ctx.spawned.add(id);
@@ -545,7 +557,7 @@ export class LuaRuntime {
         }
 
         // Push spawn command for executor replay
-        push({ type: "spawn", id, ...options });
+        push({ type: "spawn", id, ...options, ...(spawnScale !== undefined ? { scale: spawnScale } : {}) });
 
         return id;
       },
@@ -658,6 +670,9 @@ export class LuaRuntime {
             break;
           case "min_pixel_size":
             pushTaggedApply(turtleId, { type: "min_pixel_size", pixels: arg1 as number });
+            break;
+          case "scale_pen":
+            pushTaggedApply(turtleId, { type: "scale_pen", enabled: !!arg1 });
             break;
           case "hide":
             pushTagged(turtleId, { type: "hide" });
@@ -1227,7 +1242,7 @@ export class LuaRuntime {
           error("spawn() requires a non-empty string ID")
         end
         opts = opts or {}
-        _spawn_impl(id, opts.x, opts.y, opts.heading, opts.color, opts.width)
+        _spawn_impl(id, opts.x, opts.y, opts.heading, opts.color, opts.width, opts.scale)
 
         local h = {}
         h.forward = function(d) _tcmd(id, "forward", d) end
@@ -1245,6 +1260,8 @@ export class LuaRuntime {
         h.clear = function() _tcmd(id, "clear") end
         h.sleep = function(ms) _tcmd(id, "sleep", ms) end
         h.set_world_space = function(e) _tcmd(id, "set_world_space", e) end
+        h.scale_pen = function(e) _tcmd(id, "scale_pen", e) end
+        h.min_pixel_size = function(p) _tcmd(id, "min_pixel_size", p) end
         h.print = function(...)
           local parts = {}
           for i = 1, select("#", ...) do
@@ -1311,6 +1328,11 @@ export class LuaRuntime {
         end
 
         return h
+      end
+
+      -- spawn_at_scale(id, scale, x, y) — convenience for spawn(id, {scale=s, x=x, y=y})
+      function spawn_at_scale(id, scale, x, y)
+        return spawn(id, {scale = scale, x = x, y = y})
       end
     `);
   }

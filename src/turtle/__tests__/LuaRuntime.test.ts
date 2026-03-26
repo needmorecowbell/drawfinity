@@ -1814,4 +1814,125 @@ describe("LuaRuntime", () => {
       expect(result.error).toContain("non-negative number");
     });
   });
+
+  describe("scale_pen", () => {
+    it("produces a scale_pen command", async () => {
+      await runtime.execute("scale_pen(true)");
+      const cmds = runtime.getCommands();
+      expect(cmds).toHaveLength(1);
+      expect(cmds[0].type).toBe("scale_pen");
+      if (cmds[0].type === "scale_pen") {
+        expect(cmds[0].enabled).toBe(true);
+      }
+    });
+
+    it("produces false when called with false/nil", async () => {
+      await runtime.execute("scale_pen(false)");
+      const cmds = runtime.getCommands();
+      expect(cmds[0].type).toBe("scale_pen");
+      if (cmds[0].type === "scale_pen") {
+        expect(cmds[0].enabled).toBe(false);
+      }
+    });
+  });
+
+  describe("spawn with scale", () => {
+    class MockDocument implements DocumentModel {
+      strokes: Stroke[] = [];
+      addStroke(stroke: Stroke): void { this.strokes.push(stroke); }
+      getStrokes(): Stroke[] { return this.strokes; }
+      removeStroke(strokeId: string): boolean {
+        const idx = this.strokes.findIndex((s) => s.id === strokeId);
+        if (idx === -1) return false;
+        this.strokes.splice(idx, 1);
+        return true;
+      }
+    }
+
+    let registry: TurtleRegistry;
+    let doc: MockDocument;
+    const scriptId = "scale-test";
+
+    beforeEach(() => {
+      registry = new TurtleRegistry();
+      doc = new MockDocument();
+      registry.createMain(scriptId, doc);
+      runtime.setSpawnContext(registry, scriptId, doc);
+    });
+
+    it("passes scale in spawn command", async () => {
+      await runtime.execute('spawn("s1", {scale=0.5})');
+      const cmds = runtime.getCommands();
+      expect(cmds).toHaveLength(1);
+      if (cmds[0].type === "spawn") {
+        expect(cmds[0].scale).toBe(0.5);
+      }
+    });
+
+    it("sets scaleFactor on spawned turtle state", async () => {
+      await runtime.execute('spawn("s1", {scale=0.5})');
+      const entry = registry.get(`${scriptId}:s1`);
+      expect(entry).toBeTruthy();
+      expect(entry!.state.scaleFactor).toBe(0.5);
+    });
+
+    it("inherits parent scale × child scale", async () => {
+      // Main turtle at default scale 1, spawn child at 0.5
+      await runtime.execute(`
+        local t1 = spawn("s1", {scale=0.5})
+      `);
+      const child = registry.get(`${scriptId}:s1`);
+      expect(child!.state.scaleFactor).toBe(0.5);
+    });
+
+    it("spawn_at_scale is sugar for spawn with scale option", async () => {
+      await runtime.execute('spawn_at_scale("sat1", 0.25, 10, 20)');
+      const cmds = runtime.getCommands();
+      expect(cmds).toHaveLength(1);
+      if (cmds[0].type === "spawn") {
+        expect(cmds[0].id).toBe("sat1");
+        expect(cmds[0].scale).toBe(0.25);
+        expect(cmds[0].x).toBe(10);
+        expect(cmds[0].y).toBe(20);
+      }
+    });
+
+    it("scale defaults to 1 when not provided", async () => {
+      await runtime.execute('spawn("noscale")');
+      const cmds = runtime.getCommands();
+      if (cmds[0].type === "spawn") {
+        expect(cmds[0].scale).toBeUndefined();
+      }
+      const entry = registry.get(`${scriptId}:noscale`);
+      expect(entry!.state.scaleFactor).toBe(1);
+    });
+
+    it("handle has scale_pen method", async () => {
+      await runtime.execute(`
+        local t = spawn("sp1")
+        t.scale_pen(true)
+      `);
+      const cmds = runtime.getCommands();
+      const scalePenCmd = cmds.find((c) => c.type === "scale_pen");
+      expect(scalePenCmd).toBeTruthy();
+      if (scalePenCmd && scalePenCmd.type === "scale_pen") {
+        expect(scalePenCmd.enabled).toBe(true);
+        expect(scalePenCmd.turtleId).toBe("sp1");
+      }
+    });
+
+    it("handle has min_pixel_size method", async () => {
+      await runtime.execute(`
+        local t = spawn("mp1")
+        t.min_pixel_size(5)
+      `);
+      const cmds = runtime.getCommands();
+      const mpCmd = cmds.find((c) => c.type === "min_pixel_size");
+      expect(mpCmd).toBeTruthy();
+      if (mpCmd && mpCmd.type === "min_pixel_size") {
+        expect(mpCmd.pixels).toBe(5);
+        expect(mpCmd.turtleId).toBe("mp1");
+      }
+    });
+  });
 });

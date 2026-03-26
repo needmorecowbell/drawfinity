@@ -39,9 +39,11 @@ async function fetchWithTimeout(
   try {
     return await fetch(url, { signal: controller.signal });
   } catch (err) {
-    // Try Tauri HTTP plugin as fallback before giving up
-    const tauriResponse = await tauriFetch(url);
-    if (tauriResponse) return tauriResponse;
+    // Do not retry via Tauri when the request was deliberately aborted (timeout)
+    if ((err as Error).name !== "AbortError") {
+      const tauriResponse = await tauriFetch(url);
+      if (tauriResponse) return tauriResponse;
+    }
     throw err;
   } finally {
     clearTimeout(timer);

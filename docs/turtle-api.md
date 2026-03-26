@@ -748,6 +748,266 @@ You can observe but not control turtles from other scripts. Calling control meth
 
 ---
 
+## Communication & Awareness {#communication}
+
+Turtles can sense their environment, exchange messages, and share state through a global blackboard. These capabilities enable emergent multi-turtle behaviors like flocking, cellular automata, and relay patterns.
+
+### Spatial Queries {#spatial-queries}
+
+Spatial queries execute **immediately** against current state — they are not deferred to the replay phase. This means a turtle can read its surroundings and make decisions in the same script execution.
+
+#### `nearby_turtles(radius)` {#nearby-turtles}
+
+Returns a table of turtles within `radius` pixels of the calling turtle's position. Only includes turtles owned by the current script.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `radius` | `number` | Search radius in pixels (must be ≥ 0) |
+
+**Returns:** `table` — array of entries with the following fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Turtle's local ID |
+| `x` | `number` | X position |
+| `y` | `number` | Y position |
+| `heading` | `number` | Heading in degrees |
+| `distance` | `number` | Distance from the calling turtle |
+
+```lua
+local neighbors = nearby_turtles(100)
+for _, t in ipairs(neighbors) do
+  print(t.id .. " is " .. t.distance .. "px away")
+end
+```
+
+#### `nearby_strokes(radius)` {#nearby-strokes}
+
+Returns a table of stroke IDs whose bounding boxes intersect a circle of the given radius centered at the calling turtle's position.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `radius` | `number` | Search radius in pixels (must be ≥ 0) |
+
+**Returns:** `table` — array of stroke ID strings.
+
+```lua
+local strokes = nearby_strokes(50)
+print("Found " .. #strokes .. " strokes nearby")
+```
+
+#### `distance_to(id)` {#distance-to}
+
+Returns the Euclidean distance in pixels between the calling turtle and the turtle with the given ID.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | `string` | Target turtle's local ID |
+
+**Returns:** `number` — distance in pixels.
+
+```lua
+local d = distance_to("helper")
+if d < 20 then
+  print("Very close!")
+end
+```
+
+---
+
+### Direct Messaging {#messaging}
+
+Turtles can send point-to-point messages to each other. Messages are enqueued immediately and can be received by the target turtle in subsequent script executions or simulation steps.
+
+#### `send(targetId, data)` {#send}
+
+Send a message to another turtle. The message data can be any serializable Lua value — string, number, boolean, or table.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `targetId` | `string` | Recipient turtle's local ID |
+| `data` | `any` | Message payload |
+
+```lua
+send("helper", "go")
+send("counter", {count = 42, label = "total"})
+```
+
+#### `receive()` {#receive}
+
+Dequeue and return the oldest message for the calling turtle. Returns `nil` if the queue is empty.
+
+**Returns:** `table` or `nil` — message with `from` (sender ID) and `data` (payload) fields.
+
+```lua
+local msg = receive()
+if msg then
+  print("From: " .. msg.from .. ", Data: " .. tostring(msg.data))
+end
+```
+
+#### `peek()` {#peek}
+
+Read the oldest message without removing it from the queue. Returns `nil` if the queue is empty.
+
+**Returns:** `table` or `nil` — same format as `receive()`.
+
+```lua
+local msg = peek()
+if msg then
+  print("Next message from: " .. msg.from)
+end
+```
+
+#### `broadcast(data)` {#broadcast}
+
+Send a message to all other turtles in the current script.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `data` | `any` | Message payload |
+
+```lua
+broadcast("start")   -- all other turtles will receive this
+```
+
+---
+
+### Blackboard (Shared State) {#blackboard}
+
+The blackboard is a global key-value store visible to all turtles across all scripts. Use it to share configuration, counters, or coordination state.
+
+#### `publish(key, value)` {#publish}
+
+Set a value on the shared blackboard.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `key` | `string` | Key name |
+| `value` | `any` | Value to store |
+
+```lua
+publish("generation", 1)
+publish("config", {speed = 5, spread = 100})
+```
+
+#### `read_board(key)` {#read-board}
+
+Read a value from the shared blackboard. Returns `nil` if the key does not exist.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `key` | `string` | Key to read |
+
+**Returns:** `any` or `nil` — the stored value.
+
+```lua
+local gen = read_board("generation")
+if gen then
+  print("Generation: " .. gen)
+end
+```
+
+#### `board_keys()` {#board-keys}
+
+Returns a table of all keys currently on the blackboard.
+
+**Returns:** `table` — array of key strings.
+
+```lua
+local keys = board_keys()
+for _, k in ipairs(keys) do
+  print(k .. " = " .. tostring(read_board(k)))
+end
+```
+
+---
+
+### Simulation {#simulation}
+
+The `simulate()` function enables multi-generation patterns where turtles execute logic over multiple "steps" or "ticks." Between steps, messages are delivered and spatial state is updated, allowing reactive behaviors like cellular automata.
+
+#### `simulate(steps, fn)` {#simulate}
+
+Run a step function for each of `steps` generations. During each step, the function can use spatial queries to read the world state and issue drawing commands. Message delivery occurs between steps during the replay phase.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `steps` | `number` | Number of steps to simulate (positive integer, max 10000 by default) |
+| `fn` | `function` | Step function called with the current step number (1-based) |
+
+**Errors:** Throws if steps exceeds the maximum (configurable via `set_max_steps()`), or if called recursively.
+
+```lua
+simulate(100, function(step)
+  local neighbors = nearby_turtles(50)
+  if #neighbors > 0 then
+    -- Turn toward the nearest neighbor
+    right(10)
+  end
+  forward(5)
+end)
+```
+
+#### `get_step()` {#get-step}
+
+Returns the current simulation step number. Returns `0` when not inside a `simulate()` call.
+
+**Returns:** `number` — current step (1-based inside `simulate()`, 0 otherwise).
+
+```lua
+simulate(50, function(step)
+  print("Step " .. get_step())   -- same as step parameter
+end)
+```
+
+#### `set_max_steps(n)` {#set-max-steps}
+
+Configure the maximum number of steps allowed in a single `simulate()` call. Default is **10000**.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `n` | `number` | Maximum steps (positive integer) |
+
+```lua
+set_max_steps(50000)   -- allow longer simulations
+```
+
+---
+
+### Collision Detection {#collision}
+
+#### `collides_with(id)` {#collides-with}
+
+Check whether the calling turtle is colliding with another turtle. Two turtles collide when the distance between them is less than or equal to `(selfPenWidth + otherPenWidth) / 2` — or the custom collision radius if one has been set.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | `string` | Target turtle's local ID |
+
+**Returns:** `boolean` — `true` if the turtles are colliding.
+
+```lua
+if collides_with("enemy") then
+  pencolor(255, 0, 0)
+  print("Collision!")
+end
+```
+
+#### `set_collision_radius(r)` {#set-collision-radius}
+
+Override the default collision radius for the calling turtle. By default, the collision radius is half the pen width.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `r` | `number` | Custom collision radius in pixels (must be ≥ 0) |
+
+```lua
+set_collision_radius(20)   -- larger collision area
+```
+
+---
+
 ## Function Summary {#summary}
 
 | Function | Category | Description |
@@ -792,3 +1052,18 @@ You can observe but not control turtles from other scripts. Calling control meth
 | [`set_spawn_limit(n)`](#set-spawn-limit) | Turtle Herding | Set max turtle count |
 | [`set_spawn_depth(n)`](#set-spawn-depth) | Turtle Herding | Set max spawn nesting depth |
 | [`environment_turtles()`](#environment-turtles) | Turtle Herding | List all turtles across scripts |
+| [`nearby_turtles(radius)`](#nearby-turtles) | Communication | Find turtles within radius |
+| [`nearby_strokes(radius)`](#nearby-strokes) | Communication | Find strokes within radius |
+| [`distance_to(id)`](#distance-to) | Communication | Distance to another turtle |
+| [`send(targetId, data)`](#send) | Communication | Send a message to a turtle |
+| [`receive()`](#receive) | Communication | Dequeue next message |
+| [`peek()`](#peek) | Communication | Peek at next message |
+| [`broadcast(data)`](#broadcast) | Communication | Send message to all turtles |
+| [`publish(key, value)`](#publish) | Communication | Write to shared blackboard |
+| [`read_board(key)`](#read-board) | Communication | Read from shared blackboard |
+| [`board_keys()`](#board-keys) | Communication | List blackboard keys |
+| [`simulate(steps, fn)`](#simulate) | Simulation | Multi-generation step execution |
+| [`get_step()`](#get-step) | Simulation | Current simulation step number |
+| [`set_max_steps(n)`](#set-max-steps) | Simulation | Configure max simulation steps |
+| [`collides_with(id)`](#collides-with) | Collision | Check collision with another turtle |
+| [`set_collision_radius(r)`](#set-collision-radius) | Collision | Override collision radius |

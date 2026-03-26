@@ -145,6 +145,10 @@ export class TurtleState implements TurtleStateQuery {
       case "sleep":
       case "print":
       case "spawn":
+      case "kill":
+      case "killall":
+      case "hide":
+      case "show":
         return null;
     }
   }

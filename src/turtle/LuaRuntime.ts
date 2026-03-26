@@ -24,7 +24,11 @@ type TurtleCommandVariant =
   | { type: "sleep"; ms: number }
   | { type: "print"; message: string }
   | { type: "set_world_space"; enabled: boolean }
-  | { type: "spawn"; id: string; x?: number; y?: number; heading?: number; color?: string; width?: number };
+  | { type: "spawn"; id: string; x?: number; y?: number; heading?: number; color?: string; width?: number }
+  | { type: "kill"; id: string }
+  | { type: "killall" }
+  | { type: "hide" }
+  | { type: "show" };
 
 /** A command produced by a turtle API call, optionally tagged with a turtle ID. */
 export type TurtleCommand = TurtleCommandVariant & { turtleId?: string };
@@ -278,6 +282,15 @@ export class LuaRuntime {
       push({ type: "set_world_space", enabled: !!enabled });
     });
 
+    // Indicator visibility (main turtle)
+    g.set("hide", () => {
+      push({ type: "hide" });
+    });
+
+    g.set("show", () => {
+      push({ type: "show" });
+    });
+
     g.set("repeat_n", (n: number, fn: () => void) => {
       for (let i = 0; i < n; i++) {
         fn();
@@ -417,6 +430,12 @@ export class LuaRuntime {
           case "set_world_space":
             pushTagged(turtleId, { type: "set_world_space", enabled: !!arg1 });
             break;
+          case "hide":
+            pushTagged(turtleId, { type: "hide" });
+            break;
+          case "show":
+            pushTagged(turtleId, { type: "show" });
+            break;
         }
       },
     );
@@ -457,11 +476,119 @@ export class LuaRuntime {
       return null;
     });
 
+    // Internal: kill a turtle by local ID (ownership enforced in JS)
+    g.set("_kill_impl", (id: string) => {
+      const ctx = getSpawnCtx();
+      if (!ctx.registry || !ctx.scriptId) {
+        throw new Error("Spawn context not set — cannot kill turtles outside of TurtleExecutor");
+      }
+      if (typeof id !== "string" || id.length === 0) {
+        throw new Error("kill() requires a non-empty string ID");
+      }
+      if (id === "main") {
+        throw new Error('Cannot kill the main turtle');
+      }
+      const fullId = `${ctx.scriptId}:${id}`;
+      if (!ctx.registry.has(fullId)) {
+        throw new Error(`Turtle "${id}" does not exist`);
+      }
+      const entry = ctx.registry.get(fullId)!;
+      if (entry.scriptId !== ctx.scriptId) {
+        throw new Error(`Cannot kill turtle "${id}" — not owned by this script`);
+      }
+      // Push kill command for executor replay; also remove from eager registry
+      push({ type: "kill", id });
+      ctx.registry.remove(fullId, ctx.scriptId);
+      ctx.spawned.delete(id);
+    });
+
+    // Internal: killall — remove all spawned (non-main) turtles for current script
+    g.set("_killall_impl", () => {
+      const ctx = getSpawnCtx();
+      if (!ctx.registry || !ctx.scriptId) {
+        throw new Error("Spawn context not set");
+      }
+      push({ type: "killall" });
+      // Eagerly remove from registry
+      const owned = ctx.registry.getOwned(ctx.scriptId);
+      const mainId = `${ctx.scriptId}:main`;
+      for (const [id] of owned) {
+        if (id !== mainId) {
+          ctx.registry.remove(id, ctx.scriptId);
+        }
+      }
+      ctx.spawned.clear();
+    });
+
+    // Internal: list_turtles — return array of local turtle IDs owned by current script
+    g.set("_list_turtles_impl", () => {
+      const ctx = getSpawnCtx();
+      if (!ctx.registry || !ctx.scriptId) {
+        return [];
+      }
+      const owned = ctx.registry.getOwned(ctx.scriptId);
+      const prefix = `${ctx.scriptId}:`;
+      const ids: string[] = [];
+      for (const [fullId] of owned) {
+        ids.push(fullId.substring(prefix.length));
+      }
+      return ids;
+    });
+
+    // Internal: set_spawn_limit
+    g.set("_set_spawn_limit_impl", (n: number) => {
+      const ctx = getSpawnCtx();
+      if (!ctx.registry) {
+        throw new Error("Spawn context not set");
+      }
+      if (typeof n !== "number" || n < 1) {
+        throw new Error("set_spawn_limit() requires a positive number");
+      }
+      ctx.registry.setMaxTurtles(Math.floor(n));
+    });
+
+    // Internal: set_spawn_depth
+    g.set("_set_spawn_depth_impl", (n: number) => {
+      const ctx = getSpawnCtx();
+      if (!ctx.registry) {
+        throw new Error("Spawn context not set");
+      }
+      if (typeof n !== "number" || n < 1) {
+        throw new Error("set_spawn_depth() requires a positive number");
+      }
+      ctx.registry.setMaxDepth(Math.floor(n));
+    });
+
     // Register `goto` as an alias (goto is a Lua keyword in 5.4, so we use a wrapper)
     engine.doStringSync(`
       -- 'goto' is a reserved keyword in Lua, so we alias via goto_pos
       -- and provide a table-call syntax workaround
       turtle_goto = goto_pos
+
+      -- kill(id) — remove a spawned turtle
+      function kill(id)
+        _kill_impl(id)
+      end
+
+      -- killall() — remove all spawned turtles owned by current script
+      function killall()
+        _killall_impl()
+      end
+
+      -- list_turtles() — return array of active turtle IDs for current script
+      function list_turtles()
+        return _list_turtles_impl()
+      end
+
+      -- set_spawn_limit(n) — configure max total turtles
+      function set_spawn_limit(n)
+        _set_spawn_limit_impl(n)
+      end
+
+      -- set_spawn_depth(n) — configure max spawn depth
+      function set_spawn_depth(n)
+        _set_spawn_depth_impl(n)
+      end
 
       -- spawn(id, opts?) — create a new turtle and return a handle table
       function spawn(id, opts)
@@ -497,8 +624,8 @@ export class LuaRuntime {
         h.position = function() return _tquery(id, "position") end
         h.heading = function() return _tquery(id, "heading") end
         h.isdown = function() return _tquery(id, "isdown") end
-        h.hide = function() error("hide() not yet implemented") end
-        h.show = function() error("show() not yet implemented") end
+        h.hide = function() _tcmd(id, "hide") end
+        h.show = function() _tcmd(id, "show") end
         h.penmode = function() error("penmode() not yet implemented") end
         h.penpreset = function() error("penpreset() not yet implemented") end
         h.rectangle = function() error("rectangle() not yet implemented") end

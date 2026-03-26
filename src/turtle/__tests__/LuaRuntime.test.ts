@@ -758,7 +758,7 @@ describe("LuaRuntime", () => {
     });
 
     it("stub methods raise not-yet-implemented errors", async () => {
-      for (const method of ["hide", "show", "penmode", "penpreset", "rectangle", "ellipse", "polygon", "star", "fillcolor"]) {
+      for (const method of ["penmode", "penpreset", "rectangle", "ellipse", "polygon", "star", "fillcolor"]) {
         const freshRuntime = new LuaRuntime();
         await freshRuntime.init();
         freshRuntime.setSpawnContext(registry, scriptId, doc);
@@ -772,6 +772,39 @@ describe("LuaRuntime", () => {
       }
     });
 
+    it("stub methods raise not-yet-implemented errors for remaining stubs", async () => {
+      for (const method of ["penmode", "penpreset", "rectangle", "ellipse", "polygon", "star", "fillcolor"]) {
+        const freshRuntime = new LuaRuntime();
+        await freshRuntime.init();
+        freshRuntime.setSpawnContext(registry, scriptId, doc);
+        const result = await freshRuntime.execute(`
+          local t = spawn("stub2_${method}")
+          t.${method}()
+        `);
+        expect(result.success).toBe(false);
+        expect(result.error).toContain("not yet implemented");
+        freshRuntime.close();
+      }
+    });
+
+    it("handle.hide pushes tagged hide command", async () => {
+      await runtime.execute(`
+        local t = spawn("t1")
+        t.hide()
+      `);
+      const cmds = runtime.getCommands();
+      expect(cmds[1]).toEqual({ type: "hide", turtleId: "t1" });
+    });
+
+    it("handle.show pushes tagged show command", async () => {
+      await runtime.execute(`
+        local t = spawn("t1")
+        t.show()
+      `);
+      const cmds = runtime.getCommands();
+      expect(cmds[1]).toEqual({ type: "show", turtleId: "t1" });
+    });
+
     it("clears spawned tracking between executions", async () => {
       await runtime.execute('spawn("t1")');
       expect(runtime.getCommands()).toHaveLength(1);
@@ -783,6 +816,261 @@ describe("LuaRuntime", () => {
       // Second execution should allow same ID
       const result = await runtime.execute('spawn("t1")');
       expect(result.success).toBe(true);
+    });
+  });
+
+  describe("kill()", () => {
+    let registry: TurtleRegistry;
+    let doc: { strokes: Stroke[]; addStroke: (s: Stroke) => void; getStrokes: () => Stroke[]; removeStroke: (id: string) => boolean };
+    const scriptId = "test-script";
+
+    beforeEach(() => {
+      registry = new TurtleRegistry();
+      doc = {
+        strokes: [],
+        addStroke(s: Stroke) { this.strokes.push(s); },
+        getStrokes() { return this.strokes; },
+        removeStroke(id: string) {
+          const idx = this.strokes.findIndex((s) => s.id === id);
+          if (idx === -1) return false;
+          this.strokes.splice(idx, 1);
+          return true;
+        },
+      };
+      registry.createMain(scriptId, doc);
+      runtime.setSpawnContext(registry, scriptId, doc);
+    });
+
+    it("kills a spawned turtle and pushes kill command", async () => {
+      await runtime.execute(`
+        spawn("child1")
+        kill("child1")
+      `);
+      const cmds = runtime.getCommands();
+      expect(cmds).toHaveLength(2);
+      expect(cmds[1]).toEqual({ type: "kill", id: "child1" });
+      expect(registry.has(`${scriptId}:child1`)).toBe(false);
+    });
+
+    it("errors when killing main turtle", async () => {
+      const result = await runtime.execute('kill("main")');
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Cannot kill the main turtle");
+    });
+
+    it("errors when killing non-existent turtle", async () => {
+      const result = await runtime.execute('kill("nonexistent")');
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("does not exist");
+    });
+
+    it("errors with empty string ID", async () => {
+      const result = await runtime.execute('kill("")');
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("non-empty string");
+    });
+
+    it("allows re-spawning a killed turtle", async () => {
+      const result = await runtime.execute(`
+        spawn("reborn")
+        kill("reborn")
+        spawn("reborn")
+      `);
+      expect(result.success).toBe(true);
+      expect(registry.has(`${scriptId}:reborn`)).toBe(true);
+    });
+  });
+
+  describe("killall()", () => {
+    let registry: TurtleRegistry;
+    let doc: { strokes: Stroke[]; addStroke: (s: Stroke) => void; getStrokes: () => Stroke[]; removeStroke: (id: string) => boolean };
+    const scriptId = "test-script";
+
+    beforeEach(() => {
+      registry = new TurtleRegistry();
+      doc = {
+        strokes: [],
+        addStroke(s: Stroke) { this.strokes.push(s); },
+        getStrokes() { return this.strokes; },
+        removeStroke(id: string) {
+          const idx = this.strokes.findIndex((s) => s.id === id);
+          if (idx === -1) return false;
+          this.strokes.splice(idx, 1);
+          return true;
+        },
+      };
+      registry.createMain(scriptId, doc);
+      runtime.setSpawnContext(registry, scriptId, doc);
+    });
+
+    it("removes all spawned turtles but keeps main", async () => {
+      await runtime.execute(`
+        spawn("a")
+        spawn("b")
+        spawn("c")
+        killall()
+      `);
+      expect(registry.has(`${scriptId}:main`)).toBe(true);
+      expect(registry.has(`${scriptId}:a`)).toBe(false);
+      expect(registry.has(`${scriptId}:b`)).toBe(false);
+      expect(registry.has(`${scriptId}:c`)).toBe(false);
+    });
+
+    it("pushes killall command", async () => {
+      await runtime.execute(`
+        spawn("x")
+        killall()
+      `);
+      const cmds = runtime.getCommands();
+      const killallCmd = cmds.find((c) => c.type === "killall");
+      expect(killallCmd).toBeDefined();
+    });
+
+    it("allows spawning after killall", async () => {
+      const result = await runtime.execute(`
+        spawn("a")
+        killall()
+        spawn("a")
+      `);
+      expect(result.success).toBe(true);
+      expect(registry.has(`${scriptId}:a`)).toBe(true);
+    });
+  });
+
+  describe("list_turtles()", () => {
+    let registry: TurtleRegistry;
+    let doc: { strokes: Stroke[]; addStroke: (s: Stroke) => void; getStrokes: () => Stroke[]; removeStroke: (id: string) => boolean };
+    const scriptId = "test-script";
+
+    beforeEach(() => {
+      registry = new TurtleRegistry();
+      doc = {
+        strokes: [],
+        addStroke(s: Stroke) { this.strokes.push(s); },
+        getStrokes() { return this.strokes; },
+        removeStroke(id: string) {
+          const idx = this.strokes.findIndex((s) => s.id === id);
+          if (idx === -1) return false;
+          this.strokes.splice(idx, 1);
+          return true;
+        },
+      };
+      registry.createMain(scriptId, doc);
+      runtime.setSpawnContext(registry, scriptId, doc);
+    });
+
+    it("returns main turtle by default", async () => {
+      await runtime.execute(`
+        local turtles = list_turtles()
+        print(#turtles)
+      `);
+      const cmds = runtime.getCommands();
+      const printCmd = cmds.find(
+        (c): c is TurtleCommand & { type: "print" } => c.type === "print",
+      );
+      expect(printCmd!.message).toBe("1");
+    });
+
+    it("includes spawned turtles", async () => {
+      await runtime.execute(`
+        spawn("alpha")
+        spawn("beta")
+        local turtles = list_turtles()
+        print(#turtles)
+      `);
+      const cmds = runtime.getCommands();
+      const printCmd = cmds.find(
+        (c): c is TurtleCommand & { type: "print" } => c.type === "print" && !c.turtleId,
+      );
+      expect(printCmd!.message).toBe("3"); // main + alpha + beta
+    });
+
+    it("reflects kills in the list", async () => {
+      await runtime.execute(`
+        spawn("temp")
+        kill("temp")
+        local turtles = list_turtles()
+        print(#turtles)
+      `);
+      const cmds = runtime.getCommands();
+      const printCmd = cmds.find(
+        (c): c is TurtleCommand & { type: "print" } => c.type === "print" && !c.turtleId,
+      );
+      expect(printCmd!.message).toBe("1"); // only main
+    });
+  });
+
+  describe("set_spawn_limit() and set_spawn_depth()", () => {
+    let registry: TurtleRegistry;
+    let doc: { strokes: Stroke[]; addStroke: (s: Stroke) => void; getStrokes: () => Stroke[]; removeStroke: (id: string) => boolean };
+    const scriptId = "test-script";
+
+    beforeEach(() => {
+      registry = new TurtleRegistry();
+      doc = {
+        strokes: [],
+        addStroke(s: Stroke) { this.strokes.push(s); },
+        getStrokes() { return this.strokes; },
+        removeStroke(id: string) {
+          const idx = this.strokes.findIndex((s) => s.id === id);
+          if (idx === -1) return false;
+          this.strokes.splice(idx, 1);
+          return true;
+        },
+      };
+      registry.createMain(scriptId, doc);
+      runtime.setSpawnContext(registry, scriptId, doc);
+    });
+
+    it("set_spawn_limit configures max turtles", async () => {
+      const result = await runtime.execute(`
+        set_spawn_limit(2)
+        spawn("only_one")
+      `);
+      expect(result.success).toBe(true);
+      expect(registry.getMaxTurtles()).toBe(2);
+
+      // Attempting to spawn beyond the limit
+      const result2 = await runtime.execute(`
+        spawn("overflow")
+      `);
+      expect(result2.success).toBe(false);
+      expect(result2.error).toContain("Maximum turtle limit");
+    });
+
+    it("set_spawn_depth configures max depth", async () => {
+      await runtime.execute("set_spawn_depth(2)");
+      expect(registry.getMaxDepth()).toBe(2);
+    });
+
+    it("set_spawn_limit errors on non-positive value", async () => {
+      const result = await runtime.execute("set_spawn_limit(0)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("positive number");
+    });
+
+    it("set_spawn_depth errors on non-positive value", async () => {
+      const result = await runtime.execute("set_spawn_depth(-1)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("positive number");
+    });
+  });
+
+  describe("global hide() and show()", () => {
+    it("produces hide command for main turtle", async () => {
+      await runtime.execute("hide()");
+      expect(runtime.getCommands()).toEqual([{ type: "hide" }]);
+    });
+
+    it("produces show command for main turtle", async () => {
+      await runtime.execute("show()");
+      expect(runtime.getCommands()).toEqual([{ type: "show" }]);
+    });
+
+    it("tags hide/show with active turtle when set", async () => {
+      runtime.setActiveTurtle("child1");
+      await runtime.execute("hide()");
+      expect(runtime.getCommands()[0]).toEqual({ type: "hide", turtleId: "child1" });
     });
   });
 });

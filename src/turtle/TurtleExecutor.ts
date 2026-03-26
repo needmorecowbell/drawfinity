@@ -210,6 +210,23 @@ export class TurtleExecutor {
         if (cmd.type === "spawn") {
           newlySpawned.push(cmd.id);
         }
+
+        // If kill command, deactivate the killed turtle
+        if (cmd.type === "kill") {
+          const killIdx = activeTurtles.indexOf(cmd.id);
+          if (killIdx !== -1) {
+            activeTurtles.splice(killIdx, 1);
+          }
+        }
+
+        // If killall, deactivate all non-main turtles
+        if (cmd.type === "killall") {
+          for (let i = activeTurtles.length - 1; i >= 0; i--) {
+            if (activeTurtles[i] !== "main") {
+              activeTurtles.splice(i, 1);
+            }
+          }
+        }
       }
 
       if (!processedAny) break;
@@ -258,6 +275,19 @@ export class TurtleExecutor {
       return;
     }
 
+    // Handle kill command — remove turtle from registry
+    if (cmd.type === "kill") {
+      const fullId = `${this.scriptId}:${cmd.id}`;
+      this.registry.remove(fullId, this.scriptId);
+      return;
+    }
+
+    // Handle killall command — remove all non-main turtles for this script
+    if (cmd.type === "killall") {
+      this.clearSpawnedTurtles();
+      return;
+    }
+
     // Resolve turtle ID: default to "main", prefix with scriptId
     const localId = cmd.turtleId ?? "main";
     const fullId = `${this.scriptId}:${localId}`;
@@ -273,6 +303,11 @@ export class TurtleExecutor {
       if (entry) {
         entry.drawing.clearTurtleStrokes();
       }
+      return;
+    }
+
+    // hide/show are indicator commands — no state change, handled by onStep sync
+    if (cmd.type === "hide" || cmd.type === "show") {
       return;
     }
 

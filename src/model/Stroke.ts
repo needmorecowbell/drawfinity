@@ -54,6 +54,8 @@ export interface DocumentModel {
   removeStroke?(strokeId: string): boolean;
   /** Atomically remove a stroke and insert replacements (for partial erasing). */
   replaceStroke?(strokeId: string, replacements: Stroke[]): boolean;
+  /** Add a shape to the document (optional — only available when shapes are supported). */
+  addShape?(shape: import("./Shape").Shape): void;
   /** Returns all shapes in the document (optional — only available when shapes are supported). */
   getShapes?(): import("./Shape").Shape[];
   /** Remove a shape by ID (optional — whole-shape erasure). */

@@ -354,6 +354,56 @@ export class TurtleExecutor {
         entry.drawing.addSegment(segment, batching);
       }
     }
+
+    // Handle shape commands — create shapes at the turtle's current position
+    if (cmd.type === "rectangle" || cmd.type === "ellipse" || cmd.type === "polygon" || cmd.type === "star") {
+      const worldPos = entry.state.getWorldPosition();
+      const scale = entry.state.worldSpace ? 1 : Math.max(1e-3, Math.min(1e3, entry.state.zoomScale));
+      const headingRad = (entry.state.angle * Math.PI) / 180;
+      const baseOpts = {
+        x: worldPos.x,
+        y: worldPos.y,
+        rotation: headingRad,
+        strokeColor: entry.state.pen.color,
+        strokeWidth: entry.state.pen.width * scale,
+        fillColor: entry.state.fillColor,
+        opacity: entry.state.pen.opacity,
+      };
+      if (cmd.type === "rectangle") {
+        entry.drawing.createShape({
+          ...baseOpts,
+          type: "rectangle",
+          width: cmd.width * scale,
+          height: cmd.height * scale,
+        });
+      } else if (cmd.type === "ellipse") {
+        entry.drawing.createShape({
+          ...baseOpts,
+          type: "ellipse",
+          width: cmd.width * scale,
+          height: cmd.height * scale,
+        });
+      } else if (cmd.type === "polygon") {
+        const diameter = cmd.radius * 2 * scale;
+        entry.drawing.createShape({
+          ...baseOpts,
+          type: "polygon",
+          width: diameter,
+          height: diameter,
+          sides: cmd.sides,
+        });
+      } else if (cmd.type === "star") {
+        const diameter = cmd.outerRadius * 2 * scale;
+        entry.drawing.createShape({
+          ...baseOpts,
+          type: "star",
+          width: diameter,
+          height: diameter,
+          sides: cmd.points,
+          starInnerRadius: cmd.innerRadius / cmd.outerRadius,
+        });
+      }
+    }
   }
 
   /**

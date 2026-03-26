@@ -3,10 +3,12 @@ import { TurtleExecutor, TurtleExecutorEvents } from "../TurtleExecutor";
 import { TurtleRegistry } from "../TurtleRegistry";
 import { TurtleCommand } from "../LuaRuntime";
 import { Stroke, DocumentModel } from "../../model/Stroke";
+import type { Shape } from "../../model/Shape";
 
 /** Minimal in-memory document for testing. */
 class MockDocument implements DocumentModel {
   strokes: Stroke[] = [];
+  shapes: Shape[] = [];
 
   addStroke(stroke: Stroke): void {
     this.strokes.push(stroke);
@@ -20,6 +22,21 @@ class MockDocument implements DocumentModel {
     const idx = this.strokes.findIndex((s) => s.id === strokeId);
     if (idx === -1) return false;
     this.strokes.splice(idx, 1);
+    return true;
+  }
+
+  addShape(shape: Shape): void {
+    this.shapes.push(shape);
+  }
+
+  getShapes(): Shape[] {
+    return this.shapes;
+  }
+
+  removeShape(shapeId: string): boolean {
+    const idx = this.shapes.findIndex((s) => s.id === shapeId);
+    if (idx === -1) return false;
+    this.shapes.splice(idx, 1);
     return true;
   }
 }
@@ -810,6 +827,190 @@ describe("TurtleExecutor", () => {
 
       expect(wasRunning).toBe(true);
       expect(executor.isRunning()).toBe(false);
+    });
+  });
+
+  describe("shape creation during replay", () => {
+    it("creates a rectangle shape at the turtle position", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "pencolor", color: "#ff0000" },
+        { type: "penwidth", width: 2 },
+        { type: "penopacity", opacity: 0.5 },
+        { type: "fillcolor", color: "#00ff00" },
+        { type: "rectangle", width: 100, height: 50 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      expect(doc.shapes).toHaveLength(1);
+      const shape = doc.shapes[0];
+      expect(shape.type).toBe("rectangle");
+      expect(shape.width).toBe(100);
+      expect(shape.height).toBe(50);
+      expect(shape.strokeColor).toBe("#ff0000");
+      expect(shape.strokeWidth).toBe(2);
+      expect(shape.fillColor).toBe("#00ff00");
+      expect(shape.opacity).toBe(0.5);
+      expect(shape.x).toBe(0);
+      expect(shape.y).toBe(0);
+    });
+
+    it("creates an ellipse shape", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "ellipse", width: 80, height: 40 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      expect(doc.shapes).toHaveLength(1);
+      expect(doc.shapes[0].type).toBe("ellipse");
+      expect(doc.shapes[0].width).toBe(80);
+      expect(doc.shapes[0].height).toBe(40);
+    });
+
+    it("creates a polygon shape with sides", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "polygon", sides: 6, radius: 50 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      expect(doc.shapes).toHaveLength(1);
+      const shape = doc.shapes[0];
+      expect(shape.type).toBe("polygon");
+      expect(shape.sides).toBe(6);
+      // diameter = radius * 2
+      expect(shape.width).toBe(100);
+      expect(shape.height).toBe(100);
+    });
+
+    it("creates a star shape with inner radius ratio", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "star", points: 5, outerRadius: 50, innerRadius: 20 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      expect(doc.shapes).toHaveLength(1);
+      const shape = doc.shapes[0];
+      expect(shape.type).toBe("star");
+      expect(shape.sides).toBe(5);
+      expect(shape.width).toBe(100);
+      expect(shape.starInnerRadius).toBeCloseTo(0.4);
+    });
+
+    it("positions shape at turtle's current world position", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "penup" },
+        { type: "forward", distance: 100 },
+        { type: "pendown" },
+        { type: "rectangle", width: 20, height: 20 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      expect(doc.shapes).toHaveLength(1);
+      // Turtle moved forward (heading 0 = up) by 100 → y = -100
+      expect(doc.shapes[0].x).toBeCloseTo(0);
+      expect(doc.shapes[0].y).toBeCloseTo(-100);
+    });
+
+    it("uses turtle heading as rotation", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "right", angle: 90 },
+        { type: "rectangle", width: 50, height: 30 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      expect(doc.shapes).toHaveLength(1);
+      // 90 degrees = π/2 radians
+      expect(doc.shapes[0].rotation).toBeCloseTo(Math.PI / 2);
+    });
+
+    it("shapes do not move the turtle", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "rectangle", width: 100, height: 100 },
+        { type: "forward", distance: 50 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      // Shape + stroke both created
+      expect(doc.shapes).toHaveLength(1);
+      expect(doc.strokes).toHaveLength(1);
+      // Turtle should be at (0, -50), not affected by shape
+      const state = executor.getMainState()!;
+      expect(state.x).toBeCloseTo(0);
+      expect(state.y).toBeCloseTo(-50);
+    });
+
+    it("clear() removes shapes created by the turtle", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "rectangle", width: 50, height: 50 },
+        { type: "forward", distance: 10 },
+        { type: "clear" },
+        { type: "ellipse", width: 30, height: 30 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      // After clear, only the ellipse remains
+      expect(doc.shapes).toHaveLength(1);
+      expect(doc.shapes[0].type).toBe("ellipse");
+      // Stroke from forward was also cleared
+      expect(doc.strokes).toHaveLength(0);
+    });
+
+    it("fillcolor(null) creates shapes with no fill", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "fillcolor", color: "#ff0000" },
+        { type: "rectangle", width: 50, height: 50 },
+        { type: "fillcolor", color: null },
+        { type: "rectangle", width: 30, height: 30 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      expect(doc.shapes).toHaveLength(2);
+      expect(doc.shapes[0].fillColor).toBe("#ff0000");
+      expect(doc.shapes[1].fillColor).toBeNull();
     });
   });
 });

@@ -1,4 +1,6 @@
 import { DocumentModel, Stroke, generateStrokeId } from "../model/Stroke";
+import { generateShapeId } from "../model/Shape";
+import type { Shape, ShapeType } from "../model/Shape";
 import { MovementSegment, PenState } from "./TurtleState";
 import { lineIntersectsStroke } from "./turtleEraseUtils";
 
@@ -11,6 +13,8 @@ export class TurtleDrawing {
   private doc: DocumentModel;
   /** IDs of all strokes created by this turtle session. */
   private strokeIds: string[] = [];
+  /** IDs of all shapes created by this turtle session. */
+  private shapeIds: string[] = [];
   /** Pending segments being batched into a single stroke. */
   private pendingSegments: MovementSegment[] = [];
 
@@ -60,11 +64,59 @@ export class TurtleDrawing {
       this.doc.removeStroke?.(id);
     }
     this.strokeIds = [];
+    for (const id of this.shapeIds) {
+      this.doc.removeShape?.(id);
+    }
+    this.shapeIds = [];
   }
 
   /** Get IDs of all strokes created by this turtle session. */
   getStrokeIds(): string[] {
     return [...this.strokeIds];
+  }
+
+  /** Get IDs of all shapes created by this turtle session. */
+  getShapeIds(): string[] {
+    return [...this.shapeIds];
+  }
+
+  /**
+   * Create a shape at the given position and add it to the document.
+   * Tracks the shape ID so `clear()` can remove it.
+   */
+  createShape(opts: {
+    type: ShapeType;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    rotation: number;
+    strokeColor: string;
+    strokeWidth: number;
+    fillColor: string | null;
+    opacity: number;
+    sides?: number;
+    starInnerRadius?: number;
+  }): void {
+    if (!this.doc.addShape) return;
+    const shape: Shape = {
+      id: generateShapeId(),
+      type: opts.type,
+      x: opts.x,
+      y: opts.y,
+      width: opts.width,
+      height: opts.height,
+      rotation: opts.rotation,
+      strokeColor: opts.strokeColor,
+      strokeWidth: opts.strokeWidth,
+      fillColor: opts.fillColor,
+      opacity: opts.opacity,
+      sides: opts.sides,
+      starInnerRadius: opts.starInnerRadius,
+      timestamp: Date.now(),
+    };
+    this.doc.addShape(shape);
+    this.shapeIds.push(shape.id);
   }
 
   /**

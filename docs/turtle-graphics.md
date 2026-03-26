@@ -1011,6 +1011,107 @@ end
 
 For the complete API reference, see [Communication & Awareness](/turtle-api#communication).
 
+## Multiplayer
+
+When collaborating in a shared room (connected via <kbd>Ctrl</kbd>+<kbd>K</kbd>), turtle graphics are multiplayer-aware.
+
+### Automatic Stroke Sync
+
+Turtle-drawn strokes are regular document strokes — they sync to all connected clients automatically through the Yjs CRDT layer. No special setup is needed. Collaborators see your turtle art appear in real time, and they can undo, erase, or draw over it just like any other stroke.
+
+### Turtle Indicator Visibility
+
+While your script is running, your turtle indicators (position and heading arrows) are broadcast to all connected clients via the Yjs awareness protocol. Collaborators see your turtles moving on their canvas in real time, rendered with a semi-transparent appearance and a unique hue derived from your client ID to distinguish them from their own local turtles.
+
+When your script finishes or is stopped, your turtle indicators are automatically cleared from other clients' views.
+
+### Sensing Remote Turtles
+
+The `nearby_turtles()` function accepts an optional second parameter to include turtles from other connected clients:
+
+```lua
+-- Only local turtles (default)
+local neighbors = nearby_turtles(200)
+
+-- Include remote turtles from other clients
+local all_nearby = nearby_turtles(200, true)
+for _, t in ipairs(all_nearby) do
+  if t.remote then
+    print(t.id .. " is a remote turtle at distance " .. t.distance)
+  end
+end
+```
+
+Remote turtle entries include `remote = true` and an ID prefixed with `remote:<userId>:<turtleId>`. Local turtles have `remote = false`. Results are sorted by distance regardless of origin.
+
+> **Note:** Remote turtle awareness is read-only — you can sense their positions but cannot control them or send them messages.
+
+### Sharing Scripts
+
+Click the **Share** button in the turtle panel to publish your current script to the room. All connected clients receive a notification and can find shared scripts in the **Shared Scripts** section of the script browser. Click **Run Shared** to load and execute a shared script.
+
+Shared scripts are persisted in the document via the Yjs CRDT, so they survive reconnections and are available to anyone who joins the room later.
+
+### Example: Chase
+
+A collaborative example for two users. **User A** runs the "trail" script, which draws a colorful wandering path. **User B** runs the "chaser" script, which uses `nearby_turtles(500, true)` to detect User A's turtle and steer toward it.
+
+**User A — Trail:**
+```lua
+-- Wander randomly, leaving a colorful trail
+speed(0)
+math.randomseed(os.clock())
+
+simulate(300, function(step)
+  local hue = (step * 5) % 360
+  local h = hue / 60
+  local x = math.floor(h)
+  local f = h - x
+  local r, g, b
+  if x == 0 then r, g, b = 255, math.floor(f * 255), 0
+  elseif x == 1 then r, g, b = math.floor((1 - f) * 255), 255, 0
+  elseif x == 2 then r, g, b = 0, 255, math.floor(f * 255)
+  elseif x == 3 then r, g, b = 0, math.floor((1 - f) * 255), 255
+  elseif x == 4 then r, g, b = math.floor(f * 255), 0, 255
+  else r, g, b = 255, 0, math.floor((1 - f) * 255)
+  end
+  pencolor(r, g, b)
+  penwidth(3)
+  right(math.random(-30, 30))
+  forward(8)
+end)
+```
+
+**User B — Chaser:**
+```lua
+-- Chase the nearest remote turtle
+speed(0)
+pencolor(255, 50, 50)
+penwidth(2)
+
+simulate(300, function(step)
+  local targets = nearby_turtles(500, true)
+  for _, t in ipairs(targets) do
+    if t.remote then
+      -- Steer toward the remote turtle
+      local myX, myY = position()
+      local dx = t.x - myX
+      local dy = t.y - myY
+      local targetAngle = math.deg(math.atan(dx, -dy)) % 360
+      local myH = heading()
+      local diff = targetAngle - myH
+      if diff > 180 then diff = diff - 360 end
+      if diff < -180 then diff = diff + 360 end
+      right(diff * 0.3)
+      break
+    end
+  end
+  forward(10)
+end)
+```
+
+When both scripts run simultaneously in a shared room, User B's turtle visibly chases User A's turtle across the canvas, leaving intersecting trails.
+
 ## Panel Controls
 
 | Control | Action |

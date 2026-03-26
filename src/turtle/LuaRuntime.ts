@@ -909,7 +909,8 @@ export class LuaRuntime {
       const fullId = getFullTurtleId();
       const entry = ctx.registry.get(fullId);
       if (!entry) return [];
-      return ctx.registry.nearbyStrokes(entry.state.x, entry.state.y, radius, ctx.doc);
+      const worldPos = entry.state.getWorldPosition();
+      return ctx.registry.nearbyStrokes(worldPos.x, worldPos.y, radius, ctx.doc);
     });
 
     // Internal: distance_to(id)
@@ -1047,6 +1048,10 @@ export class LuaRuntime {
         (stepFn as (n: number) => void)(i);
       }
       this.currentStep = 0;
+      // Reset active context back to main so post-simulate code is not surprised
+      this.activeTurtleId = "main";
+      const mainEntry = this.spawnRegistry?.get(`${this.spawnScriptId}:main`);
+      if (mainEntry) this.stateQuery = mainEntry.state;
     });
 
     // Internal: set_max_steps(n) — configure max simulate steps

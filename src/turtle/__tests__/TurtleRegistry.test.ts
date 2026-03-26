@@ -460,15 +460,14 @@ describe("TurtleRegistry", () => {
       });
     });
 
-    it("works across scripts", () => {
+    it("excludes turtles from other scripts", () => {
       registry.createMain("s2", doc);
-      // s2:main is at (0,0), same as s1:main
+      // s2:main is at (5,0), within radius but owned by a different script
       const entry = registry.get("s2:main")!;
       entry.state.x = 5;
       entry.state.y = 0;
       const result = registry.nearbyTurtles("s1:main", 10);
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe("s2:main");
+      expect(result).toHaveLength(0);
     });
 
     it("throws for unknown turtle ID", () => {

@@ -209,6 +209,7 @@ export class TurtleRegistry {
 
     for (const [id, entry] of this.turtles) {
       if (id === turtleId) continue;
+      if (entry.scriptId !== origin.scriptId) continue;
       const dx = entry.state.x - ox;
       const dy = entry.state.y - oy;
       const dist2 = dx * dx + dy * dy;

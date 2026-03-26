@@ -289,6 +289,82 @@ describe("TurtleState", () => {
     });
   });
 
+  describe("zoom-aware scaling", () => {
+    it("forward(100) at zoom 2 produces 50-unit movement", () => {
+      state.zoomScale = 1 / 2;
+      const seg = state.applyCommand({ type: "forward", distance: 100 });
+      expect(state.y).toBeCloseTo(-50);
+      expect(seg).not.toBeNull();
+      expect(seg!.toY).toBeCloseTo(-50);
+    });
+
+    it("forward(100) at zoom 0.5 produces 200-unit movement", () => {
+      state.zoomScale = 1 / 0.5;
+      const seg = state.applyCommand({ type: "forward", distance: 100 });
+      expect(state.y).toBeCloseTo(-200);
+      expect(seg).not.toBeNull();
+      expect(seg!.toY).toBeCloseTo(-200);
+    });
+
+    it("set_world_space(true) makes forward(100) always 100 units regardless of zoom", () => {
+      state.zoomScale = 1 / 4;
+      state.applyCommand({ type: "set_world_space", enabled: true });
+      const seg = state.applyCommand({ type: "forward", distance: 100 });
+      expect(state.y).toBeCloseTo(-100);
+      expect(seg).not.toBeNull();
+      expect(seg!.toY).toBeCloseTo(-100);
+    });
+
+    it("pen width is scaled by the same factor as movement", () => {
+      state.zoomScale = 1 / 2;
+      state.applyCommand({ type: "penwidth", width: 10 });
+      const seg = state.applyCommand({ type: "forward", distance: 100 });
+      expect(seg).not.toBeNull();
+      // Movement scaled: 100 * 0.5 = 50
+      expect(seg!.toY).toBeCloseTo(-50);
+      // Pen width scaled: 10 * 0.5 = 5
+      expect(seg!.pen.width).toBeCloseTo(5);
+    });
+
+    it("pen width is not scaled when world space is enabled", () => {
+      state.zoomScale = 1 / 2;
+      state.applyCommand({ type: "set_world_space", enabled: true });
+      state.applyCommand({ type: "penwidth", width: 10 });
+      const seg = state.applyCommand({ type: "forward", distance: 100 });
+      expect(seg).not.toBeNull();
+      expect(seg!.pen.width).toBe(10);
+    });
+
+    it("backward is also zoom-scaled", () => {
+      state.zoomScale = 1 / 2;
+      const seg = state.applyCommand({ type: "backward", distance: 100 });
+      expect(state.y).toBeCloseTo(50);
+      expect(seg).not.toBeNull();
+      expect(seg!.toY).toBeCloseTo(50);
+    });
+
+    it("goto pen width is zoom-scaled", () => {
+      state.zoomScale = 1 / 4;
+      state.applyCommand({ type: "penwidth", width: 8 });
+      const seg = state.applyCommand({ type: "goto", x: 50, y: 50 });
+      expect(seg).not.toBeNull();
+      // Pen width scaled: 8 * 0.25 = 2
+      expect(seg!.pen.width).toBeCloseTo(2);
+    });
+
+    it("reset clears worldSpace flag", () => {
+      state.applyCommand({ type: "set_world_space", enabled: true });
+      expect(state.worldSpace).toBe(true);
+      state.reset();
+      expect(state.worldSpace).toBe(false);
+    });
+
+    it("set_world_space returns null (non-movement)", () => {
+      const seg = state.applyCommand({ type: "set_world_space", enabled: true });
+      expect(seg).toBeNull();
+    });
+  });
+
   describe("complex scenarios", () => {
     it("draws a square (4 forward + 4 right 90)", () => {
       const segments = [];

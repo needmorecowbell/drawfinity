@@ -146,7 +146,11 @@ vi.mock("../../turtle", () => {
     constructor() {}
     show = vi.fn();
     hide = vi.fn();
-    update = vi.fn();
+    addTurtle = vi.fn();
+    removeTurtle = vi.fn();
+    hasTurtle = vi.fn(() => false);
+    updateTurtle = vi.fn();
+    clear = vi.fn();
     destroy = vi.fn();
   },
   ExchangeClient: class MockExchangeClient {

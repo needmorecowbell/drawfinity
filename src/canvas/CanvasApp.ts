@@ -535,10 +535,11 @@ export class CanvasApp {
       onStart: () => {
         this.turtlePanel.setRunning(true);
         this.turtleButton.classList.add("turtle-executing");
+        this.turtleIndicator.addTurtle("main", true);
         this.turtleIndicator.show();
       },
       onStep: () => {
-        this.turtleIndicator.update();
+        this.syncTurtleIndicators();
       },
       onComplete: (result) => {
         this.turtlePanel.setRunning(false);
@@ -551,10 +552,9 @@ export class CanvasApp {
         }
       },
     });
-    // Eagerly create the main turtle so TurtleIndicator has a stable state reference
+    // Eagerly create the main turtle so origin placement has a stable state reference
     this.turtleExecutor.ensureMainTurtle();
-    const mainState = this.turtleExecutor.getMainState()!;
-    this.turtleIndicator = new TurtleIndicator(canvas.parentElement!, this.camera, mainState);
+    this.turtleIndicator = new TurtleIndicator(canvas.parentElement!, this.camera);
     this.turtleRuntime.init();
 
     this.turtlePanel = new TurtlePanel(drawingId, {
@@ -597,6 +597,9 @@ export class CanvasApp {
             canvas.style.cursor = "";
             this.cursorManager.updateCursor();
             // Flash the indicator briefly at the placed position
+            this.turtleIndicator.addTurtle("main", true);
+            const wp = ts.getWorldPosition();
+            this.turtleIndicator.updateTurtle("main", wp.x, wp.y, ts.angle, ts.pen.color);
             this.turtleIndicator.show();
             setTimeout(() => {
               if (!this.turtleExecutor.isRunning()) {
@@ -879,6 +882,20 @@ export class CanvasApp {
   connectToRoom(serverUrl: string, roomId: string, roomName?: string): void {
     this.connectionPanel.setRoomInfo(roomId, roomName);
     this.syncManager.connect(serverUrl, roomId);
+  }
+
+  /** Sync turtle indicators with the registry — add/remove/update as needed. */
+  private syncTurtleIndicators(): void {
+    const owned = this.turtleRegistry.getOwned("default");
+    // Add indicators for newly spawned turtles
+    for (const [fullId, entry] of owned) {
+      const localId = fullId.replace("default:", "");
+      if (!this.turtleIndicator.hasTurtle(localId)) {
+        this.turtleIndicator.addTurtle(localId, localId === "main");
+      }
+      const wp = entry.state.getWorldPosition();
+      this.turtleIndicator.updateTurtle(localId, wp.x, wp.y, entry.state.angle, entry.state.pen.color);
+    }
   }
 
   private switchTool(tool: ToolType): void {

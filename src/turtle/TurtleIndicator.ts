@@ -1,34 +1,57 @@
 import type { Camera } from "../camera/Camera";
-import type { TurtleState } from "./TurtleState";
+
+/** Internal state for a single turtle indicator element. */
+interface IndicatorEntry {
+  container: HTMLElement;
+  visible: boolean;
+  isMain: boolean;
+}
+
+/** SVG size for main turtle indicator. */
+const MAIN_SIZE = 24;
+/** SVG size for spawned turtle indicators. */
+const SPAWNED_SIZE = 18;
 
 /**
- * Renders a triangle indicator at the turtle's current position and heading.
- * Uses a CSS-positioned HTML element (similar to RemoteCursors) that
- * transforms world coordinates to screen space via the Camera.
+ * Renders triangle indicators for multiple turtles at their current positions.
+ * Maintains a Map of per-turtle SVG elements, each positioned and colored
+ * independently. The main turtle keeps the standard size; spawned turtles
+ * are slightly smaller.
  *
- * The indicator is visible during script execution and hidden when idle.
- * Its color matches the current pen color.
+ * Global show/hide controls overall visibility. Per-turtle show/hide
+ * controls individual indicator visibility (for hide()/show() commands).
  */
 export class TurtleIndicator {
-  private container: HTMLElement;
+  private root: HTMLElement;
   private camera: Camera;
-  private state: TurtleState;
-  private visible = false;
+  private indicators = new Map<string, IndicatorEntry>();
+  private globalVisible = false;
 
-  constructor(root: HTMLElement, camera: Camera, state: TurtleState) {
+  constructor(root: HTMLElement, camera: Camera) {
+    this.root = root;
     this.camera = camera;
-    this.state = state;
+  }
 
-    this.container = document.createElement("div");
-    this.container.className = "turtle-indicator";
-    this.container.style.display = "none";
+  /**
+   * Add a turtle indicator. If the turtle already exists, this is a no-op.
+   * @param id      Turtle identifier (e.g. "main", "child1")
+   * @param isMain  Whether this is the main turtle (uses larger indicator)
+   */
+  addTurtle(id: string, isMain = false): void {
+    if (this.indicators.has(id)) return;
+
+    const size = isMain ? MAIN_SIZE : SPAWNED_SIZE;
+    const container = document.createElement("div");
+    container.className = "turtle-indicator";
+    container.setAttribute("data-turtle-id", id);
+    container.style.display = this.globalVisible ? "" : "none";
 
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("width", "24");
-    svg.setAttribute("height", "24");
+    svg.setAttribute("width", String(size));
+    svg.setAttribute("height", String(size));
     svg.setAttribute("viewBox", "0 0 24 24");
     svg.style.overflow = "visible";
-    // Triangle pointing up: tip at (12,2), base at (4,22) and (20,22)
+
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", "M12 2L4 22L12 17L20 22Z");
     path.setAttribute("fill", "currentColor");
@@ -37,46 +60,115 @@ export class TurtleIndicator {
     path.setAttribute("stroke-linejoin", "round");
 
     svg.appendChild(path);
-    this.container.appendChild(svg);
-    root.appendChild(this.container);
+    container.appendChild(svg);
+    this.root.appendChild(container);
+
+    this.indicators.set(id, { container, visible: true, isMain });
   }
 
-  /** Show the turtle indicator and update its position/heading/color. */
-  show(): void {
-    this.visible = true;
-    this.container.style.display = "";
-    this.update();
+  /** Remove a turtle indicator from the DOM. */
+  removeTurtle(id: string): void {
+    const entry = this.indicators.get(id);
+    if (!entry) return;
+    entry.container.remove();
+    this.indicators.delete(id);
   }
 
-  /** Hide the turtle indicator. */
-  hide(): void {
-    this.visible = false;
-    this.container.style.display = "none";
+  /** Check whether a turtle indicator exists. */
+  hasTurtle(id: string): boolean {
+    return this.indicators.has(id);
   }
 
-  /** Whether the indicator is currently visible. */
-  isVisible(): boolean {
-    return this.visible;
-  }
-
-  /** Update the indicator's position, rotation, and color from current state. */
-  update(): void {
-    if (!this.visible) return;
+  /**
+   * Update a turtle indicator's position, heading, and color.
+   * Coordinates are in world space — camera transform is applied internally.
+   */
+  updateTurtle(
+    id: string,
+    worldX: number,
+    worldY: number,
+    heading: number,
+    color?: string,
+  ): void {
+    const entry = this.indicators.get(id);
+    if (!entry) return;
+    if (!this.globalVisible || !entry.visible) return;
 
     const [vw, vh] = this.camera.getViewportSize();
-    const world = this.state.getWorldPosition();
-    const screenX = (world.x - this.camera.x) * this.camera.zoom + vw / 2;
-    const screenY = (world.y - this.camera.y) * this.camera.zoom + vh / 2;
+    const screenX = (worldX - this.camera.x) * this.camera.zoom + vw / 2;
+    const screenY = (worldY - this.camera.y) * this.camera.zoom + vh / 2;
 
-    this.container.style.color = this.state.pen.color;
-    // Translate to screen position, then rotate by heading (offset by -12,-12 to center the SVG)
-    this.container.style.transform =
-      `translate(${screenX - 12}px, ${screenY - 12}px) rotate(${this.state.angle}deg)`;
+    const halfSize = (entry.isMain ? MAIN_SIZE : SPAWNED_SIZE) / 2;
+
+    if (color !== undefined) {
+      entry.container.style.color = color;
+    }
+    entry.container.style.transform =
+      `translate(${screenX - halfSize}px, ${screenY - halfSize}px) rotate(${heading}deg)`;
   }
 
-  /** Remove the indicator element from the DOM. */
+  /** Show a specific turtle's indicator (per-turtle visibility). */
+  showTurtle(id: string): void {
+    const entry = this.indicators.get(id);
+    if (!entry) return;
+    entry.visible = true;
+    if (this.globalVisible) {
+      entry.container.style.display = "";
+    }
+  }
+
+  /** Hide a specific turtle's indicator (per-turtle visibility). */
+  hideTurtle(id: string): void {
+    const entry = this.indicators.get(id);
+    if (!entry) return;
+    entry.visible = false;
+    entry.container.style.display = "none";
+  }
+
+  /** Whether a specific turtle's indicator is visible (per-turtle). */
+  isTurtleVisible(id: string): boolean {
+    return this.indicators.get(id)?.visible ?? false;
+  }
+
+  /** Show all turtle indicators (global visibility). */
+  show(): void {
+    this.globalVisible = true;
+    for (const [, entry] of this.indicators) {
+      if (entry.visible) {
+        entry.container.style.display = "";
+      }
+    }
+  }
+
+  /** Hide all turtle indicators (global visibility). */
+  hide(): void {
+    this.globalVisible = false;
+    for (const [, entry] of this.indicators) {
+      entry.container.style.display = "none";
+    }
+  }
+
+  /** Whether indicators are globally visible. */
+  isVisible(): boolean {
+    return this.globalVisible;
+  }
+
+  /** Remove all turtle indicators. */
+  clear(): void {
+    for (const [, entry] of this.indicators) {
+      entry.container.remove();
+    }
+    this.indicators.clear();
+  }
+
+  /** Number of tracked turtles. */
+  count(): number {
+    return this.indicators.size;
+  }
+
+  /** Remove all indicators and detach from the DOM. */
   destroy(): void {
     this.hide();
-    this.container.remove();
+    this.clear();
   }
 }

@@ -51,6 +51,9 @@ export class TurtleState implements TurtleStateQuery {
    */
   worldSpace = false;
 
+  /** Whether the turtle indicator is visible. Toggled by hide()/show(). */
+  visible = true;
+
   /** Origin coordinates used for `home()`. Defaults to (0, 0). */
   private originX = 0;
   private originY = 0;
@@ -93,6 +96,7 @@ export class TurtleState implements TurtleStateQuery {
     this.speed = 5;
     this.worldSpace = false;
     this.zoomScale = 1;
+    this.visible = true;
   }
 
   /**
@@ -148,7 +152,10 @@ export class TurtleState implements TurtleStateQuery {
       case "kill":
       case "killall":
       case "hide":
+        this.visible = false;
+        return null;
       case "show":
+        this.visible = true;
         return null;
     }
   }

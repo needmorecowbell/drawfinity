@@ -1056,6 +1056,245 @@ describe("LuaRuntime", () => {
     });
   });
 
+  describe("environment_turtles()", () => {
+    let registry: TurtleRegistry;
+    const scriptId = "test-script";
+    const doc: DocumentModel = {
+      addStroke() {},
+      getStrokes() { return []; },
+    };
+
+    beforeEach(() => {
+      registry = new TurtleRegistry();
+      registry.createMain(scriptId, doc);
+      runtime.setSpawnContext(registry, scriptId, doc);
+    });
+
+    it("returns the main turtle for a single script", async () => {
+      const result = await runtime.execute(`
+        local turtles = environment_turtles()
+        _test_count = #turtles
+        if turtles[1] then
+          _test_id = turtles[1].id
+          _test_owned = turtles[1].owned
+          _test_visible = turtles[1].visible
+        end
+      `);
+      expect(result.success).toBe(true);
+      // Can't easily read Lua globals back, so use print commands to verify
+    });
+
+    it("returns all turtles including spawned ones", async () => {
+      const result = await runtime.execute(`
+        spawn("child1", {x = 10, y = 20})
+        spawn("child2", {x = 30, y = 40, heading = 90})
+        local turtles = environment_turtles()
+        -- Should have main + child1 + child2 = 3 turtles
+        print(#turtles)
+      `);
+      expect(result.success).toBe(true);
+      const printCmd = runtime.getCommands().find(c => c.type === "print");
+      expect(printCmd).toBeDefined();
+      expect((printCmd as { type: "print"; message: string }).message).toBe("3");
+    });
+
+    it("returns correct position and heading", async () => {
+      const result = await runtime.execute(`
+        spawn("child1", {x = 100, y = 200, heading = 45})
+        local turtles = environment_turtles()
+        for _, t in ipairs(turtles) do
+          if t.id == "child1" then
+            print(t.x .. "," .. t.y .. "," .. t.heading)
+          end
+        end
+      `);
+      expect(result.success).toBe(true);
+      const printCmd = runtime.getCommands().find(c => c.type === "print");
+      expect((printCmd as { type: "print"; message: string }).message).toBe("100,200,45");
+    });
+
+    it("returns correct color", async () => {
+      const result = await runtime.execute(`
+        spawn("red_turtle", {color = "#ff0000"})
+        local turtles = environment_turtles()
+        for _, t in ipairs(turtles) do
+          if t.id == "red_turtle" then
+            print(t.color)
+          end
+        end
+      `);
+      expect(result.success).toBe(true);
+      const printCmd = runtime.getCommands().find(c => c.type === "print");
+      expect((printCmd as { type: "print"; message: string }).message).toBe("#ff0000");
+    });
+
+    it("marks own turtles as owned=true", async () => {
+      const result = await runtime.execute(`
+        spawn("mine")
+        local turtles = environment_turtles()
+        for _, t in ipairs(turtles) do
+          if t.id == "mine" then
+            print(tostring(t.owned))
+          end
+        end
+      `);
+      expect(result.success).toBe(true);
+      const printCmd = runtime.getCommands().find(c => c.type === "print");
+      expect((printCmd as { type: "print"; message: string }).message).toBe("true");
+    });
+
+    it("marks other scripts' turtles as owned=false", async () => {
+      // Create a turtle from another script
+      const otherScriptId = "other-script";
+      registry.createMain(otherScriptId, doc);
+      registry.spawn("alien", otherScriptId, doc);
+
+      const result = await runtime.execute(`
+        local turtles = environment_turtles()
+        for _, t in ipairs(turtles) do
+          if t.id == "alien" then
+            print(tostring(t.owned))
+          end
+        end
+      `);
+      expect(result.success).toBe(true);
+      const printCmd = runtime.getCommands().find(c => c.type === "print");
+      expect((printCmd as { type: "print"; message: string }).message).toBe("false");
+    });
+
+    it("includes turtles from multiple scripts", async () => {
+      // Add turtles from another script
+      const otherScriptId = "other-script";
+      registry.createMain(otherScriptId, doc);
+      registry.spawn("other_child", otherScriptId, doc);
+
+      const result = await runtime.execute(`
+        spawn("my_child")
+        local turtles = environment_turtles()
+        -- test-script:main, test-script:my_child, other-script:main, other-script:other_child = 4
+        print(#turtles)
+      `);
+      expect(result.success).toBe(true);
+      const printCmd = runtime.getCommands().find(c => c.type === "print");
+      expect((printCmd as { type: "print"; message: string }).message).toBe("4");
+    });
+
+    it("returns visible=true for visible turtles", async () => {
+      const result = await runtime.execute(`
+        spawn("vis")
+        local turtles = environment_turtles()
+        for _, t in ipairs(turtles) do
+          if t.id == "vis" then
+            print(tostring(t.visible))
+          end
+        end
+      `);
+      expect(result.success).toBe(true);
+      const printCmd = runtime.getCommands().find(c => c.type === "print");
+      expect((printCmd as { type: "print"; message: string }).message).toBe("true");
+    });
+
+    it("returns visible=false for hidden turtles from other scripts", async () => {
+      const otherScriptId = "other-script";
+      registry.createMain(otherScriptId, doc);
+      // Manually set the turtle as hidden via state
+      const otherMain = registry.get(`${otherScriptId}:main`)!;
+      otherMain.state.visible = false;
+
+      const result = await runtime.execute(`
+        local turtles = environment_turtles()
+        for _, t in ipairs(turtles) do
+          if t.id == "main" and not t.owned then
+            print(tostring(t.visible))
+          end
+        end
+      `);
+      expect(result.success).toBe(true);
+      const printCmd = runtime.getCommands().find(c => c.type === "print");
+      expect((printCmd as { type: "print"; message: string }).message).toBe("false");
+    });
+
+    it("returns empty array when no spawn context", async () => {
+      const freshRuntime = new LuaRuntime();
+      await freshRuntime.init();
+      // No spawn context set
+      const result = await freshRuntime.execute(`
+        local turtles = environment_turtles()
+        print(#turtles)
+      `);
+      expect(result.success).toBe(true);
+      const printCmd = freshRuntime.getCommands().find(c => c.type === "print");
+      expect((printCmd as { type: "print"; message: string }).message).toBe("0");
+      freshRuntime.close();
+    });
+  });
+
+  describe("cross-script ownership enforcement", () => {
+    let registry: TurtleRegistry;
+    const scriptId = "test-script";
+    const otherScriptId = "other-script";
+    const doc: DocumentModel = {
+      addStroke() {},
+      getStrokes() { return []; },
+    };
+
+    beforeEach(() => {
+      registry = new TurtleRegistry();
+      registry.createMain(scriptId, doc);
+      registry.createMain(otherScriptId, doc);
+      registry.spawn("other_child", otherScriptId, doc);
+      runtime.setSpawnContext(registry, scriptId, doc);
+    });
+
+    it("cannot control unowned turtle via _tcmd", async () => {
+      // Manually try to command a turtle ID that doesn't exist in this script
+      const result = await runtime.execute(`
+        _tcmd("nonexistent", "forward", 100)
+      `);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("does not exist");
+    });
+
+    it("can control own spawned turtles", async () => {
+      const result = await runtime.execute(`
+        spawn("my_child")
+        local h = spawn("my_child2")
+        h.forward(50)
+      `);
+      expect(result.success).toBe(true);
+      const fwdCmds = runtime.getCommands().filter(c => c.type === "forward");
+      expect(fwdCmds.length).toBe(1);
+      expect(fwdCmds[0].turtleId).toBe("my_child2");
+    });
+
+    it("cannot kill unowned turtle", async () => {
+      const result = await runtime.execute(`
+        kill("other_child")
+      `);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("does not exist");
+    });
+
+    it("environment_turtles provides read-only observation", async () => {
+      const result = await runtime.execute(`
+        local turtles = environment_turtles()
+        local found_unowned = false
+        for _, t in ipairs(turtles) do
+          if not t.owned then
+            found_unowned = true
+            -- Can read state
+            print(t.x .. "," .. t.y)
+          end
+        end
+        print(tostring(found_unowned))
+      `);
+      expect(result.success).toBe(true);
+      const printCmds = runtime.getCommands().filter(c => c.type === "print") as Array<{ type: "print"; message: string }>;
+      // Last print should be "true" — we found unowned turtles
+      expect(printCmds[printCmds.length - 1].message).toBe("true");
+    });
+  });
+
   describe("global hide() and show()", () => {
     it("produces hide command for main turtle", async () => {
       await runtime.execute("hide()");

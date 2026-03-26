@@ -367,6 +367,18 @@ export class LuaRuntime {
         arg2?: unknown,
         arg3?: unknown,
       ) => {
+        // Enforce ownership: only allow commands on turtles owned by this script
+        const ctx = getSpawnCtx();
+        if (ctx.registry && ctx.scriptId && turtleId !== "main") {
+          const fullId = `${ctx.scriptId}:${turtleId}`;
+          const entry = ctx.registry.get(fullId);
+          if (!entry) {
+            throw new Error(`Cannot control turtle "${turtleId}" — turtle does not exist`);
+          }
+          if (entry.scriptId !== ctx.scriptId) {
+            throw new Error(`Cannot control turtle "${turtleId}" — not owned by this script`);
+          }
+        }
         switch (cmdType) {
           case "forward":
             pushTagged(turtleId, { type: "forward", distance: arg1 as number });
@@ -547,6 +559,39 @@ export class LuaRuntime {
       ctx.registry.setMaxTurtles(Math.floor(n));
     });
 
+    // Internal: environment_turtles — return all turtles across all scripts
+    g.set("_environment_turtles_impl", () => {
+      const ctx = getSpawnCtx();
+      if (!ctx.registry || !ctx.scriptId) {
+        return [];
+      }
+      const all = ctx.registry.getAll();
+      const result: Array<{
+        id: string;
+        x: number;
+        y: number;
+        heading: number;
+        color: string;
+        visible: boolean;
+        owned: boolean;
+      }> = [];
+      for (const [fullId, entry] of all) {
+        // Extract local ID from full ID (scriptId:localId)
+        const colonIdx = fullId.indexOf(":");
+        const localId = colonIdx >= 0 ? fullId.substring(colonIdx + 1) : fullId;
+        result.push({
+          id: localId,
+          x: entry.state.x,
+          y: entry.state.y,
+          heading: entry.state.angle,
+          color: entry.state.pen.color,
+          visible: entry.state.visible,
+          owned: entry.scriptId === ctx.scriptId,
+        });
+      }
+      return result;
+    });
+
     // Internal: set_spawn_depth
     g.set("_set_spawn_depth_impl", (n: number) => {
       const ctx = getSpawnCtx();
@@ -588,6 +633,11 @@ export class LuaRuntime {
       -- set_spawn_depth(n) — configure max spawn depth
       function set_spawn_depth(n)
         _set_spawn_depth_impl(n)
+      end
+
+      -- environment_turtles() — return all turtles across all scripts
+      function environment_turtles()
+        return _environment_turtles_impl()
       end
 
       -- spawn(id, opts?) — create a new turtle and return a handle table

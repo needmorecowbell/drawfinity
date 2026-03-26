@@ -29,7 +29,8 @@ type TurtleCommandVariant =
   | { type: "killall" }
   | { type: "hide" }
   | { type: "show" }
-  | { type: "penmode"; mode: "draw" | "erase"; turtleOnly: boolean };
+  | { type: "penmode"; mode: "draw" | "erase"; turtleOnly: boolean }
+  | { type: "penpreset"; preset: string | null };
 
 /** A command produced by a turtle API call, optionally tagged with a turtle ID. */
 export type TurtleCommand = TurtleCommandVariant & { turtleId?: string };

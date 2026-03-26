@@ -233,6 +233,90 @@ describe("TurtleState", () => {
     });
   });
 
+  describe("brush preset", () => {
+    it("defaults to no preset", () => {
+      expect(state.brushPreset).toBeNull();
+      expect(state.presetWidthMultiplier).toBe(1.0);
+      expect(state.presetOpacity).toBe(1.0);
+    });
+
+    it("applies pen preset (width=1.0, opacity=1.0)", () => {
+      state.applyCommand({ type: "penpreset", preset: "pen" });
+      expect(state.brushPreset).toBe("pen");
+      expect(state.presetWidthMultiplier).toBe(1.0);
+      expect(state.presetOpacity).toBe(1.0);
+    });
+
+    it("applies pencil preset (pressure-sensitive width and opacity)", () => {
+      state.applyCommand({ type: "penpreset", preset: "pencil" });
+      expect(state.brushPreset).toBe("pencil");
+      // PENCIL.pressureCurve(1.0) = 1.0
+      expect(state.presetWidthMultiplier).toBe(1.0);
+      // PENCIL.opacityCurve(1.0) = 0.4 + 0.6 * 1.0 = 1.0
+      expect(state.presetOpacity).toBe(1.0);
+    });
+
+    it("applies marker preset", () => {
+      state.applyCommand({ type: "penpreset", preset: "marker" });
+      expect(state.brushPreset).toBe("marker");
+      // MARKER.pressureCurve(1.0) = 0.7 + 0.3 * 1.0 = 1.0
+      expect(state.presetWidthMultiplier).toBe(1.0);
+      expect(state.presetOpacity).toBe(1.0);
+    });
+
+    it("applies highlighter preset (low opacity)", () => {
+      state.applyCommand({ type: "penpreset", preset: "highlighter" });
+      expect(state.brushPreset).toBe("highlighter");
+      // HIGHLIGHTER.pressureCurve(1.0) = 1.0
+      expect(state.presetWidthMultiplier).toBe(1.0);
+      // HIGHLIGHTER.opacityCurve(1.0) = 0.3
+      expect(state.presetOpacity).toBe(0.3);
+    });
+
+    it("is case-insensitive", () => {
+      state.applyCommand({ type: "penpreset", preset: "HIGHLIGHTER" });
+      expect(state.brushPreset).toBe("highlighter");
+      expect(state.presetOpacity).toBe(0.3);
+    });
+
+    it("clears preset with null", () => {
+      state.applyCommand({ type: "penpreset", preset: "highlighter" });
+      state.applyCommand({ type: "penpreset", preset: null });
+      expect(state.brushPreset).toBeNull();
+      expect(state.presetWidthMultiplier).toBe(1.0);
+      expect(state.presetOpacity).toBe(1.0);
+    });
+
+    it("ignores invalid preset names", () => {
+      state.applyCommand({ type: "penpreset", preset: "highlighter" });
+      state.applyCommand({ type: "penpreset", preset: "invalid_name" });
+      // State unchanged — invalid name silently ignored
+      expect(state.brushPreset).toBe("highlighter");
+      expect(state.presetOpacity).toBe(0.3);
+    });
+
+    it("resets on home()", () => {
+      state.applyCommand({ type: "penpreset", preset: "highlighter" });
+      state.applyCommand({ type: "home" });
+      expect(state.brushPreset).toBeNull();
+      expect(state.presetWidthMultiplier).toBe(1.0);
+      expect(state.presetOpacity).toBe(1.0);
+    });
+
+    it("resets on reset()", () => {
+      state.applyCommand({ type: "penpreset", preset: "highlighter" });
+      state.reset();
+      expect(state.brushPreset).toBeNull();
+      expect(state.presetWidthMultiplier).toBe(1.0);
+      expect(state.presetOpacity).toBe(1.0);
+    });
+
+    it("returns null (non-movement command)", () => {
+      const seg = state.applyCommand({ type: "penpreset", preset: "pen" });
+      expect(seg).toBeNull();
+    });
+  });
+
   describe("speed", () => {
     it("sets speed value", () => {
       state.applyCommand({ type: "speed", value: 0 });
@@ -251,6 +335,7 @@ describe("TurtleState", () => {
       { type: "penopacity", opacity: 0.5 },
       { type: "speed", value: 3 },
       { type: "penmode", mode: "erase", turtleOnly: false } as TurtleCommand,
+      { type: "penpreset", preset: "pen" } as TurtleCommand,
       { type: "clear" },
       { type: "sleep", ms: 100 },
       { type: "print", message: "hello" },

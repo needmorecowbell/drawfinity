@@ -1,4 +1,14 @@
 import type { TurtleCommand, TurtleStateQuery } from "./LuaRuntime";
+import { PEN, PENCIL, MARKER, HIGHLIGHTER } from "../tools";
+import type { BrushConfig } from "../tools";
+
+/** Lookup map for brush presets by lowercase name. */
+const PRESET_MAP: ReadonlyMap<string, BrushConfig> = new Map([
+  ["pen", PEN],
+  ["pencil", PENCIL],
+  ["marker", MARKER],
+  ["highlighter", HIGHLIGHTER],
+]);
 
 /** Pen state for the turtle. */
 export interface PenState {
@@ -60,6 +70,21 @@ export class TurtleState implements TurtleStateQuery {
   /** When true and penMode is "erase", only turtle-drawn strokes are erased. */
   eraseTurtleOnly = false;
 
+  /** Active brush preset name, or null for raw pen. */
+  brushPreset: string | null = null;
+
+  /**
+   * Width multiplier derived from the active brush preset's pressureCurve(1.0).
+   * Applied by TurtleDrawing when creating strokes. 1.0 when no preset is active.
+   */
+  presetWidthMultiplier = 1.0;
+
+  /**
+   * Opacity derived from the active brush preset's opacityCurve(1.0).
+   * Applied by TurtleDrawing when creating strokes. 1.0 when no preset is active.
+   */
+  presetOpacity = 1.0;
+
   /** Origin coordinates used for `home()`. Defaults to (0, 0). */
   private originX = 0;
   private originY = 0;
@@ -107,6 +132,9 @@ export class TurtleState implements TurtleStateQuery {
     this.speed = 5;
     this.penMode = "draw";
     this.eraseTurtleOnly = false;
+    this.brushPreset = null;
+    this.presetWidthMultiplier = 1.0;
+    this.presetOpacity = 1.0;
     this.worldSpace = false;
     this.zoomScale = 1;
     this.visible = true;
@@ -139,6 +167,9 @@ export class TurtleState implements TurtleStateQuery {
         const seg = this.moveTo(this.originX, this.originY);
         this.penMode = "draw";
         this.eraseTurtleOnly = false;
+        this.brushPreset = null;
+        this.presetWidthMultiplier = 1.0;
+        this.presetOpacity = 1.0;
         return seg;
       }
       case "penup":
@@ -163,6 +194,22 @@ export class TurtleState implements TurtleStateQuery {
         this.penMode = cmd.mode;
         this.eraseTurtleOnly = cmd.turtleOnly;
         return null;
+      case "penpreset": {
+        if (cmd.preset === null) {
+          this.brushPreset = null;
+          this.presetWidthMultiplier = 1.0;
+          this.presetOpacity = 1.0;
+        } else {
+          const config = PRESET_MAP.get(cmd.preset.toLowerCase());
+          if (config) {
+            this.brushPreset = cmd.preset.toLowerCase();
+            this.presetWidthMultiplier = config.pressureCurve(1.0);
+            this.presetOpacity = config.opacityCurve(1.0);
+          }
+          // Invalid names are silently ignored per spec
+        }
+        return null;
+      }
       case "set_world_space":
         this.setWorldSpace(cmd.enabled);
         return null;

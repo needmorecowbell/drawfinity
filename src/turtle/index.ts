@@ -29,3 +29,5 @@ export {
   getTurtleRegistry,
   resetTurtleRegistry,
 } from "./TurtleRegistry";
+export type { TurtleMessage } from "./TurtleMessaging";
+export { MessageBus, Blackboard } from "./TurtleMessaging";

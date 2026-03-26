@@ -1,6 +1,6 @@
 import { LuaRuntime, TurtleCommand, ExecutionResult } from "./LuaRuntime";
-import { TurtleState } from "./TurtleState";
-import { TurtleDrawing } from "./TurtleDrawing";
+import { TurtleRegistry } from "./TurtleRegistry";
+import type { DocumentModel } from "../model/Stroke";
 
 /** Events emitted by TurtleExecutor during script execution. */
 export interface TurtleExecutorEvents {
@@ -14,6 +14,9 @@ export interface TurtleExecutorEvents {
   onStep?: () => void;
 }
 
+/** A command tagged with the turtle it targets. */
+export type TaggedCommand = TurtleCommand & { turtleId?: string };
+
 /**
  * Manages the full turtle script lifecycle: parse → run → animate → complete.
  *
@@ -22,11 +25,16 @@ export interface TurtleExecutorEvents {
  * - speed(0) = instant (no delay)
  * - speed(1) = 100ms per step (slowest)
  * - speed(10) = 1ms per step (fastest animated)
+ *
+ * Each executor is associated with a `scriptId` and uses the global
+ * `TurtleRegistry` to manage turtle instances. The "main" turtle is
+ * created automatically for each script execution.
  */
 export class TurtleExecutor {
   private runtime: LuaRuntime;
-  private state: TurtleState;
-  private drawing: TurtleDrawing;
+  private registry: TurtleRegistry;
+  private scriptId: string;
+  private doc: DocumentModel;
   private events: TurtleExecutorEvents;
 
   private running = false;
@@ -34,17 +42,16 @@ export class TurtleExecutor {
 
   constructor(
     runtime: LuaRuntime,
-    state: TurtleState,
-    drawing: TurtleDrawing,
+    registry: TurtleRegistry,
+    scriptId: string,
+    doc: DocumentModel,
     events: TurtleExecutorEvents = {},
   ) {
     this.runtime = runtime;
-    this.state = state;
-    this.drawing = drawing;
+    this.registry = registry;
+    this.scriptId = scriptId;
+    this.doc = doc;
     this.events = events;
-
-    // Wire up state query so Lua can read position/heading/isdown
-    this.runtime.setStateQuery(this.state);
   }
 
   /** Whether a script is currently executing. */
@@ -57,12 +64,33 @@ export class TurtleExecutor {
     this.stopRequested = true;
   }
 
+  /** Get the main turtle's state (for external queries like indicator position). */
+  getMainState() {
+    const mainId = `${this.scriptId}:main`;
+    return this.registry.get(mainId)?.state ?? null;
+  }
+
+  /**
+   * Ensure the main turtle exists in the registry. Creates it on first
+   * call; subsequent calls return the existing entry. This allows
+   * external code (e.g. TurtleIndicator, origin placement) to hold a
+   * stable reference to the main turtle's state across multiple runs.
+   */
+  ensureMainTurtle(): string {
+    const mainId = `${this.scriptId}:main`;
+    if (!this.registry.has(mainId)) {
+      this.registry.createMain(this.scriptId, this.doc);
+    }
+    return mainId;
+  }
+
   /**
    * Execute a Lua script with animated playback.
    *
-   * 1. Reset turtle state
-   * 2. Run the Lua script to collect all commands
-   * 3. Replay commands one-by-one with speed-based delays
+   * 1. Clear spawned (non-main) turtles for this script
+   * 2. Reset the main turtle's state
+   * 3. Run the Lua script to collect all commands
+   * 4. Replay commands one-by-one with speed-based delays
    *
    * @param script  Lua source code to execute
    * @param zoom    Current camera zoom level (default 1). Movement distances
@@ -76,8 +104,17 @@ export class TurtleExecutor {
 
     this.running = true;
     this.stopRequested = false;
-    this.state.reset();
-    this.state.zoomScale = zoom > 0 ? 1 / zoom : 1;
+
+    // Clear spawned (non-main) turtles, keep the main turtle's state stable
+    this.clearSpawnedTurtles();
+    const mainId = this.ensureMainTurtle();
+    const mainEntry = this.registry.get(mainId)!;
+    mainEntry.state.reset();
+    mainEntry.state.zoomScale = zoom > 0 ? 1 / zoom : 1;
+
+    // Wire up state query so Lua can read position/heading/isdown of main turtle
+    this.runtime.setStateQuery(mainEntry.state);
+
     this.events.onStart?.();
 
     // Phase 1: Execute Lua to collect commands
@@ -92,20 +129,24 @@ export class TurtleExecutor {
       return result;
     }
 
-    const commands = this.runtime.getCommands();
+    const commands = this.runtime.getCommands() as TaggedCommand[];
 
     // Phase 2: Replay commands with animation
     const replayResult = await this.replayCommands(commands);
 
-    // Flush any remaining batched segments
-    this.drawing.flush();
+    // Flush any remaining batched segments for all owned turtles
+    const owned = this.registry.getOwned(this.scriptId);
+    for (const [, entry] of owned) {
+      entry.drawing.flush();
+    }
+
     this.running = false;
     this.events.onComplete?.(replayResult);
     return replayResult;
   }
 
   private async replayCommands(
-    commands: TurtleCommand[],
+    commands: TaggedCommand[],
   ): Promise<ExecutionResult> {
     for (let i = 0; i < commands.length; i++) {
       if (this.stopRequested) {
@@ -117,7 +158,7 @@ export class TurtleExecutor {
       this.events.onStep?.();
 
       // Yield to the browser between steps based on speed
-      const delay = this.getStepDelay();
+      const delay = this.getStepDelay(cmd);
       if (delay > 0) {
         await this.wait(delay);
       }
@@ -126,23 +167,36 @@ export class TurtleExecutor {
     return { success: true };
   }
 
-  private processCommand(cmd: TurtleCommand): void {
+  private processCommand(cmd: TaggedCommand): void {
+    // Resolve turtle ID: default to "main", prefix with scriptId
+    const localId = cmd.turtleId ?? "main";
+    const fullId = `${this.scriptId}:${localId}`;
+    const entry = this.registry.get(fullId);
+
     if (cmd.type === "print") {
       this.events.onPrint?.(cmd.message);
       return;
     }
 
     if (cmd.type === "clear") {
-      this.drawing.clearTurtleStrokes();
+      // Clear strokes for the targeted turtle
+      if (entry) {
+        entry.drawing.clearTurtleStrokes();
+      }
+      return;
+    }
+
+    if (!entry) {
+      // Turtle doesn't exist (yet or was killed) — skip command
       return;
     }
 
     // sleep and speed are handled via the command replay timing
     // but speed still needs to update state
-    const segment = this.state.applyCommand(cmd);
+    const segment = entry.state.applyCommand(cmd);
     if (segment) {
-      const batching = this.state.speed === 0;
-      this.drawing.addSegment(segment, batching);
+      const batching = entry.state.speed === 0;
+      entry.drawing.addSegment(segment, batching);
     }
   }
 
@@ -151,13 +205,28 @@ export class TurtleExecutor {
    * speed(0) = 0ms (instant), speed(1) = 100ms, speed(10) = 1ms
    * Linear interpolation: delay = 100 - (speed - 1) * 11 for speed 1-10
    */
-  private getStepDelay(): number {
-    const s = this.state.speed;
+  private getStepDelay(cmd: TaggedCommand): number {
+    // Look up the speed from the targeted turtle's state
+    const localId = cmd.turtleId ?? "main";
+    const fullId = `${this.scriptId}:${localId}`;
+    const entry = this.registry.get(fullId);
+    const s = entry?.state.speed ?? 5;
     if (s === 0) return 0;
     // Clamp to 1-10 range
     const clamped = Math.max(1, Math.min(10, s));
     // speed 1 → 100ms, speed 10 → 1ms
     return Math.round(100 - ((clamped - 1) * 99) / 9);
+  }
+
+  /** Remove all spawned (non-main) turtles for this script. */
+  private clearSpawnedTurtles(): void {
+    const mainId = `${this.scriptId}:main`;
+    const owned = this.registry.getOwned(this.scriptId);
+    for (const [id] of owned) {
+      if (id !== mainId) {
+        this.registry.remove(id, this.scriptId);
+      }
+    }
   }
 
   private wait(ms: number): Promise<void> {

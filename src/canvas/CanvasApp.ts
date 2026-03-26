@@ -9,7 +9,7 @@ import { StrokeCapture, ShapeCapture, MagnifyCapture } from "../input";
 import { ToolManager, BRUSH_PRESETS, isShapeTool } from "../tools";
 import type { ToolType } from "../tools";
 import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel, TurtlePanel, BookmarkPanel } from "../ui";
-import { LuaRuntime, TurtleState, TurtleDrawing, TurtleExecutor, TurtleIndicator } from "../turtle";
+import { LuaRuntime, TurtleRegistry, TurtleExecutor, TurtleIndicator } from "../turtle";
 import { ICONS } from "../ui/ToolbarIcons";
 import { renderExport, downloadCanvas } from "../ui/ExportRenderer";
 import type { ExportDialogResult } from "../ui/ExportDialog";
@@ -113,8 +113,7 @@ export class CanvasApp {
   private turtlePanel!: TurtlePanel;
   private turtleButton!: HTMLButtonElement;
   private turtleRuntime!: LuaRuntime;
-  private turtleState!: TurtleState;
-  private turtleDrawing!: TurtleDrawing;
+  private turtleRegistry!: TurtleRegistry;
   private turtleExecutor!: TurtleExecutor;
   private turtleIndicator!: TurtleIndicator;
   private turtlePlacing = false;
@@ -530,10 +529,8 @@ export class CanvasApp {
 
     // Turtle graphics pipeline
     this.turtleRuntime = new LuaRuntime();
-    this.turtleState = new TurtleState();
-    this.turtleDrawing = new TurtleDrawing(this.doc);
-    this.turtleIndicator = new TurtleIndicator(canvas.parentElement!, this.camera, this.turtleState);
-    this.turtleExecutor = new TurtleExecutor(this.turtleRuntime, this.turtleState, this.turtleDrawing, {
+    this.turtleRegistry = new TurtleRegistry();
+    this.turtleExecutor = new TurtleExecutor(this.turtleRuntime, this.turtleRegistry, "default", this.doc, {
       onPrint: (msg) => this.turtlePanel.appendConsole(msg, "output"),
       onStart: () => {
         this.turtlePanel.setRunning(true);
@@ -554,6 +551,10 @@ export class CanvasApp {
         }
       },
     });
+    // Eagerly create the main turtle so TurtleIndicator has a stable state reference
+    this.turtleExecutor.ensureMainTurtle();
+    const mainState = this.turtleExecutor.getMainState()!;
+    this.turtleIndicator = new TurtleIndicator(canvas.parentElement!, this.camera, mainState);
     this.turtleRuntime.init();
 
     this.turtlePanel = new TurtlePanel(drawingId, {
@@ -561,7 +562,7 @@ export class CanvasApp {
         this.turtlePanel.clearConsole();
         // Only set origin to camera center if not explicitly placed
         if (!this.turtleOriginPlaced) {
-          this.turtleState.setOrigin(this.camera.x, this.camera.y);
+          this.turtleExecutor.getMainState()?.setOrigin(this.camera.x, this.camera.y);
         }
         this.turtleExecutor.run(script, this.camera.zoom);
       },
@@ -569,7 +570,8 @@ export class CanvasApp {
         this.turtleExecutor.stop();
       },
       onSpeedChange: (speed) => {
-        this.turtleState.speed = speed;
+        const ms = this.turtleExecutor.getMainState();
+        if (ms) ms.speed = speed;
       },
       onPlaceRequest: () => {
         this.turtlePlacing = !this.turtlePlacing;
@@ -585,9 +587,10 @@ export class CanvasApp {
             const [vw, vh] = this.camera.getViewportSize();
             const worldX = (screenX - vw / 2) / this.camera.zoom + this.camera.x;
             const worldY = (screenY - vh / 2) / this.camera.zoom + this.camera.y;
-            this.turtleState.setOrigin(worldX, worldY);
-            this.turtleState.x = worldX;
-            this.turtleState.y = worldY;
+            const ts = this.turtleExecutor.getMainState()!;
+            ts.setOrigin(worldX, worldY);
+            ts.x = worldX;
+            ts.y = worldY;
             this.turtleOriginPlaced = true;
             this.turtlePlacing = false;
             this.turtlePanel.setPlacing(false);

@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { TurtleExecutor, TurtleExecutorEvents } from "../TurtleExecutor";
-import { TurtleState } from "../TurtleState";
-import { TurtleDrawing } from "../TurtleDrawing";
+import { TurtleRegistry } from "../TurtleRegistry";
 import { TurtleCommand } from "../LuaRuntime";
 import { Stroke, DocumentModel } from "../../model/Stroke";
 
@@ -65,14 +64,13 @@ class FakeLuaRuntime {
 
 describe("TurtleExecutor", () => {
   let doc: MockDocument;
-  let state: TurtleState;
-  let drawing: TurtleDrawing;
+  let registry: TurtleRegistry;
   let runtime: FakeLuaRuntime;
+  const scriptId = "test-script";
 
   beforeEach(() => {
     doc = new MockDocument();
-    state = new TurtleState();
-    drawing = new TurtleDrawing(doc);
+    registry = new TurtleRegistry();
     runtime = new FakeLuaRuntime();
     vi.useFakeTimers();
   });
@@ -80,8 +78,9 @@ describe("TurtleExecutor", () => {
   function createExecutor(events: TurtleExecutorEvents = {}) {
     return new TurtleExecutor(
       runtime as unknown as import("../LuaRuntime").LuaRuntime,
-      state,
-      drawing,
+      registry,
+      scriptId,
+      doc,
       events,
     );
   }
@@ -319,8 +318,9 @@ describe("TurtleExecutor", () => {
       await p1;
 
       // Turtle should be at (0, -100) after forward(100)
-      expect(state.x).toBeCloseTo(0);
-      expect(state.y).toBeCloseTo(-100);
+      const state1 = executor.getMainState()!;
+      expect(state1.x).toBeCloseTo(0);
+      expect(state1.y).toBeCloseTo(-100);
 
       // Run again — state should reset
       const p2 = executor.run("second");
@@ -328,8 +328,9 @@ describe("TurtleExecutor", () => {
       await p2;
 
       // Same result because state was reset
-      expect(state.x).toBeCloseTo(0);
-      expect(state.y).toBeCloseTo(-100);
+      const state2 = executor.getMainState()!;
+      expect(state2.x).toBeCloseTo(0);
+      expect(state2.y).toBeCloseTo(-100);
     });
 
     it("handles clear command by removing turtle strokes", async () => {
@@ -387,6 +388,112 @@ describe("TurtleExecutor", () => {
       expect(doc.strokes.length).toBe(1);
       // Only the second forward creates a stroke
       expect(doc.strokes[0].points).toHaveLength(2);
+    });
+  });
+
+  describe("registry integration", () => {
+    it("creates main turtle in registry on run", async () => {
+      runtime.setCommands([{ type: "speed", value: 0 }]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      expect(registry.has(`${scriptId}:main`)).toBe(true);
+    });
+
+    it("clears spawned turtles on re-run but keeps main", async () => {
+      runtime.setCommands([{ type: "speed", value: 0 }]);
+
+      const executor = createExecutor();
+      const p1 = executor.run("first");
+      await vi.runAllTimersAsync();
+      await p1;
+
+      // Manually spawn an extra turtle to verify it gets cleaned up
+      registry.spawn("extra", scriptId, doc);
+      expect(registry.count()).toBe(2);
+
+      const p2 = executor.run("second");
+      await vi.runAllTimersAsync();
+      await p2;
+
+      // Only main should remain (extra was cleared), main state reference is stable
+      expect(registry.count()).toBe(1);
+      expect(registry.has(`${scriptId}:main`)).toBe(true);
+    });
+
+    it("preserves main turtle state reference across runs", async () => {
+      runtime.setCommands([{ type: "speed", value: 0 }]);
+
+      const executor = createExecutor();
+      const p1 = executor.run("first");
+      await vi.runAllTimersAsync();
+      await p1;
+
+      const stateRef1 = executor.getMainState();
+
+      const p2 = executor.run("second");
+      await vi.runAllTimersAsync();
+      await p2;
+
+      const stateRef2 = executor.getMainState();
+      // Same object reference — stable for TurtleIndicator
+      expect(stateRef2).toBe(stateRef1);
+    });
+
+    it("does not affect other scripts' turtles on re-run", async () => {
+      // Create turtles for another script
+      registry.createMain("other-script", doc);
+      registry.spawn("child", "other-script", doc);
+
+      runtime.setCommands([{ type: "speed", value: 0 }]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      // Other script's turtles are untouched
+      expect(registry.has("other-script:main")).toBe(true);
+      expect(registry.has("other-script:child")).toBe(true);
+    });
+
+    it("dispatches commands to correct turtle by turtleId", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "forward", distance: 100 },
+      ] as TurtleCommand[]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      const mainEntry = registry.get(`${scriptId}:main`)!;
+      expect(mainEntry.state.y).toBeCloseTo(-100);
+    });
+
+    it("getMainState returns main turtle state", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "forward", distance: 50 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test");
+      await vi.runAllTimersAsync();
+      await resultPromise;
+
+      const mainState = executor.getMainState();
+      expect(mainState).not.toBeNull();
+      expect(mainState!.y).toBeCloseTo(-50);
+    });
+
+    it("getMainState returns null before first run", () => {
+      const executor = createExecutor();
+      expect(executor.getMainState()).toBeNull();
     });
   });
 

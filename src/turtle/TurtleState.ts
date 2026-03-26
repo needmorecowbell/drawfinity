@@ -301,7 +301,11 @@ export class TurtleState implements TurtleStateQuery {
         fromY: this.toWorld(fromY, this.originY),
         toX: this.toWorld(this.x, this.originX),
         toY: this.toWorld(this.y, this.originY),
-        pen: { ...this.pen, width: this.pen.width * scale },
+        pen: {
+          ...this.pen,
+          width: this.pen.width * scale * this.presetWidthMultiplier,
+          opacity: this.pen.opacity * this.presetOpacity,
+        },
       };
     }
     return null;
@@ -320,7 +324,11 @@ export class TurtleState implements TurtleStateQuery {
         fromY: this.toWorld(fromY, this.originY),
         toX: this.toWorld(this.x, this.originX),
         toY: this.toWorld(this.y, this.originY),
-        pen: { ...this.pen, width: this.pen.width * scale },
+        pen: {
+          ...this.pen,
+          width: this.pen.width * scale * this.presetWidthMultiplier,
+          opacity: this.pen.opacity * this.presetOpacity,
+        },
       };
     }
     return null;

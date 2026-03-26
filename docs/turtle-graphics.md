@@ -68,7 +68,7 @@ goto_pos(200, 150)  -- move to position (200, 150)
 
 #### `home()`
 
-Return the turtle to the origin (0, 0) and reset the heading to 0 (facing up). Draws a line if the pen is down.
+Return the turtle to the origin (0, 0) and reset the heading to 0 (facing up). Draws a line if the pen is down. Also resets pen mode to `"draw"`, clears the active brush preset, and clears the fill color.
 
 ```lua
 home()

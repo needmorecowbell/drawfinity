@@ -336,7 +336,8 @@ export class TurtleExecutor {
           ownedEntry.drawing.flush();
         }
         // Erase mode: remove strokes along the movement path
-        const radius = entry.state.pen.width / 2;
+        const eraseScale = entry.state.worldSpace ? 1 : Math.max(1e-3, Math.min(1e3, entry.state.zoomScale));
+        const radius = (entry.state.pen.width * eraseScale) / 2;
         let turtleStrokeIds: Set<string> | null = null;
         if (entry.state.eraseTurtleOnly) {
           // Collect all turtle-drawn stroke IDs across all turtles
@@ -365,9 +366,9 @@ export class TurtleExecutor {
         y: worldPos.y,
         rotation: headingRad,
         strokeColor: entry.state.pen.color,
-        strokeWidth: entry.state.pen.width * scale,
+        strokeWidth: entry.state.pen.width * scale * entry.state.presetWidthMultiplier,
         fillColor: entry.state.fillColor,
-        opacity: entry.state.pen.opacity,
+        opacity: entry.state.pen.opacity * entry.state.presetOpacity,
       };
       if (cmd.type === "rectangle") {
         entry.drawing.createShape({

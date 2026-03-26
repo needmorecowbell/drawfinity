@@ -87,7 +87,7 @@ Also available as `turtle_goto(x, y)` — an alias provided because `goto` is a 
 
 #### `home()` {#home}
 
-Return the turtle to `(0, 0)` and reset the heading to `0` (facing up). Draws a line if the pen is down.
+Return the turtle to `(0, 0)` and reset the heading to `0` (facing up). Draws a line if the pen is down. Also resets pen mode to `"draw"`, clears the active brush preset (`penpreset(nil)`), and clears the fill color (`fillcolor(nil)`).
 
 ```lua
 home()  -- return to origin, face up

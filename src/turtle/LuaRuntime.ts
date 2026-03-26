@@ -595,6 +595,8 @@ export class LuaRuntime {
               const bC = Math.round(Math.max(0, Math.min(255, (arg3 as number) ?? 0)));
               const hex = `#${r.toString(16).padStart(2, "0")}${gC.toString(16).padStart(2, "0")}${bC.toString(16).padStart(2, "0")}`;
               pushTagged(turtleId, { type: "fillcolor", color: hex });
+            } else {
+              throw new Error("fillcolor() requires a hex string, (r, g, b) numbers, or nil");
             }
             break;
           case "rectangle":

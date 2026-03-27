@@ -166,7 +166,7 @@ export class ThumbnailGenerator {
     const shapes = doc.getShapes ? doc.getShapes() : [];
 
     const bounds = computeContentBounds(strokes, shapes);
-    if (!bounds && backgroundColor === DEFAULT_BACKGROUND_COLOR) return null;
+    if (!bounds && backgroundColor.toUpperCase() === DEFAULT_BACKGROUND_COLOR) return null;
 
     const offscreen = document.createElement("canvas");
     offscreen.width = THUMBNAIL_WIDTH;

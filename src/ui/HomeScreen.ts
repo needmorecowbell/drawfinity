@@ -674,6 +674,13 @@ export class HomeScreen {
       const img = document.createElement("img");
       img.src = savedThumb;
       img.alt = room.name || room.id;
+      img.onerror = () => {
+        img.remove();
+        const fallback = document.createElement("div");
+        fallback.className = "home-room-icon";
+        fallback.textContent = "\uD83C\uDF10";
+        thumb.appendChild(fallback);
+      };
       thumb.appendChild(img);
     } else {
       const icon = document.createElement("div");

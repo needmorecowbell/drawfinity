@@ -106,6 +106,18 @@ end`;
       expect(luaBlockDepth("x = [[ for while do end ]]")).toBe(0);
     });
 
+    it("keyword in level-1 long string", () => {
+      expect(luaBlockDepth("x = [=[ if then end ]=]")).toBe(0);
+    });
+
+    it("keyword in level-2 long string", () => {
+      expect(luaBlockDepth("x = [==[ function while for end ]==]")).toBe(0);
+    });
+
+    it("keyword in level-1 block comment", () => {
+      expect(luaBlockDepth("x = 1 --[=[ if for while end ]=]")).toBe(0);
+    });
+
     it("real block with comment containing keyword", () => {
       const code = `for i=1,10 do -- this loop does stuff
   forward(i)

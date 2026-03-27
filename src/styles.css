@@ -2838,6 +2838,7 @@ html, body {
 
 .repl-command {
   color: #cdd6f4;
+  white-space: pre-wrap;
 }
 
 .repl-prompt {
@@ -2848,11 +2849,13 @@ html, body {
 .repl-output {
   color: #a6adc8;
   padding-left: 28px;
+  white-space: pre-wrap;
 }
 
 .repl-error {
   color: #f38ba8;
   padding-left: 28px;
+  white-space: pre-wrap;
 }
 
 /* Turtle REPL Input Area */

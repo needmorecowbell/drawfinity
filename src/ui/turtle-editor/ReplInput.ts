@@ -51,12 +51,16 @@ const UNTIL_CLOSER = /\buntil\b/g;
  * Strip strings and comments from Lua source so keyword counting
  * is not confused by keywords inside literals.
  *
- * Handles: `--[[ ]]` block comments, `-- ...` line comments,
- * `[[ ]]` long strings, `"..."` and `'...'` short strings.
+ * Handles: `--[=*[ ]=*]` block comments (all levels), `-- ...` line comments,
+ * `[=*[ ]=*]` long strings (all levels), `"..."` and `'...'` short strings.
  */
 function stripLuaLiterals(code: string): string {
+  // Match block comments/long strings with balanced level-N delimiters,
+  // line comments, and short strings. The level-N matching uses a
+  // backreference to ensure the closing delimiter has the same number
+  // of `=` signs as the opening one.
   return code.replace(
-    /--\[\[[\s\S]*?]]|--[^\n]*|\[\[[\s\S]*?]]|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g,
+    /--\[(=*)\[[\s\S]*?]\1]|--[^\n]*|\[(=*)\[[\s\S]*?]\2]|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g,
     "",
   );
 }

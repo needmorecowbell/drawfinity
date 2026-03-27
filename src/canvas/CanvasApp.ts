@@ -696,7 +696,7 @@ export class CanvasApp {
 
     // REPL executor — persistent Lua VM for interactive commands
     this.replExecutor = new ReplExecutor(this.turtleRegistry, "repl", this.doc);
-    this.replExecutor.init();
+    await this.replExecutor.init();
 
     // Turtle toolbar button
     this.turtleButton = document.createElement("button");

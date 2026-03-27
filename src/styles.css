@@ -1331,6 +1331,279 @@ html, body {
   color: #333;
 }
 
+/* Stats Panel */
+#stats-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#stats-panel {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  padding: 20px;
+  width: 520px;
+  max-height: 80vh;
+  font-family: system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stats-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #222;
+  margin-bottom: 4px;
+}
+
+.stats-tab-bar {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 8px;
+}
+
+.stats-tab-btn {
+  padding: 4px 14px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #444;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.stats-tab-btn:hover {
+  background: #f5f5f5;
+}
+
+.stats-tab-btn.active {
+  background: rgba(0, 102, 255, 0.12);
+  border-color: #0066FF;
+  color: #0066FF;
+}
+
+.stats-tab-content {
+  overflow-y: auto;
+  max-height: calc(80vh - 140px);
+  padding-right: 4px;
+}
+
+.stats-section {
+  margin-bottom: 12px;
+}
+
+.stats-section-header {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 12px;
+}
+
+.stats-grid-label {
+  font-size: 13px;
+  color: #444;
+}
+
+.stats-grid-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: #222;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Badges tab */
+.stats-badge-filters {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.stats-badge-filter-btn {
+  padding: 3px 10px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #444;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.stats-badge-filter-btn:hover {
+  background: #f5f5f5;
+}
+
+.stats-badge-filter-btn.active {
+  background: rgba(0, 102, 255, 0.12);
+  border-color: #0066FF;
+  color: #0066FF;
+}
+
+.stats-badge-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.stats-badge-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.stats-badge-card.earned {
+  background: #fff;
+}
+
+.stats-badge-card.earned:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.stats-badge-card.locked {
+  background: #f8f8f8;
+  opacity: 0.6;
+}
+
+.stats-badge-icon {
+  font-size: 28px;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.stats-badge-card.locked .stats-badge-icon {
+  filter: grayscale(1);
+}
+
+.stats-badge-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #222;
+  margin-bottom: 2px;
+}
+
+.stats-badge-tier {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stats-badge-desc {
+  font-size: 10px;
+  color: #666;
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+.stats-badge-date {
+  font-size: 9px;
+  color: #999;
+  margin-top: 4px;
+}
+
+.stats-badge-progress {
+  height: 3px;
+  background: #e0e0e0;
+  border-radius: 2px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+
+.stats-badge-progress-fill {
+  height: 100%;
+  background: #0066FF;
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+.stats-badge-progress-label {
+  font-size: 9px;
+  color: #999;
+  margin-top: 2px;
+}
+
+/* Records tab */
+.stats-records-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.stats-records-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 8px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.stats-records-table td {
+  padding: 3px 8px;
+  color: #333;
+}
+
+.stats-records-category td {
+  font-size: 11px;
+  font-weight: 600;
+  color: #666;
+  padding-top: 10px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.stats-btn-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.stats-btn-row .stats-btn {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: system-ui, -apple-system, sans-serif;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.stats-btn-row .stats-btn-secondary {
+  background: #f0f0f0;
+  color: #444;
+}
+
+.stats-btn-row .stats-btn-secondary:hover {
+  background: #e0e0e0;
+}
+
 /* Home Screen */
 #home-screen {
   position: fixed;

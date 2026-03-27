@@ -36,3 +36,5 @@ export type { BookmarkPanelCallbacks } from "./BookmarkPanel";
 export { showStorageNotification } from "./StorageNotification";
 export { showCorruptionDialog } from "./CorruptionDialog";
 export type { CorruptionChoice } from "./CorruptionDialog";
+export { StatsPanel } from "./StatsPanel";
+export type { StatsPanelCallbacks, StatsTabName } from "./StatsPanel";

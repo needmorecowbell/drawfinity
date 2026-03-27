@@ -10,6 +10,8 @@ import { BadgeEngine } from "./badges/BadgeEngine";
 import type { BadgeState } from "./badges/BadgeState";
 import { loadBadgeState, saveBadgeState } from "./badges/BadgeState";
 import { BADGE_CATALOG } from "./badges/BadgeCatalog";
+import type { CanvasRecords } from "./CanvasRecords";
+import { loadRecords, saveRecords, updateRecord } from "./CanvasRecords";
 
 /**
  * Singleton that listens to app events and accumulates UserStats passively.
@@ -34,6 +36,10 @@ export class StatsTracker {
   private shapeCountAtStart: number;
   private badgeEngine: BadgeEngine;
   private badgeState: BadgeState;
+  private records: CanvasRecords;
+  private recordsDirty = false;
+  private sessionStrokeCount = 0;
+  private sessionPanDistance = 0;
 
   constructor(
     stats: UserStats,
@@ -79,13 +85,21 @@ export class StatsTracker {
       if (strokes.length > prevStrokeCount) {
         const added = strokes.length - prevStrokeCount;
         this.stats.totalStrokes += added;
+        this.sessionStrokeCount += added;
         // Check for longest stroke among new ones
         for (let i = strokes.length - added; i < strokes.length; i++) {
-          const pts = strokes[i].points.length;
+          const stroke = strokes[i];
+          const pts = stroke.points.length;
           if (pts > this.stats.longestStrokePoints) {
             this.stats.longestStrokePoints = pts;
           }
+          // Record: longest single stroke
+          this.checkRecord("longestSingleStroke", pts);
+          // Record: widest brush used
+          this.checkRecord("widestBrushUsed", stroke.width);
         }
+        // Record: most strokes in one session
+        this.checkRecord("mostStrokesInOneSession", this.sessionStrokeCount);
         this.dirty = true;
       }
       prevStrokeCount = strokes.length;
@@ -149,6 +163,9 @@ export class StatsTracker {
     // Evaluate immediately to catch badges earned in previous sessions
     this.evaluateBadges();
 
+    // --- Canvas records ---
+    this.records = loadRecords();
+
     // --- Debounced persistence: save every 30s while dirty ---
     this.saveTimerId = setInterval(() => {
       if (this.dirty) {
@@ -156,12 +173,22 @@ export class StatsTracker {
         this.dirty = false;
         this.evaluateBadges();
       }
+      if (this.recordsDirty) {
+        // Check session-scoped records before saving
+        const elapsed = Date.now() - this.sessionStartMs;
+        this.checkRecord("longestSession", this.stats.totalSessionDurationMs + elapsed);
+        this.checkRecord("longestPanInOneSession", this.sessionPanDistance);
+        saveRecords(this.records);
+        this.recordsDirty = false;
+      }
     }, 30_000);
 
     // --- beforeunload: flush final state ---
     this.beforeUnloadHandler = () => {
       this.flushSessionDuration();
       saveStats(this.stats);
+      this.checkRecord("longestPanInOneSession", this.sessionPanDistance);
+      saveRecords(this.records);
     };
     window.addEventListener("beforeunload", this.beforeUnloadHandler);
   }
@@ -178,11 +205,17 @@ export class StatsTracker {
       this.dirty = true;
     }
 
+    // Canvas records: deepest and widest zoom
+    this.checkRecord("deepestZoom", camera.zoom);
+    this.checkRecord("widestZoom", 1 / camera.zoom);
+
     // Pan distance (world-space delta)
     const dx = camera.x - this.lastCameraX;
     const dy = camera.y - this.lastCameraY;
     if (dx !== 0 || dy !== 0) {
-      this.panAccumulator += Math.sqrt(dx * dx + dy * dy);
+      const delta = Math.sqrt(dx * dx + dy * dy);
+      this.panAccumulator += delta;
+      this.sessionPanDistance += delta;
       this.lastCameraX = camera.x;
       this.lastCameraY = camera.y;
     }
@@ -224,6 +257,7 @@ export class StatsTracker {
     script: string,
     commands: TurtleCommand[],
     spawnedCount: number,
+    executionTimeMs?: number,
   ): void {
     if (result.success) {
       this.stats.totalTurtleRuns++;
@@ -240,11 +274,28 @@ export class StatsTracker {
     this.stats.totalTurtlesSpawned += spawnedCount;
 
     // Accumulate forward distance and turns from commands
+    let runForwardDistance = 0;
+    let runTurns = 0;
     for (const cmd of commands) {
       if (cmd.type === "forward" || cmd.type === "backward") {
-        this.stats.totalTurtleForwardDistance += Math.abs(cmd.distance);
+        const dist = Math.abs(cmd.distance);
+        this.stats.totalTurtleForwardDistance += dist;
+        runForwardDistance += dist;
       } else if (cmd.type === "right" || cmd.type === "left") {
         this.stats.totalTurtleTurns++;
+        runTurns++;
+      }
+    }
+
+    // Canvas records for turtle runs
+    const ctx = script.slice(0, 50);
+    this.checkRecord("mostTurtlesInOneRun", spawnedCount, ctx);
+    this.checkRecord("longestTurtleDistance", runForwardDistance, ctx);
+    this.checkRecord("mostTurtleTurns", runTurns, ctx);
+    if (executionTimeMs !== undefined) {
+      this.checkRecord("longestTurtleRuntime", executionTimeMs, ctx);
+      if (result.success && commands.length > 100) {
+        this.checkRecord("fastestTurtleCompletion", executionTimeMs, ctx);
       }
     }
 
@@ -269,9 +320,34 @@ export class StatsTracker {
     this.dirty = true;
   }
 
+  /** Record concurrent collaborator count (call when awareness updates). */
+  recordCollaboratorCount(count: number): void {
+    this.checkRecord("mostConcurrentCollaborators", count);
+  }
+
   /** Get the current stats snapshot (read-only intent). */
   getStats(): UserStats {
     return this.stats;
+  }
+
+  /** Get the current records snapshot (read-only intent). */
+  getRecords(): CanvasRecords {
+    return this.records;
+  }
+
+  /**
+   * Check a record and fire a custom event if a new personal best is set.
+   */
+  private checkRecord(key: keyof CanvasRecords, value: number, context?: string): void {
+    const oldValue = this.records[key].value;
+    if (updateRecord(this.records, key, value, context)) {
+      this.recordsDirty = true;
+      window.dispatchEvent(
+        new CustomEvent("drawfinity:record-broken", {
+          detail: { key, newValue: value, oldValue },
+        }),
+      );
+    }
   }
 
   /** Run badge evaluation and fire events for newly earned badges. */
@@ -332,6 +408,9 @@ export class StatsTracker {
     // Final save
     this.flushSessionDuration();
     saveStats(this.stats);
+    this.checkRecord("longestPanInOneSession", this.sessionPanDistance);
+    saveRecords(this.records);
     this.dirty = false;
+    this.recordsDirty = false;
   }
 }

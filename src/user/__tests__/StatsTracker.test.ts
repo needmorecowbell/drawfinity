@@ -364,6 +364,118 @@ describe("StatsTracker", () => {
     window.removeEventListener("drawfinity:badge-unlocked", handler);
   });
 
+  // --- Canvas Records integration ---
+
+  it("updates longestSingleStroke record when a new stroke is longer", () => {
+    createTracker();
+    doc._addStroke({ id: "s1", points: [{ x: 0, y: 0 }, { x: 1, y: 1 }, { x: 2, y: 2 }], color: "#000", width: 2, timestamp: Date.now() });
+    const records = tracker.getRecords();
+    expect(records.longestSingleStroke.value).toBe(3);
+
+    // Shorter stroke should not update
+    doc._addStroke({ id: "s2", points: [{ x: 0, y: 0 }], color: "#000", width: 2, timestamp: Date.now() });
+    expect(records.longestSingleStroke.value).toBe(3);
+
+    // Longer stroke should update
+    doc._addStroke({ id: "s3", points: [{ x: 0, y: 0 }, { x: 1, y: 1 }, { x: 2, y: 2 }, { x: 3, y: 3 }, { x: 4, y: 4 }], color: "#000", width: 2, timestamp: Date.now() });
+    expect(records.longestSingleStroke.value).toBe(5);
+  });
+
+  it("updates widestBrushUsed record from stroke width", () => {
+    createTracker();
+    doc._addStroke({ id: "s1", points: [{ x: 0, y: 0 }], color: "#000", width: 8, timestamp: Date.now() });
+    expect(tracker.getRecords().widestBrushUsed.value).toBe(8);
+
+    doc._addStroke({ id: "s2", points: [{ x: 0, y: 0 }], color: "#000", width: 20, timestamp: Date.now() });
+    expect(tracker.getRecords().widestBrushUsed.value).toBe(20);
+  });
+
+  it("fires drawfinity:record-broken event on new personal best", () => {
+    createTracker();
+    const events: CustomEvent[] = [];
+    const handler = (e: Event) => events.push(e as CustomEvent);
+    window.addEventListener("drawfinity:record-broken", handler);
+
+    doc._addStroke({ id: "s1", points: [{ x: 0, y: 0 }, { x: 1, y: 1 }], color: "#000", width: 5, timestamp: Date.now() });
+
+    // Should have fired for longestSingleStroke, widestBrushUsed, and mostStrokesInOneSession
+    const keys = events.map(e => e.detail.key);
+    expect(keys).toContain("longestSingleStroke");
+    expect(keys).toContain("widestBrushUsed");
+    expect(keys).toContain("mostStrokesInOneSession");
+
+    // Verify event detail shape
+    const strokeEvent = events.find(e => e.detail.key === "longestSingleStroke")!;
+    expect(strokeEvent.detail.newValue).toBe(2);
+    expect(strokeEvent.detail.oldValue).toBe(0);
+
+    window.removeEventListener("drawfinity:record-broken", handler);
+  });
+
+  it("tracks deepestZoom and widestZoom records via updateCamera", () => {
+    createTracker();
+    camera.zoom = 1000;
+    tracker.updateCamera(camera as unknown as import("../../camera/Camera").Camera);
+    expect(tracker.getRecords().deepestZoom.value).toBe(1000);
+
+    camera.zoom = 0.001;
+    tracker.updateCamera(camera as unknown as import("../../camera/Camera").Camera);
+    expect(tracker.getRecords().widestZoom.value).toBe(1000); // 1/0.001
+  });
+
+  it("tracks turtle records from recordTurtleRun", () => {
+    createTracker();
+    tracker.recordTurtleRun(
+      { success: true },
+      "spiral script content",
+      [
+        { type: "forward", distance: 100 },
+        { type: "right", angle: 90 },
+        { type: "forward", distance: 200 },
+        { type: "left", angle: 45 },
+      ],
+      3,
+      500,
+    );
+    const records = tracker.getRecords();
+    expect(records.mostTurtlesInOneRun.value).toBe(3);
+    expect(records.longestTurtleDistance.value).toBe(300);
+    expect(records.mostTurtleTurns.value).toBe(2);
+    expect(records.longestTurtleRuntime.value).toBe(500);
+    expect(records.mostTurtlesInOneRun.context).toBe("spiral script content");
+  });
+
+  it("records mostConcurrentCollaborators", () => {
+    createTracker();
+    tracker.recordCollaboratorCount(3);
+    expect(tracker.getRecords().mostConcurrentCollaborators.value).toBe(3);
+    tracker.recordCollaboratorCount(2);
+    expect(tracker.getRecords().mostConcurrentCollaborators.value).toBe(3); // not lower
+    tracker.recordCollaboratorCount(5);
+    expect(tracker.getRecords().mostConcurrentCollaborators.value).toBe(5);
+  });
+
+  it("saves records alongside stats on debounced timer", () => {
+    createTracker();
+    doc._addStroke({ id: "s1", points: [{ x: 0, y: 0 }, { x: 1, y: 1 }], color: "#000", width: 2, timestamp: Date.now() });
+    vi.advanceTimersByTime(30_000);
+    expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
+      "drawfinity:canvas-records",
+      expect.any(String),
+    );
+  });
+
+  it("saves records on destroy", () => {
+    createTracker();
+    doc._addStroke({ id: "s1", points: [{ x: 0, y: 0 }], color: "#000", width: 2, timestamp: Date.now() });
+    mockLocalStorage.setItem.mockClear();
+    tracker.destroy();
+    expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
+      "drawfinity:canvas-records",
+      expect.any(String),
+    );
+  });
+
   it("does not re-earn badges already in badge state", () => {
     // Pre-seed badge state with "getting-started"
     storageMap.set("drawfinity:badge-state", JSON.stringify({

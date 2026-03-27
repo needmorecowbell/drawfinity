@@ -53,11 +53,12 @@ describe("TurtlePanel", () => {
     expect(panel.isVisible()).toBe(false);
   });
 
-  it("renders editor textarea", () => {
+  it("renders CodeMirror editor", () => {
     panel.show();
-    const editor = document.querySelector(".turtle-editor") as HTMLTextAreaElement;
-    expect(editor).not.toBeNull();
-    expect(editor.tagName).toBe("TEXTAREA");
+    const editorContainer = document.querySelector(".turtle-editor");
+    expect(editorContainer).not.toBeNull();
+    const cmEditor = editorContainer!.querySelector(".cm-editor");
+    expect(cmEditor).not.toBeNull();
   });
 
   it("renders console log area", () => {

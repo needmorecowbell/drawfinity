@@ -6,6 +6,7 @@ import type {
 } from "../turtle";
 import snapshotData from "../turtle/exchange/exchange-snapshot.json";
 import type { DrawfinityDoc } from "../crdt";
+import { TurtleEditor } from "./turtle-editor";
 
 export interface TurtlePanelCallbacks {
   /** Called when the user clicks Run. Receives the script text. */
@@ -33,7 +34,7 @@ const STORAGE_KEY_PREFIX = "drawfinity:turtle-script:";
 export class TurtlePanel {
   private overlay: HTMLElement;
   private panel: HTMLElement;
-  private editor!: HTMLTextAreaElement;
+  private editor!: TurtleEditor;
   private consoleLog!: HTMLElement;
   private runBtn!: HTMLButtonElement;
   private stopBtn!: HTMLButtonElement;
@@ -114,6 +115,7 @@ export class TurtlePanel {
         const delta = this.startY - ev.clientY;
         this.panelHeight = Math.max(150, Math.min(window.innerHeight - 60, this.startHeight + delta));
         this.panel.style.height = `${this.panelHeight}px`;
+        this.editor.requestMeasure();
       };
       const onUp = () => {
         this.resizing = false;
@@ -159,30 +161,14 @@ export class TurtlePanel {
     editorLabel.textContent = "Script";
     editorWrap.appendChild(editorLabel);
 
-    this.editor = document.createElement("textarea");
-    this.editor.className = "turtle-editor";
-    this.editor.spellcheck = false;
-    this.editor.placeholder = "-- Write Lua code here\nforward(100)\nright(90)\nforward(100)";
-    // Save script on input
-    this.editor.addEventListener("input", () => this.saveScript());
-    // Ctrl+Enter to run
-    this.editor.addEventListener("keydown", (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-        e.preventDefault();
-        e.stopPropagation();
-        this.handleRun();
-      }
-      // Tab inserts spaces
-      if (e.key === "Tab") {
-        e.preventDefault();
-        const start = this.editor.selectionStart;
-        const end = this.editor.selectionEnd;
-        this.editor.value = this.editor.value.substring(0, start) + "  " + this.editor.value.substring(end);
-        this.editor.selectionStart = this.editor.selectionEnd = start + 2;
-        this.saveScript();
-      }
+    const editorContainer = document.createElement("div");
+    editorContainer.className = "turtle-editor";
+    this.editor = new TurtleEditor({
+      parent: editorContainer,
+      onChange: () => this.saveScript(),
+      onRun: () => this.handleRun(),
     });
-    editorWrap.appendChild(this.editor);
+    editorWrap.appendChild(editorContainer);
     content.appendChild(editorWrap);
 
     // Right: Console output
@@ -319,13 +305,13 @@ export class TurtlePanel {
   }
 
   private handleRun(): void {
-    const script = this.editor.value.trim();
+    const script = this.editor.getValue().trim();
     if (!script) return;
     this.callbacks.onRun?.(script);
   }
 
   private handleShare(): void {
-    const script = this.editor.value.trim();
+    const script = this.editor.getValue().trim();
     if (!script) return;
     if (!this.drawfinityDoc) {
       this.appendConsole("Share requires a collaborative session", "error");
@@ -426,12 +412,12 @@ export class TurtlePanel {
 
   /** Get the current editor content. */
   getScript(): string {
-    return this.editor.value;
+    return this.editor.getValue();
   }
 
   /** Set the editor content. */
   setScript(script: string): void {
-    this.editor.value = script;
+    this.editor.setValue(script);
     this.saveScript();
   }
 
@@ -463,14 +449,14 @@ export class TurtlePanel {
 
   private saveScript(): void {
     const key = STORAGE_KEY_PREFIX + this.drawingId;
-    localStorage.setItem(key, this.editor.value);
+    localStorage.setItem(key, this.editor.getValue());
   }
 
   private loadScript(): void {
     const key = STORAGE_KEY_PREFIX + this.drawingId;
     const saved = localStorage.getItem(key);
     if (saved) {
-      this.editor.value = saved;
+      this.editor.setValue(saved);
     }
   }
 
@@ -955,5 +941,6 @@ export class TurtlePanel {
     }
     this.closeExchangeBrowser();
     this.hide();
+    this.editor.destroy();
   }
 }

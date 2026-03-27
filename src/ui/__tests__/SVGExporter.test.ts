@@ -157,6 +157,12 @@ describe("SVGExporter", () => {
       expect(svg).not.toContain("opacity=");
     });
 
+    it("returns empty string for stroke with no points", () => {
+      const stroke = makeStroke({ points: [] });
+      const svg = strokeToSVG(stroke);
+      expect(svg).toBe("");
+    });
+
     it("deduplicates consecutive identical points", () => {
       const stroke = makeStroke({
         points: [

@@ -1309,6 +1309,15 @@ export class CanvasApp {
   }
 
   private handleKeydown(e: KeyboardEvent): void {
+    // Don't intercept keys when user is typing in an input field or editor
+    const tag = (document.activeElement as HTMLElement)?.tagName;
+    if (
+      tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" ||
+      (document.activeElement as HTMLElement)?.closest?.(".cm-editor")
+    ) {
+      return;
+    }
+
     const mod = e.ctrlKey || e.metaKey;
 
     if (e.key === "F3") {

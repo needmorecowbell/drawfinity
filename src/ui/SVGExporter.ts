@@ -4,6 +4,11 @@ import type { CanvasItem } from "../model/Shape";
 import type { ExportOptions } from "./ExportRenderer";
 import { computeContentBounds } from "./ExportRenderer";
 
+/** Escape a value for safe use in an XML/SVG attribute. */
+function escapeAttr(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+}
+
 /** Default SVG output width in pixels. */
 const DEFAULT_SVG_WIDTH = 1920;
 
@@ -56,15 +61,20 @@ export function exportSVG(
   const svgW = DEFAULT_SVG_WIDTH;
   const svgH = Math.round(svgW / aspect);
 
+  const vbX = fmt(viewBox.minX);
+  const vbY = fmt(viewBox.minY);
+  const vbWStr = fmt(vbW);
+  const vbHStr = fmt(vbH);
+
   const parts: string[] = [];
   parts.push(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}" viewBox="${viewBox.minX} ${viewBox.minY} ${vbW} ${vbH}">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}" viewBox="${vbX} ${vbY} ${vbWStr} ${vbHStr}">`,
   );
 
   if (options.includeBackground) {
-    const bg = options.backgroundColor ?? "#FAFAF8";
+    const bg = escapeAttr(options.backgroundColor ?? "#FAFAF8");
     parts.push(
-      `<rect x="${viewBox.minX}" y="${viewBox.minY}" width="${vbW}" height="${vbH}" fill="${bg}" />`,
+      `<rect x="${vbX}" y="${vbY}" width="${vbWStr}" height="${vbHStr}" fill="${bg}" />`,
     );
   }
 
@@ -138,8 +148,12 @@ export async function downloadSVG(
  * a `<circle>`.
  */
 export function strokeToSVG(stroke: Stroke): string {
+  if (stroke.points.length === 0) {
+    return "";
+  }
+
   const opacity = stroke.opacity ?? 1;
-  const fillColor = stroke.color;
+  const fillColor = escapeAttr(stroke.color);
 
   // Deduplicate consecutive identical points
   const deduped: StrokePoint[] = [stroke.points[0]];
@@ -148,10 +162,6 @@ export function strokeToSVG(stroke: Stroke): string {
     if (stroke.points[i].x !== prev.x || stroke.points[i].y !== prev.y) {
       deduped.push(stroke.points[i]);
     }
-  }
-
-  if (deduped.length === 0) {
-    return "";
   }
 
   // Single-point stroke → circle
@@ -278,18 +288,22 @@ export function shapeToSVG(shape: Shape): string {
       const pts = starPoints(shape);
       return `<polygon points="${pts.map((p) => `${fmt(p.x)},${fmt(p.y)}`).join(" ")}"${attrs} />`;
     }
+    default: {
+      const _exhaustive: never = shape.type;
+      return `<!-- unknown shape type: ${_exhaustive} -->`;
+    }
   }
 }
 
 function shapeStyleAttrs(shape: Shape): string {
   const parts: string[] = [];
   if (shape.fillColor) {
-    parts.push(` fill="${shape.fillColor}"`);
+    parts.push(` fill="${escapeAttr(shape.fillColor)}"`);
   } else {
     parts.push(` fill="none"`);
   }
   if (shape.strokeWidth > 0) {
-    parts.push(` stroke="${shape.strokeColor}" stroke-width="${fmt(shape.strokeWidth)}"`);
+    parts.push(` stroke="${escapeAttr(shape.strokeColor)}" stroke-width="${fmt(shape.strokeWidth)}"`);
   }
   if (shape.opacity < 1) {
     parts.push(` opacity="${fmt(shape.opacity)}"`);

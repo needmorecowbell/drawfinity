@@ -258,11 +258,14 @@ export class StatsTracker {
     commands: TurtleCommand[],
     spawnedCount: number,
     executionTimeMs?: number,
+    maxSpawnDepth?: number,
   ): void {
     if (result.success) {
       this.stats.totalTurtleRuns++;
+      this.stats.consecutiveCleanRuns++;
     } else {
       this.stats.totalTurtleErrors++;
+      this.stats.consecutiveCleanRuns = 0;
     }
 
     // Track longest script
@@ -273,17 +276,67 @@ export class StatsTracker {
     // Track spawned turtles
     this.stats.totalTurtlesSpawned += spawnedCount;
 
+    // Track max turtles in single run
+    if (spawnedCount > this.stats.mostTurtlesInSingleRun) {
+      this.stats.mostTurtlesInSingleRun = spawnedCount;
+    }
+
+    // Track max spawn depth
+    if (maxSpawnDepth !== undefined && maxSpawnDepth > this.stats.maxSpawnDepth) {
+      this.stats.maxSpawnDepth = maxSpawnDepth;
+    }
+
     // Accumulate forward distance and turns from commands
     let runForwardDistance = 0;
     let runTurns = 0;
+    const uniqueColors = new Set<string>();
+    const apiCategories = new Set<string>();
+
     for (const cmd of commands) {
       if (cmd.type === "forward" || cmd.type === "backward") {
         const dist = Math.abs(cmd.distance);
         this.stats.totalTurtleForwardDistance += dist;
         runForwardDistance += dist;
+        apiCategories.add("movement");
       } else if (cmd.type === "right" || cmd.type === "left") {
         this.stats.totalTurtleTurns++;
         runTurns++;
+        apiCategories.add("movement");
+      } else if (cmd.type === "pencolor") {
+        uniqueColors.add(cmd.color);
+        apiCategories.add("pen");
+      } else if (cmd.type === "spawn") {
+        apiCategories.add("spawn");
+      } else if (cmd.type === "penwidth" || cmd.type === "penopacity" || cmd.type === "penup" || cmd.type === "pendown" || cmd.type === "penmode" || cmd.type === "penpreset") {
+        apiCategories.add("pen");
+      } else if (cmd.type === "rectangle" || cmd.type === "ellipse" || cmd.type === "polygon" || cmd.type === "star") {
+        apiCategories.add("shapes");
+      } else if (cmd.type === "goto" || cmd.type === "home") {
+        apiCategories.add("movement");
+      } else if (cmd.type === "fillcolor") {
+        apiCategories.add("pen");
+      }
+    }
+
+    // Track unique pen colors (cumulative max)
+    if (uniqueColors.size > this.stats.uniquePenColors) {
+      this.stats.uniquePenColors = uniqueColors.size;
+    }
+
+    // Track turtle API breadth (max distinct categories in a single run)
+    if (apiCategories.size > this.stats.turtleApiBreadth) {
+      this.stats.turtleApiBreadth = apiCategories.size;
+    }
+
+    // Track execution time stats
+    if (executionTimeMs !== undefined) {
+      if (executionTimeMs > this.stats.longestTurtleRuntimeMs) {
+        this.stats.longestTurtleRuntimeMs = executionTimeMs;
+      }
+      if (result.success && commands.length > 100) {
+        if (this.stats.fastestTurtleCompletionMs === 0 || executionTimeMs < this.stats.fastestTurtleCompletionMs) {
+          this.stats.fastestTurtleCompletionMs = executionTimeMs;
+        }
       }
     }
 

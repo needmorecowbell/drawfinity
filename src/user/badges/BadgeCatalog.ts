@@ -8,7 +8,7 @@ export interface BadgeDefinition {
   description: string;
   tier: BadgeTier;
   icon: string;
-  category: "drawing" | "turtle" | "canvas" | "collaboration" | "dedication";
+  category: "drawing" | "turtle" | "turtle-awards" | "canvas" | "collaboration" | "dedication";
   criteria: (stats: UserStats) => boolean;
 }
 
@@ -226,6 +226,71 @@ export const BADGE_CATALOG: BadgeDefinition[] = [
     icon: "\uD83D\uDCDD",
     category: "turtle",
     criteria: (s) => s.longestTurtleScript >= 2000,
+  },
+
+  // --- Turtle awards (creative coding achievements) ---
+  {
+    id: "color-painter",
+    name: "Color Painter",
+    description: "Use at least 2 different pen colors in turtle scripts",
+    tier: "bronze",
+    icon: "\uD83C\uDFA8",
+    category: "turtle-awards",
+    criteria: (s) => s.totalTurtleRuns >= 1 && s.uniquePenColors >= 2,
+  },
+  {
+    id: "speed-demon",
+    name: "Speed Demon",
+    description: "Complete a 100+ command script in under 1 second",
+    tier: "silver",
+    icon: "\u26A1",
+    category: "turtle-awards",
+    criteria: (s) => s.fastestTurtleCompletionMs > 0 && s.fastestTurtleCompletionMs <= 1000,
+  },
+  {
+    id: "patient-artist",
+    name: "Patient Artist",
+    description: "Run a single turtle script for 60+ seconds",
+    tier: "silver",
+    icon: "\u23F3",
+    category: "turtle-awards",
+    criteria: (s) => s.longestTurtleRuntimeMs >= 60000,
+  },
+  {
+    id: "error-free-streak",
+    name: "Clean Coder",
+    description: "Complete 10 consecutive turtle runs without an error",
+    tier: "gold",
+    icon: "\u2728",
+    category: "turtle-awards",
+    criteria: (s) => s.consecutiveCleanRuns >= 10,
+  },
+  {
+    id: "polyglot-turtle",
+    name: "Polyglot Turtle",
+    description: "Use 5+ different API categories in a single turtle script",
+    tier: "gold",
+    icon: "\uD83C\uDF10",
+    category: "turtle-awards",
+    criteria: (s) => s.turtleApiBreadth >= 5,
+  },
+  {
+    id: "fractal-explorer",
+    name: "Fractal Explorer",
+    description: "Use spawn_at_scale() at least 3 levels deep",
+    tier: "gold",
+    icon: "\uD83C\uDF00",
+    category: "turtle-awards",
+    criteria: (s) => s.maxSpawnDepth >= 3,
+  },
+  {
+    id: "turtle-army",
+    name: "Turtle Army",
+    description: "Spawn 100+ turtles in a single run",
+    tier: "platinum",
+    icon: "\uD83D\uDC22",
+    category: "turtle-awards",
+    criteria: (s) => s.mostTurtlesInSingleRun >= 100,
   },
 
   // --- Canvas badges ---

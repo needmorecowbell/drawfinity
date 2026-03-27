@@ -290,6 +290,16 @@ export class TurtleRegistry {
     return Math.sqrt(dx * dx + dy * dy);
   }
 
+  /** Calculate the deepest spawn depth across all turtles in the registry. */
+  getDeepestSpawnDepth(): number {
+    let max = 0;
+    for (const id of this.turtles.keys()) {
+      const d = this.getDepth(id);
+      if (d > max) max = d;
+    }
+    return max;
+  }
+
   /** Calculate the depth of a turtle in the parent-child tree. */
   private getDepth(id: string): number {
     let depth = 0;

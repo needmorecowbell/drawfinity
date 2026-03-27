@@ -30,6 +30,15 @@ export interface UserStats {
   longestTurtleScript: number;
   exchangeScriptsImported: number;
 
+  // Turtle award stats
+  uniquePenColors: number;
+  consecutiveCleanRuns: number;
+  turtleApiBreadth: number;
+  maxSpawnDepth: number;
+  fastestTurtleCompletionMs: number; // best (lowest) for 100+ cmd runs, 0 = unset
+  longestTurtleRuntimeMs: number; // best (highest) single-run runtime
+  mostTurtlesInSingleRun: number; // best (highest) spawned in one run
+
   // Collaboration stats
   totalCollabSessions: number;
   totalCollabRoomsCreated: number;
@@ -68,6 +77,13 @@ export function createDefaultStats(): UserStats {
     totalTurtleTurns: 0,
     longestTurtleScript: 0,
     exchangeScriptsImported: 0,
+    uniquePenColors: 0,
+    consecutiveCleanRuns: 0,
+    turtleApiBreadth: 0,
+    maxSpawnDepth: 0,
+    fastestTurtleCompletionMs: 0,
+    longestTurtleRuntimeMs: 0,
+    mostTurtlesInSingleRun: 0,
     totalCollabSessions: 0,
     totalCollabRoomsCreated: 0,
     scriptsSharedToRoom: 0,

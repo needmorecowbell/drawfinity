@@ -476,6 +476,118 @@ describe("StatsTracker", () => {
     );
   });
 
+  // --- Turtle awards stats ---
+
+  it("tracks consecutiveCleanRuns incrementing on success and resetting on error", () => {
+    createTracker();
+    // 3 successful runs
+    for (let i = 0; i < 3; i++) {
+      tracker.recordTurtleRun({ success: true }, "forward(10)", [{ type: "forward", distance: 10 }], 0);
+    }
+    expect(stats.consecutiveCleanRuns).toBe(3);
+
+    // An error resets the streak
+    tracker.recordTurtleRun({ success: false, error: "oops" }, "bad", [], 0);
+    expect(stats.consecutiveCleanRuns).toBe(0);
+
+    // Successful run after error starts new streak
+    tracker.recordTurtleRun({ success: true }, "forward(10)", [{ type: "forward", distance: 10 }], 0);
+    expect(stats.consecutiveCleanRuns).toBe(1);
+  });
+
+  it("earns error-free-streak badge after 10 consecutive clean runs", () => {
+    createTracker();
+
+    // Clear initial badge events
+    const events: CustomEvent[] = [];
+    const handler = (e: Event) => events.push(e as CustomEvent);
+    window.addEventListener("drawfinity:badge-unlocked", handler);
+
+    // Run 10 successful turtle scripts
+    for (let i = 0; i < 10; i++) {
+      tracker.recordTurtleRun({ success: true }, "forward(10)", [{ type: "forward", distance: 10 }], 0);
+    }
+    expect(stats.consecutiveCleanRuns).toBe(10);
+
+    // Trigger badge evaluation via debounced save
+    vi.advanceTimersByTime(30_000);
+
+    const allBadgeIds = events.flatMap(e => e.detail.map((u: { badge: { id: string } }) => u.badge.id));
+    expect(allBadgeIds).toContain("error-free-streak");
+
+    window.removeEventListener("drawfinity:badge-unlocked", handler);
+  });
+
+  it("tracks uniquePenColors from pencolor commands", () => {
+    createTracker();
+    tracker.recordTurtleRun(
+      { success: true },
+      "pencolor('red')\npencolor('blue')\npencolor('red')",
+      [
+        { type: "pencolor", color: "#ff0000" },
+        { type: "pencolor", color: "#0000ff" },
+        { type: "pencolor", color: "#ff0000" },
+      ],
+      0,
+    );
+    expect(stats.uniquePenColors).toBe(2);
+  });
+
+  it("tracks turtleApiBreadth from diverse commands", () => {
+    createTracker();
+    tracker.recordTurtleRun(
+      { success: true },
+      "test script",
+      [
+        { type: "forward", distance: 100 },
+        { type: "pencolor", color: "#ff0000" },
+        { type: "spawn", id: "t1" },
+        { type: "rectangle", width: 50, height: 50 },
+      ],
+      1,
+    );
+    // movement, pen, spawn, shapes = 4 categories
+    expect(stats.turtleApiBreadth).toBe(4);
+  });
+
+  it("tracks maxSpawnDepth from recordTurtleRun parameter", () => {
+    createTracker();
+    tracker.recordTurtleRun({ success: true }, "test", [{ type: "forward", distance: 10 }], 0, undefined, 3);
+    expect(stats.maxSpawnDepth).toBe(3);
+
+    // Lower depth should not reduce
+    tracker.recordTurtleRun({ success: true }, "test", [{ type: "forward", distance: 10 }], 0, undefined, 1);
+    expect(stats.maxSpawnDepth).toBe(3);
+  });
+
+  it("tracks fastestTurtleCompletionMs and longestTurtleRuntimeMs", () => {
+    createTracker();
+    // Generate 101+ commands
+    const manyCommands = Array.from({ length: 110 }, (_, i) => ({ type: "forward" as const, distance: i + 1 }));
+
+    tracker.recordTurtleRun({ success: true }, "big script", manyCommands, 0, 800);
+    expect(stats.fastestTurtleCompletionMs).toBe(800);
+    expect(stats.longestTurtleRuntimeMs).toBe(800);
+
+    // Faster run should update fastest
+    tracker.recordTurtleRun({ success: true }, "faster script", manyCommands, 0, 500);
+    expect(stats.fastestTurtleCompletionMs).toBe(500);
+
+    // Slower run should update longest but not fastest
+    tracker.recordTurtleRun({ success: true }, "slow script", manyCommands, 0, 2000);
+    expect(stats.fastestTurtleCompletionMs).toBe(500);
+    expect(stats.longestTurtleRuntimeMs).toBe(2000);
+  });
+
+  it("tracks mostTurtlesInSingleRun", () => {
+    createTracker();
+    tracker.recordTurtleRun({ success: true }, "test", [{ type: "forward", distance: 10 }], 5);
+    expect(stats.mostTurtlesInSingleRun).toBe(5);
+
+    tracker.recordTurtleRun({ success: true }, "test", [{ type: "forward", distance: 10 }], 3);
+    expect(stats.mostTurtlesInSingleRun).toBe(5); // not decreased
+  });
+
   it("does not re-earn badges already in badge state", () => {
     // Pre-seed badge state with "getting-started"
     storageMap.set("drawfinity:badge-state", JSON.stringify({

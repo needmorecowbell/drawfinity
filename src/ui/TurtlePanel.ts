@@ -417,7 +417,7 @@ export class TurtlePanel {
 
   /** Set the editor content. */
   setScript(script: string): void {
-    this.editor.setValue(script);
+    this.editor.setValue(script, true);
     this.saveScript();
   }
 

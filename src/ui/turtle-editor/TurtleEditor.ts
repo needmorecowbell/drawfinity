@@ -13,6 +13,7 @@ import {
   bracketMatching,
   syntaxHighlighting,
   HighlightStyle,
+  indentUnit,
 } from "@codemirror/language";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets } from "@codemirror/autocomplete";
@@ -87,24 +88,6 @@ const turtleEditorTheme = EditorView.theme({
   "&.cm-focused .cm-selectionBackground": {
     backgroundColor: "#44475a !important",
   },
-  ".cm-tooltip.cm-tooltip-autocomplete": {
-    backgroundColor: "#fff",
-    border: "1px solid #ddd",
-    borderRadius: "4px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-    color: "#333",
-  },
-  ".cm-tooltip.cm-tooltip-autocomplete ul li[aria-selected]": {
-    backgroundColor: "#0066FF",
-    color: "#fff",
-  },
-  ".cm-tooltip.cm-tooltip-autocomplete .cm-completionDetail": {
-    color: "#888",
-    fontStyle: "italic",
-  },
-  ".cm-tooltip.cm-tooltip-autocomplete ul li[aria-selected] .cm-completionDetail": {
-    color: "rgba(255,255,255,0.8)",
-  },
   ".cm-scroller": {
     overflow: "auto",
   },
@@ -112,6 +95,7 @@ const turtleEditorTheme = EditorView.theme({
 
 export class TurtleEditor {
   private view: EditorView;
+  private extensions: Extension[];
 
   constructor(options: TurtleEditorOptions) {
     const runKeymap = options.onRun
@@ -132,7 +116,7 @@ export class TurtleEditor {
       closeBrackets(),
       turtleAutocompletion(),
       turtleEditorTheme,
-      EditorState.tabSize.of(2),
+      indentUnit.of("  "),
       EditorView.lineWrapping,
     ];
 
@@ -147,6 +131,7 @@ export class TurtleEditor {
       );
     }
 
+    this.extensions = extensions;
     this.view = new EditorView({
       state: EditorState.create({
         doc: options.initialValue ?? "",
@@ -160,14 +145,20 @@ export class TurtleEditor {
     return this.view.state.doc.toString();
   }
 
-  setValue(code: string): void {
-    this.view.dispatch({
-      changes: {
-        from: 0,
-        to: this.view.state.doc.length,
-        insert: code,
-      },
-    });
+  setValue(code: string, resetHistory = false): void {
+    if (resetHistory) {
+      this.view.setState(
+        EditorState.create({ doc: code, extensions: this.extensions }),
+      );
+    } else {
+      this.view.dispatch({
+        changes: {
+          from: 0,
+          to: this.view.state.doc.length,
+          insert: code,
+        },
+      });
+    }
   }
 
   focus(): void {

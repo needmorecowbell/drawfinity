@@ -208,7 +208,17 @@ export function renderExport(
 
   try {
     renderToGL(gl, offscreen, strokes, shapes, cameraMatrix, options.includeBackground);
-    return offscreen;
+
+    // Copy to a 2D canvas before losing the WebGL context — loseContext()
+    // clears the drawing buffer, so toBlob() on the WebGL canvas would
+    // produce a blank image.
+    const output = document.createElement("canvas");
+    output.width = canvasW;
+    output.height = canvasH;
+    const ctx = output.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(offscreen, 0, 0);
+    return output;
   } finally {
     const ext = gl.getExtension("WEBGL_lose_context");
     if (ext) ext.loseContext();

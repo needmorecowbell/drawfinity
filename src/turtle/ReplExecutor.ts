@@ -223,7 +223,7 @@ export class ReplExecutor {
       }
 
       if (cmd.type === "kill") {
-        this.registry.remove(cmd.id, this.scriptId);
+        this.registry.remove(`${this.scriptId}:${cmd.id}`, this.scriptId);
         continue;
       }
 

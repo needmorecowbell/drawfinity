@@ -13,6 +13,8 @@ export interface ExportOptions {
   scale: number;
   /** Whether to include the background color. */
   includeBackground: boolean;
+  /** Canvas background color hex (e.g. "#FAFAF8"). Defaults to #FAFAF8 if omitted. */
+  backgroundColor?: string;
   /** Current viewport bounds (world-space) — required when scope is "viewport". */
   viewportBounds?: { minX: number; minY: number; maxX: number; maxY: number };
   /** Current camera transform matrix — required when scope is "viewport". */
@@ -207,7 +209,7 @@ export function renderExport(
   if (!gl) return null;
 
   try {
-    renderToGL(gl, offscreen, strokes, shapes, cameraMatrix, options.includeBackground);
+    renderToGL(gl, offscreen, strokes, shapes, cameraMatrix, options.includeBackground, options.backgroundColor);
 
     // Copy to a 2D canvas before losing the WebGL context — loseContext()
     // clears the drawing buffer, so toBlob() on the WebGL canvas would
@@ -232,11 +234,15 @@ function renderToGL(
   shapes: Shape[],
   cameraMatrix: Float32Array,
   includeBackground: boolean,
+  backgroundColor?: string,
 ): void {
   gl.viewport(0, 0, canvas.width, canvas.height);
 
   if (includeBackground) {
-    gl.clearColor(250 / 255, 250 / 255, 248 / 255, 1.0);
+    const [r, g, b] = backgroundColor
+      ? hexToRgba(backgroundColor)
+      : [250 / 255, 250 / 255, 248 / 255, 1.0];
+    gl.clearColor(r, g, b, 1.0);
   } else {
     gl.clearColor(0, 0, 0, 0);
   }

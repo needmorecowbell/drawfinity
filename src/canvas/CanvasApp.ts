@@ -1193,6 +1193,7 @@ export class CanvasApp {
       scope: options.scope,
       scale: options.scale,
       includeBackground: options.includeBackground,
+      backgroundColor: this.doc.getBackgroundColor(),
       viewportBounds: this.camera.getViewportBounds(),
       viewportMatrix: this.camera.getTransformMatrix(),
       viewportSize: this.camera.getViewportSize(),

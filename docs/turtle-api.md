@@ -784,30 +784,43 @@ Turtles can sense their environment, exchange messages, and share state through 
 
 Spatial queries execute **immediately** against current state — they are not deferred to the replay phase. This means a turtle can read its surroundings and make decisions in the same script execution.
 
-#### `nearby_turtles(radius)` {#nearby-turtles}
+#### `nearby_turtles(radius, includeRemote?)` {#nearby-turtles}
 
-Returns a table of turtles within `radius` pixels of the calling turtle's position. Only includes turtles owned by the current script.
+Returns a table of turtles within `radius` pixels of the calling turtle's position. By default, only includes turtles owned by the current script. Pass `true` as the second argument to also include turtles from other connected clients (multiplayer).
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `radius` | `number` | Search radius in pixels (must be ≥ 0) |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `radius` | `number` | — | Search radius in pixels (must be ≥ 0) |
+| `includeRemote` | `boolean` | `false` | When `true`, includes turtles from other clients in the results |
 
-**Returns:** `table` — array of entries with the following fields:
+**Returns:** `table` — array of entries sorted by distance, with the following fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | `string` | Turtle's local ID |
+| `id` | `string` | Turtle ID. Local turtles use their script ID; remote turtles use `remote:<userId>:<turtleId>` |
 | `x` | `number` | X position |
 | `y` | `number` | Y position |
 | `heading` | `number` | Heading in degrees |
 | `distance` | `number` | Distance from the calling turtle |
+| `remote` | `boolean` | `false` for local turtles, `true` for turtles from other clients |
 
 ```lua
+-- Local turtles only (default)
 local neighbors = nearby_turtles(100)
 for _, t in ipairs(neighbors) do
   print(t.id .. " is " .. t.distance .. "px away")
 end
+
+-- Include remote turtles from other clients
+local all = nearby_turtles(100, true)
+for _, t in ipairs(all) do
+  if t.remote then
+    print("Remote: " .. t.id)
+  end
+end
 ```
+
+> **Note:** Remote turtles are read-only — you can sense their positions but cannot control them or send them messages. Remote turtle inclusion requires an active multiplayer connection; when offline, `includeRemote` has no effect.
 
 #### `nearby_strokes(radius)` {#nearby-strokes}
 
@@ -1081,7 +1094,7 @@ set_collision_radius(20)   -- larger collision area
 | [`set_spawn_depth(n)`](#set-spawn-depth) | Turtle Herding | Set max spawn nesting depth |
 | [`environment_turtles()`](#environment-turtles) | Turtle Herding | List all turtles across scripts |
 | [`activate(id)`](#activate) | Context | Switch active turtle for global functions |
-| [`nearby_turtles(radius)`](#nearby-turtles) | Communication | Find turtles within radius |
+| [`nearby_turtles(radius, includeRemote?)`](#nearby-turtles) | Communication | Find turtles within radius (optionally include remote) |
 | [`nearby_strokes(radius)`](#nearby-strokes) | Communication | Find strokes within radius |
 | [`distance_to(id)`](#distance-to) | Communication | Distance to another turtle |
 | [`send(targetId, data)`](#send) | Communication | Send a message to a turtle |

@@ -2,6 +2,7 @@ import { LuaFactory, LuaEngine, LuaLibraries, LuaMultiReturn } from "wasmoon";
 import type { TurtleRegistry } from "./TurtleRegistry";
 import type { DocumentModel } from "../model/Stroke";
 import type { MessageBus, Blackboard } from "./TurtleMessaging";
+import type { SyncManager } from "../sync/SyncManager";
 
 /**
  * Base command variants produced by turtle API calls during script execution.
@@ -25,7 +26,7 @@ type TurtleCommandVariant =
   | { type: "sleep"; ms: number }
   | { type: "print"; message: string }
   | { type: "set_world_space"; enabled: boolean }
-  | { type: "spawn"; id: string; x?: number; y?: number; heading?: number; color?: string; width?: number }
+  | { type: "spawn"; id: string; x?: number; y?: number; heading?: number; color?: string; width?: number; scale?: number }
   | { type: "kill"; id: string }
   | { type: "killall" }
   | { type: "hide" }
@@ -37,7 +38,9 @@ type TurtleCommandVariant =
   | { type: "ellipse"; width: number; height: number }
   | { type: "polygon"; sides: number; radius: number }
   | { type: "star"; points: number; outerRadius: number; innerRadius: number }
-  | { type: "step_boundary"; step: number };
+  | { type: "step_boundary"; step: number }
+  | { type: "min_pixel_size"; pixels: number }
+  | { type: "scale_pen"; enabled: boolean };
 
 /** A command produced by a turtle API call, optionally tagged with a turtle ID. */
 export type TurtleCommand = TurtleCommandVariant & { turtleId?: string };
@@ -89,6 +92,8 @@ export class LuaRuntime {
   private currentStep = 0;
   /** Maximum steps allowed in simulate() (default 10000). */
   private maxSimulateSteps = 10000;
+  /** SyncManager for accessing remote turtle states in multiplayer. */
+  private syncManager: SyncManager | null = null;
 
   constructor() {
     this.factory = new LuaFactory();
@@ -121,6 +126,14 @@ export class LuaRuntime {
   setMessagingContext(messageBus: MessageBus, blackboard: Blackboard): void {
     this.messageBus = messageBus;
     this.blackboard = blackboard;
+  }
+
+  /**
+   * Set the SyncManager for accessing remote turtle states in multiplayer.
+   * Called by TurtleExecutor before script execution.
+   */
+  setSyncManager(syncManager: SyncManager | null): void {
+    this.syncManager = syncManager;
   }
 
   /** Get the maximum steps allowed in simulate(). */
@@ -343,6 +356,19 @@ export class LuaRuntime {
       push({ type: "set_world_space", enabled: !!enabled });
     });
 
+    // LOD-aware drawing skip threshold
+    g.set("min_pixel_size", (pixels: number) => {
+      if (typeof pixels !== "number" || pixels < 0) {
+        throw new Error("min_pixel_size() requires a non-negative number");
+      }
+      pushApply({ type: "min_pixel_size", pixels });
+    });
+
+    // Scale pen width with scaleFactor
+    g.set("scale_pen", (enabled: unknown) => {
+      pushApply({ type: "scale_pen", enabled: !!enabled });
+    });
+
     // Pen mode (draw / erase)
     g.set("penmode", (mode: unknown, options?: unknown) => {
       if (typeof mode !== "string" || (mode !== "draw" && mode !== "erase")) {
@@ -482,6 +508,7 @@ export class LuaRuntime {
         heading?: number | null,
         color?: string | null,
         width?: number | null,
+        scale?: number | null,
       ) => {
         const ctx = getSpawnCtx();
         if (!ctx.registry || !ctx.scriptId || !ctx.doc) {
@@ -511,6 +538,8 @@ export class LuaRuntime {
         if (color != null) options.color = color;
         if (width != null) options.width = width;
 
+        const spawnScale = (scale != null && scale > 0) ? scale : undefined;
+
         // Create turtle eagerly so state queries work during collection.
         // Spawn x/y are offsets from origin — inherit origin from main turtle.
         ctx.registry.spawn(id, ctx.scriptId, ctx.doc, undefined, options);
@@ -524,6 +553,12 @@ export class LuaRuntime {
             spawnedEntry.state.setOrigin(mainOrigin.x, mainOrigin.y);
             spawnedEntry.state.x = mainOrigin.x + (options.x ?? 0);
             spawnedEntry.state.y = mainOrigin.y + (options.y ?? 0);
+            // Inherit parent's scaleFactor × child's own scale
+            const parentScale = this.getActiveTurtleState()?.scaleFactor ?? mainEntry.state.scaleFactor;
+            spawnedEntry.state.scaleFactor = parentScale * (spawnScale ?? 1);
+            // Inherit parent's speed so spawned turtles batch at speed(0)
+            const parentSpeed = this.getActiveTurtleState()?.speed ?? mainEntry.state.speed;
+            spawnedEntry.state.speed = parentSpeed;
           }
         }
         ctx.spawned.add(id);
@@ -536,7 +571,7 @@ export class LuaRuntime {
         }
 
         // Push spawn command for executor replay
-        push({ type: "spawn", id, ...options });
+        push({ type: "spawn", id, ...options, ...(spawnScale !== undefined ? { scale: spawnScale } : {}) });
 
         return id;
       },
@@ -646,6 +681,12 @@ export class LuaRuntime {
             break;
           case "set_world_space":
             pushTagged(turtleId, { type: "set_world_space", enabled: !!arg1 });
+            break;
+          case "min_pixel_size":
+            pushTaggedApply(turtleId, { type: "min_pixel_size", pixels: arg1 as number });
+            break;
+          case "scale_pen":
+            pushTaggedApply(turtleId, { type: "scale_pen", enabled: !!arg1 });
             break;
           case "hide":
             pushTagged(turtleId, { type: "hide" });
@@ -872,8 +913,8 @@ export class LuaRuntime {
       return ctx.scriptId ? `${ctx.scriptId}:${this.activeTurtleId}` : this.activeTurtleId;
     };
 
-    // Internal: nearby_turtles(radius)
-    g.set("_nearby_turtles_impl", (radius: unknown) => {
+    // Internal: nearby_turtles(radius, includeRemote?)
+    g.set("_nearby_turtles_impl", (radius: unknown, includeRemote: unknown) => {
       if (typeof radius !== "number" || radius < 0) {
         throw new Error("nearby_turtles() requires a non-negative number radius");
       }
@@ -885,7 +926,7 @@ export class LuaRuntime {
       if (!ctx.registry.has(fullId)) return [];
       const results = ctx.registry.nearbyTurtles(fullId, radius);
       // Convert full IDs to local IDs for the Lua API
-      return results.map((t) => {
+      const mapped = results.map((t) => {
         const colonIdx = t.id.indexOf(":");
         return {
           id: colonIdx >= 0 ? t.id.substring(colonIdx + 1) : t.id,
@@ -893,8 +934,42 @@ export class LuaRuntime {
           y: t.y,
           heading: t.heading,
           distance: t.distance,
+          remote: false,
         };
       });
+
+      // Optionally include remote turtles from multiplayer awareness
+      if (includeRemote && this.syncManager) {
+        const entry = ctx.registry.get(fullId);
+        if (entry) {
+          const ox = entry.state.x;
+          const oy = entry.state.y;
+          const r2 = radius * radius;
+          const remoteTurtles = this.syncManager.getRemoteTurtles();
+          for (const client of remoteTurtles) {
+            for (const rt of client.turtles) {
+              if (!rt.visible) continue;
+              const dx = rt.x - ox;
+              const dy = rt.y - oy;
+              const dist2 = dx * dx + dy * dy;
+              if (dist2 <= r2) {
+                mapped.push({
+                  id: `remote:${client.userId}:${rt.id}`,
+                  x: rt.x,
+                  y: rt.y,
+                  heading: rt.heading,
+                  distance: Math.sqrt(dist2),
+                  remote: true,
+                });
+              }
+            }
+          }
+          // Re-sort by distance after adding remote turtles
+          mapped.sort((a, b) => a.distance - b.distance);
+        }
+      }
+
+      return mapped;
     });
 
     // Internal: nearby_strokes(radius)
@@ -1129,9 +1204,9 @@ export class LuaRuntime {
         return _environment_turtles_impl()
       end
 
-      -- nearby_turtles(radius) — return table of nearby turtle info
-      function nearby_turtles(radius)
-        return _nearby_turtles_impl(radius)
+      -- nearby_turtles(radius, includeRemote?) — return table of nearby turtle info
+      function nearby_turtles(radius, includeRemote)
+        return _nearby_turtles_impl(radius, includeRemote or false)
       end
 
       -- nearby_strokes(radius) — return table of nearby stroke IDs
@@ -1215,7 +1290,7 @@ export class LuaRuntime {
           error("spawn() requires a non-empty string ID")
         end
         opts = opts or {}
-        _spawn_impl(id, opts.x, opts.y, opts.heading, opts.color, opts.width)
+        _spawn_impl(id, opts.x, opts.y, opts.heading, opts.color, opts.width, opts.scale)
 
         local h = {}
         h.forward = function(d) _tcmd(id, "forward", d) end
@@ -1233,6 +1308,8 @@ export class LuaRuntime {
         h.clear = function() _tcmd(id, "clear") end
         h.sleep = function(ms) _tcmd(id, "sleep", ms) end
         h.set_world_space = function(e) _tcmd(id, "set_world_space", e) end
+        h.scale_pen = function(e) _tcmd(id, "scale_pen", e) end
+        h.min_pixel_size = function(p) _tcmd(id, "min_pixel_size", p) end
         h.print = function(...)
           local parts = {}
           for i = 1, select("#", ...) do
@@ -1299,6 +1376,11 @@ export class LuaRuntime {
         end
 
         return h
+      end
+
+      -- spawn_at_scale(id, scale, x, y) — convenience for spawn(id, {scale=s, x=x, y=y})
+      function spawn_at_scale(id, scale, x, y)
+        return spawn(id, {scale = scale, x = x, y = y})
       end
     `);
   }

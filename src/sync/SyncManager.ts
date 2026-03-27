@@ -59,6 +59,28 @@ export interface RemoteUser {
 }
 
 /**
+ * Turtle state broadcast via Yjs awareness for multiplayer visibility.
+ */
+export interface AwarenessTurtleState {
+  id: string;
+  x: number;
+  y: number;
+  heading: number;
+  color: string;
+  visible: boolean;
+}
+
+/**
+ * Remote turtles from another client, keyed by user info.
+ */
+export interface RemoteTurtles {
+  userId: string;
+  userName: string;
+  userColor: string;
+  turtles: AwarenessTurtleState[];
+}
+
+/**
  * WebSocket collaboration engine with automatic reconnection and cursor sync.
  *
  * SyncManager wraps `y-websocket`'s {@link WebsocketProvider} to connect a local
@@ -96,6 +118,8 @@ export class SyncManager {
   private listeners: Set<(state: ConnectionState) => void> = new Set();
   private userProfile: UserProfile | null = null;
   private remoteUserListeners: Set<(users: RemoteUser[]) => void> = new Set();
+  private remoteTurtleListeners: Set<(turtles: RemoteTurtles[]) => void> =
+    new Set();
   private reconnectConfig: ReconnectConfig;
   private reconnectAttempts = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -405,6 +429,63 @@ export class SyncManager {
     };
   }
 
+  /**
+   * Broadcasts local turtle states to all remote collaborators via awareness.
+   *
+   * @param turtles - Array of turtle states to broadcast. Pass an empty array to clear.
+   */
+  updateTurtleStates(turtles: AwarenessTurtleState[]): void {
+    if (this.provider) {
+      this.provider.awareness.setLocalStateField("turtles", turtles);
+    }
+  }
+
+  /**
+   * Returns turtle states from all remote clients.
+   *
+   * @returns Array of {@link RemoteTurtles}, one per remote client that has active turtles.
+   */
+  getRemoteTurtles(): RemoteTurtles[] {
+    if (!this.provider) return [];
+
+    const states = this.provider.awareness.getStates();
+    const clientId = this.provider.awareness.clientID;
+    const result: RemoteTurtles[] = [];
+
+    states.forEach((state, id) => {
+      if (id === clientId) return;
+      const turtles = state.turtles as AwarenessTurtleState[] | undefined;
+      if (!turtles || turtles.length === 0) return;
+
+      const user = state.user as
+        | { id?: string; name?: string; color?: string }
+        | undefined;
+      result.push({
+        userId: user?.id ?? String(id),
+        userName: user?.name ?? "Unknown",
+        userColor: user?.color ?? "#888888",
+        turtles,
+      });
+    });
+
+    return result;
+  }
+
+  /**
+   * Registers a callback invoked whenever remote turtle states change.
+   *
+   * @param callback - Receives the full list of remote clients' turtle states.
+   * @returns An unsubscribe function that removes the callback.
+   */
+  onRemoteTurtlesChange(
+    callback: (turtles: RemoteTurtles[]) => void,
+  ): () => void {
+    this.remoteTurtleListeners.add(callback);
+    return () => {
+      this.remoteTurtleListeners.delete(callback);
+    };
+  }
+
   private notifyListeners(state: ConnectionState): void {
     this.currentState = state;
     for (const listener of this.listeners) {
@@ -416,6 +497,14 @@ export class SyncManager {
     const users = this.getRemoteUsers();
     for (const listener of this.remoteUserListeners) {
       listener(users);
+    }
+    this.notifyRemoteTurtleListeners();
+  }
+
+  private notifyRemoteTurtleListeners(): void {
+    const turtles = this.getRemoteTurtles();
+    for (const listener of this.remoteTurtleListeners) {
+      listener(turtles);
     }
   }
 
@@ -432,5 +521,6 @@ export class SyncManager {
     this.disconnectInternal();
     this.listeners.clear();
     this.remoteUserListeners.clear();
+    this.remoteTurtleListeners.clear();
   }
 }

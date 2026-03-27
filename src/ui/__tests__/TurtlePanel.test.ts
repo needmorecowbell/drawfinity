@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { TurtlePanel } from "../TurtlePanel";
+import { DrawfinityDoc } from "../../crdt";
 
 const storageMap = new Map<string, string>();
 beforeEach(() => {
@@ -284,8 +285,190 @@ describe("TurtlePanel", () => {
       scriptsBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
 
       const items = document.querySelectorAll(".turtle-exchange-item");
-      // Snapshot has 5 scripts
+      // Snapshot has 5 scripts (advanced examples are in turtle-scripts-pending.md)
       expect(items.length).toBe(5);
+    });
+  });
+
+  describe("Share Script functionality", () => {
+    it("renders a Share button", () => {
+      panel.show();
+      const shareBtn = document.querySelector(".turtle-btn-share") as HTMLButtonElement;
+      expect(shareBtn).not.toBeNull();
+      expect(shareBtn.textContent).toBe("Share");
+    });
+
+    it("Share button does nothing when script is empty", () => {
+      panel.show();
+      panel.setScript("");
+      const shareBtn = document.querySelector(".turtle-btn-share") as HTMLButtonElement;
+      shareBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      // No error console line about requiring collaborative session since script is empty
+      const errorLines = document.querySelectorAll(".turtle-console-error");
+      expect(errorLines.length).toBe(0);
+    });
+
+    it("Share button shows error when no DrawfinityDoc is set", () => {
+      panel.show();
+      panel.setScript("forward(100)");
+      const shareBtn = document.querySelector(".turtle-btn-share") as HTMLButtonElement;
+      shareBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      const errorLines = document.querySelectorAll(".turtle-console-error");
+      expect(errorLines.length).toBe(1);
+      expect(errorLines[0].textContent).toContain("collaborative session");
+    });
+
+    it("Share button publishes script to DrawfinityDoc", () => {
+      const doc = new DrawfinityDoc();
+      panel.setDrawfinityDoc(doc);
+      panel.show();
+      panel.setScript("forward(100)");
+
+      const shareBtn = document.querySelector(".turtle-btn-share") as HTMLButtonElement;
+      shareBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+      const shared = doc.getSharedScripts();
+      expect(shared.length).toBe(1);
+      expect(shared[0].code).toBe("forward(100)");
+      expect(shared[0].author).toBe("Me");
+
+      const infoLines = document.querySelectorAll(".turtle-console-info");
+      const shareMsg = Array.from(infoLines).find((l) =>
+        l.textContent?.includes("Script shared"),
+      );
+      expect(shareMsg).toBeTruthy();
+    });
+
+    it("Share button fires onShare callback", () => {
+      const onShare = vi.fn();
+      panel = new TurtlePanel("test-drawing", { onShare });
+      const doc = new DrawfinityDoc();
+      panel.setDrawfinityDoc(doc);
+      panel.show();
+      panel.setScript("right(90)");
+
+      const shareBtn = document.querySelector(".turtle-btn-share") as HTMLButtonElement;
+      shareBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      expect(onShare).toHaveBeenCalledWith("right(90)");
+    });
+
+    it("uses first comment line as script title", () => {
+      const doc = new DrawfinityDoc();
+      panel.setDrawfinityDoc(doc);
+      panel.show();
+      panel.setScript("-- My Cool Script\nforward(100)");
+
+      const shareBtn = document.querySelector(".turtle-btn-share") as HTMLButtonElement;
+      shareBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+      const shared = doc.getSharedScripts();
+      expect(shared[0].title).toBe("My Cool Script");
+    });
+
+    it("exchange browser shows shared scripts section when doc is set", () => {
+      const doc = new DrawfinityDoc();
+      doc.shareScript({
+        id: "test-1",
+        title: "Test Script",
+        code: "forward(50)",
+        author: "Alice",
+        sharedAt: Date.now(),
+      });
+      panel.setDrawfinityDoc(doc);
+      panel.show();
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockRejectedValue(new Error("offline")),
+      );
+
+      const btns = Array.from(document.querySelectorAll(".turtle-btn-secondary"));
+      const scriptsBtn = btns.find((b) =>
+        b.textContent?.startsWith("Scripts"),
+      ) as HTMLButtonElement;
+      scriptsBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+      const sharedLabel = document.querySelector(".turtle-shared-scripts-label");
+      expect(sharedLabel).not.toBeNull();
+      expect(sharedLabel!.textContent).toBe("Shared Scripts");
+
+      const sharedItems = document.querySelectorAll(".turtle-shared-script-item");
+      expect(sharedItems.length).toBe(1);
+    });
+
+    it("Run Shared button loads and runs shared script", () => {
+      const onRun = vi.fn();
+      panel = new TurtlePanel("test-drawing", { onRun });
+      const doc = new DrawfinityDoc();
+      doc.shareScript({
+        id: "test-run",
+        title: "Runner",
+        code: "left(45)",
+        author: "Bob",
+        sharedAt: Date.now(),
+      });
+      panel.setDrawfinityDoc(doc);
+      panel.show();
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockRejectedValue(new Error("offline")),
+      );
+
+      const btns = Array.from(document.querySelectorAll(".turtle-btn-secondary"));
+      const scriptsBtn = btns.find((b) =>
+        b.textContent?.startsWith("Scripts"),
+      ) as HTMLButtonElement;
+      scriptsBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+      const runSharedBtn = document.querySelector(".turtle-shared-run-btn") as HTMLButtonElement;
+      expect(runSharedBtn).not.toBeNull();
+      expect(runSharedBtn.textContent).toBe("Run Shared");
+      runSharedBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+      expect(panel.getScript()).toBe("left(45)");
+      expect(onRun).toHaveBeenCalledWith("left(45)");
+    });
+
+    it("no shared scripts section when doc has no shared scripts", () => {
+      const doc = new DrawfinityDoc();
+      panel.setDrawfinityDoc(doc);
+      panel.show();
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockRejectedValue(new Error("offline")),
+      );
+
+      const btns = Array.from(document.querySelectorAll(".turtle-btn-secondary"));
+      const scriptsBtn = btns.find((b) =>
+        b.textContent?.startsWith("Scripts"),
+      ) as HTMLButtonElement;
+      scriptsBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+      const sharedLabel = document.querySelector(".turtle-shared-scripts-label");
+      expect(sharedLabel).toBeNull();
+    });
+
+    it("notification appears when a new script is shared via doc", () => {
+      const doc = new DrawfinityDoc();
+      panel.setDrawfinityDoc(doc);
+      panel.show();
+
+      doc.shareScript({
+        id: "remote-1",
+        title: "Remote Script",
+        code: "forward(200)",
+        author: "Charlie",
+        sharedAt: Date.now(),
+      });
+
+      const infoLines = document.querySelectorAll(".turtle-console-info");
+      const notification = Array.from(infoLines).find((l) =>
+        l.textContent?.includes("Charlie shared a turtle script"),
+      );
+      expect(notification).toBeTruthy();
+      expect(notification!.textContent).toContain("Remote Script");
     });
   });
 });

@@ -664,4 +664,93 @@ describe("TurtleState", () => {
       expect(state.y).toBeCloseTo(0, 5);
     });
   });
+
+  describe("scaleFactor", () => {
+    it("defaults to 1", () => {
+      expect(state.scaleFactor).toBe(1);
+    });
+
+    it("multiplies forward distance by scaleFactor", () => {
+      state.scaleFactor = 0.5;
+      state.applyCommand({ type: "forward", distance: 100 });
+      // forward(100) at scale 0.5 → moves 50 units
+      expect(state.y).toBeCloseTo(-50, 5);
+    });
+
+    it("multiplies backward distance by scaleFactor", () => {
+      state.scaleFactor = 0.25;
+      state.applyCommand({ type: "backward", distance: 200 });
+      // backward(200) at scale 0.25 → moves 50 units forward in y
+      expect(state.y).toBeCloseTo(50, 5);
+    });
+
+    it("does not scale goto coordinates", () => {
+      state.scaleFactor = 0.5;
+      state.applyCommand({ type: "goto", x: 100, y: 100 });
+      expect(state.x).toBe(100);
+      expect(state.y).toBe(100);
+    });
+
+    it("produces correctly scaled segment from forward", () => {
+      state.scaleFactor = 2;
+      const seg = state.applyCommand({ type: "forward", distance: 50 });
+      // forward(50) at scale 2 → moves 100 units up (y = -100)
+      expect(state.y).toBeCloseTo(-100, 5);
+      expect(seg).not.toBeNull();
+      expect(seg!.toY).toBeCloseTo(-100, 5);
+    });
+
+    it("does NOT scale pen width by default", () => {
+      state.scaleFactor = 0.5;
+      state.pen.width = 4;
+      const seg = state.applyCommand({ type: "forward", distance: 100 });
+      expect(seg).not.toBeNull();
+      // Pen width should remain 4 (base * zoomScale=1 * presetMul=1 * penScale=1)
+      expect(seg!.pen.width).toBeCloseTo(4, 5);
+    });
+
+    it("scales pen width when scalePen is true", () => {
+      state.scaleFactor = 0.5;
+      state.scalePen = true;
+      state.pen.width = 4;
+      const seg = state.applyCommand({ type: "forward", distance: 100 });
+      expect(seg).not.toBeNull();
+      // Pen width should be 4 * 0.5 = 2
+      expect(seg!.pen.width).toBeCloseTo(2, 5);
+    });
+
+    it("scale_pen command toggles scalePen", () => {
+      expect(state.scalePen).toBe(false);
+      state.applyCommand({ type: "scale_pen", enabled: true } as TurtleCommand);
+      expect(state.scalePen).toBe(true);
+      state.applyCommand({ type: "scale_pen", enabled: false } as TurtleCommand);
+      expect(state.scalePen).toBe(false);
+    });
+
+    it("reset() clears scaleFactor and scalePen", () => {
+      state.scaleFactor = 0.5;
+      state.scalePen = true;
+      state.reset();
+      expect(state.scaleFactor).toBe(1);
+      expect(state.scalePen).toBe(false);
+    });
+
+    it("scales pen width on moveTo when scalePen is true", () => {
+      state.scaleFactor = 0.25;
+      state.scalePen = true;
+      state.pen.width = 8;
+      const seg = state.applyCommand({ type: "goto", x: 10, y: 10 });
+      expect(seg).not.toBeNull();
+      // Pen width should be 8 * 0.25 = 2
+      expect(seg!.pen.width).toBeCloseTo(2, 5);
+    });
+
+    it("compounds scale across parent-child inheritance", () => {
+      // Simulate parent at 0.5 scale spawning child at 0.5 → child should be 0.25
+      state.scaleFactor = 0.25; // parent(0.5) × child(0.5)
+      state.applyCommand({ type: "forward", distance: 100 });
+      // forward(100) at scale 0.25 → moves 25 units
+      expect(state.y).toBeCloseTo(-25, 5);
+    });
+  });
 });

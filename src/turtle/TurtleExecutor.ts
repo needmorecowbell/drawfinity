@@ -1,6 +1,8 @@
 import { LuaRuntime, TurtleCommand, ExecutionResult } from "./LuaRuntime";
 import { TurtleRegistry } from "./TurtleRegistry";
 import { MessageBus, Blackboard } from "./TurtleMessaging";
+import { TurtleAwareness } from "./TurtleAwareness";
+import type { SyncManager } from "../sync/SyncManager";
 import type { DocumentModel } from "../model/Stroke";
 
 /** Events emitted by TurtleExecutor during script execution. */
@@ -42,8 +44,12 @@ export class TurtleExecutor {
 
   private messageBus: MessageBus;
   private blackboard: Blackboard;
+  private awareness: TurtleAwareness | null = null;
+  private syncManager: SyncManager | null = null;
   private running = false;
   private stopRequested = false;
+  /** Raw camera zoom level, used for LOD pixel-size calculations. */
+  private cameraZoom = 1;
 
   constructor(
     runtime: LuaRuntime,
@@ -59,6 +65,23 @@ export class TurtleExecutor {
     this.events = events;
     this.messageBus = new MessageBus();
     this.blackboard = new Blackboard();
+  }
+
+  /**
+   * Attach a SyncManager for multiplayer turtle awareness broadcasting.
+   * When set, turtle states are broadcast to remote clients during replay.
+   */
+  setSyncManager(syncManager: SyncManager | null): void {
+    this.syncManager = syncManager;
+    if (syncManager) {
+      this.awareness = new TurtleAwareness(
+        syncManager,
+        this.registry,
+        this.scriptId,
+      );
+    } else {
+      this.awareness = null;
+    }
   }
 
   /** Whether a script is currently executing. */
@@ -112,6 +135,9 @@ export class TurtleExecutor {
     this.running = true;
     this.stopRequested = false;
 
+    // Store raw camera zoom for LOD pixel-size calculations
+    this.cameraZoom = zoom > 0 ? zoom : 1;
+
     // Clear spawned (non-main) turtles, keep the main turtle's state stable
     this.clearSpawnedTurtles();
     const mainId = this.ensureMainTurtle();
@@ -129,6 +155,7 @@ export class TurtleExecutor {
     this.runtime.setActiveTurtle("main");
     this.runtime.setSpawnContext(this.registry, this.scriptId, this.doc);
     this.runtime.setMessagingContext(this.messageBus, this.blackboard);
+    this.runtime.setSyncManager(this.syncManager);
 
     this.events.onStart?.();
 
@@ -136,6 +163,7 @@ export class TurtleExecutor {
     const luaResult = await this.runtime.execute(script);
     if (!luaResult.success) {
       this.running = false;
+      this.awareness?.clear();
       const result: ExecutionResult = {
         success: false,
         error: luaResult.error,
@@ -167,6 +195,10 @@ export class TurtleExecutor {
     for (const [, entry] of ownedAfterReplay) {
       entry.drawing.flush();
     }
+
+    // Send final awareness update then clear remote indicators
+    this.awareness?.forceUpdate();
+    this.awareness?.clear();
 
     this.running = false;
     this.events.onComplete?.(replayResult);
@@ -205,6 +237,7 @@ export class TurtleExecutor {
     }
 
     // Interleaved replay: one command per active turtle per tick
+    let tickCount = 0;
     while (true) {
       if (this.stopRequested) {
         return { success: false, error: "Execution stopped by user" };
@@ -271,7 +304,17 @@ export class TurtleExecutor {
         }
       }
 
-      this.events.onStep?.();
+      // Throttle onStep callbacks when many turtles are active at speed(0).
+      // At high turtle counts, per-tick indicator updates are wasteful since
+      // the user sees the final result instantly anyway.
+      tickCount++;
+      const throttle = maxDelay === 0 && activeTurtles.length > 100
+        ? Math.min(activeTurtles.length, 500)
+        : 1;
+      if (tickCount % throttle === 0) {
+        this.events.onStep?.();
+        this.awareness?.update();
+      }
 
       if (maxDelay > 0) {
         await this.wait(maxDelay);
@@ -313,6 +356,10 @@ export class TurtleExecutor {
         spawnedEntry.state.x = mainOrigin.x + (cmd.x ?? 0);
         spawnedEntry.state.y = mainOrigin.y + (cmd.y ?? 0);
         spawnedEntry.state.zoomScale = mainEntry.state.zoomScale;
+        // Inherit parent's speed so spawned turtles batch at speed(0)
+        spawnedEntry.state.speed = mainEntry.state.speed;
+        // Inherit parent's scaleFactor × child's own scale
+        spawnedEntry.state.scaleFactor = mainEntry.state.scaleFactor * (cmd.scale ?? 1);
       }
       return;
     }
@@ -364,7 +411,7 @@ export class TurtleExecutor {
     // sleep and speed are handled via the command replay timing
     // but speed still needs to update state
     const segment = entry.state.applyCommand(cmd);
-    if (segment) {
+    if (segment && !this.isLodCulled(entry, segment)) {
       if (entry.state.penMode === "erase") {
         // Flush all turtles' pending segments so they can be erased
         const owned = this.registry.getOwned(this.scriptId);
@@ -394,15 +441,21 @@ export class TurtleExecutor {
 
     // Handle shape commands — create shapes at the turtle's current position
     if (cmd.type === "rectangle" || cmd.type === "ellipse" || cmd.type === "polygon" || cmd.type === "star") {
+      // LOD check for shapes: use the largest dimension as the reference size
+      const shapeSize = this.getShapeSize(cmd);
+      const effectiveSize = shapeSize * entry.state.scaleFactor * this.cameraZoom;
+      if (effectiveSize < entry.state.minPixelSize) return;
       const worldPos = entry.state.getWorldPosition();
       const scale = entry.state.worldSpace ? 1 : Math.max(1e-3, Math.min(1e3, entry.state.zoomScale));
+      const sf = entry.state.scaleFactor;
+      const penScale = entry.state.scalePen ? sf : 1;
       const headingRad = (entry.state.angle * Math.PI) / 180;
       const baseOpts = {
         x: worldPos.x,
         y: worldPos.y,
         rotation: headingRad,
         strokeColor: entry.state.pen.color,
-        strokeWidth: entry.state.pen.width * scale * entry.state.presetWidthMultiplier,
+        strokeWidth: entry.state.pen.width * scale * entry.state.presetWidthMultiplier * penScale,
         fillColor: entry.state.fillColor,
         opacity: entry.state.pen.opacity * entry.state.presetOpacity,
       };
@@ -410,18 +463,18 @@ export class TurtleExecutor {
         entry.drawing.createShape({
           ...baseOpts,
           type: "rectangle",
-          width: cmd.width * scale,
-          height: cmd.height * scale,
+          width: cmd.width * scale * sf,
+          height: cmd.height * scale * sf,
         });
       } else if (cmd.type === "ellipse") {
         entry.drawing.createShape({
           ...baseOpts,
           type: "ellipse",
-          width: cmd.width * scale,
-          height: cmd.height * scale,
+          width: cmd.width * scale * sf,
+          height: cmd.height * scale * sf,
         });
       } else if (cmd.type === "polygon") {
-        const diameter = cmd.radius * 2 * scale;
+        const diameter = cmd.radius * 2 * scale * sf;
         entry.drawing.createShape({
           ...baseOpts,
           type: "polygon",
@@ -430,7 +483,7 @@ export class TurtleExecutor {
           sides: cmd.sides,
         });
       } else if (cmd.type === "star") {
-        const diameter = cmd.outerRadius * 2 * scale;
+        const diameter = cmd.outerRadius * 2 * scale * sf;
         entry.drawing.createShape({
           ...baseOpts,
           type: "star",
@@ -440,6 +493,42 @@ export class TurtleExecutor {
           starInnerRadius: cmd.innerRadius / cmd.outerRadius,
         });
       }
+    }
+  }
+
+  /**
+   * Check whether a movement segment should be LOD-culled.
+   * Returns true when the on-screen pixel size falls below
+   * the turtle's `minPixelSize` threshold.
+   */
+  private isLodCulled(
+    entry: { state: import("./TurtleState").TurtleState },
+    segment: import("./TurtleState").MovementSegment,
+  ): boolean {
+    if (entry.state.minPixelSize <= 0) return false;
+    const dx = segment.toX - segment.fromX;
+    const dy = segment.toY - segment.fromY;
+    const worldDistance = Math.sqrt(dx * dx + dy * dy);
+    // Segment is in world coords. On-screen size = worldDistance * cameraZoom.
+    // The zoom-aware system sets zoomScale=1/cameraZoom, so worldDistance already
+    // incorporates that. scaleFactor will further reduce worldDistance when
+    // fractal spawning (task 1) wires it into movement.
+    const effectiveSize = worldDistance * this.cameraZoom;
+    return effectiveSize < entry.state.minPixelSize;
+  }
+
+  /** Get the reference size for a shape command (largest dimension). */
+  private getShapeSize(cmd: TurtleCommand): number {
+    switch (cmd.type) {
+      case "rectangle":
+      case "ellipse":
+        return Math.max(cmd.width, cmd.height);
+      case "polygon":
+        return cmd.radius * 2;
+      case "star":
+        return cmd.outerRadius * 2;
+      default:
+        return 0;
     }
   }
 

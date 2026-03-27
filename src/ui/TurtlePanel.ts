@@ -5,6 +5,7 @@ import type {
   ExchangeSnapshot,
 } from "../turtle";
 import snapshotData from "../turtle/exchange/exchange-snapshot.json";
+import type { DrawfinityDoc } from "../crdt";
 
 export interface TurtlePanelCallbacks {
   /** Called when the user clicks Run. Receives the script text. */
@@ -15,6 +16,8 @@ export interface TurtlePanelCallbacks {
   onSpeedChange?: (speed: number) => void;
   /** Called when the user wants to place the turtle on the canvas. */
   onPlaceRequest?: () => void;
+  /** Called when the user clicks Share. Receives the script text. */
+  onShare?: (script: string) => void;
 }
 
 const STORAGE_KEY_PREFIX = "drawfinity:turtle-script:";
@@ -50,6 +53,11 @@ export class TurtlePanel {
   private exchangeOverlay: HTMLElement | null = null;
   private updateResult: UpdateCheckResult | null = null;
   private scriptsBtnBadge: HTMLElement | null = null;
+  private drawfinityDoc: DrawfinityDoc | null = null;
+  private shareBtn!: HTMLButtonElement;
+  private userDisplayName: string = "Me";
+  private docChangeCallback: (() => void) | null = null;
+  private exchangeSharedCallback: (() => void) | null = null;
 
   constructor(drawingId: string, callbacks?: TurtlePanelCallbacks) {
     this.callbacks = callbacks ?? {};
@@ -230,6 +238,17 @@ export class TurtlePanel {
     });
     bottomBar.appendChild(this.placeBtn);
 
+    // Share button
+    this.shareBtn = document.createElement("button");
+    this.shareBtn.className = "turtle-btn turtle-btn-secondary turtle-btn-share";
+    this.shareBtn.textContent = "Share";
+    this.shareBtn.title = "Share script with collaborators";
+    this.shareBtn.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.handleShare();
+    });
+    bottomBar.appendChild(this.shareBtn);
+
     // Unified script browser button
     const scriptsBtnWrap = document.createElement("div");
     scriptsBtnWrap.className = "turtle-scripts-btn-wrap";
@@ -303,6 +322,64 @@ export class TurtlePanel {
     const script = this.editor.value.trim();
     if (!script) return;
     this.callbacks.onRun?.(script);
+  }
+
+  private handleShare(): void {
+    const script = this.editor.value.trim();
+    if (!script) return;
+    if (!this.drawfinityDoc) {
+      this.appendConsole("Share requires a collaborative session", "error");
+      return;
+    }
+    const id = `shared-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const firstLine = script.split("\n")[0].replace(/^--\s*/, "").trim();
+    const title = firstLine.length > 0 && firstLine.length <= 60 ? firstLine : "Shared Script";
+    this.drawfinityDoc.shareScript({
+      id,
+      title,
+      code: script,
+      author: this.userDisplayName,
+      sharedAt: Date.now(),
+    });
+    this.appendConsole("Script shared with collaborators", "info");
+    this.callbacks.onShare?.(script);
+  }
+
+  /**
+   * Connect the panel to a DrawfinityDoc for shared script support.
+   * Listens for changes and shows notifications when scripts are shared.
+   */
+  setDrawfinityDoc(doc: DrawfinityDoc | null): void {
+    // Clean up previous listener
+    if (this.drawfinityDoc && this.docChangeCallback) {
+      this.drawfinityDoc.offSharedScriptsChanged(this.docChangeCallback);
+      this.docChangeCallback = null;
+    }
+    this.drawfinityDoc = doc;
+    if (doc) {
+      let previousIds = new Set(doc.getSharedScripts().map((s) => s.id));
+      this.docChangeCallback = () => {
+        const currentScripts = doc.getSharedScripts();
+        const currentIds = new Set(currentScripts.map((s) => s.id));
+        for (const script of currentScripts) {
+          if (!previousIds.has(script.id)) {
+            this.appendConsole(
+              `${script.author} shared a turtle script: "${script.title}"`,
+              "info",
+            );
+          }
+        }
+        previousIds = currentIds;
+      };
+      doc.onSharedScriptsChanged(this.docChangeCallback);
+    }
+  }
+
+  /**
+   * Set the display name used when sharing scripts.
+   */
+  setUserDisplayName(name: string): void {
+    this.userDisplayName = name;
   }
 
   /** Append a message to the console log. */
@@ -493,6 +570,86 @@ export class TurtlePanel {
     const scriptList = document.createElement("div");
     scriptList.className = "turtle-exchange-list";
     container.appendChild(scriptList);
+
+    // Shared Scripts section (from Yjs doc)
+    const sharedSection = document.createElement("div");
+    sharedSection.className = "turtle-shared-scripts-section";
+    container.appendChild(sharedSection);
+
+    const renderSharedScripts = () => {
+      sharedSection.innerHTML = "";
+      if (!this.drawfinityDoc) return;
+      const shared = this.drawfinityDoc.getSharedScripts();
+      if (shared.length === 0) return;
+
+      const sharedLabel = document.createElement("div");
+      sharedLabel.className = "turtle-exchange-title turtle-shared-scripts-label";
+      sharedLabel.textContent = "Shared Scripts";
+      sharedSection.appendChild(sharedLabel);
+
+      const sharedList = document.createElement("div");
+      sharedList.className = "turtle-exchange-list turtle-shared-scripts-list";
+
+      for (const script of shared) {
+        const item = document.createElement("div");
+        item.className = "turtle-exchange-item turtle-shared-script-item";
+
+        const info = document.createElement("div");
+        info.className = "turtle-exchange-item-info";
+
+        const titleLine = document.createElement("div");
+        titleLine.className = "turtle-exchange-item-title";
+        const titleText = document.createElement("span");
+        titleText.textContent = script.title;
+        titleLine.appendChild(titleText);
+
+        const sharedBadge = document.createElement("span");
+        sharedBadge.className = "turtle-exchange-status turtle-exchange-status-shared";
+        sharedBadge.textContent = "Shared";
+        titleLine.appendChild(sharedBadge);
+
+        info.appendChild(titleLine);
+
+        const meta = document.createElement("div");
+        meta.className = "turtle-exchange-item-meta";
+        const authorSpan = document.createElement("span");
+        authorSpan.className = "turtle-exchange-item-author";
+        authorSpan.textContent = `by ${script.author}`;
+        meta.appendChild(authorSpan);
+        const dateSpan = document.createElement("span");
+        dateSpan.className = "turtle-exchange-item-date";
+        dateSpan.textContent = new Date(script.sharedAt).toLocaleString();
+        meta.appendChild(dateSpan);
+        info.appendChild(meta);
+
+        item.appendChild(info);
+
+        const runBtn = document.createElement("button");
+        runBtn.className = "turtle-btn turtle-btn-run turtle-shared-run-btn";
+        runBtn.textContent = "Run Shared";
+        runBtn.addEventListener("pointerdown", (e) => {
+          e.stopPropagation();
+          this.setScript(script.code);
+          this.closeExchangeBrowser();
+          this.callbacks.onRun?.(script.code);
+        });
+        item.appendChild(runBtn);
+
+        sharedList.appendChild(item);
+      }
+
+      sharedSection.appendChild(sharedList);
+    };
+
+    renderSharedScripts();
+    if (this.drawfinityDoc) {
+      // Clean up previous exchange browser listener if any
+      if (this.exchangeSharedCallback) {
+        this.drawfinityDoc.offSharedScriptsChanged(this.exchangeSharedCallback);
+      }
+      this.exchangeSharedCallback = () => renderSharedScripts();
+      this.drawfinityDoc.onSharedScriptsChanged(this.exchangeSharedCallback);
+    }
 
     // Footer with repo link
     const footer = document.createElement("div");
@@ -781,6 +938,10 @@ export class TurtlePanel {
   }
 
   private closeExchangeBrowser(): void {
+    if (this.exchangeSharedCallback && this.drawfinityDoc) {
+      this.drawfinityDoc.offSharedScriptsChanged(this.exchangeSharedCallback);
+      this.exchangeSharedCallback = null;
+    }
     if (this.exchangeOverlay) {
       this.exchangeOverlay.remove();
       this.exchangeOverlay = null;
@@ -788,6 +949,10 @@ export class TurtlePanel {
   }
 
   destroy(): void {
+    if (this.drawfinityDoc && this.docChangeCallback) {
+      this.drawfinityDoc.offSharedScriptsChanged(this.docChangeCallback);
+      this.docChangeCallback = null;
+    }
     this.closeExchangeBrowser();
     this.hide();
   }

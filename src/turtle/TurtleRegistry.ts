@@ -18,6 +18,8 @@ export interface NearbyTurtle {
   y: number;
   heading: number;
   distance: number;
+  /** True when the turtle belongs to a remote client (multiplayer awareness). */
+  remote?: boolean;
 }
 
 /** Options for spawning a new turtle. */

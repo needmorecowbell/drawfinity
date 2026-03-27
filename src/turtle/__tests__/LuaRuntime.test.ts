@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { LuaRuntime, TurtleCommand } from "../LuaRuntime";
 import { TurtleRegistry } from "../TurtleRegistry";
+import { MessageBus, Blackboard } from "../TurtleMessaging";
 import { Stroke, DocumentModel } from "../../model/Stroke";
 
 describe("LuaRuntime", () => {
@@ -1783,6 +1784,821 @@ describe("LuaRuntime", () => {
       `);
       expect(result.success).toBe(false);
       expect(result.error).toContain("integer >= 2");
+    });
+  });
+
+  describe("min_pixel_size", () => {
+    it("produces min_pixel_size command", async () => {
+      const result = await runtime.execute("min_pixel_size(2.5)");
+      expect(result.success).toBe(true);
+      const cmds = runtime.getCommands();
+      expect(cmds).toHaveLength(1);
+      expect(cmds[0]).toMatchObject({ type: "min_pixel_size", pixels: 2.5 });
+    });
+
+    it("rejects negative values", async () => {
+      const result = await runtime.execute("min_pixel_size(-1)");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("non-negative");
+    });
+
+    it("accepts zero to disable LOD", async () => {
+      const result = await runtime.execute("min_pixel_size(0)");
+      expect(result.success).toBe(true);
+      const cmds = runtime.getCommands();
+      expect(cmds[0]).toMatchObject({ type: "min_pixel_size", pixels: 0 });
+    });
+
+    it("rejects non-number arguments", async () => {
+      const result = await runtime.execute('min_pixel_size("big")');
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("non-negative number");
+    });
+  });
+
+  describe("scale_pen", () => {
+    it("produces a scale_pen command", async () => {
+      await runtime.execute("scale_pen(true)");
+      const cmds = runtime.getCommands();
+      expect(cmds).toHaveLength(1);
+      expect(cmds[0].type).toBe("scale_pen");
+      if (cmds[0].type === "scale_pen") {
+        expect(cmds[0].enabled).toBe(true);
+      }
+    });
+
+    it("produces false when called with false/nil", async () => {
+      await runtime.execute("scale_pen(false)");
+      const cmds = runtime.getCommands();
+      expect(cmds[0].type).toBe("scale_pen");
+      if (cmds[0].type === "scale_pen") {
+        expect(cmds[0].enabled).toBe(false);
+      }
+    });
+  });
+
+  describe("spawn with scale", () => {
+    class MockDocument implements DocumentModel {
+      strokes: Stroke[] = [];
+      addStroke(stroke: Stroke): void { this.strokes.push(stroke); }
+      getStrokes(): Stroke[] { return this.strokes; }
+      removeStroke(strokeId: string): boolean {
+        const idx = this.strokes.findIndex((s) => s.id === strokeId);
+        if (idx === -1) return false;
+        this.strokes.splice(idx, 1);
+        return true;
+      }
+    }
+
+    let registry: TurtleRegistry;
+    let doc: MockDocument;
+    const scriptId = "scale-test";
+
+    beforeEach(() => {
+      registry = new TurtleRegistry();
+      doc = new MockDocument();
+      registry.createMain(scriptId, doc);
+      runtime.setSpawnContext(registry, scriptId, doc);
+    });
+
+    it("passes scale in spawn command", async () => {
+      await runtime.execute('spawn("s1", {scale=0.5})');
+      const cmds = runtime.getCommands();
+      expect(cmds).toHaveLength(1);
+      if (cmds[0].type === "spawn") {
+        expect(cmds[0].scale).toBe(0.5);
+      }
+    });
+
+    it("sets scaleFactor on spawned turtle state", async () => {
+      await runtime.execute('spawn("s1", {scale=0.5})');
+      const entry = registry.get(`${scriptId}:s1`);
+      expect(entry).toBeTruthy();
+      expect(entry!.state.scaleFactor).toBe(0.5);
+    });
+
+    it("inherits parent scale × child scale", async () => {
+      // Main turtle at default scale 1, spawn child at 0.5
+      await runtime.execute(`
+        local t1 = spawn("s1", {scale=0.5})
+      `);
+      const child = registry.get(`${scriptId}:s1`);
+      expect(child!.state.scaleFactor).toBe(0.5);
+    });
+
+    it("spawn_at_scale is sugar for spawn with scale option", async () => {
+      await runtime.execute('spawn_at_scale("sat1", 0.25, 10, 20)');
+      const cmds = runtime.getCommands();
+      expect(cmds).toHaveLength(1);
+      if (cmds[0].type === "spawn") {
+        expect(cmds[0].id).toBe("sat1");
+        expect(cmds[0].scale).toBe(0.25);
+        expect(cmds[0].x).toBe(10);
+        expect(cmds[0].y).toBe(20);
+      }
+    });
+
+    it("scale defaults to 1 when not provided", async () => {
+      await runtime.execute('spawn("noscale")');
+      const cmds = runtime.getCommands();
+      if (cmds[0].type === "spawn") {
+        expect(cmds[0].scale).toBeUndefined();
+      }
+      const entry = registry.get(`${scriptId}:noscale`);
+      expect(entry!.state.scaleFactor).toBe(1);
+    });
+
+    it("handle has scale_pen method", async () => {
+      await runtime.execute(`
+        local t = spawn("sp1")
+        t.scale_pen(true)
+      `);
+      const cmds = runtime.getCommands();
+      const scalePenCmd = cmds.find((c) => c.type === "scale_pen");
+      expect(scalePenCmd).toBeTruthy();
+      if (scalePenCmd && scalePenCmd.type === "scale_pen") {
+        expect(scalePenCmd.enabled).toBe(true);
+        expect(scalePenCmd.turtleId).toBe("sp1");
+      }
+    });
+
+    it("handle has min_pixel_size method", async () => {
+      await runtime.execute(`
+        local t = spawn("mp1")
+        t.min_pixel_size(5)
+      `);
+      const cmds = runtime.getCommands();
+      const mpCmd = cmds.find((c) => c.type === "min_pixel_size");
+      expect(mpCmd).toBeTruthy();
+      if (mpCmd && mpCmd.type === "min_pixel_size") {
+        expect(mpCmd.pixels).toBe(5);
+        expect(mpCmd.turtleId).toBe("mp1");
+      }
+    });
+  });
+
+  describe("Fractal zoom tree example script", () => {
+    let registry: TurtleRegistry;
+    let doc: { strokes: Stroke[]; addStroke: (s: Stroke) => void; getStrokes: () => Stroke[]; removeStroke: (id: string) => boolean };
+    const scriptId = "fractal-zoom-tree-test";
+
+    beforeEach(() => {
+      registry = new TurtleRegistry();
+      doc = {
+        strokes: [],
+        addStroke(s: Stroke) { this.strokes.push(s); },
+        getStrokes() { return this.strokes; },
+        removeStroke(id: string) {
+          const idx = this.strokes.findIndex((s) => s.id === id);
+          if (idx === -1) return false;
+          this.strokes.splice(idx, 1);
+          return true;
+        },
+      };
+      registry.createMain(scriptId, doc);
+      runtime.setSpawnContext(registry, scriptId, doc);
+    });
+
+    it("executes depth-2 fractal zoom tree without errors", async () => {
+      const result = await runtime.execute(`
+        speed(0)
+        hide()
+        local ox, oy = position()
+        local count = 0
+
+        function branch(depth, wx, wy, angle, s)
+          count = count + 1
+          local t = spawn("b" .. count, {
+            x = wx - ox, y = wy - oy,
+            scale = s, heading = angle
+          })
+          t.penwidth(math.max(1, depth))
+          t.min_pixel_size(1)
+          t.scale_pen(true)
+          t.forward(80)
+
+          if depth > 0 then
+            local bx = wx + math.cos(math.rad(angle - 90)) * 80 * s
+            local by = wy + math.sin(math.rad(angle - 90)) * 80 * s
+            branch(depth - 1, bx, by, angle - 30, s * 0.65)
+            branch(depth - 1, bx, by, angle,      s * 0.65)
+            branch(depth - 1, bx, by, angle + 30, s * 0.65)
+          else
+            local tipX = wx + math.cos(math.rad(angle - 90)) * 80 * s
+            local tipY = wy + math.sin(math.rad(angle - 90)) * 80 * s
+            count = count + 1
+            local child = spawn("z" .. count, {
+              x = tipX - ox, y = tipY - oy,
+              scale = s * 0.1, heading = 0
+            })
+            child.penwidth(2)
+            child.min_pixel_size(1)
+            child.scale_pen(true)
+            for i = 1, 4 do
+              child.forward(60)
+              child.right(90)
+            end
+          end
+        end
+
+        branch(2, ox, oy, 0, 1)
+      `);
+      expect(result.success).toBe(true);
+    });
+
+    it("spawns branch turtles and tip turtles for depth 2", async () => {
+      await runtime.execute(`
+        speed(0)
+        hide()
+        local ox, oy = position()
+        local count = 0
+
+        function branch(depth, wx, wy, angle, s)
+          count = count + 1
+          local t = spawn("b" .. count, {
+            x = wx - ox, y = wy - oy,
+            scale = s, heading = angle
+          })
+          t.penwidth(math.max(1, depth))
+          t.forward(80)
+
+          if depth > 0 then
+            local bx = wx + math.cos(math.rad(angle - 90)) * 80 * s
+            local by = wy + math.sin(math.rad(angle - 90)) * 80 * s
+            branch(depth - 1, bx, by, angle - 30, s * 0.65)
+            branch(depth - 1, bx, by, angle,      s * 0.65)
+            branch(depth - 1, bx, by, angle + 30, s * 0.65)
+          else
+            local tipX = wx + math.cos(math.rad(angle - 90)) * 80 * s
+            local tipY = wy + math.sin(math.rad(angle - 90)) * 80 * s
+            count = count + 1
+            local child = spawn("z" .. count, {
+              x = tipX - ox, y = tipY - oy,
+              scale = s * 0.1, heading = 0
+            })
+            child.penwidth(2)
+            for i = 1, 4 do
+              child.forward(60)
+              child.right(90)
+            end
+          end
+        end
+
+        branch(2, ox, oy, 0, 1)
+      `);
+      const cmds = runtime.getCommands();
+      const spawnCmds = cmds.filter((c) => c.type === "spawn");
+      // Depth 2: 1 root + 3 depth-1 + 9 depth-0 branches + 9 tip children = 22
+      expect(spawnCmds.length).toBe(22);
+    });
+
+    it("tip turtles have 1/10 scale relative to their parent branch", async () => {
+      await runtime.execute(`
+        speed(0)
+        hide()
+        local ox, oy = position()
+        local count = 0
+
+        function branch(depth, wx, wy, angle, s)
+          count = count + 1
+          local t = spawn("b" .. count, {
+            x = wx - ox, y = wy - oy,
+            scale = s, heading = angle
+          })
+          t.forward(80)
+
+          if depth > 0 then
+            local bx = wx + math.cos(math.rad(angle - 90)) * 80 * s
+            local by = wy + math.sin(math.rad(angle - 90)) * 80 * s
+            branch(depth - 1, bx, by, angle - 30, s * 0.65)
+            branch(depth - 1, bx, by, angle,      s * 0.65)
+            branch(depth - 1, bx, by, angle + 30, s * 0.65)
+          else
+            local tipX = wx + math.cos(math.rad(angle - 90)) * 80 * s
+            local tipY = wy + math.sin(math.rad(angle - 90)) * 80 * s
+            count = count + 1
+            local child = spawn("z" .. count, {
+              x = tipX - ox, y = tipY - oy,
+              scale = s * 0.1, heading = 0
+            })
+            child.forward(60)
+          end
+        end
+
+        branch(1, ox, oy, 0, 1)
+      `);
+      const cmds = runtime.getCommands();
+      const spawnCmds = cmds.filter((c): c is TurtleCommand & { type: "spawn" } => c.type === "spawn");
+      // Depth 1 spawns at scale 0.65, those tips spawn children at 0.65 * 0.1 = 0.065
+      const tipSpawns = spawnCmds.filter((c) => c.id.startsWith("z"));
+      expect(tipSpawns.length).toBe(3);
+      for (const tip of tipSpawns) {
+        expect(tip.scale).toBeCloseTo(0.065, 5);
+      }
+    });
+
+    it("uses different colors per depth level", async () => {
+      const result = await runtime.execute(`
+        speed(0)
+        hide()
+        local ox, oy = position()
+        local colors = {
+          [4] = "#5c3d2e",
+          [3] = "#7c5f3a",
+          [2] = "#40a02b",
+          [1] = "#209fb5",
+          [0] = "#8839ef",
+        }
+        local count = 0
+
+        function branch(depth, wx, wy, angle, s)
+          count = count + 1
+          local t = spawn("b" .. count, {
+            x = wx - ox, y = wy - oy,
+            scale = s, heading = angle
+          })
+          t.pencolor(colors[depth] or "#333333")
+          t.forward(80)
+
+          if depth > 0 then
+            local bx = wx + math.cos(math.rad(angle - 90)) * 80 * s
+            local by = wy + math.sin(math.rad(angle - 90)) * 80 * s
+            branch(depth - 1, bx, by, angle - 30, s * 0.65)
+            branch(depth - 1, bx, by, angle,      s * 0.65)
+            branch(depth - 1, bx, by, angle + 30, s * 0.65)
+          end
+        end
+
+        branch(2, ox, oy, 0, 1)
+      `);
+      expect(result.success).toBe(true);
+      const cmds = runtime.getCommands();
+      const pencolorCmds = cmds.filter((c) => c.type === "pencolor");
+      const uniqueColors = new Set(pencolorCmds.map((c) => (c as any).color));
+      expect(uniqueColors.size).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  describe("Sierpinski zoom example script", () => {
+    let registry: TurtleRegistry;
+    let doc: { strokes: Stroke[]; addStroke: (s: Stroke) => void; getStrokes: () => Stroke[]; removeStroke: (id: string) => boolean };
+    const scriptId = "sierpinski-zoom-test";
+
+    beforeEach(() => {
+      registry = new TurtleRegistry();
+      doc = {
+        strokes: [],
+        addStroke(s: Stroke) { this.strokes.push(s); },
+        getStrokes() { return this.strokes; },
+        removeStroke(id: string) {
+          const idx = this.strokes.findIndex((s) => s.id === id);
+          if (idx === -1) return false;
+          this.strokes.splice(idx, 1);
+          return true;
+        },
+      };
+      registry.createMain(scriptId, doc);
+      runtime.setSpawnContext(registry, scriptId, doc);
+    });
+
+    it("executes depth-2 Sierpinski zoom without errors", async () => {
+      // Depth 2: 1 + 3 + 9 = 13 turtles — quick to run
+      const result = await runtime.execute(`
+        speed(0)
+        hide()
+        local ox, oy = position()
+        local side = 400
+        local sqrt3_4 = math.sqrt(3) / 4
+        local count = 0
+
+        function sierpinski(depth, wx, wy, s)
+          count = count + 1
+          local t = spawn("s" .. count, {
+            x = wx - ox, y = wy - oy,
+            scale = s, heading = 90
+          })
+          t.pencolor("#e64553")
+          t.penwidth(2)
+          t.min_pixel_size(1)
+          for i = 1, 3 do
+            t.forward(side)
+            t.left(120)
+          end
+          if depth > 0 then
+            local W = side * s
+            sierpinski(depth - 1, wx,         wy,               s / 2)
+            sierpinski(depth - 1, wx + W / 2, wy,               s / 2)
+            sierpinski(depth - 1, wx + W / 4, wy - W * sqrt3_4, s / 2)
+          end
+        end
+
+        sierpinski(2, ox, oy, 1)
+        print(count)
+      `);
+      expect(result.success).toBe(true);
+    });
+
+    it("spawns correct number of turtles for depth 2", async () => {
+      await runtime.execute(`
+        speed(0)
+        hide()
+        local ox, oy = position()
+        local side = 400
+        local sqrt3_4 = math.sqrt(3) / 4
+        local count = 0
+
+        function sierpinski(depth, wx, wy, s)
+          count = count + 1
+          local t = spawn("s" .. count, {
+            x = wx - ox, y = wy - oy,
+            scale = s, heading = 90
+          })
+          t.penwidth(2)
+          for i = 1, 3 do
+            t.forward(side)
+            t.left(120)
+          end
+          if depth > 0 then
+            local W = side * s
+            sierpinski(depth - 1, wx,         wy,               s / 2)
+            sierpinski(depth - 1, wx + W / 2, wy,               s / 2)
+            sierpinski(depth - 1, wx + W / 4, wy - W * sqrt3_4, s / 2)
+          end
+        end
+
+        sierpinski(2, ox, oy, 1)
+        print(count)
+      `);
+      const cmds = runtime.getCommands();
+      // 1 + 3 + 9 = 13 spawn commands
+      const spawnCmds = cmds.filter((c) => c.type === "spawn");
+      expect(spawnCmds.length).toBe(13);
+    });
+
+    it("applies correct scale factors at each depth", async () => {
+      await runtime.execute(`
+        speed(0)
+        hide()
+        local ox, oy = position()
+        local side = 400
+        local sqrt3_4 = math.sqrt(3) / 4
+        local count = 0
+
+        function sierpinski(depth, wx, wy, s)
+          count = count + 1
+          local t = spawn("s" .. count, {
+            x = wx - ox, y = wy - oy,
+            scale = s, heading = 90
+          })
+          t.penwidth(2)
+          for i = 1, 3 do
+            t.forward(side)
+            t.left(120)
+          end
+          if depth > 0 then
+            local W = side * s
+            sierpinski(depth - 1, wx,         wy,               s / 2)
+            sierpinski(depth - 1, wx + W / 2, wy,               s / 2)
+            sierpinski(depth - 1, wx + W / 4, wy - W * sqrt3_4, s / 2)
+          end
+        end
+
+        sierpinski(2, ox, oy, 1)
+      `);
+      const cmds = runtime.getCommands();
+      const spawnCmds = cmds.filter((c): c is TurtleCommand & { type: "spawn" } => c.type === "spawn");
+      // Count turtles at each scale level (DFS order, so not contiguous)
+      const scaleCounts = new Map<number, number>();
+      for (const cmd of spawnCmds) {
+        const s = cmd.scale!;
+        scaleCounts.set(s, (scaleCounts.get(s) ?? 0) + 1);
+      }
+      // Depth 2: 1 turtle at scale 1.0
+      expect(scaleCounts.get(1)).toBe(1);
+      // Depth 1: 3 turtles at scale 0.5
+      expect(scaleCounts.get(0.5)).toBe(3);
+      // Depth 0: 9 turtles at scale 0.25
+      expect(scaleCounts.get(0.25)).toBe(9);
+    });
+
+    it("each spawned turtle draws 3 forward+left segments", async () => {
+      await runtime.execute(`
+        speed(0)
+        hide()
+        local t = spawn("tri", {scale = 0.5, heading = 90})
+        t.penwidth(2)
+        for i = 1, 3 do
+          t.forward(400)
+          t.left(120)
+        end
+      `);
+      const cmds = runtime.getCommands();
+      const fwdCmds = cmds.filter((c) => c.type === "forward" && c.turtleId === "tri");
+      const leftCmds = cmds.filter((c) => c.type === "left" && c.turtleId === "tri");
+      expect(fwdCmds.length).toBe(3);
+      expect(leftCmds.length).toBe(3);
+    });
+  });
+
+  describe("Game of Life example script", () => {
+    let registry: TurtleRegistry;
+    let bus: MessageBus;
+    let board: Blackboard;
+    let doc: { strokes: Stroke[]; addStroke: (s: Stroke) => void; getStrokes: () => Stroke[]; removeStroke: (id: string) => boolean };
+    const scriptId = "gol-test";
+
+    // Small Game of Life script for testing (5x5 grid, 3 generations, blinker pattern)
+    // Uses overdraw (not erase) to clear dead cells — matches the pending script approach.
+    const golScript = `
+      speed(0)
+      hide()
+      set_spawn_limit(100)
+      local ROWS = 5
+      local COLS = 5
+      local CELL = 15
+      local RADIUS = CELL * 1.5
+      local ALIVE_COLOR = "#1e1e2e"
+      local DEAD_COLOR = "#eff1f5"
+
+      local alive = {}
+      for r = 1, ROWS do
+        alive[r] = {}
+        for c = 1, COLS do
+          alive[r][c] = false
+        end
+      end
+
+      -- Blinker: vertical line in center
+      alive[2][3] = true
+      alive[3][3] = true
+      alive[4][3] = true
+
+      local cells = {}
+      for r = 1, ROWS do
+        cells[r] = {}
+        for c = 1, COLS do
+          local id = "c" .. r .. "_" .. c
+          local x = (c - 1) * CELL
+          local y = (r - 1) * CELL
+          cells[r][c] = spawn(id, {x = x, y = y})
+          cells[r][c].speed(0)
+          publish(id, alive[r][c] and 1 or 0)
+        end
+      end
+
+      for r = 1, ROWS do
+        for c = 1, COLS do
+          if alive[r][c] then
+            local t = cells[r][c]
+            t.fillcolor(ALIVE_COLOR)
+            t.pencolor(ALIVE_COLOR)
+            t.rectangle(CELL, CELL)
+          end
+        end
+      end
+
+      simulate(3, function(gen)
+        local next_alive = {}
+        for r = 1, ROWS do
+          next_alive[r] = {}
+          for c = 1, COLS do
+            local id = "c" .. r .. "_" .. c
+            activate(id)
+            local neighbors = nearby_turtles(RADIUS)
+            local live_count = 0
+            for _, n in ipairs(neighbors) do
+              if n.id ~= "main" then
+                local state = read_board(n.id)
+                if state == 1 then
+                  live_count = live_count + 1
+                end
+              end
+            end
+            if alive[r][c] then
+              next_alive[r][c] = (live_count == 2 or live_count == 3)
+            else
+              next_alive[r][c] = (live_count == 3)
+            end
+          end
+        end
+        for r = 1, ROWS do
+          for c = 1, COLS do
+            if next_alive[r][c] ~= alive[r][c] then
+              local t = cells[r][c]
+              if next_alive[r][c] then
+                t.fillcolor(ALIVE_COLOR)
+                t.pencolor(ALIVE_COLOR)
+              else
+                t.fillcolor(DEAD_COLOR)
+                t.pencolor(DEAD_COLOR)
+              end
+              t.rectangle(CELL, CELL)
+            end
+            alive[r][c] = next_alive[r][c]
+            publish("c" .. r .. "_" .. c, alive[r][c] and 1 or 0)
+          end
+        end
+      end)
+    `;
+
+    beforeEach(() => {
+      registry = new TurtleRegistry();
+      doc = {
+        strokes: [],
+        addStroke(s: Stroke) { this.strokes.push(s); },
+        getStrokes() { return this.strokes; },
+        removeStroke(id: string) {
+          const idx = this.strokes.findIndex((s) => s.id === id);
+          if (idx === -1) return false;
+          this.strokes.splice(idx, 1);
+          return true;
+        },
+      };
+      bus = new MessageBus();
+      board = new Blackboard();
+      registry.createMain(scriptId, doc);
+      runtime.setSpawnContext(registry, scriptId, doc);
+      runtime.setMessagingContext(bus, board);
+      runtime.setStateQuery({
+        getPosition: () => ({ x: 0, y: 0 }),
+        getHeading: () => 0,
+        isDown: () => true,
+      });
+      bus.register(`${scriptId}:main`);
+    });
+
+    it("executes 5x5 Game of Life with blinker without errors", async () => {
+      const result = await runtime.execute(golScript);
+      expect(result.success).toBe(true);
+    });
+
+    it("spawns 25 cell turtles for 5x5 grid", async () => {
+      await runtime.execute(golScript);
+      const cmds = runtime.getCommands();
+      const spawnCmds = cmds.filter((c) => c.type === "spawn");
+      expect(spawnCmds.length).toBe(25);
+    });
+
+    it("generates step_boundary markers for 3 generations", async () => {
+      await runtime.execute(golScript);
+      const cmds = runtime.getCommands();
+      const stepCmds = cmds.filter((c) => c.type === "step_boundary");
+      expect(stepCmds.length).toBe(3);
+    });
+
+    it("blinker oscillates: vertical→horizontal→vertical after 2 gens", async () => {
+      await runtime.execute(golScript);
+      // After gen 1, blinker should become horizontal: (3,2), (3,3), (3,4)
+      // Check blackboard state reflects this after simulation
+      // Gen 1: vertical (2,3)(3,3)(4,3) → horizontal (3,2)(3,3)(3,4)
+      // Gen 2: horizontal → vertical again
+      // Gen 3: vertical → horizontal again
+      // After 3 gens (odd), blinker is horizontal: (3,2),(3,3),(3,4)
+      expect(board.read("c3_2")).toBe(1);
+      expect(board.read("c3_3")).toBe(1);
+      expect(board.read("c3_4")).toBe(1);
+      // Original vertical cells (except center) should be dead
+      expect(board.read("c2_3")).toBe(0);
+      expect(board.read("c4_3")).toBe(0);
+    });
+
+    it("uses overdraw rectangles for both alive and dead cells", async () => {
+      await runtime.execute(golScript);
+      const cmds = runtime.getCommands();
+      // Should have rectangle commands for both alive and dead cell updates
+      const rectCmds = cmds.filter((c) => c.type === "rectangle");
+      expect(rectCmds.length).toBeGreaterThan(0);
+      // Should NOT have penmode erase — overdraw replaces erase
+      const eraseCmds = cmds.filter(
+        (c) => c.type === "penmode" && (c as TurtleCommand & { type: "penmode"; mode: string }).mode === "erase"
+      );
+      expect(eraseCmds.length).toBe(0);
+    });
+  });
+
+  describe("Langton's Ant example script", () => {
+    let bus: MessageBus;
+    let board: Blackboard;
+
+    // Small Langton's Ant script for testing (10 steps)
+    const antScript = `
+      speed(0)
+      hide()
+
+      local ox, oy = position()
+      local CELL = 6
+      local STEPS = 10
+
+      local ax, ay = 0, 0
+      local dir = 0
+
+      local dx = {[0] = 0, [1] = 1, [2] = 0, [3] = -1}
+      local dy = {[0] = -1, [1] = 0, [2] = 1, [3] = 0}
+
+      simulate(STEPS, function(step)
+        local key = ax .. "_" .. ay
+        local wx = ox + ax * CELL
+        local wy = oy + ay * CELL
+        local state = read_board(key)
+
+        if state == 1 then
+          dir = (dir + 3) % 4
+          publish(key, 0)
+          penup()
+          goto_pos(wx, wy)
+          pendown()
+          fillcolor("#eff1f5")
+          pencolor("#eff1f5")
+          rectangle(CELL, CELL)
+        else
+          dir = (dir + 1) % 4
+          publish(key, 1)
+          penup()
+          goto_pos(wx, wy)
+          pendown()
+          fillcolor("#1e1e2e")
+          pencolor("#1e1e2e")
+          rectangle(CELL, CELL)
+        end
+
+        ax = ax + dx[dir]
+        ay = ay + dy[dir]
+      end)
+    `;
+
+    beforeEach(() => {
+      bus = new MessageBus();
+      board = new Blackboard();
+      runtime.setMessagingContext(bus, board);
+      runtime.setStateQuery({
+        getPosition: () => ({ x: 0, y: 0 }),
+        getHeading: () => 0,
+        isDown: () => true,
+      });
+    });
+
+    it("executes Langton's Ant with 10 steps without errors", async () => {
+      const result = await runtime.execute(antScript);
+      expect(result.success).toBe(true);
+    });
+
+    it("generates step_boundary markers for 10 steps", async () => {
+      await runtime.execute(antScript);
+      const cmds = runtime.getCommands();
+      const stepCmds = cmds.filter((c) => c.type === "step_boundary");
+      expect(stepCmds.length).toBe(10);
+    });
+
+    it("generates rectangle commands for each step", async () => {
+      await runtime.execute(antScript);
+      const cmds = runtime.getCommands();
+      const rectCmds = cmds.filter((c) => c.type === "rectangle");
+      // One rectangle per step (each step flips one cell)
+      expect(rectCmds.length).toBe(10);
+    });
+
+    it("correctly flips cell state via blackboard after 5 steps", async () => {
+      // After 5 steps of Langton's Ant starting at (0,0) facing up:
+      // Step 1: (0,0) white → right, black, move to (1,0)
+      // Step 2: (1,0) white → right, black, move to (1,1)
+      // Step 3: (1,1) white → right, black, move to (0,1)
+      // Step 4: (0,1) white → right, black, move to (0,0)
+      // Step 5: (0,0) black → left, white, move to (-1,0)
+      const fiveStepScript = `
+        speed(0)
+        hide()
+        local ax, ay = 0, 0
+        local dir = 0
+        local dx = {[0] = 0, [1] = 1, [2] = 0, [3] = -1}
+        local dy = {[0] = -1, [1] = 0, [2] = 1, [3] = 0}
+
+        simulate(5, function(step)
+          local key = ax .. "_" .. ay
+          local state = read_board(key)
+          if state == 1 then
+            dir = (dir + 3) % 4
+            publish(key, 0)
+          else
+            dir = (dir + 1) % 4
+            publish(key, 1)
+          end
+          ax = ax + dx[dir]
+          ay = ay + dy[dir]
+        end)
+      `;
+      await runtime.execute(fiveStepScript);
+      // After 5 steps: (0,0) flipped back to white (0), others remain black (1)
+      expect(board.read("0_0")).toBe(0);
+      expect(board.read("1_0")).toBe(1);
+      expect(board.read("1_1")).toBe(1);
+      expect(board.read("0_1")).toBe(1);
+    });
+
+    it("does not spawn any turtles (single-turtle automaton)", async () => {
+      await runtime.execute(antScript);
+      const cmds = runtime.getCommands();
+      const spawnCmds = cmds.filter((c) => c.type === "spawn");
+      expect(spawnCmds.length).toBe(0);
     });
   });
 });

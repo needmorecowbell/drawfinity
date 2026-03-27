@@ -681,4 +681,199 @@ describe("SyncManager", () => {
       expect(callback).not.toHaveBeenCalled();
     });
   });
+
+  describe("turtle awareness", () => {
+    it("broadcasts turtle states via awareness", () => {
+      syncManager.connect("ws://localhost:8080", "test-room");
+
+      syncManager.updateTurtleStates([
+        {
+          id: "main",
+          x: 100,
+          y: 200,
+          heading: 45,
+          color: "#ff0000",
+          visible: true,
+        },
+      ]);
+
+      expect(mockAwareness.setLocalStateField).toHaveBeenCalledWith(
+        "turtles",
+        [
+          {
+            id: "main",
+            x: 100,
+            y: 200,
+            heading: 45,
+            color: "#ff0000",
+            visible: true,
+          },
+        ],
+      );
+    });
+
+    it("clears turtle states by broadcasting empty array", () => {
+      syncManager.connect("ws://localhost:8080", "test-room");
+
+      syncManager.updateTurtleStates([]);
+
+      expect(mockAwareness.setLocalStateField).toHaveBeenCalledWith(
+        "turtles",
+        [],
+      );
+    });
+
+    it("returns remote turtles from other clients", () => {
+      syncManager.connect("ws://localhost:8080", "test-room");
+
+      // Simulate remote client with turtles
+      awarenessStates.set(2, {
+        user: { id: "user-2", name: "Bob", color: "#00ff00" },
+        turtles: [
+          {
+            id: "main",
+            x: 50,
+            y: 50,
+            heading: 90,
+            color: "#00ff00",
+            visible: true,
+          },
+        ],
+      });
+
+      const remoteTurtles = syncManager.getRemoteTurtles();
+      expect(remoteTurtles).toHaveLength(1);
+      expect(remoteTurtles[0].userId).toBe("user-2");
+      expect(remoteTurtles[0].userName).toBe("Bob");
+      expect(remoteTurtles[0].userColor).toBe("#00ff00");
+      expect(remoteTurtles[0].turtles).toHaveLength(1);
+      expect(remoteTurtles[0].turtles[0].id).toBe("main");
+    });
+
+    it("excludes local client turtles from remote list", () => {
+      syncManager.connect("ws://localhost:8080", "test-room");
+
+      // Local client
+      awarenessStates.set(awarenessClientID, {
+        user: { id: "user-1", name: "Alice", color: "#ff0000" },
+        turtles: [
+          {
+            id: "main",
+            x: 0,
+            y: 0,
+            heading: 0,
+            color: "#ff0000",
+            visible: true,
+          },
+        ],
+      });
+
+      const remoteTurtles = syncManager.getRemoteTurtles();
+      expect(remoteTurtles).toHaveLength(0);
+    });
+
+    it("excludes clients with empty turtle arrays", () => {
+      syncManager.connect("ws://localhost:8080", "test-room");
+
+      awarenessStates.set(2, {
+        user: { id: "user-2", name: "Bob", color: "#00ff00" },
+        turtles: [],
+      });
+
+      const remoteTurtles = syncManager.getRemoteTurtles();
+      expect(remoteTurtles).toHaveLength(0);
+    });
+
+    it("handles remote clients with no user profile", () => {
+      syncManager.connect("ws://localhost:8080", "test-room");
+
+      awarenessStates.set(2, {
+        turtles: [
+          {
+            id: "main",
+            x: 0,
+            y: 0,
+            heading: 0,
+            color: "#888888",
+            visible: true,
+          },
+        ],
+      });
+
+      const remoteTurtles = syncManager.getRemoteTurtles();
+      expect(remoteTurtles).toHaveLength(1);
+      expect(remoteTurtles[0].userId).toBe("2");
+      expect(remoteTurtles[0].userName).toBe("Unknown");
+      expect(remoteTurtles[0].userColor).toBe("#888888");
+    });
+
+    it("notifies turtle listeners on awareness change", () => {
+      const callback = vi.fn();
+      syncManager.onRemoteTurtlesChange(callback);
+      syncManager.connect("ws://localhost:8080", "test-room");
+
+      // Simulate awareness change
+      awarenessStates.set(2, {
+        user: { id: "user-2", name: "Bob", color: "#00ff00" },
+        turtles: [
+          {
+            id: "main",
+            x: 50,
+            y: 50,
+            heading: 0,
+            color: "#00ff00",
+            visible: true,
+          },
+        ],
+      });
+
+      // Trigger awareness change
+      for (const listener of awarenessListeners) {
+        listener();
+      }
+
+      expect(callback).toHaveBeenCalledWith([
+        expect.objectContaining({
+          userId: "user-2",
+          turtles: expect.arrayContaining([
+            expect.objectContaining({ id: "main" }),
+          ]),
+        }),
+      ]);
+    });
+
+    it("unsubscribes turtle listeners", () => {
+      const callback = vi.fn();
+      const unsub = syncManager.onRemoteTurtlesChange(callback);
+      syncManager.connect("ws://localhost:8080", "test-room");
+
+      unsub();
+
+      // Trigger awareness change
+      for (const listener of awarenessListeners) {
+        listener();
+      }
+
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it("returns empty array when not connected", () => {
+      expect(syncManager.getRemoteTurtles()).toEqual([]);
+    });
+
+    it("does not broadcast when not connected", () => {
+      syncManager.updateTurtleStates([
+        {
+          id: "main",
+          x: 0,
+          y: 0,
+          heading: 0,
+          color: "#000",
+          visible: true,
+        },
+      ]);
+      // Should not throw, just no-op
+      expect(mockAwareness.setLocalStateField).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -102,6 +102,183 @@ describe("LuaRuntime spatial queries and messaging", () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain("non-negative number");
     });
+
+    it("includes remote field as false for local turtles", async () => {
+      registry.spawn("child1", scriptId, doc, undefined, { x: 50, y: 0 });
+      const result = await runtime.execute(`
+        local t = nearby_turtles(100)
+        assert(#t == 1, "expected 1 nearby, got " .. #t)
+        assert(t[1].remote == false, "expected remote=false")
+      `);
+      expect(result.success).toBe(true);
+    });
+
+    it("works with includeRemote=false (default behavior)", async () => {
+      registry.spawn("child1", scriptId, doc, undefined, { x: 50, y: 0 });
+      const result = await runtime.execute(`
+        local t = nearby_turtles(100, false)
+        assert(#t == 1, "expected 1 nearby, got " .. #t)
+        assert(t[1].remote == false, "expected remote=false")
+      `);
+      expect(result.success).toBe(true);
+    });
+
+    it("returns only local turtles when no SyncManager is set", async () => {
+      registry.spawn("child1", scriptId, doc, undefined, { x: 50, y: 0 });
+      const result = await runtime.execute(`
+        local t = nearby_turtles(100, true)
+        assert(#t == 1, "expected 1 nearby (no sync), got " .. #t)
+        assert(t[1].remote == false, "expected local turtle")
+      `);
+      expect(result.success).toBe(true);
+    });
+
+    it("includes remote turtles when includeRemote=true and SyncManager is set", async () => {
+      const mockSyncManager = {
+        getRemoteTurtles: () => [
+          {
+            userId: "user-2",
+            userName: "Bob",
+            userColor: "#ff0000",
+            turtles: [
+              { id: "main", x: 30, y: 0, heading: 90, color: "#ff0000", visible: true },
+            ],
+          },
+        ],
+      };
+      runtime.setSyncManager(mockSyncManager as any);
+      const result = await runtime.execute(`
+        local t = nearby_turtles(100, true)
+        assert(#t == 1, "expected 1 nearby, got " .. #t)
+        assert(t[1].remote == true, "expected remote=true")
+        assert(t[1].x == 30, "expected x=30, got " .. t[1].x)
+        assert(t[1].heading == 90, "expected heading=90")
+        assert(t[1].distance == 30, "expected distance=30, got " .. t[1].distance)
+      `);
+      expect(result.success).toBe(true);
+    });
+
+    it("prefixes remote turtle IDs with remote:userId:", async () => {
+      const mockSyncManager = {
+        getRemoteTurtles: () => [
+          {
+            userId: "user-2",
+            userName: "Bob",
+            userColor: "#ff0000",
+            turtles: [
+              { id: "main", x: 30, y: 0, heading: 0, color: "#ff0000", visible: true },
+            ],
+          },
+        ],
+      };
+      runtime.setSyncManager(mockSyncManager as any);
+      const result = await runtime.execute(`
+        local t = nearby_turtles(100, true)
+        assert(t[1].id == "remote:user-2:main", "expected remote:user-2:main, got " .. t[1].id)
+      `);
+      expect(result.success).toBe(true);
+    });
+
+    it("excludes invisible remote turtles", async () => {
+      const mockSyncManager = {
+        getRemoteTurtles: () => [
+          {
+            userId: "user-2",
+            userName: "Bob",
+            userColor: "#ff0000",
+            turtles: [
+              { id: "main", x: 30, y: 0, heading: 0, color: "#ff0000", visible: false },
+            ],
+          },
+        ],
+      };
+      runtime.setSyncManager(mockSyncManager as any);
+      const result = await runtime.execute(`
+        local t = nearby_turtles(100, true)
+        assert(#t == 0, "expected 0 nearby (invisible), got " .. #t)
+      `);
+      expect(result.success).toBe(true);
+    });
+
+    it("excludes remote turtles outside radius", async () => {
+      const mockSyncManager = {
+        getRemoteTurtles: () => [
+          {
+            userId: "user-2",
+            userName: "Bob",
+            userColor: "#ff0000",
+            turtles: [
+              { id: "main", x: 500, y: 0, heading: 0, color: "#ff0000", visible: true },
+            ],
+          },
+        ],
+      };
+      runtime.setSyncManager(mockSyncManager as any);
+      const result = await runtime.execute(`
+        local t = nearby_turtles(100, true)
+        assert(#t == 0, "expected 0 nearby (too far), got " .. #t)
+      `);
+      expect(result.success).toBe(true);
+    });
+
+    it("sorts mixed local and remote turtles by distance", async () => {
+      registry.spawn("child1", scriptId, doc, undefined, { x: 60, y: 0 });
+      const mockSyncManager = {
+        getRemoteTurtles: () => [
+          {
+            userId: "user-2",
+            userName: "Bob",
+            userColor: "#ff0000",
+            turtles: [
+              { id: "main", x: 30, y: 0, heading: 0, color: "#ff0000", visible: true },
+            ],
+          },
+        ],
+      };
+      runtime.setSyncManager(mockSyncManager as any);
+      const result = await runtime.execute(`
+        local t = nearby_turtles(100, true)
+        assert(#t == 2, "expected 2 nearby, got " .. #t)
+        assert(t[1].remote == true, "closest should be remote (30)")
+        assert(t[1].distance == 30, "expected distance 30, got " .. t[1].distance)
+        assert(t[2].remote == false, "second should be local (60)")
+        assert(t[2].distance == 60, "expected distance 60, got " .. t[2].distance)
+      `);
+      expect(result.success).toBe(true);
+    });
+
+    it("includes remote turtles from multiple clients", async () => {
+      const mockSyncManager = {
+        getRemoteTurtles: () => [
+          {
+            userId: "user-2",
+            userName: "Bob",
+            userColor: "#ff0000",
+            turtles: [
+              { id: "main", x: 20, y: 0, heading: 0, color: "#ff0000", visible: true },
+            ],
+          },
+          {
+            userId: "user-3",
+            userName: "Carol",
+            userColor: "#00ff00",
+            turtles: [
+              { id: "main", x: 40, y: 0, heading: 0, color: "#00ff00", visible: true },
+              { id: "child1", x: 80, y: 0, heading: 0, color: "#00ff00", visible: true },
+            ],
+          },
+        ],
+      };
+      runtime.setSyncManager(mockSyncManager as any);
+      const result = await runtime.execute(`
+        local t = nearby_turtles(100, true)
+        assert(#t == 3, "expected 3 nearby, got " .. #t)
+        assert(t[1].id == "remote:user-2:main")
+        assert(t[2].id == "remote:user-3:main")
+        assert(t[3].id == "remote:user-3:child1")
+      `);
+      expect(result.success).toBe(true);
+    });
   });
 
   describe("nearby_strokes()", () => {

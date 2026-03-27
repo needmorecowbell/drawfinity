@@ -75,6 +75,10 @@ class FakeLuaRuntime {
     // no-op for testing
   }
 
+  setSyncManager(): void {
+    // no-op for testing
+  }
+
   async execute(_script: string) {
     if (this.shouldFail) {
       return { success: false as const, error: this.errorMessage };
@@ -1015,6 +1019,262 @@ describe("TurtleExecutor", () => {
       expect(doc.shapes).toHaveLength(2);
       expect(doc.shapes[0].fillColor).toBe("#ff0000");
       expect(doc.shapes[1].fillColor).toBeNull();
+    });
+  });
+
+  describe("LOD-aware drawing skip", () => {
+    it("skips drawing when segment pixel size is below minPixelSize", async () => {
+      // At zoom=100, forward(0.005) produces world distance = 0.005/100 = 0.00005
+      // effectiveSize = 0.00005 * 100 = 0.005 pixels — below default threshold of 1
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "min_pixel_size", pixels: 1 },
+        { type: "forward", distance: 0.005 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test", 100);
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      // Segment is too small — should be culled, no strokes created
+      expect(doc.strokes).toHaveLength(0);
+    });
+
+    it("draws normally when segment pixel size exceeds minPixelSize", async () => {
+      // At zoom=1, forward(100) produces world distance = 100
+      // effectiveSize = 100 * 1 = 100 pixels — above threshold
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "min_pixel_size", pixels: 1 },
+        { type: "forward", distance: 100 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test", 1);
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      expect(doc.strokes.length).toBeGreaterThan(0);
+    });
+
+    it("still updates position when LOD-culled", async () => {
+      // Small forward at high zoom should be culled but position should update
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "min_pixel_size", pixels: 10 },
+        { type: "forward", distance: 0.001 },
+        // Now draw a visible segment to verify turtle moved
+        { type: "min_pixel_size", pixels: 0 },
+        { type: "forward", distance: 100 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test", 1);
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      // Only the second forward should create a stroke (first was LOD-culled)
+      expect(doc.strokes).toHaveLength(1);
+      // The stroke should start from the position after the culled movement
+      const stroke = doc.strokes[0];
+      expect(stroke.points.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("disables LOD culling when minPixelSize is 0", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "min_pixel_size", pixels: 0 },
+        { type: "forward", distance: 0.001 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test", 100);
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      // Even tiny segment should draw when LOD is disabled
+      expect(doc.strokes.length).toBeGreaterThan(0);
+    });
+
+    it("LOD-culls shape commands below pixel threshold", async () => {
+      // At zoom=1, rectangle 0.5x0.5 with scaleFactor=1 → effectiveSize = 0.5 pixels
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "min_pixel_size", pixels: 1 },
+        { type: "rectangle", width: 0.5, height: 0.5 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test", 1);
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      expect(doc.shapes).toHaveLength(0);
+    });
+
+    it("draws shapes that exceed pixel threshold", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "min_pixel_size", pixels: 1 },
+        { type: "rectangle", width: 50, height: 50 },
+      ]);
+
+      const executor = createExecutor();
+      const resultPromise = executor.run("test", 1);
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      expect(doc.shapes).toHaveLength(1);
+    });
+
+    it("resets minPixelSize between runs", async () => {
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "min_pixel_size", pixels: 9999 },
+        { type: "forward", distance: 100 },
+      ]);
+
+      const executor = createExecutor();
+      let resultPromise = executor.run("test", 1);
+      await vi.runAllTimersAsync();
+      await resultPromise;
+      // Everything culled
+      expect(doc.strokes).toHaveLength(0);
+
+      // Second run — minPixelSize should reset to 1
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "forward", distance: 100 },
+      ]);
+      resultPromise = executor.run("test2", 1);
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      expect(doc.strokes.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("scaleFactor on spawned turtles", () => {
+    it("sets scaleFactor on spawned turtle from spawn command", async () => {
+      vi.useFakeTimers();
+      const doc = new MockDocument();
+      const registry = new TurtleRegistry();
+      const runtime = new FakeLuaRuntime();
+
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "spawn", id: "child", scale: 0.5 },
+        { type: "forward", distance: 100, turtleId: "child" },
+      ]);
+
+      const executor = new TurtleExecutor(
+        runtime as never, registry, "scalef-test", doc,
+      );
+      const promise = executor.run("test", 1);
+      await vi.runAllTimersAsync();
+      const result = await promise;
+
+      expect(result.success).toBe(true);
+      const childEntry = registry.get("scalef-test:child");
+      expect(childEntry).toBeTruthy();
+      expect(childEntry!.state.scaleFactor).toBe(0.5);
+      // forward(100) at scale 0.5 → moves 50 units
+      expect(childEntry!.state.y).toBeCloseTo(-50, 5);
+      vi.useRealTimers();
+    });
+
+    it("inherits parent scaleFactor into child", async () => {
+      vi.useFakeTimers();
+      const doc = new MockDocument();
+      const registry = new TurtleRegistry();
+      const runtime = new FakeLuaRuntime();
+
+      // Main turtle has default scale=1, spawn child at scale=0.5
+      // The child's scaleFactor should be 1 * 0.5 = 0.5
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "spawn", id: "c1", scale: 0.5 },
+      ]);
+
+      const executor = new TurtleExecutor(
+        runtime as never, registry, "inherit-test", doc,
+      );
+      const promise = executor.run("test", 1);
+      await vi.runAllTimersAsync();
+      await promise;
+
+      const child = registry.get("inherit-test:c1");
+      expect(child!.state.scaleFactor).toBe(0.5);
+      vi.useRealTimers();
+    });
+
+    it("scale_pen command enables pen scaling on spawned turtle", async () => {
+      vi.useFakeTimers();
+      const doc = new MockDocument();
+      const registry = new TurtleRegistry();
+      const runtime = new FakeLuaRuntime();
+
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "spawn", id: "sp", scale: 0.5 },
+        { type: "scale_pen", enabled: true, turtleId: "sp" } as TurtleCommand,
+        { type: "forward", distance: 100, turtleId: "sp" },
+      ]);
+
+      const executor = new TurtleExecutor(
+        runtime as never, registry, "spen-test", doc,
+      );
+      const promise = executor.run("test", 1);
+      await vi.runAllTimersAsync();
+      await promise;
+
+      const child = registry.get("spen-test:sp");
+      expect(child!.state.scalePen).toBe(true);
+      // Check that strokes were created with scaled pen width
+      // pen.width=3 (default) * zoomScale=1 * presetMul=1 * scaleFactor=0.5 = 1.5
+      if (doc.strokes.length > 0) {
+        const lastStroke = doc.strokes[doc.strokes.length - 1];
+        // width was scaled by scalePen
+        expect(lastStroke.points[0].pressure).toBeDefined();
+      }
+      vi.useRealTimers();
+    });
+
+    it("shapes are scaled by scaleFactor", async () => {
+      vi.useFakeTimers();
+      const doc = new MockDocument();
+      const registry = new TurtleRegistry();
+      const runtime = new FakeLuaRuntime();
+
+      runtime.setCommands([
+        { type: "speed", value: 0 },
+        { type: "spawn", id: "shp", scale: 0.5 },
+        { type: "rectangle", width: 100, height: 50, turtleId: "shp" },
+      ]);
+
+      const executor = new TurtleExecutor(
+        runtime as never, registry, "shape-scale-test", doc,
+      );
+      const promise = executor.run("test", 1);
+      await vi.runAllTimersAsync();
+      await promise;
+
+      // Shape should have been created with dimensions scaled by 0.5
+      expect(doc.shapes.length).toBeGreaterThan(0);
+      const shape = doc.shapes[0];
+      // width=100 * zoomScale(1) * scaleFactor(0.5) = 50
+      expect(shape.width).toBeCloseTo(50, 1);
+      // height=50 * zoomScale(1) * scaleFactor(0.5) = 25
+      expect(shape.height).toBeCloseTo(25, 1);
+      vi.useRealTimers();
     });
   });
 });

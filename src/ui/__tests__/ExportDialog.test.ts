@@ -257,6 +257,87 @@ describe("ExportDialog", () => {
     });
   });
 
+  describe("format selector", () => {
+    it("creates format option buttons (PNG and SVG)", () => {
+      createDialog();
+      openPopover();
+      const labels = document.querySelectorAll(".export-label");
+      const texts = Array.from(labels).map(l => l.textContent);
+      expect(texts).toContain("Format");
+      const options = document.querySelectorAll(".export-option");
+      const optTexts = Array.from(options).map(o => o.textContent);
+      expect(optTexts).toContain("PNG");
+      expect(optTexts).toContain("SVG");
+    });
+
+    it("defaults to PNG format", () => {
+      createDialog();
+      openPopover();
+      const options = document.querySelectorAll(".export-option");
+      const png = Array.from(options).find(o => o.textContent === "PNG");
+      expect(png?.classList.contains("active")).toBe(true);
+      const svg = Array.from(options).find(o => o.textContent === "SVG");
+      expect(svg?.classList.contains("active")).toBe(false);
+    });
+
+    it("hides resolution row when SVG is selected", () => {
+      createDialog();
+      openPopover();
+      const options = document.querySelectorAll(".export-option");
+      const svgBtn = Array.from(options).find(o => o.textContent === "SVG") as HTMLButtonElement;
+      svgBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+      const labels = document.querySelectorAll(".export-label");
+      const resLabel = Array.from(labels).find(l => l.textContent === "Resolution");
+      const resRow = resLabel?.closest(".export-row") as HTMLElement;
+      expect(resRow.style.display).toBe("none");
+    });
+
+    it("shows resolution row when switching back to PNG", () => {
+      createDialog();
+      openPopover();
+      const options = document.querySelectorAll(".export-option");
+      const svgBtn = Array.from(options).find(o => o.textContent === "SVG") as HTMLButtonElement;
+      const pngBtn = Array.from(options).find(o => o.textContent === "PNG") as HTMLButtonElement;
+
+      svgBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      pngBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+      const labels = document.querySelectorAll(".export-label");
+      const resLabel = Array.from(labels).find(l => l.textContent === "Resolution");
+      const resRow = resLabel?.closest(".export-row") as HTMLElement;
+      expect(resRow.style.display).toBe("");
+    });
+
+    it("updates export button text when format changes", () => {
+      createDialog();
+      openPopover();
+      const options = document.querySelectorAll(".export-option");
+      const svgBtn = Array.from(options).find(o => o.textContent === "SVG") as HTMLButtonElement;
+      svgBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+      const exportBtn = document.querySelector(".export-confirm-btn");
+      expect(exportBtn?.textContent).toBe("Export SVG");
+    });
+
+    it("calls onExport with svg format when SVG is selected", () => {
+      createDialog();
+      openPopover();
+      const options = document.querySelectorAll(".export-option");
+      const svgBtn = Array.from(options).find(o => o.textContent === "SVG") as HTMLButtonElement;
+      svgBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+      const btn = document.querySelector(".export-confirm-btn") as HTMLButtonElement;
+      btn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      expect(onExport).toHaveBeenCalledWith({
+        format: "svg",
+        scope: "fitAll",
+        scale: 1,
+        includeBackground: true,
+      });
+    });
+  });
+
   describe("lifecycle", () => {
     it("cleans up popover on destroy", () => {
       createDialog();

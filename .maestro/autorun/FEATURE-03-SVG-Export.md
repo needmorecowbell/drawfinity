@@ -63,7 +63,7 @@ The SVG export should use the same `ExportDialog.ts` UI, adding a format toggle 
   - Star: compute inner/outer vertex ring, emit `<polygon>`
   - Apply `stroke`, `stroke-width`, `fill`, `opacity` attributes
 
-- [ ] Integrate with ExportDialog:
+- [x] Integrate with ExportDialog:
   - Add a format selector (PNG / SVG) to `ExportDialog.ts`
   - When SVG is selected, hide the scale option (not applicable)
   - On export: call `exportSVG()`, create a Blob, trigger download as `.svg`

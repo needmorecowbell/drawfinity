@@ -56,7 +56,7 @@ The SVG export should use the same `ExportDialog.ts` UI, adding a format toggle 
   - Apply the same pressure-based width scaling: `width * pressure` per point
   - Handle single-point strokes: emit a small `<circle>` at the point
 
-- [ ] Implement shape-to-SVG conversion:
+- [x] Implement shape-to-SVG conversion:
   - Rectangle: `<rect x y width height>` with `transform="rotate(deg, cx, cy)"`
   - Ellipse: `<ellipse cx cy rx ry>` with rotation transform
   - Polygon: compute perimeter points (same logic as `ShapeMesh.ts`), emit `<polygon>`

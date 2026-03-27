@@ -17,6 +17,8 @@
     "fs:allow-document-meta-recursive",
     "fs:allow-document-read-recursive",
     "fs:allow-document-write-recursive",
+    "fs:allow-download-read",
+    "fs:allow-download-write",
     "dialog:default",
     "dialog:allow-open",
     "dialog:allow-save",

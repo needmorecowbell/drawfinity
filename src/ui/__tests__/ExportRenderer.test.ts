@@ -145,7 +145,7 @@ describe("renderExport", () => {
 });
 
 describe("downloadCanvas", () => {
-  it("creates and clicks a download link", () => {
+  it("creates and clicks a download link", async () => {
     const canvas = document.createElement("canvas");
     canvas.width = 10;
     canvas.height = 10;
@@ -168,7 +168,7 @@ describe("downloadCanvas", () => {
       return el;
     });
 
-    downloadCanvas(canvas, "test-export.png");
+    await downloadCanvas(canvas, "test-export.png");
 
     expect(canvas.toBlob).toHaveBeenCalledWith(expect.any(Function), "image/png");
     expect(createObjectURLSpy).toHaveBeenCalled();
@@ -179,7 +179,7 @@ describe("downloadCanvas", () => {
     vi.restoreAllMocks();
   });
 
-  it("does nothing if toBlob returns null", () => {
+  it("does nothing if toBlob returns null", async () => {
     const canvas = document.createElement("canvas");
     canvas.toBlob = vi.fn((callback) => {
       callback(null);
@@ -187,7 +187,7 @@ describe("downloadCanvas", () => {
 
     const createObjectURLSpy = vi.spyOn(URL, "createObjectURL");
 
-    downloadCanvas(canvas, "test.png");
+    await downloadCanvas(canvas, "test.png");
 
     expect(createObjectURLSpy).not.toHaveBeenCalled();
     createObjectURLSpy.mockRestore();

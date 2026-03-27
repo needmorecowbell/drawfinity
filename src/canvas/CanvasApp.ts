@@ -1193,6 +1193,7 @@ export class CanvasApp {
       scope: options.scope,
       scale: options.scale,
       includeBackground: options.includeBackground,
+      backgroundColor: this.doc.getBackgroundColor(),
       viewportBounds: this.camera.getViewportBounds(),
       viewportMatrix: this.camera.getTransformMatrix(),
       viewportSize: this.camera.getViewportSize(),
@@ -1204,7 +1205,7 @@ export class CanvasApp {
     }
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    downloadCanvas(canvas, `drawfinity-${timestamp}.png`);
+    void downloadCanvas(canvas, `drawfinity-${timestamp}.png`);
   }
 
   private updateUserColorIndicator(profile: { color: string; name: string }): void {

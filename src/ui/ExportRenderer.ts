@@ -13,6 +13,8 @@ export interface ExportOptions {
   scale: number;
   /** Whether to include the background color. */
   includeBackground: boolean;
+  /** Canvas background color hex (e.g. "#FAFAF8"). Defaults to #FAFAF8 if omitted. */
+  backgroundColor?: string;
   /** Current viewport bounds (world-space) — required when scope is "viewport". */
   viewportBounds?: { minX: number; minY: number; maxX: number; maxY: number };
   /** Current camera transform matrix — required when scope is "viewport". */
@@ -207,8 +209,18 @@ export function renderExport(
   if (!gl) return null;
 
   try {
-    renderToGL(gl, offscreen, strokes, shapes, cameraMatrix, options.includeBackground);
-    return offscreen;
+    renderToGL(gl, offscreen, strokes, shapes, cameraMatrix, options.includeBackground, options.backgroundColor);
+
+    // Copy to a 2D canvas before losing the WebGL context — loseContext()
+    // clears the drawing buffer, so toBlob() on the WebGL canvas would
+    // produce a blank image.
+    const output = document.createElement("canvas");
+    output.width = canvasW;
+    output.height = canvasH;
+    const ctx = output.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(offscreen, 0, 0);
+    return output;
   } finally {
     const ext = gl.getExtension("WEBGL_lose_context");
     if (ext) ext.loseContext();
@@ -222,11 +234,15 @@ function renderToGL(
   shapes: Shape[],
   cameraMatrix: Float32Array,
   includeBackground: boolean,
+  backgroundColor?: string,
 ): void {
   gl.viewport(0, 0, canvas.width, canvas.height);
 
   if (includeBackground) {
-    gl.clearColor(250 / 255, 250 / 255, 248 / 255, 1.0);
+    const [r, g, b] = backgroundColor
+      ? hexToRgba(backgroundColor)
+      : [250 / 255, 250 / 255, 248 / 255, 1.0];
+    gl.clearColor(r, g, b, 1.0);
   } else {
     gl.clearColor(0, 0, 0, 0);
   }
@@ -360,22 +376,47 @@ function createShaderProgram(gl: WebGL2RenderingContext): WebGLProgram | null {
 }
 
 /** Trigger a file download from a canvas element. */
-export function downloadCanvas(
+export async function downloadCanvas(
   canvas: HTMLCanvasElement,
   filename: string,
-): void {
-  canvas.toBlob((blob) => {
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-    requestAnimationFrame(() => {
-      a.remove();
-      URL.revokeObjectURL(url);
-    });
-  }, "image/png");
+): Promise<void> {
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/png"),
+  );
+  if (!blob) return;
+
+  if ((globalThis as Record<string, unknown>).__TAURI_INTERNALS__) {
+    try {
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const { downloadDir, join } = await import("@tauri-apps/api/path");
+      const { writeFile } = await import("@tauri-apps/plugin-fs");
+
+      const defaultPath = await join(await downloadDir(), filename);
+      const filePath = await save({
+        defaultPath,
+        filters: [{ name: "PNG Image", extensions: ["png"] }],
+      });
+      if (!filePath) return; // user cancelled
+
+      const buffer = new Uint8Array(await blob.arrayBuffer());
+      await writeFile(filePath, buffer);
+      return;
+    } catch (e) {
+      console.error("Tauri file save failed:", e);
+      return;
+    }
+  }
+
+  // Browser fallback
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  requestAnimationFrame(() => {
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
 }

@@ -6,7 +6,7 @@ import type {
 } from "../turtle";
 import snapshotData from "../turtle/exchange/exchange-snapshot.json";
 import type { DrawfinityDoc } from "../crdt";
-import { TurtleEditor } from "./turtle-editor";
+import { TurtleEditor, ReplInput } from "./turtle-editor";
 
 export interface TurtlePanelCallbacks {
   /** Called when the user clicks Run. Receives the script text. */
@@ -80,7 +80,7 @@ export class TurtlePanel {
 
   // REPL state
   private replHistory!: HTMLElement;
-  private replInput!: HTMLInputElement;
+  private replInput!: ReplInput;
   private replCommandHistory: string[] = [];
   private replHistoryIndex = -1;
   private replExecuting = false;
@@ -259,13 +259,33 @@ export class TurtlePanel {
     replPromptLabel.textContent = ">>>";
     replInputWrap.appendChild(replPromptLabel);
 
-    this.replInput = document.createElement("input");
-    this.replInput.className = "repl-input";
-    this.replInput.type = "text";
-    this.replInput.placeholder = "Enter Lua command...";
-    this.replInput.spellcheck = false;
-    this.replInput.addEventListener("keydown", (e) => this.handleReplKeydown(e));
-    replInputWrap.appendChild(this.replInput);
+    this.replInput = new ReplInput({
+      parent: replInputWrap,
+      onSubmit: (line) => {
+        if (this.replExecuting) return;
+        this.replCommandHistory.push(line);
+        this.replHistoryIndex = -1;
+        this.executeReplCommand(line);
+      },
+      onHistoryBack: () => {
+        if (this.replCommandHistory.length === 0) return null;
+        if (this.replHistoryIndex === -1) {
+          this.replHistoryIndex = this.replCommandHistory.length - 1;
+        } else if (this.replHistoryIndex > 0) {
+          this.replHistoryIndex--;
+        }
+        return this.replCommandHistory[this.replHistoryIndex];
+      },
+      onHistoryForward: () => {
+        if (this.replHistoryIndex === -1) return null;
+        if (this.replHistoryIndex < this.replCommandHistory.length - 1) {
+          this.replHistoryIndex++;
+          return this.replCommandHistory[this.replHistoryIndex];
+        }
+        this.replHistoryIndex = -1;
+        return "";
+      },
+    });
     this.replContent.appendChild(replInputWrap);
 
     this.panel.appendChild(this.replContent);
@@ -456,35 +476,35 @@ export class TurtlePanel {
     return this.activeTab;
   }
 
-  private handleReplKeydown(e: KeyboardEvent): void {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const line = this.replInput.value.trim();
-      if (!line || this.replExecuting) return;
-      this.replCommandHistory.push(line);
-      this.replHistoryIndex = -1;
-      this.replInput.value = "";
-      this.executeReplCommand(line);
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      if (this.replCommandHistory.length === 0) return;
-      if (this.replHistoryIndex === -1) {
-        this.replHistoryIndex = this.replCommandHistory.length - 1;
-      } else if (this.replHistoryIndex > 0) {
-        this.replHistoryIndex--;
-      }
-      this.replInput.value = this.replCommandHistory[this.replHistoryIndex];
-    } else if (e.key === "ArrowDown") {
-      e.preventDefault();
-      if (this.replHistoryIndex === -1) return;
-      if (this.replHistoryIndex < this.replCommandHistory.length - 1) {
-        this.replHistoryIndex++;
-        this.replInput.value = this.replCommandHistory[this.replHistoryIndex];
-      } else {
-        this.replHistoryIndex = -1;
-        this.replInput.value = "";
-      }
+  /** Submit a command to the REPL programmatically (useful for tests). */
+  replSubmitCommand(line: string): void {
+    const trimmed = line.trim();
+    if (!trimmed || this.replExecuting) return;
+    this.replCommandHistory.push(trimmed);
+    this.replHistoryIndex = -1;
+    this.executeReplCommand(trimmed);
+  }
+
+  /** Navigate REPL history backward and return the value, or null. */
+  replHistoryBack(): string | null {
+    if (this.replCommandHistory.length === 0) return null;
+    if (this.replHistoryIndex === -1) {
+      this.replHistoryIndex = this.replCommandHistory.length - 1;
+    } else if (this.replHistoryIndex > 0) {
+      this.replHistoryIndex--;
     }
+    return this.replCommandHistory[this.replHistoryIndex];
+  }
+
+  /** Navigate REPL history forward and return the value, or empty string, or null. */
+  replHistoryForward(): string | null {
+    if (this.replHistoryIndex === -1) return null;
+    if (this.replHistoryIndex < this.replCommandHistory.length - 1) {
+      this.replHistoryIndex++;
+      return this.replCommandHistory[this.replHistoryIndex];
+    }
+    this.replHistoryIndex = -1;
+    return "";
   }
 
   private async executeReplCommand(line: string): Promise<void> {
@@ -494,7 +514,7 @@ export class TurtlePanel {
     }
 
     this.replExecuting = true;
-    this.replInput.disabled = true;
+    this.replInput.setDisabled(true);
 
     try {
       const result = await this.callbacks.onReplCommand(line);
@@ -504,7 +524,7 @@ export class TurtlePanel {
       this.appendReplEntry(line, null, msg);
     } finally {
       this.replExecuting = false;
-      this.replInput.disabled = false;
+      this.replInput.setDisabled(false);
       this.replInput.focus();
     }
   }

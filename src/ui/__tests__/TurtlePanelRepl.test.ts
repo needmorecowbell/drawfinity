@@ -53,9 +53,9 @@ describe("TurtlePanel REPL", () => {
       const replContent = document.querySelector(".repl-content") as HTMLElement;
       expect(replContent.style.display).toBe("");
 
-      // REPL history and input visible
+      // REPL history and input wrap visible
       expect(document.querySelector(".repl-history")).not.toBeNull();
-      expect(document.querySelector(".repl-input")).not.toBeNull();
+      expect(document.querySelector(".repl-input-wrap")).not.toBeNull();
     });
 
     it("clicking Script tab switches back to Script mode", () => {
@@ -115,12 +115,9 @@ describe("TurtlePanel REPL", () => {
       panel.switchTab("repl");
     });
 
-    it("Enter key executes command and shows result in history", async () => {
-      const input = document.querySelector(".repl-input") as HTMLInputElement;
-      input.value = "forward(100)";
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+    it("replSubmitCommand executes command and shows result in history", async () => {
+      panel.replSubmitCommand("forward(100)");
 
-      // Wait for async execution
       await vi.waitFor(() => {
         expect(onReplCommand).toHaveBeenCalledWith("forward(100)");
       });
@@ -139,9 +136,7 @@ describe("TurtlePanel REPL", () => {
     it("shows error in red when command fails", async () => {
       onReplCommand.mockResolvedValue({ output: null, error: "syntax error" });
 
-      const input = document.querySelector(".repl-input") as HTMLInputElement;
-      input.value = "bad syntax";
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+      panel.replSubmitCommand("bad syntax");
 
       await vi.waitFor(() => {
         expect(onReplCommand).toHaveBeenCalled();
@@ -152,26 +147,13 @@ describe("TurtlePanel REPL", () => {
       expect(errorEl?.textContent).toBe("syntax error");
     });
 
-    it("clears input after execution", async () => {
-      const input = document.querySelector(".repl-input") as HTMLInputElement;
-      input.value = "forward(100)";
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
-
-      // Input should be cleared immediately
-      expect(input.value).toBe("");
-    });
-
     it("does not execute empty input", () => {
-      const input = document.querySelector(".repl-input") as HTMLInputElement;
-      input.value = "";
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+      panel.replSubmitCommand("");
       expect(onReplCommand).not.toHaveBeenCalled();
     });
 
     it("does not execute whitespace-only input", () => {
-      const input = document.querySelector(".repl-input") as HTMLInputElement;
-      input.value = "   ";
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+      panel.replSubmitCommand("   ");
       expect(onReplCommand).not.toHaveBeenCalled();
     });
 
@@ -181,9 +163,7 @@ describe("TurtlePanel REPL", () => {
       panel.show();
       panel.switchTab("repl");
 
-      const input = document.querySelector(".repl-input") as HTMLInputElement;
-      input.value = "forward(100)";
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+      panel.replSubmitCommand("forward(100)");
 
       await vi.waitFor(() => {
         const error = document.querySelector(".repl-error");
@@ -200,70 +180,48 @@ describe("TurtlePanel REPL", () => {
       panel.switchTab("repl");
     });
 
-    it("ArrowUp navigates to previous command", async () => {
-      const input = document.querySelector(".repl-input") as HTMLInputElement;
-
-      input.value = "forward(100)";
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+    it("replHistoryBack navigates to previous command", async () => {
+      panel.replSubmitCommand("forward(100)");
 
       await vi.waitFor(() => {
         expect(document.querySelectorAll(".repl-entry").length).toBe(1);
       });
 
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp" }));
-      expect(input.value).toBe("forward(100)");
+      expect(panel.replHistoryBack()).toBe("forward(100)");
     });
 
-    it("ArrowDown after ArrowUp clears input", async () => {
-      const input = document.querySelector(".repl-input") as HTMLInputElement;
-
-      input.value = "forward(100)";
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+    it("replHistoryForward after back clears to empty string", async () => {
+      panel.replSubmitCommand("forward(100)");
 
       await vi.waitFor(() => {
         expect(document.querySelectorAll(".repl-entry").length).toBe(1);
       });
 
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp" }));
-      expect(input.value).toBe("forward(100)");
-
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
-      expect(input.value).toBe("");
+      expect(panel.replHistoryBack()).toBe("forward(100)");
+      expect(panel.replHistoryForward()).toBe("");
     });
 
-    it("cycles through multiple commands with ArrowUp", async () => {
-      const input = document.querySelector(".repl-input") as HTMLInputElement;
-
-      input.value = "forward(100)";
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+    it("cycles through multiple commands with replHistoryBack", async () => {
+      panel.replSubmitCommand("forward(100)");
       await vi.waitFor(() => {
         expect(document.querySelectorAll(".repl-entry").length).toBe(1);
       });
 
-      input.value = "right(90)";
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+      panel.replSubmitCommand("right(90)");
       await vi.waitFor(() => {
         expect(document.querySelectorAll(".repl-entry").length).toBe(2);
       });
 
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp" }));
-      expect(input.value).toBe("right(90)");
-
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp" }));
-      expect(input.value).toBe("forward(100)");
+      expect(panel.replHistoryBack()).toBe("right(90)");
+      expect(panel.replHistoryBack()).toBe("forward(100)");
     });
 
-    it("ArrowUp does nothing when history is empty", () => {
-      const input = document.querySelector(".repl-input") as HTMLInputElement;
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp" }));
-      expect(input.value).toBe("");
+    it("replHistoryBack returns null when history is empty", () => {
+      expect(panel.replHistoryBack()).toBeNull();
     });
 
-    it("ArrowDown does nothing when not navigating history", () => {
-      const input = document.querySelector(".repl-input") as HTMLInputElement;
-      input.value = "something";
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
-      expect(input.value).toBe("something");
+    it("replHistoryForward returns null when not navigating history", () => {
+      expect(panel.replHistoryForward()).toBeNull();
     });
   });
 
@@ -276,9 +234,7 @@ describe("TurtlePanel REPL", () => {
       panel.switchTab("repl");
 
       // Execute a command first
-      const input = document.querySelector(".repl-input") as HTMLInputElement;
-      input.value = "forward(100)";
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+      panel.replSubmitCommand("forward(100)");
       await vi.waitFor(() => {
         expect(document.querySelectorAll(".repl-entry").length).toBe(1);
       });
@@ -314,9 +270,7 @@ describe("TurtlePanel REPL", () => {
       panel.show();
       panel.switchTab("repl");
 
-      const input = document.querySelector(".repl-input") as HTMLInputElement;
-      input.value = "test";
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+      panel.replSubmitCommand("test");
       await vi.waitFor(() => {
         expect(document.querySelectorAll(".repl-entry").length).toBe(1);
       });
@@ -337,9 +291,7 @@ describe("TurtlePanel REPL", () => {
       panel.show();
       panel.switchTab("repl");
 
-      const input = document.querySelector(".repl-input") as HTMLInputElement;
-      input.value = "1+1";
-      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+      panel.replSubmitCommand("1+1");
 
       await vi.waitFor(() => {
         expect(document.querySelectorAll(".repl-entry").length).toBe(1);

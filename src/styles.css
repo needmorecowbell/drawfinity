@@ -2858,7 +2858,7 @@ html, body {
 /* Turtle REPL Input Area */
 .repl-input-wrap {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   padding: 6px 12px;
   border-top: 1px solid #313244;
   flex-shrink: 0;
@@ -2870,22 +2870,12 @@ html, body {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   font-size: 13px;
   line-height: 1.5;
+  padding-top: 1px;
 }
 
-.repl-input {
+.repl-input-wrap .cm-editor {
   flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: #cdd6f4;
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  font-size: 13px;
-  line-height: 1.5;
-  caret-color: #89b4fa;
-}
-
-.repl-input::placeholder {
-  color: #585b70;
+  min-width: 0;
 }
 
 @media (max-width: 600px) {

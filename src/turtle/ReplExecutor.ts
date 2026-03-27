@@ -1,6 +1,7 @@
 import { ReplRuntime, ReplResult } from "./ReplRuntime";
 import { TurtleRegistry } from "./TurtleRegistry";
 import { TurtleAwareness } from "./TurtleAwareness";
+import { MessageBus, Blackboard } from "./TurtleMessaging";
 import type { TurtleCommand } from "./LuaRuntime";
 import type { DocumentModel } from "../model/Stroke";
 import type { SyncManager } from "../sync/SyncManager";
@@ -25,6 +26,8 @@ export class ReplExecutor {
   private scriptId: string;
   private doc: DocumentModel;
   private awareness: TurtleAwareness | null = null;
+  private messageBus = new MessageBus();
+  private blackboard = new Blackboard();
   private initialized = false;
 
   constructor(
@@ -77,6 +80,14 @@ export class ReplExecutor {
 
     const result: ReplResult = await this.runtime.executeLine(line);
 
+    // Collect print messages before replay (which consumes the commands)
+    const printMessages: string[] = [];
+    for (const cmd of result.commands) {
+      if (cmd.type === "print") {
+        printMessages.push(cmd.message);
+      }
+    }
+
     // Instantly replay commands against the turtle state and drawing
     if (result.commands.length > 0) {
       this.replayInstant(result.commands);
@@ -85,8 +96,14 @@ export class ReplExecutor {
     // Broadcast updated turtle position
     this.awareness?.forceUpdate();
 
+    // Combine print output and expression return value
+    const parts: string[] = [];
+    if (printMessages.length > 0) parts.push(printMessages.join("\n"));
+    if (result.output !== null) parts.push(result.output);
+    const output = parts.length > 0 ? parts.join("\n") : null;
+
     return {
-      output: result.output,
+      output,
       error: result.error,
     };
   }
@@ -97,12 +114,15 @@ export class ReplExecutor {
    * Does NOT clear drawn strokes — use `clearDrawing()` for that.
    */
   async reset(): Promise<void> {
+    this.clearSpawnedTurtles();
     await this.runtime.reset();
     const mainId = `${this.scriptId}:main`;
     const entry = this.registry.get(mainId);
     if (entry) {
       entry.state.reset();
     }
+    this.messageBus.clear();
+    this.blackboard.clear();
     this.wireRuntime();
     this.awareness?.clear();
   }
@@ -146,29 +166,79 @@ export class ReplExecutor {
     return mainId;
   }
 
-  /** Wire the ReplRuntime to the main turtle's state query. */
+  /** Wire the ReplRuntime to turtle state, spawn context, and messaging. */
   private wireRuntime(): void {
     const mainId = `${this.scriptId}:main`;
     const entry = this.registry.get(mainId);
     if (entry) {
       this.runtime.setStateQuery(entry.state);
     }
+    this.runtime.setSpawnContext(this.registry, this.scriptId, this.doc);
+    this.runtime.setMessagingContext(this.messageBus, this.blackboard);
+    this.messageBus.register(mainId);
   }
 
   /**
-   * Replay commands instantly (speed 0) against the main turtle's state
-   * and drawing. Simplified version of TurtleExecutor's replay — no
-   * animation delays, no multi-turtle interleaving, no spawn handling.
+   * Replay commands instantly (speed 0) against turtle state and drawing.
+   * Supports spawn/kill/killall and routes commands to the correct turtle
+   * by turtleId, mirroring TurtleExecutor's replay logic without animation.
    */
   private replayInstant(commands: TurtleCommand[]): void {
     const mainId = `${this.scriptId}:main`;
-    const entry = this.registry.get(mainId);
-    if (!entry) return;
+    const mainEntry = this.registry.get(mainId);
+    if (!mainEntry) return;
 
     for (const cmd of commands) {
       if (cmd.type === "print" || cmd.type === "step_boundary") {
         continue;
       }
+
+      // Spawn: create or reinitialize a child turtle
+      if (cmd.type === "spawn") {
+        const fullId = `${this.scriptId}:${cmd.id}`;
+        if (!this.registry.has(fullId)) {
+          this.registry.spawn(cmd.id, this.scriptId, this.doc, undefined, {
+            x: cmd.x, y: cmd.y, heading: cmd.heading, color: cmd.color, width: cmd.width,
+          });
+        } else {
+          const spawned = this.registry.get(fullId)!;
+          spawned.state.reset();
+          if (cmd.x !== undefined) spawned.state.x = cmd.x;
+          if (cmd.y !== undefined) spawned.state.y = cmd.y;
+          if (cmd.heading !== undefined) spawned.state.angle = cmd.heading;
+          if (cmd.color !== undefined) spawned.state.pen.color = cmd.color;
+          if (cmd.width !== undefined) spawned.state.pen.width = cmd.width;
+        }
+        // Inherit origin, zoom scale, and speed from main turtle
+        const spawnedEntry = this.registry.get(fullId);
+        if (spawnedEntry) {
+          const mainOrigin = mainEntry.state.getOrigin();
+          spawnedEntry.state.setOrigin(mainOrigin.x, mainOrigin.y);
+          spawnedEntry.state.x = mainOrigin.x + (cmd.x ?? 0);
+          spawnedEntry.state.y = mainOrigin.y + (cmd.y ?? 0);
+          spawnedEntry.state.zoomScale = mainEntry.state.zoomScale;
+          spawnedEntry.state.speed = mainEntry.state.speed;
+          spawnedEntry.state.scaleFactor = mainEntry.state.scaleFactor * (cmd.scale ?? 1);
+          this.messageBus.register(fullId);
+        }
+        continue;
+      }
+
+      if (cmd.type === "kill") {
+        this.registry.remove(cmd.id, this.scriptId);
+        continue;
+      }
+
+      if (cmd.type === "killall") {
+        this.clearSpawnedTurtles();
+        continue;
+      }
+
+      // Resolve target turtle
+      const localId = cmd.turtleId ?? "main";
+      const fullId = `${this.scriptId}:${localId}`;
+      const entry = this.registry.get(fullId);
+      if (!entry) continue;
 
       if (cmd.type === "clear") {
         entry.drawing.clearTurtleStrokes();
@@ -190,13 +260,25 @@ export class ReplExecutor {
           const radius = (entry.state.pen.width * eraseScale) / 2;
           entry.drawing.eraseAlongSegment(segment, radius, null);
         } else {
-          // Always batch at speed 0 for instant replay
           entry.drawing.addSegment(segment, true);
         }
       }
     }
 
-    // Flush any remaining batched segments
-    entry.drawing.flush();
+    // Flush all turtles owned by this script
+    for (const [, entry] of this.registry.getOwned(this.scriptId)) {
+      entry.drawing.flush();
+    }
+  }
+
+  /** Remove all spawned (non-main) turtles for this script. */
+  private clearSpawnedTurtles(): void {
+    const owned = this.registry.getOwned(this.scriptId);
+    const mainId = `${this.scriptId}:main`;
+    for (const [id] of owned) {
+      if (id !== mainId) {
+        this.registry.remove(id.replace(`${this.scriptId}:`, ""), this.scriptId);
+      }
+    }
   }
 }

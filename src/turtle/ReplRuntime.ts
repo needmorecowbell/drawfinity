@@ -46,6 +46,13 @@ export class ReplRuntime extends LuaRuntime {
   private async registerReplHelper(): Promise<void> {
     if (!this.engine) return;
     await this.engine.doString(`
+      -- Promote top-level "local x = ..." to "x = ..." so variables persist
+      -- across REPL lines (each line is a separate chunk, and locals are
+      -- chunk-scoped). Only rewrites top-level locals, not those inside blocks.
+      function _repl_delocal(line)
+        return line:gsub("^(%s*)local%s+", "%1")
+      end
+
       function _repl_exec(line)
         -- Try compiling as expression first
         local fn, err = load("return " .. line, "=repl")
@@ -72,7 +79,9 @@ export class ReplRuntime extends LuaRuntime {
         end
 
         -- Expression didn't compile, try as statement
-        local fn2, err2 = load(line, "=repl")
+        -- Promote top-level locals to globals so they persist between lines
+        local stmt = _repl_delocal(line)
+        local fn2, err2 = load(stmt, "=repl")
         if fn2 then
           local ok, runtime_err = pcall(fn2)
           if not ok then
@@ -81,8 +90,9 @@ export class ReplRuntime extends LuaRuntime {
           return nil
         end
 
-        -- Neither compiled
-        error(err2)
+        -- Neither compiled — report original error (before delocal)
+        local _, orig_err = load(line, "=repl")
+        error(orig_err or err2)
       end
     `);
   }

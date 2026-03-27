@@ -17,7 +17,7 @@ const TIER_COLORS: Record<BadgeTier, string> = {
   platinum: "#e5e4e2",
 };
 
-const BADGE_CATEGORIES = ["all", "drawing", "turtle", "canvas", "collaboration", "dedication"] as const;
+const BADGE_CATEGORIES = ["all", "drawing", "turtle", "turtle-awards", "canvas", "collaboration", "dedication"] as const;
 
 const RECORD_META: Record<keyof CanvasRecords, { name: string; category: string; format: (v: number) => string }> = {
   longestSingleStroke: { name: "Longest Single Stroke", category: "Stroke", format: (v) => `${v} points` },

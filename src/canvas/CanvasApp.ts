@@ -342,6 +342,7 @@ export class CanvasApp {
 
     this.strokeCapture = new StrokeCapture(this.camera, this.cameraController, this.doc, canvas);
     this.strokeCapture.setBrushConfig(this.toolManager.getBrush());
+    this.strokeCapture.onEraseComplete = () => this.statsTracker?.recordEraseAction();
     this.shapeCapture = new ShapeCapture(this.camera, this.cameraController, this.doc, canvas);
     this.shapeCapture.setEnabled(false);
     this.magnifyCapture = new MagnifyCapture(this.camera, this.cameraAnimator, this.cameraController, canvas);
@@ -578,6 +579,7 @@ export class CanvasApp {
         this.turtleButton.classList.add("turtle-executing");
         this.turtleIndicator.addTurtle("main", true);
         this.turtleIndicator.show();
+        this.statsTracker?.setTurtleRunning(true);
       },
       onStep: () => {
         this.syncTurtleIndicators();
@@ -586,11 +588,22 @@ export class CanvasApp {
         this.turtlePanel.setRunning(false);
         this.turtleButton.classList.remove("turtle-executing");
         this.turtleIndicator.hide();
+        this.statsTracker?.setTurtleRunning(false);
         if (!result.success && result.error) {
           this.turtlePanel.appendConsole(`Error: ${result.error}`, "error");
         } else {
           this.turtlePanel.appendConsole("Done.", "info");
         }
+        // Record turtle run stats for gamification
+        const meta = this.turtleExecutor.getLastRunMetadata();
+        this.statsTracker?.recordTurtleRun(
+          result,
+          meta.script,
+          meta.commands,
+          meta.spawnedCount,
+          meta.executionTimeMs,
+          meta.maxSpawnDepth,
+        );
       },
     });
     // Eagerly create the main turtle so origin placement has a stable state reference
@@ -980,9 +993,12 @@ export class CanvasApp {
   /** Sync turtle indicators with the registry — add/remove/update as needed. */
   private syncTurtleIndicators(): void {
     const owned = this.turtleRegistry.getOwned("default");
-    // Add indicators for newly spawned turtles
+    const activeIds = new Set<string>();
+
+    // Add/update indicators for living turtles
     for (const [fullId, entry] of owned) {
       const localId = fullId.replace("default:", "");
+      activeIds.add(localId);
       if (!this.turtleIndicator.hasTurtle(localId)) {
         this.turtleIndicator.addTurtle(localId, localId === "main");
       }
@@ -993,6 +1009,13 @@ export class CanvasApp {
         this.turtleIndicator.showTurtle(localId);
       } else {
         this.turtleIndicator.hideTurtle(localId);
+      }
+    }
+
+    // Remove indicators for turtles no longer in the registry (killed)
+    for (const id of this.turtleIndicator.getTrackedIds()) {
+      if (!activeIds.has(id)) {
+        this.turtleIndicator.removeTurtle(id);
       }
     }
   }

@@ -51,6 +51,13 @@ export class TurtleExecutor {
   /** Raw camera zoom level, used for LOD pixel-size calculations. */
   private cameraZoom = 1;
 
+  // --- Last-run metadata for stats tracking ---
+  private lastScript = "";
+  private lastCommands: TurtleCommand[] = [];
+  private lastSpawnedCount = 0;
+  private lastExecutionTimeMs = 0;
+  private lastMaxSpawnDepth = 0;
+
   constructor(
     runtime: LuaRuntime,
     registry: TurtleRegistry,
@@ -134,6 +141,14 @@ export class TurtleExecutor {
 
     this.running = true;
     this.stopRequested = false;
+    const runStartMs = Date.now();
+
+    // Reset last-run metadata
+    this.lastScript = script;
+    this.lastCommands = [];
+    this.lastSpawnedCount = 0;
+    this.lastExecutionTimeMs = 0;
+    this.lastMaxSpawnDepth = 0;
 
     // Store raw camera zoom for LOD pixel-size calculations
     this.cameraZoom = zoom > 0 ? zoom : 1;
@@ -163,6 +178,7 @@ export class TurtleExecutor {
     const luaResult = await this.runtime.execute(script);
     if (!luaResult.success) {
       this.running = false;
+      this.lastExecutionTimeMs = Date.now() - runStartMs;
       this.awareness?.clear();
       const result: ExecutionResult = {
         success: false,
@@ -173,6 +189,8 @@ export class TurtleExecutor {
     }
 
     const commands = this.runtime.getCommands();
+    this.lastCommands = commands;
+    this.lastSpawnedCount = commands.filter((c) => c.type === "spawn").length;
 
     // Reset all turtle states before replay. During simulate(), commands
     // eagerly update state so spatial queries work during collection.
@@ -199,6 +217,10 @@ export class TurtleExecutor {
     // Send final awareness update then clear remote indicators
     this.awareness?.forceUpdate();
     this.awareness?.clear();
+
+    // Capture final run metadata
+    this.lastExecutionTimeMs = Date.now() - runStartMs;
+    this.lastMaxSpawnDepth = this.registry.getDeepestSpawnDepth?.() ?? 0;
 
     this.running = false;
     this.events.onComplete?.(replayResult);
@@ -548,6 +570,23 @@ export class TurtleExecutor {
     const clamped = Math.max(1, Math.min(10, s));
     // speed 1 → 100ms, speed 10 → 1ms
     return Math.round(100 - ((clamped - 1) * 99) / 9);
+  }
+
+  /** Return metadata from the most recent run, for stats tracking. */
+  getLastRunMetadata(): {
+    script: string;
+    commands: TurtleCommand[];
+    spawnedCount: number;
+    executionTimeMs: number;
+    maxSpawnDepth: number;
+  } {
+    return {
+      script: this.lastScript,
+      commands: this.lastCommands,
+      spawnedCount: this.lastSpawnedCount,
+      executionTimeMs: this.lastExecutionTimeMs,
+      maxSpawnDepth: this.lastMaxSpawnDepth,
+    };
   }
 
   /** Remove all spawned (non-main) turtles for this script. */

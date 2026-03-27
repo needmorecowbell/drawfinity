@@ -211,7 +211,7 @@ describe("StatsPanel", () => {
     panel.show();
     panel.showTab("badges");
     const filters = document.querySelectorAll(".stats-badge-filter-btn");
-    expect(filters.length).toBe(6); // all, drawing, turtle, canvas, collaboration, dedication
+    expect(filters.length).toBe(7); // all, drawing, turtle, turtle-awards, canvas, collaboration, dedication
   });
 
   it("clicking a category filter updates badge grid", () => {

@@ -27,6 +27,7 @@ export class BadgeToast {
   private callbacks: BadgeToastCallbacks;
   private container: HTMLElement;
   private handler: (e: Event) => void;
+  private staggerTimers: ReturnType<typeof setTimeout>[] = [];
 
   constructor(callbacks: BadgeToastCallbacks = {}) {
     this.callbacks = callbacks;
@@ -48,7 +49,8 @@ export class BadgeToast {
       if (delay === 0) {
         this.createToast(unlocked[i].badge);
       } else {
-        setTimeout(() => this.createToast(unlocked[i].badge), delay);
+        const t = setTimeout(() => this.createToast(unlocked[i].badge), delay);
+        this.staggerTimers.push(t);
       }
     }
   }
@@ -117,7 +119,10 @@ export class BadgeToast {
 
   destroy(): void {
     window.removeEventListener("drawfinity:badge-unlocked", this.handler);
-    // Clear all pending timers
+    // Clear stagger timers
+    for (const t of this.staggerTimers) clearTimeout(t);
+    this.staggerTimers = [];
+    // Clear all pending per-toast auto-dismiss timers
     for (const child of Array.from(this.container.children)) {
       const timer = (child as unknown as { _timer: ReturnType<typeof setTimeout> })._timer;
       if (timer) clearTimeout(timer);

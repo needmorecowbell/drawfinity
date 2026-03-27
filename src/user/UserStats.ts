@@ -6,8 +6,9 @@ import { readConfigFile, writeConfigFile } from "./ConfigFile";
  */
 export interface UserStats {
   // Drawing stats
-  totalStrokes: number;
+  totalStrokes: number; // hand-drawn strokes only
   totalShapes: number;
+  totalTurtleStrokes: number; // strokes created by turtle scripts
   totalEraseActions: number;
   totalUndos: number;
   totalRedos: number;
@@ -60,6 +61,7 @@ export function createDefaultStats(): UserStats {
   return {
     totalStrokes: 0,
     totalShapes: 0,
+    totalTurtleStrokes: 0,
     totalEraseActions: 0,
     totalUndos: 0,
     totalRedos: 0,

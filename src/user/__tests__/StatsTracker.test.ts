@@ -70,7 +70,7 @@ function createMockUndoManager() {
     }),
     // Test helper
     _simulateStackItemAdded(type: "undo" | "redo") {
-      const cbs = listeners.get("stack-item-added");
+      const cbs = listeners.get("stack-item-popped");
       if (cbs) for (const cb of cbs) cb({ type });
     },
   };

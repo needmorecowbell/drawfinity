@@ -166,6 +166,11 @@ export class TurtleIndicator {
     return this.indicators.size;
   }
 
+  /** Return all currently tracked turtle IDs. */
+  getTrackedIds(): IterableIterator<string> {
+    return this.indicators.keys();
+  }
+
   /** Remove all indicators and detach from the DOM. */
   destroy(): void {
     this.hide();

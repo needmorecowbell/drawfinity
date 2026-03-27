@@ -40,6 +40,11 @@ export class StatsTracker {
   private recordsDirty = false;
   private sessionStrokeCount = 0;
   private sessionPanDistance = 0;
+  /** Cooldown tracking: suppress repeat record-broken events for the same key. */
+  private lastRecordEventAt = new Map<string, number>();
+  private static readonly RECORD_EVENT_COOLDOWN_MS = 10_000;
+  /** Set by CanvasApp to distinguish turtle-drawn vs hand-drawn strokes. */
+  private turtleRunning = false;
 
   constructor(
     stats: UserStats,
@@ -84,22 +89,28 @@ export class StatsTracker {
       // Detect new strokes
       if (strokes.length > prevStrokeCount) {
         const added = strokes.length - prevStrokeCount;
-        this.stats.totalStrokes += added;
-        this.sessionStrokeCount += added;
-        // Check for longest stroke among new ones
-        for (let i = strokes.length - added; i < strokes.length; i++) {
-          const stroke = strokes[i];
-          const pts = stroke.points.length;
-          if (pts > this.stats.longestStrokePoints) {
-            this.stats.longestStrokePoints = pts;
+
+        if (this.turtleRunning) {
+          // Attribute to turtle stats — don't inflate hand-drawn counts
+          this.stats.totalTurtleStrokes += added;
+        } else {
+          this.stats.totalStrokes += added;
+          this.sessionStrokeCount += added;
+          // Check for longest stroke among new hand-drawn ones
+          for (let i = strokes.length - added; i < strokes.length; i++) {
+            const stroke = strokes[i];
+            const pts = stroke.points.length;
+            if (pts > this.stats.longestStrokePoints) {
+              this.stats.longestStrokePoints = pts;
+            }
+            // Record: longest single stroke
+            this.checkRecord("longestSingleStroke", pts);
+            // Record: widest brush used
+            this.checkRecord("widestBrushUsed", stroke.width);
           }
-          // Record: longest single stroke
-          this.checkRecord("longestSingleStroke", pts);
-          // Record: widest brush used
-          this.checkRecord("widestBrushUsed", stroke.width);
+          // Record: most strokes in one session
+          this.checkRecord("mostStrokesInOneSession", this.sessionStrokeCount);
         }
-        // Record: most strokes in one session
-        this.checkRecord("mostStrokesInOneSession", this.sessionStrokeCount);
         this.dirty = true;
       }
       prevStrokeCount = strokes.length;
@@ -115,9 +126,11 @@ export class StatsTracker {
     // Note: Yjs observeDeep doesn't return an unsubscribe — we rely on doc lifecycle
 
     // --- Undo/Redo tracking ---
-    // Wrap the raw Y.UndoManager events to distinguish undo vs redo
+    // Use stack-item-popped: fires when the user actually performs undo/redo.
+    // (stack-item-added fires when items are *pushed* onto a stack, which
+    //  happens on every new stroke — not what we want.)
     const rawUndoMgr = undoManager.getRawUndoManager();
-    const onStackItemAdded = (event: { type: string }) => {
+    const onStackItemPopped = (event: { type: string }) => {
       if (event.type === "undo") {
         this.stats.totalUndos++;
       } else if (event.type === "redo") {
@@ -125,8 +138,8 @@ export class StatsTracker {
       }
       this.dirty = true;
     };
-    rawUndoMgr.on("stack-item-added", onStackItemAdded);
-    this.cleanupFns.push(() => rawUndoMgr.off("stack-item-added", onStackItemAdded));
+    rawUndoMgr.on("stack-item-popped", onStackItemPopped);
+    this.cleanupFns.push(() => rawUndoMgr.off("stack-item-popped", onStackItemPopped));
 
     // --- Camera stats: zoom and pan ---
     // Initialize zoom records from current state
@@ -191,6 +204,11 @@ export class StatsTracker {
       saveRecords(this.records);
     };
     window.addEventListener("beforeunload", this.beforeUnloadHandler);
+  }
+
+  /** Set whether a turtle script is currently executing (affects stroke attribution). */
+  setTurtleRunning(running: boolean): void {
+    this.turtleRunning = running;
   }
 
   /** Call from the render loop to sample camera state for zoom/pan tracking. */
@@ -260,9 +278,15 @@ export class StatsTracker {
     executionTimeMs?: number,
     maxSpawnDepth?: number,
   ): void {
+    const stoppedByUser = !result.success && result.error === "Execution stopped by user";
+
     if (result.success) {
       this.stats.totalTurtleRuns++;
       this.stats.consecutiveCleanRuns++;
+    } else if (stoppedByUser) {
+      // User-stopped runs still count as runs (work was done) but not as "clean"
+      this.stats.totalTurtleRuns++;
+      // Don't reset consecutiveCleanRuns — stopping is intentional, not an error
     } else {
       this.stats.totalTurtleErrors++;
       this.stats.consecutiveCleanRuns = 0;
@@ -333,6 +357,7 @@ export class StatsTracker {
       if (executionTimeMs > this.stats.longestTurtleRuntimeMs) {
         this.stats.longestTurtleRuntimeMs = executionTimeMs;
       }
+      // Fastest completion only counts fully successful runs with 100+ commands
       if (result.success && commands.length > 100) {
         if (this.stats.fastestTurtleCompletionMs === 0 || executionTimeMs < this.stats.fastestTurtleCompletionMs) {
           this.stats.fastestTurtleCompletionMs = executionTimeMs;
@@ -340,7 +365,7 @@ export class StatsTracker {
       }
     }
 
-    // Canvas records for turtle runs
+    // Canvas records for turtle runs (include stopped runs — work was still done)
     const ctx = script.slice(0, 50);
     this.checkRecord("mostTurtlesInOneRun", spawnedCount, ctx);
     this.checkRecord("longestTurtleDistance", runForwardDistance, ctx);
@@ -390,16 +415,24 @@ export class StatsTracker {
 
   /**
    * Check a record and fire a custom event if a new personal best is set.
+   * Events are cooldown-throttled per key to avoid toast spam for records
+   * that increment frequently (e.g. mostStrokesInOneSession).
    */
   private checkRecord(key: keyof CanvasRecords, value: number, context?: string): void {
     const oldValue = this.records[key].value;
     if (updateRecord(this.records, key, value, context)) {
       this.recordsDirty = true;
-      window.dispatchEvent(
-        new CustomEvent("drawfinity:record-broken", {
-          detail: { key, newValue: value, oldValue },
-        }),
-      );
+      // Suppress rapid-fire toast events for the same record key
+      const now = Date.now();
+      const lastFired = this.lastRecordEventAt.get(key) ?? 0;
+      if (now - lastFired >= StatsTracker.RECORD_EVENT_COOLDOWN_MS) {
+        this.lastRecordEventAt.set(key, now);
+        window.dispatchEvent(
+          new CustomEvent("drawfinity:record-broken", {
+            detail: { key, newValue: value, oldValue },
+          }),
+        );
+      }
     }
   }
 

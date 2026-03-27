@@ -284,33 +284,41 @@ export function showSessionSummary(data: SessionSummaryData): Promise<void> {
     const continueBtn = document.createElement("button");
     continueBtn.className = "session-summary__continue-btn";
     continueBtn.textContent = "Continue";
-    continueBtn.addEventListener("click", () => {
-      overlay.remove();
-      resolve();
-    });
     actions.appendChild(continueBtn);
     dialog.appendChild(actions);
 
     overlay.appendChild(dialog);
 
     // Keyboard handler: Escape or Enter dismiss
+    let keyHandlerAttached = false;
     const keyHandler = (e: KeyboardEvent) => {
       if (e.key === "Escape" || e.key === "Enter") {
         e.preventDefault();
         e.stopPropagation();
-        document.removeEventListener("keydown", keyHandler, true);
-        overlay.remove();
-        resolve();
+        dismiss();
       }
     };
+
+    const dismiss = () => {
+      clearTimeout(appearTimer);
+      if (keyHandlerAttached) {
+        document.removeEventListener("keydown", keyHandler, true);
+        keyHandlerAttached = false;
+      }
+      overlay.remove();
+      resolve();
+    };
+
+    continueBtn.addEventListener("click", dismiss);
 
     // Slight delay before appearing (200ms) to avoid flash on accidental presses
     overlay.style.opacity = "0";
     document.body.appendChild(overlay);
 
-    setTimeout(() => {
+    const appearTimer = setTimeout(() => {
       overlay.style.opacity = "1";
       document.addEventListener("keydown", keyHandler, true);
+      keyHandlerAttached = true;
       continueBtn.focus();
     }, 200);
   });

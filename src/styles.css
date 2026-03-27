@@ -1604,6 +1604,86 @@ html, body {
   background: #e0e0e0;
 }
 
+/* Badge Toast Notifications */
+.badge-toast-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.badge-toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #fff;
+  border-radius: 10px;
+  border-left: 4px solid #ccc;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  font-family: system-ui, -apple-system, sans-serif;
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translateX(120%);
+  opacity: 0;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease;
+  min-width: 240px;
+  max-width: 320px;
+}
+
+.badge-toast-visible {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.badge-toast-exit {
+  opacity: 0;
+  transform: translateX(40%);
+  transition: transform 0.4s ease, opacity 0.4s ease;
+}
+
+.badge-toast[data-tier="bronze"] { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 0 8px rgba(205, 127, 50, 0.3); }
+.badge-toast[data-tier="silver"] { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 0 8px rgba(192, 192, 192, 0.4); }
+.badge-toast[data-tier="gold"] { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 0 12px rgba(255, 215, 0, 0.4); }
+.badge-toast[data-tier="platinum"] { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 0 14px rgba(229, 228, 226, 0.5); }
+
+.badge-toast-icon {
+  font-size: 32px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.badge-toast-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.badge-toast-header {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #888;
+}
+
+.badge-toast-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #222;
+}
+
+.badge-toast-tier {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
 /* Home Screen */
 #home-screen {
   position: fixed;

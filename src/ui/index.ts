@@ -38,3 +38,5 @@ export { showCorruptionDialog } from "./CorruptionDialog";
 export type { CorruptionChoice } from "./CorruptionDialog";
 export { StatsPanel } from "./StatsPanel";
 export type { StatsPanelCallbacks, StatsTabName } from "./StatsPanel";
+export { BadgeToast } from "./BadgeToast";
+export type { BadgeToastCallbacks } from "./BadgeToast";

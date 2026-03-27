@@ -73,10 +73,10 @@ export interface TurtleStateQuery {
  * produce an ordered list of TurtleCommands that the executor processes.
  */
 export class LuaRuntime {
-  private factory: LuaFactory;
-  private engine: LuaEngine | null = null;
-  private commands: TurtleCommand[] = [];
-  private stateQuery: TurtleStateQuery | null = null;
+  protected factory: LuaFactory;
+  protected engine: LuaEngine | null = null;
+  protected commands: TurtleCommand[] = [];
+  protected stateQuery: TurtleStateQuery | null = null;
   /** The turtle ID that new commands will be tagged with. Defaults to "main". */
   private activeTurtleId = "main";
   /** Spawn context set by TurtleExecutor before script execution. */
@@ -84,7 +84,7 @@ export class LuaRuntime {
   private spawnScriptId: string | null = null;
   private spawnDoc: DocumentModel | null = null;
   /** Tracks turtle IDs spawned during current collection to detect duplicates. */
-  private spawnedThisExecution = new Set<string>();
+  protected spawnedThisExecution = new Set<string>();
   /** Messaging context set by TurtleExecutor before script execution. */
   private messageBus: MessageBus | null = null;
   private blackboard: Blackboard | null = null;

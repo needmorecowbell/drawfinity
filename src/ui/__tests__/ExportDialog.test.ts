@@ -185,6 +185,7 @@ describe("ExportDialog", () => {
       const btn = document.querySelector(".export-confirm-btn") as HTMLButtonElement;
       btn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
       expect(onExport).toHaveBeenCalledWith({
+        format: "png",
         scope: "fitAll",
         scale: 1,
         includeBackground: true,
@@ -212,6 +213,7 @@ describe("ExportDialog", () => {
       const btn = document.querySelector(".export-confirm-btn") as HTMLButtonElement;
       btn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
       expect(onExport).toHaveBeenCalledWith({
+        format: "png",
         scope: "viewport",
         scale: 4,
         includeBackground: false,

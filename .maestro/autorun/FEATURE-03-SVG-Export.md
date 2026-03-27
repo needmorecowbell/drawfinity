@@ -41,7 +41,7 @@ The SVG export should use the same `ExportDialog.ts` UI, adding a format toggle 
 
 ## Tasks
 
-- [ ] Create `src/ui/SVGExporter.ts`:
+- [x] Create `src/ui/SVGExporter.ts`:
   - `exportSVG(doc: DrawfinityDoc, options: ExportOptions): string` — returns SVG markup as a string
   - Compute the content bounding box (reuse `computeContentBounds()` from `ExportRenderer.ts`)
   - Set SVG `viewBox` to the content bounds (for `fitAll`) or camera viewport (for `viewport`)

@@ -6,11 +6,15 @@ export interface ExportDialogConfig {
   onExport: (options: ExportDialogResult) => void;
 }
 
+/** Export format: raster PNG or vector SVG. */
+export type ExportFormat = "png" | "svg";
+
 /** Result from the export dialog. */
 export interface ExportDialogResult {
   scope: ExportScope;
   scale: number;
   includeBackground: boolean;
+  format: ExportFormat;
 }
 
 const SCALE_OPTIONS: { label: string; value: number }[] = [
@@ -34,6 +38,7 @@ export class ExportDialog {
   private popover: HTMLDivElement | null = null;
   private popoverVisible = false;
 
+  private format: ExportFormat = "png";
   private scope: ExportScope = "fitAll";
   private scale = 1;
   private includeBackground = true;
@@ -81,6 +86,40 @@ export class ExportDialog {
     this.popover = document.createElement("div");
     this.popover.className = "export-popover";
 
+    // Format selector (PNG / SVG)
+    const formatRow = this.createRow("Format");
+    const formatGroup = document.createElement("div");
+    formatGroup.className = "export-option-group";
+
+    const formatPng = this.createOptionButton("PNG", this.format === "png");
+    const formatSvg = this.createOptionButton("SVG", this.format === "svg");
+
+    // We need forward references to the resolution row and export button
+    let resRow: HTMLDivElement;
+    let exportBtn: HTMLButtonElement;
+
+    const updateFormatUI = () => {
+      this.updateFormatButtons(formatGroup);
+      if (resRow) resRow.style.display = this.format === "svg" ? "none" : "";
+      if (exportBtn) exportBtn.textContent = `Export ${this.format.toUpperCase()}`;
+    };
+
+    formatPng.addEventListener("pointerdown", (ev) => {
+      ev.stopPropagation();
+      this.format = "png";
+      updateFormatUI();
+    });
+    formatGroup.appendChild(formatPng);
+
+    formatSvg.addEventListener("pointerdown", (ev) => {
+      ev.stopPropagation();
+      this.format = "svg";
+      updateFormatUI();
+    });
+    formatGroup.appendChild(formatSvg);
+    formatRow.appendChild(formatGroup);
+    this.popover.appendChild(formatRow);
+
     // Scope selector
     const scopeRow = this.createRow("Scope");
     const scopeGroup = document.createElement("div");
@@ -105,7 +144,8 @@ export class ExportDialog {
     this.popover.appendChild(scopeRow);
 
     // Resolution selector
-    const resRow = this.createRow("Resolution");
+    resRow = this.createRow("Resolution");
+    if (this.format === "svg") resRow.style.display = "none";
     const resGroup = document.createElement("div");
     resGroup.className = "export-option-group";
 
@@ -145,12 +185,13 @@ export class ExportDialog {
     this.popover.appendChild(bgRow);
 
     // Export button
-    const exportBtn = document.createElement("button");
+    exportBtn = document.createElement("button");
     exportBtn.className = "export-confirm-btn";
-    exportBtn.textContent = "Export PNG";
+    exportBtn.textContent = `Export ${this.format.toUpperCase()}`;
     exportBtn.addEventListener("pointerdown", (ev) => {
       ev.stopPropagation();
       this.onExport({
+        format: this.format,
         scope: this.scope,
         scale: this.scale,
         includeBackground: this.includeBackground,
@@ -205,6 +246,12 @@ export class ExportDialog {
     if (active) btn.classList.add("active");
     btn.textContent = text;
     return btn;
+  }
+
+  private updateFormatButtons(group: HTMLElement): void {
+    const buttons = group.querySelectorAll(".export-option");
+    buttons[0]?.classList.toggle("active", this.format === "png");
+    buttons[1]?.classList.toggle("active", this.format === "svg");
   }
 
   private updateScopeButtons(group: HTMLElement): void {

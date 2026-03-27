@@ -1,0 +1,155 @@
+/**
+ * CodeMirror 6 wrapper for the Drawfinity turtle Lua editor.
+ *
+ * Provides Lua syntax highlighting via @codemirror/legacy-modes/mode/lua
+ * (StreamLanguage), autocompletion for turtle API, bracket matching,
+ * and keybindings for running scripts (Ctrl+Enter) and 2-space indentation (Tab).
+ */
+
+import { EditorView, keymap } from "@codemirror/view";
+import { EditorState } from "@codemirror/state";
+import { StreamLanguage } from "@codemirror/language";
+import { bracketMatching } from "@codemirror/language";
+import { defaultKeymap, indentWithTab } from "@codemirror/commands";
+import { closeBrackets } from "@codemirror/autocomplete";
+import { lua } from "@codemirror/legacy-modes/mode/lua";
+import type { Extension } from "@codemirror/state";
+import { turtleAutocompletion } from "./TurtleCompletions";
+
+export interface TurtleEditorOptions {
+  parent: HTMLElement;
+  initialValue?: string;
+  onChange?: (value: string) => void;
+  onRun?: () => void;
+}
+
+/** Catppuccin Mocha-inspired theme matching existing .turtle-editor textarea styles. */
+const turtleEditorTheme = EditorView.theme({
+  "&": {
+    flex: "1",
+    minHeight: "0",
+    overflow: "auto",
+    backgroundColor: "#1e1e2e",
+    color: "#cdd6f4",
+    fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
+    fontSize: "13px",
+    lineHeight: "1.5",
+  },
+  ".cm-content": {
+    padding: "4px 12px 12px",
+    caretColor: "#cdd6f4",
+  },
+  ".cm-gutters": {
+    backgroundColor: "#1e1e2e",
+    color: "#585b70",
+    border: "none",
+  },
+  ".cm-activeLineGutter": {
+    backgroundColor: "#28283d",
+  },
+  ".cm-activeLine": {
+    backgroundColor: "#28283d",
+  },
+  ".cm-cursor": {
+    borderLeftColor: "#cdd6f4",
+  },
+  ".cm-selectionBackground": {
+    backgroundColor: "#44475a !important",
+  },
+  "&.cm-focused .cm-selectionBackground": {
+    backgroundColor: "#44475a !important",
+  },
+  ".cm-tooltip.cm-tooltip-autocomplete": {
+    backgroundColor: "#fff",
+    border: "1px solid #ddd",
+    borderRadius: "4px",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+    color: "#333",
+  },
+  ".cm-tooltip.cm-tooltip-autocomplete ul li[aria-selected]": {
+    backgroundColor: "#0066FF",
+    color: "#fff",
+  },
+  ".cm-tooltip.cm-tooltip-autocomplete .cm-completionDetail": {
+    color: "#888",
+    fontStyle: "italic",
+  },
+  ".cm-tooltip.cm-tooltip-autocomplete ul li[aria-selected] .cm-completionDetail": {
+    color: "rgba(255,255,255,0.8)",
+  },
+  ".cm-scroller": {
+    overflow: "auto",
+  },
+});
+
+export class TurtleEditor {
+  private view: EditorView;
+
+  constructor(options: TurtleEditorOptions) {
+    const runKeymap = options.onRun
+      ? keymap.of([{
+          key: "Ctrl-Enter",
+          mac: "Cmd-Enter",
+          run: () => { options.onRun!(); return true; },
+        }])
+      : [];
+
+    const extensions: Extension[] = [
+      runKeymap,
+      keymap.of([indentWithTab]),
+      keymap.of(defaultKeymap),
+      StreamLanguage.define(lua),
+      bracketMatching(),
+      closeBrackets(),
+      turtleAutocompletion(),
+      turtleEditorTheme,
+      EditorState.tabSize.of(2),
+      EditorView.lineWrapping,
+    ];
+
+    if (options.onChange) {
+      const onChange = options.onChange;
+      extensions.push(
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged) {
+            onChange(update.state.doc.toString());
+          }
+        }),
+      );
+    }
+
+    this.view = new EditorView({
+      state: EditorState.create({
+        doc: options.initialValue ?? "",
+        extensions,
+      }),
+      parent: options.parent,
+    });
+  }
+
+  getValue(): string {
+    return this.view.state.doc.toString();
+  }
+
+  setValue(code: string): void {
+    this.view.dispatch({
+      changes: {
+        from: 0,
+        to: this.view.state.doc.length,
+        insert: code,
+      },
+    });
+  }
+
+  focus(): void {
+    this.view.focus();
+  }
+
+  requestMeasure(): void {
+    this.view.requestMeasure();
+  }
+
+  destroy(): void {
+    this.view.destroy();
+  }
+}

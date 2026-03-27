@@ -18,7 +18,7 @@ import { CheatSheet } from "../ui/CheatSheet";
 import { CursorManager } from "../ui/CursorManager";
 import { FpsCounter } from "../ui/FpsCounter";
 import { SyncManager } from "../sync";
-import { loadProfileAsync, loadPreferencesAsync, savePreferences, type UserPreferences, type GridStyle } from "../user";
+import { loadProfileAsync, loadPreferencesAsync, savePreferences, loadStatsAsync, StatsTracker, type UserPreferences, type GridStyle } from "../user";
 import { showStorageNotification } from "../ui/StorageNotification";
 import { showCorruptionDialog } from "../ui/CorruptionDialog";
 
@@ -137,6 +137,7 @@ export class CanvasApp {
   private connectionStateUnsubscribe: (() => void) | null = null;
   private gridStyle: GridStyle = "dots";
   private userPreferences: UserPreferences | null = null;
+  private statsTracker: StatsTracker | null = null;
   private initialized = false;
   private callbacks: CanvasAppCallbacks = {};
 
@@ -340,6 +341,10 @@ export class CanvasApp {
     this.magnifyCapture.onCursorChange = (mode) => this.cursorManager.setMagnifyMode(mode);
     this.undoManager = new UndoManager(this.doc.getStrokesArray());
     this.strokeCapture.setUndoManager(this.undoManager);
+
+    // --- Gamification: load stats and start tracking ---
+    const userStats = await loadStatsAsync();
+    this.statsTracker = new StatsTracker(userStats, this.doc, this.camera, this.undoManager, this.syncManager);
 
     this.fpsCounter = new FpsCounter();
     this.camera.setViewportSize(canvas.clientWidth, canvas.clientHeight);
@@ -703,6 +708,7 @@ export class CanvasApp {
     // Start render loop
     const frame = (now: number): void => {
       this.cameraAnimator.tick();
+      this.statsTracker?.updateCamera(this.camera);
       this.renderer.clear();
       const cameraMatrix = this.camera.getTransformMatrix();
       this.renderer.setCameraMatrix(cameraMatrix);
@@ -808,6 +814,12 @@ export class CanvasApp {
     document.removeEventListener("keydown", this.keydownHandler);
     this.canvas.removeEventListener("pointermove", this.pointermoveHandler);
 
+    // Flush gamification stats before auto-save
+    if (this.statsTracker) {
+      this.statsTracker.destroy();
+      this.statsTracker = null;
+    }
+
     // Stop auto-save and flush final state to disk
     this.autoSave.stop();
     await this.autoSave.saveNow();
@@ -911,6 +923,7 @@ export class CanvasApp {
     }
 
     this.toolManager.setTool(tool);
+    this.statsTracker?.recordToolUsage(tool);
 
     if (tool === "magnify") {
       this.strokeCapture.setEnabled(false);
@@ -1116,7 +1129,7 @@ export class CanvasApp {
 
     // Panels
     r.register({ id: "toggle-bookmarks", label: "Bookmarks panel", shortcut: "Ctrl+B", category: "Panels", execute: () => this.bookmarkPanel.toggle() });
-    r.register({ id: "quick-add-bookmark", label: "Add bookmark", shortcut: "Ctrl+D", category: "Panels", execute: () => this.bookmarkPanel.addBookmark() });
+    r.register({ id: "quick-add-bookmark", label: "Add bookmark", shortcut: "Ctrl+D", category: "Panels", execute: () => { this.bookmarkPanel.addBookmark(); this.statsTracker?.recordBookmarkCreated(); } });
     r.register({ id: "toggle-connection", label: "Connection panel", shortcut: "Ctrl+K", category: "Panels", execute: () => this.connectionPanel.toggle() });
     r.register({ id: "toggle-settings", label: "Settings", shortcut: "Ctrl+,", category: "Panels", execute: () => this.settingsPanel.toggle() });
     r.register({ id: "toggle-turtle", label: "Turtle graphics", shortcut: "Ctrl+`", category: "Panels", execute: () => this.turtlePanel.toggle() });
@@ -1127,6 +1140,7 @@ export class CanvasApp {
     // Export
     r.register({ id: "export", label: "Export PNG", shortcut: "Ctrl+Shift+E", category: "Drawing", execute: () => {
       this.handleExport({ scope: "fitAll", scale: 1, includeBackground: true });
+      this.statsTracker?.recordExport();
     }});
   }
 
@@ -1159,6 +1173,7 @@ export class CanvasApp {
     if (mod && (e.key === "d" || e.key === "D") && !e.shiftKey) {
       e.preventDefault();
       this.bookmarkPanel.addBookmark();
+      this.statsTracker?.recordBookmarkCreated();
       return;
     }
 

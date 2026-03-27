@@ -5,3 +5,9 @@ export { loadPreferences, loadPreferencesAsync, savePreferences } from "./UserPr
 export type { UserStats } from "./UserStats";
 export { createDefaultStats, loadStats, loadStatsAsync, saveStats, incrementStat, incrementToolUsage } from "./UserStats";
 export { StatsTracker } from "./StatsTracker";
+export type { BadgeTier, BadgeDefinition } from "./badges";
+export { BADGE_CATALOG } from "./badges";
+export type { EarnedBadge, BadgeState } from "./badges";
+export { loadBadgeState, loadBadgeStateAsync, saveBadgeState } from "./badges";
+export type { BadgeUnlockEvent } from "./badges";
+export { BadgeEngine } from "./badges";

@@ -6,6 +6,10 @@ import type { UndoManager } from "../crdt/UndoManager";
 import type { SyncManager } from "../sync/SyncManager";
 import type { TurtleCommand } from "../turtle/LuaRuntime";
 import type { ExecutionResult } from "../turtle/LuaRuntime";
+import { BadgeEngine } from "./badges/BadgeEngine";
+import type { BadgeState } from "./badges/BadgeState";
+import { loadBadgeState, saveBadgeState } from "./badges/BadgeState";
+import { BADGE_CATALOG } from "./badges/BadgeCatalog";
 
 /**
  * Singleton that listens to app events and accumulates UserStats passively.
@@ -28,6 +32,8 @@ export class StatsTracker {
   private cleanupFns: (() => void)[] = [];
   private strokeCountAtStart: number;
   private shapeCountAtStart: number;
+  private badgeEngine: BadgeEngine;
+  private badgeState: BadgeState;
 
   constructor(
     stats: UserStats,
@@ -137,11 +143,18 @@ export class StatsTracker {
       this.cleanupFns.push(unsubConnection);
     }
 
+    // --- Badge engine ---
+    this.badgeEngine = new BadgeEngine(BADGE_CATALOG);
+    this.badgeState = loadBadgeState();
+    // Evaluate immediately to catch badges earned in previous sessions
+    this.evaluateBadges();
+
     // --- Debounced persistence: save every 30s while dirty ---
     this.saveTimerId = setInterval(() => {
       if (this.dirty) {
         saveStats(this.stats);
         this.dirty = false;
+        this.evaluateBadges();
       }
     }, 30_000);
 
@@ -259,6 +272,24 @@ export class StatsTracker {
   /** Get the current stats snapshot (read-only intent). */
   getStats(): UserStats {
     return this.stats;
+  }
+
+  /** Run badge evaluation and fire events for newly earned badges. */
+  private evaluateBadges(): void {
+    const unlocked = this.badgeEngine.evaluate(this.stats, this.badgeState);
+    if (unlocked.length > 0) {
+      for (const event of unlocked) {
+        this.badgeState.earned.push({
+          id: event.badge.id,
+          earnedAt: event.earnedAt,
+        });
+      }
+      this.badgeState.lastCheckedAt = Date.now();
+      saveBadgeState(this.badgeState);
+      window.dispatchEvent(
+        new CustomEvent("drawfinity:badge-unlocked", { detail: unlocked }),
+      );
+    }
   }
 
   /** Flush accumulated session duration to stats. */

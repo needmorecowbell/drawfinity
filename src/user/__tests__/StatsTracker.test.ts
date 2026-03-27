@@ -325,4 +325,64 @@ describe("StatsTracker", () => {
     expect(stats.totalDrawingSessions).toBe(1);
     tracker.destroy();
   });
+
+  it("evaluates badges on construction and earns getting-started", () => {
+    // Construction increments totalDrawingSessions to 1, triggering "getting-started"
+    const events: CustomEvent[] = [];
+    const handler = (e: Event) => events.push(e as CustomEvent);
+    window.addEventListener("drawfinity:badge-unlocked", handler);
+
+    createTracker();
+
+    expect(events.length).toBe(1);
+    const unlocked = events[0].detail;
+    const ids = unlocked.map((e: { badge: { id: string } }) => e.badge.id);
+    expect(ids).toContain("getting-started");
+
+    window.removeEventListener("drawfinity:badge-unlocked", handler);
+  });
+
+  it("evaluates badges after debounced save and fires custom event", () => {
+    createTracker();
+
+    // Clear initial badge events
+    const events: CustomEvent[] = [];
+    const handler = (e: Event) => events.push(e as CustomEvent);
+    window.addEventListener("drawfinity:badge-unlocked", handler);
+
+    // Add a stroke to earn "first-stroke"
+    doc._addStroke({ id: "s1", points: [{ x: 0, y: 0 }], color: "#000", width: 2, timestamp: Date.now() });
+
+    // Trigger the 30s save interval
+    vi.advanceTimersByTime(30_000);
+
+    expect(events.length).toBe(1);
+    const unlocked = events[0].detail;
+    const ids = unlocked.map((e: { badge: { id: string } }) => e.badge.id);
+    expect(ids).toContain("first-stroke");
+
+    window.removeEventListener("drawfinity:badge-unlocked", handler);
+  });
+
+  it("does not re-earn badges already in badge state", () => {
+    // Pre-seed badge state with "getting-started"
+    storageMap.set("drawfinity:badge-state", JSON.stringify({
+      earned: [{ id: "getting-started", earnedAt: 1000 }],
+      lastCheckedAt: 1000,
+    }));
+
+    const events: CustomEvent[] = [];
+    const handler = (e: Event) => events.push(e as CustomEvent);
+    window.addEventListener("drawfinity:badge-unlocked", handler);
+
+    createTracker();
+
+    // Should NOT re-fire getting-started
+    for (const event of events) {
+      const ids = event.detail.map((e: { badge: { id: string } }) => e.badge.id);
+      expect(ids).not.toContain("getting-started");
+    }
+
+    window.removeEventListener("drawfinity:badge-unlocked", handler);
+  });
 });

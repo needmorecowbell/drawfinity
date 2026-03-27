@@ -5,7 +5,7 @@ import type {
   ExchangeSnapshot,
 } from "../turtle";
 import snapshotData from "../turtle/exchange/exchange-snapshot.json";
-import type { DrawfinityDoc, SharedScript } from "../crdt";
+import type { DrawfinityDoc } from "../crdt";
 
 export interface TurtlePanelCallbacks {
   /** Called when the user clicks Run. Receives the script text. */

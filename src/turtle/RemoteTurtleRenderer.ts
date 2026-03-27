@@ -39,7 +39,6 @@ export function hueFromClientId(clientId: string): number {
 export class RemoteTurtleRenderer {
   private root: HTMLElement;
   private camera: Camera;
-  private syncManager: SyncManager | null = null;
   private indicators = new Map<string, RemoteIndicatorEntry>();
   private unsubscribe: (() => void) | null = null;
   private globalVisible = false;
@@ -59,8 +58,6 @@ export class RemoteTurtleRenderer {
       this.unsubscribe();
       this.unsubscribe = null;
     }
-
-    this.syncManager = syncManager;
 
     if (syncManager) {
       this.unsubscribe = syncManager.onRemoteTurtlesChange(
@@ -130,7 +127,6 @@ export class RemoteTurtleRenderer {
       this.unsubscribe();
       this.unsubscribe = null;
     }
-    this.syncManager = null;
     this.hide();
     this.clear();
   }

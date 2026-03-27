@@ -48,7 +48,7 @@ The SVG export should use the same `ExportDialog.ts` UI, adding a format toggle 
   - Set SVG dimensions to match the viewBox aspect ratio at a reasonable default (e.g., 1920px wide)
   - Optionally include a background `<rect>` filling the viewBox
 
-- [ ] Implement stroke-to-SVG conversion:
+- [x] Implement stroke-to-SVG conversion:
   - Port the normal-offset logic from `generateTriangleStrip()` in `StrokeMesh.ts` to compute left/right edge polylines
   - For each stroke: compute left edge points and right edge points, then emit a closed `<path>`:
     `M left[0] L left[1] ... L left[n] L right[n] L right[n-1] ... L right[0] Z`

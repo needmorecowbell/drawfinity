@@ -1684,6 +1684,63 @@ html, body {
   letter-spacing: 0.3px;
 }
 
+/* Record Toast */
+
+.record-toast-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 199;
+  pointer-events: none;
+}
+
+.record-toast {
+  padding: 8px 14px;
+  background: #fff;
+  border-radius: 8px;
+  border-left: 3px solid #4fc3f7;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  font-family: system-ui, -apple-system, sans-serif;
+  pointer-events: auto;
+  transform: translateX(120%);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease;
+  min-width: 160px;
+  max-width: 240px;
+}
+
+.record-toast-visible {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.record-toast-exit {
+  opacity: 0;
+  transform: translateX(30%);
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.record-toast-header {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #4fc3f7;
+}
+
+.record-toast-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #222;
+  margin-top: 1px;
+}
+
+.record-toast-value {
+  font-size: 11px;
+  color: #666;
+  margin-top: 1px;
+}
+
 /* Home Screen */
 #home-screen {
   position: fixed;

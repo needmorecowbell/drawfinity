@@ -40,3 +40,5 @@ export { StatsPanel } from "./StatsPanel";
 export type { StatsPanelCallbacks, StatsTabName } from "./StatsPanel";
 export { BadgeToast } from "./BadgeToast";
 export type { BadgeToastCallbacks } from "./BadgeToast";
+export { RecordToast } from "./RecordToast";
+export type { RecordBrokenEvent } from "./RecordToast";

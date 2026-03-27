@@ -18,6 +18,7 @@ import { ActionRegistry } from "../ui/ActionRegistry";
 import { CheatSheet } from "../ui/CheatSheet";
 import { CursorManager } from "../ui/CursorManager";
 import { FpsCounter } from "../ui/FpsCounter";
+import type { ThumbnailGenerator } from "../persistence";
 import { SyncManager } from "../sync";
 import { loadProfileAsync, loadPreferencesAsync, savePreferences, loadStatsAsync, loadBadgeStateAsync, loadRecordsAsync, loadBadgeState, loadRecords, StatsTracker, type UserPreferences, type GridStyle } from "../user";
 import { showStorageNotification } from "../ui/StorageNotification";
@@ -131,7 +132,9 @@ export class CanvasApp {
   private pointermoveHandler!: (e: PointerEvent) => void;
   private beforeUnloadHandler!: () => void;
   private bookmarkPanel!: BookmarkPanel;
-  private browserStorage: { clearAllData(): Promise<void> } | null = null;
+  private browserStorage: { clearAllData(): Promise<void>; updateThumbnail(id: string, thumb: string): Promise<void> } | null = null;
+  private thumbnailGenerator: ThumbnailGenerator | null = null;
+  private thumbnailSaver: ((id: string, thumbnail: string) => Promise<void>) | null = null;
   private bookmarkButton!: HTMLButtonElement;
   private settingsButton!: HTMLButtonElement;
   private userColorIndicator!: HTMLDivElement;
@@ -177,7 +180,7 @@ export class CanvasApp {
 
     // Load persisted document
     try {
-      const { loadDocumentById, getDefaultFilePath, AutoSave, DrawingManager } = await import("../persistence");
+      const { loadDocumentById, getDefaultFilePath, AutoSave, DrawingManager, ThumbnailGenerator } = await import("../persistence");
       // Reuse the DrawingManager from main.ts if provided, otherwise create a new one
       const drawingManager = (this.callbacks?.drawingManager as InstanceType<typeof DrawingManager>) ?? new DrawingManager();
       let loadedState = await loadDocumentById(drawingId, drawingManager);
@@ -201,6 +204,10 @@ export class CanvasApp {
       const savePath = await getDefaultFilePath();
       this.autoSave = new AutoSave(this.doc.getDoc(), savePath, 2000, drawingId, drawingManager);
       this.autoSave.start();
+
+      // Set up thumbnail generation (Tauri path)
+      this.thumbnailGenerator = new ThumbnailGenerator();
+      this.thumbnailSaver = (id, thumb) => drawingManager.updateThumbnail(id, thumb);
     } catch (err) {
       // Browser fallback: use IndexedDB (via browserStorage) or localStorage
       const { createBrowserStorage } = await import("../persistence/BrowserStorage");
@@ -300,6 +307,11 @@ export class CanvasApp {
       };
 
       this.browserStorage = storage;
+
+      // Set up thumbnail generation (browser path)
+      const { ThumbnailGenerator } = await import("../persistence");
+      this.thumbnailGenerator = new ThumbnailGenerator();
+      this.thumbnailSaver = (id, thumb) => storage.updateThumbnail(id, thumb);
     }
 
     // Apply initial background color from document
@@ -312,6 +324,7 @@ export class CanvasApp {
       if (this.toolbar) {
         this.toolbar.setBackgroundColorUI(bgColor);
       }
+      this.thumbnailGenerator?.markActivity();
     });
 
     this.spatialIndex = new SpatialIndex();
@@ -322,6 +335,7 @@ export class CanvasApp {
       clearLODCache();
       this.renderer.vertexCache.clear();
       this.renderer.shapeVertexCache.clear();
+      this.thumbnailGenerator?.markActivity();
     });
 
     this.syncManager = new SyncManager(this.doc.getDoc());
@@ -846,6 +860,17 @@ export class CanvasApp {
       }
 
       this.fpsCounter.update(now, allStrokes.length, visibleStrokeCount);
+
+      // Periodic thumbnail generation (throttled to every 30s by ThumbnailGenerator)
+      if (this.thumbnailGenerator?.shouldGenerate()) {
+        const thumb = this.thumbnailGenerator.generate(this.doc, this.doc.getBackgroundColor());
+        if (thumb && this.thumbnailSaver) {
+          this.thumbnailSaver(this.drawingId, thumb).catch((e) =>
+            console.warn("CanvasApp: failed to save thumbnail", e),
+          );
+        }
+      }
+
       this.animFrameId = requestAnimationFrame(frame);
     };
     this.animFrameId = requestAnimationFrame(frame);
@@ -908,6 +933,18 @@ export class CanvasApp {
     if (this.statsTracker) {
       this.statsTracker.destroy();
       this.statsTracker = null;
+    }
+
+    // Generate final thumbnail before saving
+    if (this.thumbnailGenerator?.forceGenerate()) {
+      const thumb = this.thumbnailGenerator.generate(this.doc, this.doc.getBackgroundColor());
+      if (thumb && this.thumbnailSaver) {
+        try {
+          await this.thumbnailSaver(this.drawingId, thumb);
+        } catch (e) {
+          console.warn("CanvasApp: failed to save final thumbnail", e);
+        }
+      }
     }
 
     // Stop auto-save and flush final state to disk

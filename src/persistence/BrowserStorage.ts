@@ -238,6 +238,19 @@ export async function createBrowserStorage() {
       return b64 ? base64ToUint8(b64) : null;
     },
 
+    async updateThumbnail(drawingId: string, thumbnail: string): Promise<void> {
+      const entry = memDrawings.find((d) => d.id === drawingId);
+      if (entry) {
+        entry.thumbnail = thumbnail;
+        await persistManifest();
+      } else {
+        // Drawing not in manifest (e.g. shared room) — store thumbnail separately
+        try {
+          localStorage.setItem(`drawfinity:room-thumb:${drawingId}`, thumbnail);
+        } catch { /* quota exceeded — non-critical */ }
+      }
+    },
+
     async clearAllData(): Promise<void> {
       if (useIDB) {
         await idbClearAll();

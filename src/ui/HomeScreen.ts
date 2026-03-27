@@ -666,13 +666,28 @@ export class HomeScreen {
     card.className = "home-card home-room-card";
     card.dataset.roomId = room.id;
 
-    // Icon area (shared indicator)
+    // Thumbnail area — show saved thumbnail if available, else globe icon
     const thumb = document.createElement("div");
     thumb.className = "home-card-thumbnail home-room-thumbnail";
-    const icon = document.createElement("div");
-    icon.className = "home-room-icon";
-    icon.textContent = "\uD83C\uDF10"; // Globe emoji
-    thumb.appendChild(icon);
+    const savedThumb = this.getRoomThumbnail(room.id);
+    if (savedThumb) {
+      const img = document.createElement("img");
+      img.src = savedThumb;
+      img.alt = room.name || room.id;
+      img.onerror = () => {
+        img.remove();
+        const fallback = document.createElement("div");
+        fallback.className = "home-room-icon";
+        fallback.textContent = "\uD83C\uDF10";
+        thumb.appendChild(fallback);
+      };
+      thumb.appendChild(img);
+    } else {
+      const icon = document.createElement("div");
+      icon.className = "home-room-icon";
+      icon.textContent = "\uD83C\uDF10"; // Globe emoji
+      thumb.appendChild(icon);
+    }
     card.appendChild(thumb);
 
     // Info row
@@ -719,6 +734,14 @@ export class HomeScreen {
     });
 
     return card;
+  }
+
+  private getRoomThumbnail(roomId: string): string | null {
+    try {
+      return localStorage.getItem(`drawfinity:room-thumb:${roomId}`);
+    } catch {
+      return null;
+    }
   }
 
   private formatTimestamp(epochSecs: number): string {

@@ -402,7 +402,8 @@ export async function downloadCanvas(
       await writeFile(filePath, buffer);
       return;
     } catch (e) {
-      console.warn("Tauri file save failed, falling back to browser download:", e);
+      console.error("Tauri file save failed:", e);
+      return;
     }
   }
 

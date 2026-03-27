@@ -11,3 +11,5 @@ export type { EarnedBadge, BadgeState } from "./badges";
 export { loadBadgeState, loadBadgeStateAsync, saveBadgeState } from "./badges";
 export type { BadgeUnlockEvent } from "./badges";
 export { BadgeEngine } from "./badges";
+export type { CanvasRecord, CanvasRecords } from "./CanvasRecords";
+export { createDefaultRecords, loadRecords, loadRecordsAsync, saveRecords, updateRecord } from "./CanvasRecords";

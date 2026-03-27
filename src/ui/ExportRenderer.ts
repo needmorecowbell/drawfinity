@@ -360,22 +360,46 @@ function createShaderProgram(gl: WebGL2RenderingContext): WebGLProgram | null {
 }
 
 /** Trigger a file download from a canvas element. */
-export function downloadCanvas(
+export async function downloadCanvas(
   canvas: HTMLCanvasElement,
   filename: string,
-): void {
-  canvas.toBlob((blob) => {
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-    requestAnimationFrame(() => {
-      a.remove();
-      URL.revokeObjectURL(url);
-    });
-  }, "image/png");
+): Promise<void> {
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/png"),
+  );
+  if (!blob) return;
+
+  if ((globalThis as Record<string, unknown>).__TAURI_INTERNALS__) {
+    try {
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const { downloadDir, join } = await import("@tauri-apps/api/path");
+      const { writeFile } = await import("@tauri-apps/plugin-fs");
+
+      const defaultPath = await join(await downloadDir(), filename);
+      const filePath = await save({
+        defaultPath,
+        filters: [{ name: "PNG Image", extensions: ["png"] }],
+      });
+      if (!filePath) return; // user cancelled
+
+      const buffer = new Uint8Array(await blob.arrayBuffer());
+      await writeFile(filePath, buffer);
+      return;
+    } catch (e) {
+      console.warn("Tauri file save failed, falling back to browser download:", e);
+    }
+  }
+
+  // Browser fallback
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  requestAnimationFrame(() => {
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
 }

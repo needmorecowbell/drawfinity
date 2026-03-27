@@ -128,12 +128,10 @@ export class ReplExecutor {
   }
 
   /**
-   * Clear all strokes drawn by the REPL session's main turtle.
+   * Clear all strokes drawn by the REPL session (main + spawned turtles).
    */
   clearDrawing(): void {
-    const mainId = `${this.scriptId}:main`;
-    const entry = this.registry.get(mainId);
-    if (entry) {
+    for (const [, entry] of this.registry.getOwned(this.scriptId)) {
       entry.drawing.clearTurtleStrokes();
     }
   }

@@ -8,7 +8,8 @@ import { DrawfinityDoc, UndoManager } from "../crdt";
 import { StrokeCapture, ShapeCapture, MagnifyCapture } from "../input";
 import { ToolManager, BRUSH_PRESETS, isShapeTool } from "../tools";
 import type { ToolType } from "../tools";
-import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel, TurtlePanel, BookmarkPanel } from "../ui";
+import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel, TurtlePanel, BookmarkPanel, StatsPanel, BadgeToast, RecordToast, SessionEventCollector, showSessionSummary, hasSessionActivity, buildSessionData } from "../ui";
+import type { SessionSnapshot } from "../ui";
 import { LuaRuntime, TurtleRegistry, TurtleExecutor, TurtleIndicator } from "../turtle";
 import { ICONS } from "../ui/ToolbarIcons";
 import { renderExport, downloadCanvas } from "../ui/ExportRenderer";
@@ -18,7 +19,7 @@ import { CheatSheet } from "../ui/CheatSheet";
 import { CursorManager } from "../ui/CursorManager";
 import { FpsCounter } from "../ui/FpsCounter";
 import { SyncManager } from "../sync";
-import { loadProfileAsync, loadPreferencesAsync, savePreferences, type UserPreferences, type GridStyle } from "../user";
+import { loadProfileAsync, loadPreferencesAsync, savePreferences, loadStatsAsync, loadBadgeStateAsync, loadRecordsAsync, loadBadgeState, loadRecords, StatsTracker, type UserPreferences, type GridStyle } from "../user";
 import { showStorageNotification } from "../ui/StorageNotification";
 import { showCorruptionDialog } from "../ui/CorruptionDialog";
 
@@ -137,8 +138,16 @@ export class CanvasApp {
   private connectionStateUnsubscribe: (() => void) | null = null;
   private gridStyle: GridStyle = "dots";
   private userPreferences: UserPreferences | null = null;
+  private statsTracker: StatsTracker | null = null;
+  private statsPanel!: StatsPanel;
+  private badgeToast!: BadgeToast;
+  private recordToast!: RecordToast;
+  private statsButton!: HTMLButtonElement;
   private initialized = false;
   private callbacks: CanvasAppCallbacks = {};
+  private sessionEventCollector: SessionEventCollector | null = null;
+  private sessionSnapshot: SessionSnapshot | null = null;
+  private sessionStartMs = 0;
 
   /**
    * Initializes all subsystems and starts the render loop.
@@ -333,6 +342,7 @@ export class CanvasApp {
 
     this.strokeCapture = new StrokeCapture(this.camera, this.cameraController, this.doc, canvas);
     this.strokeCapture.setBrushConfig(this.toolManager.getBrush());
+    this.strokeCapture.onEraseComplete = () => this.statsTracker?.recordEraseAction();
     this.shapeCapture = new ShapeCapture(this.camera, this.cameraController, this.doc, canvas);
     this.shapeCapture.setEnabled(false);
     this.magnifyCapture = new MagnifyCapture(this.camera, this.cameraAnimator, this.cameraController, canvas);
@@ -340,6 +350,20 @@ export class CanvasApp {
     this.magnifyCapture.onCursorChange = (mode) => this.cursorManager.setMagnifyMode(mode);
     this.undoManager = new UndoManager(this.doc.getStrokesArray());
     this.strokeCapture.setUndoManager(this.undoManager);
+
+    // --- Gamification: load stats and start tracking ---
+    const userStats = await loadStatsAsync();
+    this.statsTracker = new StatsTracker(userStats, this.doc, this.camera, this.undoManager, this.syncManager);
+
+    // Session summary: snapshot stats at session start and begin collecting events
+    this.sessionStartMs = Date.now();
+    this.sessionSnapshot = {
+      totalStrokes: userStats.totalStrokes,
+      totalShapes: userStats.totalShapes,
+      totalTurtleRuns: userStats.totalTurtleRuns,
+      totalTurtlesSpawned: userStats.totalTurtlesSpawned,
+    };
+    this.sessionEventCollector = new SessionEventCollector();
 
     this.fpsCounter = new FpsCounter();
     this.camera.setViewportSize(canvas.clientWidth, canvas.clientHeight);
@@ -403,7 +427,7 @@ export class CanvasApp {
         this.renderer.setGridStyle(style);
         this.persistGridStyle(style);
       },
-      onHome: () => this.callbacks.onGoHome?.(),
+      onHome: () => this.goHome(),
       onRenameDrawing: (name) => {
         this.callbacks.onRenameDrawing?.(this.drawingId, name);
       },
@@ -449,7 +473,7 @@ export class CanvasApp {
 
     // Connection panel
     this.connectionPanel = new ConnectionPanel(this.syncManager, {
-      onLeaveSession: () => this.callbacks.onGoHome?.(),
+      onLeaveSession: () => this.goHome(),
     });
 
     // Remote cursors overlay
@@ -462,7 +486,7 @@ export class CanvasApp {
         if (this.browserStorage) {
           await this.browserStorage.clearAllData();
         }
-        this.callbacks.onGoHome?.();
+        this.goHome();
       },
       onSave: (profile, preferences) => {
         userProfile = profile;
@@ -508,6 +532,24 @@ export class CanvasApp {
       }
     });
 
+    // --- Gamification: Stats Panel, Badge Toast, Record Toast ---
+    const badgeState = await loadBadgeStateAsync();
+    const canvasRecords = await loadRecordsAsync();
+    this.statsPanel = new StatsPanel(userStats, badgeState, canvasRecords, {
+      onRefresh: () => ({
+        stats: this.statsTracker?.getStats() ?? userStats,
+        badgeState: loadBadgeState(),
+        records: this.statsTracker?.getRecords() ?? loadRecords(),
+      }),
+    });
+    this.badgeToast = new BadgeToast({
+      onOpenBadges: () => {
+        this.statsPanel.show();
+        this.statsPanel.showTab("badges");
+      },
+    });
+    this.recordToast = new RecordToast();
+
     // Action registry + cheat sheet
     this.actionRegistry = new ActionRegistry();
     this.registerActions();
@@ -537,6 +579,7 @@ export class CanvasApp {
         this.turtleButton.classList.add("turtle-executing");
         this.turtleIndicator.addTurtle("main", true);
         this.turtleIndicator.show();
+        this.statsTracker?.setTurtleRunning(true);
       },
       onStep: () => {
         this.syncTurtleIndicators();
@@ -545,11 +588,22 @@ export class CanvasApp {
         this.turtlePanel.setRunning(false);
         this.turtleButton.classList.remove("turtle-executing");
         this.turtleIndicator.hide();
+        this.statsTracker?.setTurtleRunning(false);
         if (!result.success && result.error) {
           this.turtlePanel.appendConsole(`Error: ${result.error}`, "error");
         } else {
           this.turtlePanel.appendConsole("Done.", "info");
         }
+        // Record turtle run stats for gamification
+        const meta = this.turtleExecutor.getLastRunMetadata();
+        this.statsTracker?.recordTurtleRun(
+          result,
+          meta.script,
+          meta.commands,
+          meta.spawnedCount,
+          meta.executionTimeMs,
+          meta.maxSpawnDepth,
+        );
       },
     });
     // Eagerly create the main turtle so origin placement has a stable state reference
@@ -642,6 +696,19 @@ export class CanvasApp {
       panelsGroup.appendChild(this.settingsButton);
     }
 
+    // Stats button (trophy icon)
+    this.statsButton = document.createElement("button");
+    this.statsButton.className = "toolbar-btn stats-btn";
+    this.statsButton.title = "Stats & Achievements (Ctrl+Shift+S)";
+    this.statsButton.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>`;
+    this.statsButton.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.statsPanel.toggle();
+    });
+    if (panelsGroup) {
+      panelsGroup.appendChild(this.statsButton);
+    }
+
     // User color indicator
     this.userColorIndicator = document.createElement("div");
     this.userColorIndicator.className = "user-color-indicator";
@@ -703,6 +770,7 @@ export class CanvasApp {
     // Start render loop
     const frame = (now: number): void => {
       this.cameraAnimator.tick();
+      this.statsTracker?.updateCamera(this.camera);
       this.renderer.clear();
       const cameraMatrix = this.camera.getTransformMatrix();
       this.renderer.setCameraMatrix(cameraMatrix);
@@ -787,6 +855,28 @@ export class CanvasApp {
   }
 
   /**
+   * Intercept the "go home" action to show a session summary before navigating.
+   * Skips the summary if the session had no meaningful activity.
+   */
+  private async goHome(): Promise<void> {
+    if (this.statsTracker && this.sessionSnapshot && this.sessionEventCollector) {
+      const currentStats = this.statsTracker.getStats();
+      const durationMs = Date.now() - this.sessionStartMs;
+      const data = buildSessionData(
+        this.sessionSnapshot,
+        currentStats,
+        durationMs,
+        this.sessionEventCollector.getBadges(),
+        this.sessionEventCollector.getRecords(),
+      );
+      if (hasSessionActivity(data)) {
+        await showSessionSummary(data);
+      }
+    }
+    this.callbacks.onGoHome?.();
+  }
+
+  /**
    * Tears down all subsystems and releases resources.
    *
    * Stops the render loop, flushes pending auto-save data to disk, disconnects
@@ -808,6 +898,18 @@ export class CanvasApp {
     document.removeEventListener("keydown", this.keydownHandler);
     this.canvas.removeEventListener("pointermove", this.pointermoveHandler);
 
+    // Clean up session event collector
+    if (this.sessionEventCollector) {
+      this.sessionEventCollector.destroy();
+      this.sessionEventCollector = null;
+    }
+
+    // Flush gamification stats before auto-save
+    if (this.statsTracker) {
+      this.statsTracker.destroy();
+      this.statsTracker = null;
+    }
+
     // Stop auto-save and flush final state to disk
     this.autoSave.stop();
     await this.autoSave.saveNow();
@@ -821,6 +923,9 @@ export class CanvasApp {
     this.toolbar.destroy();
     this.connectionPanel.destroy();
     this.settingsPanel.destroy();
+    this.statsPanel.destroy();
+    this.badgeToast.destroy();
+    this.recordToast.destroy();
     this.bookmarkPanel.destroy();
     this.turtlePanel.destroy();
     this.turtleIndicator.destroy();
@@ -829,6 +934,7 @@ export class CanvasApp {
     this.fpsCounter.destroy();
     this.bookmarkButton.remove();
     this.settingsButton.remove();
+    this.statsButton.remove();
     this.turtleButton.remove();
     this.userColorIndicator.remove();
 
@@ -887,9 +993,12 @@ export class CanvasApp {
   /** Sync turtle indicators with the registry — add/remove/update as needed. */
   private syncTurtleIndicators(): void {
     const owned = this.turtleRegistry.getOwned("default");
-    // Add indicators for newly spawned turtles
+    const activeIds = new Set<string>();
+
+    // Add/update indicators for living turtles
     for (const [fullId, entry] of owned) {
       const localId = fullId.replace("default:", "");
+      activeIds.add(localId);
       if (!this.turtleIndicator.hasTurtle(localId)) {
         this.turtleIndicator.addTurtle(localId, localId === "main");
       }
@@ -902,6 +1011,13 @@ export class CanvasApp {
         this.turtleIndicator.hideTurtle(localId);
       }
     }
+
+    // Remove indicators for turtles no longer in the registry (killed)
+    for (const id of this.turtleIndicator.getTrackedIds()) {
+      if (!activeIds.has(id)) {
+        this.turtleIndicator.removeTurtle(id);
+      }
+    }
   }
 
   private switchTool(tool: ToolType): void {
@@ -911,6 +1027,7 @@ export class CanvasApp {
     }
 
     this.toolManager.setTool(tool);
+    this.statsTracker?.recordToolUsage(tool);
 
     if (tool === "magnify") {
       this.strokeCapture.setEnabled(false);
@@ -1112,14 +1229,15 @@ export class CanvasApp {
     }});
     r.register({ id: "zoom-reset", label: "Reset zoom", shortcut: "Ctrl+0", category: "Navigation", execute: () => this.cameraAnimator.animateZoomCentered(1) });
     r.register({ id: "fit-all", label: "Fit all content", shortcut: "", category: "Navigation", execute: () => this.fitAllContent() });
-    r.register({ id: "go-home", label: "Go home", shortcut: "Escape", category: "Navigation", execute: () => this.callbacks.onGoHome?.() });
+    r.register({ id: "go-home", label: "Go home", shortcut: "Escape", category: "Navigation", execute: () => this.goHome() });
 
     // Panels
     r.register({ id: "toggle-bookmarks", label: "Bookmarks panel", shortcut: "Ctrl+B", category: "Panels", execute: () => this.bookmarkPanel.toggle() });
-    r.register({ id: "quick-add-bookmark", label: "Add bookmark", shortcut: "Ctrl+D", category: "Panels", execute: () => this.bookmarkPanel.addBookmark() });
+    r.register({ id: "quick-add-bookmark", label: "Add bookmark", shortcut: "Ctrl+D", category: "Panels", execute: () => { this.bookmarkPanel.addBookmark(); this.statsTracker?.recordBookmarkCreated(); } });
     r.register({ id: "toggle-connection", label: "Connection panel", shortcut: "Ctrl+K", category: "Panels", execute: () => this.connectionPanel.toggle() });
     r.register({ id: "toggle-settings", label: "Settings", shortcut: "Ctrl+,", category: "Panels", execute: () => this.settingsPanel.toggle() });
     r.register({ id: "toggle-turtle", label: "Turtle graphics", shortcut: "Ctrl+`", category: "Panels", execute: () => this.turtlePanel.toggle() });
+    r.register({ id: "toggle-stats", label: "Stats & Achievements", shortcut: "Ctrl+Shift+S", category: "Panels", execute: () => this.statsPanel.toggle() });
     r.register({ id: "toggle-cheatsheet", label: "Keyboard shortcuts", shortcut: "Ctrl+?", category: "Panels", execute: () => this.cheatSheet.toggle() });
     r.register({ id: "toggle-grid", label: "Toggle grid", shortcut: "Ctrl+'", category: "Navigation", execute: () => this.toggleGrid() });
     r.register({ id: "toggle-fps", label: "FPS counter", shortcut: "F3", category: "Panels", execute: () => this.fpsCounter.toggle() });
@@ -1127,6 +1245,7 @@ export class CanvasApp {
     // Export
     r.register({ id: "export", label: "Export PNG", shortcut: "Ctrl+Shift+E", category: "Drawing", execute: () => {
       this.handleExport({ scope: "fitAll", scale: 1, includeBackground: true });
+      this.statsTracker?.recordExport();
     }});
   }
 
@@ -1159,6 +1278,7 @@ export class CanvasApp {
     if (mod && (e.key === "d" || e.key === "D") && !e.shiftKey) {
       e.preventDefault();
       this.bookmarkPanel.addBookmark();
+      this.statsTracker?.recordBookmarkCreated();
       return;
     }
 
@@ -1171,6 +1291,12 @@ export class CanvasApp {
     if (mod && e.key === ",") {
       e.preventDefault();
       this.settingsPanel.toggle();
+      return;
+    }
+
+    if (mod && e.shiftKey && (e.key === "s" || e.key === "S")) {
+      e.preventDefault();
+      this.statsPanel.toggle();
       return;
     }
 
@@ -1200,14 +1326,14 @@ export class CanvasApp {
 
     if (mod && e.key === "w") {
       e.preventDefault();
-      this.callbacks.onGoHome?.();
+      this.goHome();
       return;
     }
 
     if (mod) return;
 
     if (e.key === "Escape") {
-      this.callbacks.onGoHome?.();
+      this.goHome();
       return;
     }
 

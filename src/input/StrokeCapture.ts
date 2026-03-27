@@ -42,6 +42,8 @@ export class StrokeCapture {
   /** World-space width for the active stroke (brushWidth / zoom at stroke start). */
   private activeStrokeWorldWidth = 2;
   private enabled = true;
+  /** Optional callback fired when an eraser action completes (pointer up). */
+  onEraseComplete: (() => void) | null = null;
 
   private onPointerDown: (e: PointerEvent) => void;
   private onPointerMove: (e: PointerEvent) => void;
@@ -123,6 +125,7 @@ export class StrokeCapture {
       this.isErasing = false;
       this.undoManager?.endBatch();
       this.canvas.releasePointerCapture(e.pointerId);
+      this.onEraseComplete?.();
       return;
     }
 

@@ -134,6 +134,7 @@ Each module has an `index.ts` barrel. Import from the barrel (`from "./renderer"
 | `Ctrl+D` | Quick-add bookmark |
 | `Ctrl+K` | Toggle connection panel |
 | `Ctrl+,` | Toggle settings panel |
+| `Ctrl+Shift+S` | Toggle stats & achievements panel |
 | `` Ctrl+` `` | Toggle turtle graphics panel |
 | `F3` | Toggle FPS counter |
 | Middle mouse drag | Pan |

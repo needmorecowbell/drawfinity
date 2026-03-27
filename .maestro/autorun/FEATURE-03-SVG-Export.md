@@ -73,7 +73,7 @@ The SVG export should use the same `ExportDialog.ts` UI, adding a format toggle 
   - Emit SVG elements in document timestamp order (same order as rendering)
   - Later items appear later in the SVG DOM → render on top (SVG painter's model)
 
-- [ ] Tests:
+- [x] Tests:
   - Test: SVG output for a single straight stroke (2 points) produces a valid closed path
   - Test: SVG output for a pressure-varying stroke has varying width in the outline
   - Test: each shape type produces the correct SVG element with rotation

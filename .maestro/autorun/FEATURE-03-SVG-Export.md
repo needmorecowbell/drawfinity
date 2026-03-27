@@ -69,7 +69,7 @@ The SVG export should use the same `ExportDialog.ts` UI, adding a format toggle 
   - On export: call `exportSVG()`, create a Blob, trigger download as `.svg`
   - Reuse the same `Ctrl+Shift+E` shortcut — the dialog now offers format choice
 
-- [ ] Ensure correct draw ordering:
+- [x] Ensure correct draw ordering:
   - Emit SVG elements in document timestamp order (same order as rendering)
   - Later items appear later in the SVG DOM → render on top (SVG painter's model)
 

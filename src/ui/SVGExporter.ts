@@ -68,8 +68,13 @@ export function exportSVG(
     );
   }
 
-  // Emit elements in document order
-  for (const item of items) {
+  // Sort by timestamp to match WebGL rendering order (painter's model)
+  const sorted = [...items].sort(
+    (a, b) => a.item.timestamp - b.item.timestamp,
+  );
+
+  // Emit elements in timestamp order (earlier items underneath, later on top)
+  for (const item of sorted) {
     if (item.kind === "stroke") {
       parts.push(strokeToSVG(item.item));
     } else {

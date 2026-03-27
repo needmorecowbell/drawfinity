@@ -273,6 +273,44 @@ describe("SVGExporter", () => {
       expect(firstStroke).toBeLessThan(rectPos);
       expect(rectPos).toBeLessThan(secondStroke);
     });
+
+    it("sorts items by timestamp regardless of input order", () => {
+      // Pass items out of timestamp order: shape (t=2000), stroke2 (t=3000), stroke1 (t=1000)
+      const stroke1 = makeStroke({ id: "s1", timestamp: 1000 });
+      const shape1 = makeShape({ id: "sh1", timestamp: 2000, type: "rectangle" });
+      const stroke2 = makeStroke({
+        id: "s2",
+        timestamp: 3000,
+        color: "#0000ff",
+        points: [
+          { x: 200, y: 200, pressure: 0.5 },
+          { x: 300, y: 200, pressure: 0.5 },
+        ],
+      });
+
+      // Deliberately pass in wrong order
+      const items: CanvasItem[] = [
+        { kind: "stroke", item: stroke2 },
+        { kind: "shape", item: shape1 },
+        { kind: "stroke", item: stroke1 },
+      ];
+
+      const svg = exportSVG(items, defaultOptions())!;
+      expect(svg).not.toBeNull();
+
+      // Despite being passed out of order, SVG elements should be sorted by timestamp
+      const firstStroke = svg.indexOf('fill="#ff0000"');
+      const rectPos = svg.indexOf("<rect");
+      const secondStroke = svg.indexOf('fill="#0000ff"');
+
+      expect(firstStroke).toBeGreaterThan(-1);
+      expect(rectPos).toBeGreaterThan(-1);
+      expect(secondStroke).toBeGreaterThan(-1);
+
+      // Timestamp order: stroke1 (1000) < shape1 (2000) < stroke2 (3000)
+      expect(firstStroke).toBeLessThan(rectPos);
+      expect(rectPos).toBeLessThan(secondStroke);
+    });
   });
 
   describe("computeStrokeOutline", () => {

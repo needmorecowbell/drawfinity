@@ -539,7 +539,7 @@ export class CanvasApp {
       onRefresh: () => ({
         stats: this.statsTracker?.getStats() ?? userStats,
         badgeState: loadBadgeState(),
-        records: loadRecords(),
+        records: this.statsTracker?.getRecords() ?? loadRecords(),
       }),
     });
     this.badgeToast = new BadgeToast({

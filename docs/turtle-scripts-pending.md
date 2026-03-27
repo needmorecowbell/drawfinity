@@ -15,7 +15,7 @@ Scripts created during feature development that should be added to the Turtle Ex
 **Status:** Tested, working (v2 — placement-aware).
 
 ```lua
-speed(0)
+-- speed(0)
 
 -- Get origin so placement works correctly
 local ox, oy = position()
@@ -54,7 +54,7 @@ end
 **Status:** v3 — uses overdraw instead of erase (erase removes whole strokes, can't carve). Placement-aware.
 
 ```lua
-speed(0)
+-- speed(0)
 
 -- Get origin so placement works correctly
 local ox, oy = position()
@@ -116,7 +116,7 @@ rectangle(70, 40)
 **Status:** Tested, working (v3 — placement-aware).
 
 ```lua
-speed(0)
+-- speed(0)
 
 -- Get origin so placement works correctly
 local ox, oy = position()
@@ -171,7 +171,7 @@ penopacity(1.0)
 **Status:** v4 — fixed spawn IDs, replaced setheading with trig, fixed colon→dot notation on handle methods, placement-aware.
 
 ```lua
-speed(0)
+-- speed(0)
 
 -- Get origin so placement works correctly
 local ox, oy = position()
@@ -231,7 +231,7 @@ rectangle(400, 20)
 **Status:** v4 — placement-aware. Erase works here because the spirograph is made of line segments (not shapes).
 
 ```lua
-speed(0)
+-- speed(0)
 
 -- Get origin so placement works correctly
 local ox, oy = position()
@@ -289,7 +289,7 @@ star(8, 30, 12)
 -- Zoom into any corner to see self-similar structure at every level.
 -- Depth 6: 1093 turtles across 7 scale levels.
 
-speed(0)
+-- speed(0)
 set_spawn_limit(1100)
 hide()
 
@@ -348,7 +348,7 @@ sierpinski(6, ox, oy, 1)
 -- tree at 1/10 scale. Zoom into any tip to discover a whole new tree.
 -- Depth 4: up to 73 turtles (1 + 3 + 9 + 27 + 33 tips spawn children).
 
-speed(0)
+-- speed(0)
 hide()
 
 local ox, oy = position()
@@ -413,29 +413,27 @@ branch(4, ox, oy, 0, 1)
 ## 8. Game of Life (Conway's Cellular Automaton)
 
 **Tags:** cellular-automata, spawn, simulate, blackboard, advanced
-**Description:** Conway's Game of Life using turtle spawning and blackboard communication. Each cell is a spawned turtle on a 20x20 grid. Cells use `nearby_turtles()` to count live neighbors and `read_board()` to check their alive/dead state. B3/S23 rules: a dead cell with exactly 3 live neighbors is born; a live cell with 2-3 neighbors survives; all others die. Initial pattern is the R-pentomino (produces chaotic growth). Alive cells draw filled rectangles; dead cells use `penmode("erase")` to remove their rectangle. After erasing, turtles return to their grid position so `nearby_turtles()` works correctly in subsequent generations.
-**Status:** Added to exchange snapshot.
+**Description:** Conway's Game of Life on a 25x25 grid (625 cell turtles). Heavily seeded with an R-pentomino, Diehard methuselah, two gliders, a Lightweight Spaceship (LWSS), blinkers, and a beacon — guaranteeing sustained chaotic activity across 80 generations. Uses overdraw (not erase) to toggle cells. Cell turtles are visible so you can watch them work across the grid.
+**Status:** Pending — needs testing.
 
 ```lua
 -- Conway's Game of Life
--- Each cell is a spawned turtle on a grid. Cells use nearby_turtles()
--- to find neighbors and read_board() to check their alive/dead state.
--- B3/S23 rules: birth with 3 neighbors, survive with 2 or 3.
--- Initial pattern: R-pentomino (produces chaotic growth).
+-- 25x25 grid, 625 cell turtles. Heavily seeded for sustained activity.
+-- Uses overdraw (not erase) to toggle cells — erase removes whole strokes.
+-- B3/S23 rules via nearby_turtles() + read_board() blackboard.
 
-speed(0)
+set_spawn_limit(700)
 hide()
-set_spawn_limit(500)
 
 local ox, oy = position()
-local ROWS = 20
-local COLS = 20
-local CELL = 15
-local GENS = 30
+local ROWS = 25
+local COLS = 25
+local CELL = 16
+local GENS = 80
 local RADIUS = CELL * 1.5
 
--- Colors for alive cells by generation parity
 local ALIVE_COLOR = "#1e1e2e"
+local DEAD_COLOR = "#eff1f5"
 local GRID_COLOR = "#ccd0da"
 
 -- Initialize grid state
@@ -447,7 +445,7 @@ for r = 1, ROWS do
   end
 end
 
--- R-pentomino in center
+-- Seed: R-pentomino near center (chaotic methuselah, active 1000+ gens)
 local mr = math.floor(ROWS / 2)
 local mc = math.floor(COLS / 2)
 alive[mr][mc + 1]     = true
@@ -456,21 +454,70 @@ alive[mr + 1][mc]     = true
 alive[mr + 1][mc + 1] = true
 alive[mr + 2][mc + 1] = true
 
--- Spawn cell turtles at grid positions
-local cells = {}
-for r = 1, ROWS do
-  cells[r] = {}
-  for c = 1, COLS do
-    local id = "c" .. r .. "_" .. c
-    local x = (c - 1) * CELL - (COLS * CELL / 2)
-    local y = (r - 1) * CELL - (ROWS * CELL / 2)
-    cells[r][c] = spawn(id, {x = x, y = y})
-    cells[r][c].hide()
-    publish(id, alive[r][c] and 1 or 0)
-  end
-end
+-- Seed: Diehard methuselah in upper-right (dies at gen 130, active throughout)
+alive[4][19] = true
+alive[4][20] = true
+alive[5][20] = true
+alive[5][24] = true
+alive[6][18] = true
+alive[6][24] = true
+alive[6][25] = true
 
--- Draw grid lines
+-- Seed: Glider heading south-east from top-left
+alive[2][3]  = true
+alive[3][4]  = true
+alive[4][2]  = true
+alive[4][3]  = true
+alive[4][4]  = true
+
+-- Seed: Glider heading south-east from mid-left
+alive[10][2] = true
+alive[11][3] = true
+alive[12][1] = true
+alive[12][2] = true
+alive[12][3] = true
+
+-- Seed: Lightweight Spaceship (LWSS) heading east from left edge
+alive[18][2] = true
+alive[18][5] = true
+alive[19][6] = true
+alive[20][2] = true
+alive[20][6] = true
+alive[21][3] = true
+alive[21][4] = true
+alive[21][5] = true
+alive[21][6] = true
+
+-- Seed: Blinker top-center
+alive[3][13] = true
+alive[3][14] = true
+alive[3][15] = true
+
+-- Seed: Beacon bottom-left (period 2 oscillator)
+alive[22][4] = true
+alive[22][5] = true
+alive[23][4] = true
+alive[24][7] = true
+alive[25][6] = true
+alive[25][7] = true
+
+-- Seed: Blinker bottom-right
+alive[23][22] = true
+alive[24][22] = true
+alive[25][22] = true
+
+-- Draw grid background and lines
+-- speed(0)
+
+-- Fill background so overdraw works cleanly
+pencolor(DEAD_COLOR)
+fillcolor(DEAD_COLOR)
+penup()
+goto_pos(ox, oy)
+pendown()
+rectangle(COLS * CELL + 4, ROWS * CELL + 4)
+
+-- Grid lines
 pencolor(GRID_COLOR)
 penwidth(1)
 local gw = COLS * CELL
@@ -488,6 +535,19 @@ for c = 0, COLS do
   goto_pos(ox - gw / 2 + c * CELL, oy + gh / 2)
 end
 
+-- Spawn cell turtles — visible so you can watch them work
+local cells = {}
+for r = 1, ROWS do
+  cells[r] = {}
+  for c = 1, COLS do
+    local id = "c" .. r .. "_" .. c
+    local x = (c - 1) * CELL - (COLS * CELL / 2) + CELL / 2
+    local y = (r - 1) * CELL - (ROWS * CELL / 2) + CELL / 2
+    cells[r][c] = spawn(id, {x = x, y = y})
+    publish(id, alive[r][c] and 1 or 0)
+  end
+end
+
 -- Draw initial alive cells
 for r = 1, ROWS do
   for c = 1, COLS do
@@ -495,14 +555,14 @@ for r = 1, ROWS do
       local t = cells[r][c]
       t.fillcolor(ALIVE_COLOR)
       t.pencolor(ALIVE_COLOR)
-      t.rectangle(CELL, CELL)
+      t.rectangle(CELL - 2, CELL - 2)
     end
   end
 end
 
--- Run simulation
+-- Run simulation — each generation is a simulate() step
 simulate(GENS, function(gen)
-  -- Count neighbors for each cell using nearby_turtles
+  -- Count neighbors for each cell
   local next_alive = {}
   for r = 1, ROWS do
     next_alive[r] = {}
@@ -520,7 +580,6 @@ simulate(GENS, function(gen)
         end
       end
 
-      -- B3/S23 rules
       if alive[r][c] then
         next_alive[r][c] = (live_count == 2 or live_count == 3)
       else
@@ -529,24 +588,19 @@ simulate(GENS, function(gen)
     end
   end
 
-  -- Update state and draw/erase changed cells
+  -- Update changed cells — overdraw with alive or dead color
   for r = 1, ROWS do
     for c = 1, COLS do
       if next_alive[r][c] ~= alive[r][c] then
         local t = cells[r][c]
         if next_alive[r][c] then
-          t.penmode("draw")
           t.fillcolor(ALIVE_COLOR)
           t.pencolor(ALIVE_COLOR)
-          t.rectangle(CELL, CELL)
         else
-          t.penmode("erase")
-          t.forward(CELL)
-          t.penmode("draw")
-          t.penup()
-          t.backward(CELL)
-          t.pendown()
+          t.fillcolor(DEAD_COLOR)
+          t.pencolor(DEAD_COLOR)
         end
+        t.rectangle(CELL - 2, CELL - 2)
       end
       alive[r][c] = next_alive[r][c]
       publish("c" .. r .. "_" .. c, alive[r][c] and 1 or 0)
@@ -569,7 +623,7 @@ end)
 -- After ~10000 steps the ant breaks free of chaotic scribbling and
 -- builds a diagonal "highway" — order emerging from simple rules.
 
-speed(0)
+-- speed(0)
 hide()
 set_max_steps(11000)
 
@@ -634,4 +688,101 @@ penup()
 goto_pos(ox + ax * CELL, oy + ay * CELL)
 pendown()
 ellipse(3, 3)
+```
+
+## 10. Starfield
+
+**Tags:** spawn, animation, creative, space
+**Description:** Simulates flying through a starfield. Spawned turtles represent stars at random positions around the origin. Each simulation step, stars move outward from the center (parallax effect) — stars farther from center move faster, creating the illusion of depth. Stars that fly off-screen wrap back to the center as new "distant" stars. Uses small ellipses for stars with brightness varying by distance. The infinite canvas means you can pan around to see stars streaming in all directions.
+**Status:** Pending — needs testing.
+
+```lua
+-- Starfield — fly through space
+-- Stars stream outward from center with parallax depth effect.
+-- Farther stars move faster, simulating a warp-speed flythrough.
+
+hide()
+set_spawn_limit(200)
+
+local ox, oy = position()
+local NUM_STARS = 120
+local FIELD = 500       -- stars live within this radius
+local STEPS = 200       -- simulation length
+local SPEED_MULT = 3    -- how fast stars drift outward
+
+-- Pseudo-random using a simple LCG (deterministic, no os.time)
+local seed = 42
+function rng()
+  seed = (seed * 1103515245 + 12345) % 2147483648
+  return seed / 2147483648
+end
+
+-- Star data: angle from center, distance, brightness
+local stars = {}
+local handles = {}
+
+for i = 1, NUM_STARS do
+  local angle = rng() * math.pi * 2
+  local dist = rng() * FIELD * 0.8 + 10
+  local brightness = rng() * 0.7 + 0.3
+  local size = rng() * 2 + 1
+
+  stars[i] = {
+    angle = angle,
+    dist = dist,
+    brightness = brightness,
+    size = size,
+  }
+
+  local sx = math.cos(angle) * dist
+  local sy = math.sin(angle) * dist
+  local id = "star" .. i
+  handles[i] = spawn(id, {x = sx, y = sy})
+  handles[i].hide()
+
+  -- Draw initial star
+  local grey = math.floor(brightness * 255)
+  local hex = string.format("#%02x%02x%02x", grey, grey, grey)
+  handles[i].pencolor(hex)
+  handles[i].fillcolor(hex)
+  handles[i].ellipse(size, size)
+end
+
+-- Animate: stars drift outward, wrap when past field edge
+simulate(STEPS, function(step)
+  for i = 1, NUM_STARS do
+    local s = stars[i]
+
+    -- Move outward — speed proportional to distance (parallax)
+    s.dist = s.dist + (s.dist * 0.02 * SPEED_MULT)
+
+    -- Wrap back to center when past field boundary
+    if s.dist > FIELD then
+      s.dist = rng() * 20 + 5
+      s.angle = rng() * math.pi * 2
+      s.brightness = rng() * 0.7 + 0.3
+      s.size = rng() * 2 + 1
+    end
+
+    -- Grow stars as they approach (depth effect)
+    local scale = s.dist / FIELD
+    local drawSize = s.size + scale * 4
+
+    -- Update position
+    local sx = math.cos(s.angle) * s.dist
+    local sy = math.sin(s.angle) * s.dist
+
+    local h = handles[i]
+    h.penup()
+    h.goto_pos(ox + sx, oy + sy)
+    h.pendown()
+
+    -- Brightness increases as star approaches
+    local b = math.min(255, math.floor(s.brightness * (0.4 + scale * 0.6) * 255))
+    local hex = string.format("#%02x%02x%02x", b, b, math.min(255, b + 30))
+    h.pencolor(hex)
+    h.fillcolor(hex)
+    h.ellipse(drawSize, drawSize)
+  end
+end)
 ```

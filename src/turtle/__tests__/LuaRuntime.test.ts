@@ -2308,6 +2308,7 @@ describe("LuaRuntime", () => {
     const scriptId = "gol-test";
 
     // Small Game of Life script for testing (5x5 grid, 3 generations, blinker pattern)
+    // Uses overdraw (not erase) to clear dead cells — matches the pending script approach.
     const golScript = `
       speed(0)
       hide()
@@ -2316,6 +2317,8 @@ describe("LuaRuntime", () => {
       local COLS = 5
       local CELL = 15
       local RADIUS = CELL * 1.5
+      local ALIVE_COLOR = "#1e1e2e"
+      local DEAD_COLOR = "#eff1f5"
 
       local alive = {}
       for r = 1, ROWS do
@@ -2338,7 +2341,7 @@ describe("LuaRuntime", () => {
           local x = (c - 1) * CELL
           local y = (r - 1) * CELL
           cells[r][c] = spawn(id, {x = x, y = y})
-          cells[r][c].hide()
+          cells[r][c].speed(0)
           publish(id, alive[r][c] and 1 or 0)
         end
       end
@@ -2347,8 +2350,8 @@ describe("LuaRuntime", () => {
         for c = 1, COLS do
           if alive[r][c] then
             local t = cells[r][c]
-            t.fillcolor("#1e1e2e")
-            t.pencolor("#1e1e2e")
+            t.fillcolor(ALIVE_COLOR)
+            t.pencolor(ALIVE_COLOR)
             t.rectangle(CELL, CELL)
           end
         end
@@ -2383,18 +2386,13 @@ describe("LuaRuntime", () => {
             if next_alive[r][c] ~= alive[r][c] then
               local t = cells[r][c]
               if next_alive[r][c] then
-                t.penmode("draw")
-                t.fillcolor("#1e1e2e")
-                t.pencolor("#1e1e2e")
-                t.rectangle(CELL, CELL)
+                t.fillcolor(ALIVE_COLOR)
+                t.pencolor(ALIVE_COLOR)
               else
-                t.penmode("erase")
-                t.forward(CELL)
-                t.penmode("draw")
-                t.penup()
-                t.backward(CELL)
-                t.pendown()
+                t.fillcolor(DEAD_COLOR)
+                t.pencolor(DEAD_COLOR)
               end
+              t.rectangle(CELL, CELL)
             end
             alive[r][c] = next_alive[r][c]
             publish("c" .. r .. "_" .. c, alive[r][c] and 1 or 0)
@@ -2464,17 +2462,17 @@ describe("LuaRuntime", () => {
       expect(board.read("c4_3")).toBe(0);
     });
 
-    it("uses penmode erase for dead cells and rectangle for alive cells", async () => {
+    it("uses overdraw rectangles for both alive and dead cells", async () => {
       await runtime.execute(golScript);
       const cmds = runtime.getCommands();
-      // Should have penmode erase commands (cells that died)
+      // Should have rectangle commands for both alive and dead cell updates
+      const rectCmds = cmds.filter((c) => c.type === "rectangle");
+      expect(rectCmds.length).toBeGreaterThan(0);
+      // Should NOT have penmode erase — overdraw replaces erase
       const eraseCmds = cmds.filter(
         (c) => c.type === "penmode" && (c as TurtleCommand & { type: "penmode"; mode: string }).mode === "erase"
       );
-      expect(eraseCmds.length).toBeGreaterThan(0);
-      // Should have rectangle commands (alive cells drawing)
-      const rectCmds = cmds.filter((c) => c.type === "rectangle");
-      expect(rectCmds.length).toBeGreaterThan(0);
+      expect(eraseCmds.length).toBe(0);
     });
   });
 

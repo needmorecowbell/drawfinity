@@ -69,69 +69,6 @@
       "path": "scripts/sierpinski-triangle",
       "version": "1.0.0",
       "code": "-- Sierpinski triangle\npencolor(\"#8839ef\")\npenwidth(1)\n\nfunction sierpinski(size, depth)\n  if depth == 0 then\n    for i = 1, 3 do\n      forward(size)\n      left(120)\n    end\n  else\n    sierpinski(size / 2, depth - 1)\n    forward(size / 2)\n    sierpinski(size / 2, depth - 1)\n    backward(size / 2)\n    left(60)\n    forward(size / 2)\n    right(60)\n    sierpinski(size / 2, depth - 1)\n    left(60)\n    backward(size / 2)\n    right(60)\n  end\nend\n\nsierpinski(256, 5)\n"
-    },
-    {
-      "id": "sierpinski-zoom",
-      "title": "Sierpinski Zoom",
-      "description": "Fractal zoom Sierpinski triangle — each sub-triangle is a spawned turtle at half scale. Zoom in to explore self-similar detail.",
-      "author": "drawfinity",
-      "tags": [
-        "fractal",
-        "spawn",
-        "zoom",
-        "scale",
-        "advanced"
-      ],
-      "path": "scripts/sierpinski-zoom",
-      "version": "1.0.0",
-      "code": "-- Sierpinski Triangle — Fractal Zoom Spawning\n-- Each sub-triangle is drawn by a spawned turtle at half scale.\n-- Zoom into any corner to see self-similar structure at every level.\n-- Depth 6: 1093 turtles across 7 scale levels.\n\nspeed(0)\nset_spawn_limit(1100)\nhide()\n\nlocal ox, oy = position()\nlocal side = 400\nlocal sqrt3_4 = math.sqrt(3) / 4\n\n-- Depth colors: warm-to-cool spectrum\nlocal colors = {\n  [6] = \"#e64553\",\n  [5] = \"#fe640b\",\n  [4] = \"#df8e1d\",\n  [3] = \"#40a02b\",\n  [2] = \"#209fb5\",\n  [1] = \"#1e66f5\",\n  [0] = \"#8839ef\",\n}\n\nlocal count = 0\n\nfunction sierpinski(depth, wx, wy, s)\n  count = count + 1\n  local t = spawn(\"s\" .. count, {\n    x = wx - ox, y = wy - oy,\n    scale = s, heading = 90\n  })\n  t.pencolor(colors[depth] or \"#333333\")\n  t.penwidth(2)\n  t.min_pixel_size(1)\n\n  for i = 1, 3 do\n    t.forward(side)\n    t.left(120)\n  end\n\n  if depth > 0 then\n    local W = side * s\n    sierpinski(depth - 1, wx,         wy,               s / 2)\n    sierpinski(depth - 1, wx + W / 2, wy,               s / 2)\n    sierpinski(depth - 1, wx + W / 4, wy - W * sqrt3_4, s / 2)\n  end\nend\n\nsierpinski(6, ox, oy, 1)\n"
-    },
-    {
-      "id": "fractal-zoom-tree",
-      "title": "Fractal Zoom Tree",
-      "description": "Recursive branching tree that reveals hidden detail as you zoom in. Each branch tip spawns a child tree at 1/10 scale — what looks like a dot becomes an entire tree when magnified.",
-      "author": "drawfinity",
-      "tags": [
-        "fractal",
-        "spawn",
-        "zoom",
-        "scale",
-        "advanced"
-      ],
-      "path": "scripts/fractal-zoom-tree",
-      "version": "1.0.0",
-      "code": "-- Fractal Zoom Tree\n-- A recursive branching tree where each branch tip spawns a child\n-- tree at 1/10 scale. Zoom into any tip to discover a whole new tree.\n-- Depth 4: up to 73 turtles (1 + 3 + 9 + 27 + 33 tips spawn children).\n\nspeed(0)\nhide()\n\nlocal ox, oy = position()\n\n-- Depth colors: dark trunk to bright tips\nlocal colors = {\n  [4] = \"#5c3d2e\",\n  [3] = \"#7c5f3a\",\n  [2] = \"#40a02b\",\n  [1] = \"#209fb5\",\n  [0] = \"#8839ef\",\n}\n\nlocal count = 0\n\nfunction branch(depth, wx, wy, angle, s)\n  count = count + 1\n  local t = spawn(\"b\" .. count, {\n    x = wx - ox, y = wy - oy,\n    scale = s, heading = angle\n  })\n  t.pencolor(colors[depth] or \"#333333\")\n  t.penwidth(math.max(1, depth))\n  t.min_pixel_size(1)\n  t.scale_pen(true)\n\n  -- Draw trunk segment\n  local len = 80\n  t.forward(len)\n\n  if depth > 0 then\n    -- Branch into 3 sub-branches\n    local bx = wx + math.cos(math.rad(angle - 90)) * len * s\n    local by = wy + math.sin(math.rad(angle - 90)) * len * s\n    branch(depth - 1, bx, by, angle - 30, s * 0.65)\n    branch(depth - 1, bx, by, angle,      s * 0.65)\n    branch(depth - 1, bx, by, angle + 30, s * 0.65)\n  else\n    -- At the tips, spawn a zoomed-in copy at 1/10 scale\n    local tipX = wx + math.cos(math.rad(angle - 90)) * len * s\n    local tipY = wy + math.sin(math.rad(angle - 90)) * len * s\n    count = count + 1\n    local child = spawn(\"z\" .. count, {\n      x = tipX - ox, y = tipY - oy,\n      scale = s * 0.1, heading = 0\n    })\n    child.pencolor(\"#e64553\")\n    child.penwidth(2)\n    child.min_pixel_size(1)\n    child.scale_pen(true)\n    -- Draw a small signature pattern at the tip\n    for i = 1, 4 do\n      child.forward(60)\n      child.right(90)\n    end\n  end\nend\n\nbranch(4, ox, oy, 0, 1)\n"
-    },
-    {
-      "id": "game-of-life",
-      "title": "Game of Life",
-      "description": "Conway's Game of Life using turtle spawning and blackboard communication. Each cell is a spawned turtle that queries neighbors with nearby_turtles().",
-      "author": "drawfinity",
-      "tags": [
-        "cellular-automata",
-        "spawn",
-        "simulate",
-        "blackboard",
-        "advanced"
-      ],
-      "path": "scripts/game-of-life",
-      "version": "1.0.0",
-      "code": "-- Conway's Game of Life\n-- Each cell is a spawned turtle on a grid. Cells use nearby_turtles()\n-- to find neighbors and read_board() to check their alive/dead state.\n-- B3/S23 rules: birth with 3 neighbors, survive with 2 or 3.\n-- Initial pattern: R-pentomino (produces chaotic growth).\n\nspeed(0)\nhide()\nset_spawn_limit(500)\n\nlocal ox, oy = position()\nlocal ROWS = 20\nlocal COLS = 20\nlocal CELL = 15\nlocal GENS = 30\nlocal RADIUS = CELL * 1.5\n\n-- Colors for alive cells by generation parity\nlocal ALIVE_COLOR = \"#1e1e2e\"\nlocal GRID_COLOR = \"#ccd0da\"\n\n-- Initialize grid state\nlocal alive = {}\nfor r = 1, ROWS do\n  alive[r] = {}\n  for c = 1, COLS do\n    alive[r][c] = false\n  end\nend\n\n-- R-pentomino in center\nlocal mr = math.floor(ROWS / 2)\nlocal mc = math.floor(COLS / 2)\nalive[mr][mc + 1]     = true\nalive[mr][mc + 2]     = true\nalive[mr + 1][mc]     = true\nalive[mr + 1][mc + 1] = true\nalive[mr + 2][mc + 1] = true\n\n-- Spawn cell turtles at grid positions\nlocal cells = {}\nfor r = 1, ROWS do\n  cells[r] = {}\n  for c = 1, COLS do\n    local id = \"c\" .. r .. \"_\" .. c\n    local x = (c - 1) * CELL - (COLS * CELL / 2)\n    local y = (r - 1) * CELL - (ROWS * CELL / 2)\n    cells[r][c] = spawn(id, {x = x, y = y})\n    cells[r][c].hide()\n    publish(id, alive[r][c] and 1 or 0)\n  end\nend\n\n-- Draw grid lines\npencolor(GRID_COLOR)\npenwidth(1)\nlocal gw = COLS * CELL\nlocal gh = ROWS * CELL\nfor r = 0, ROWS do\n  penup()\n  goto_pos(ox - gw / 2, oy - gh / 2 + r * CELL)\n  pendown()\n  goto_pos(ox + gw / 2, oy - gh / 2 + r * CELL)\nend\nfor c = 0, COLS do\n  penup()\n  goto_pos(ox - gw / 2 + c * CELL, oy - gh / 2)\n  pendown()\n  goto_pos(ox - gw / 2 + c * CELL, oy + gh / 2)\nend\n\n-- Draw initial alive cells\nfor r = 1, ROWS do\n  for c = 1, COLS do\n    if alive[r][c] then\n      local t = cells[r][c]\n      t.fillcolor(ALIVE_COLOR)\n      t.pencolor(ALIVE_COLOR)\n      t.rectangle(CELL, CELL)\n    end\n  end\nend\n\n-- Run simulation\nsimulate(GENS, function(gen)\n  -- Count neighbors for each cell using nearby_turtles\n  local next_alive = {}\n  for r = 1, ROWS do\n    next_alive[r] = {}\n    for c = 1, COLS do\n      local id = \"c\" .. r .. \"_\" .. c\n      activate(id)\n      local neighbors = nearby_turtles(RADIUS)\n      local live_count = 0\n      for _, n in ipairs(neighbors) do\n        if n.id ~= \"main\" then\n          local state = read_board(n.id)\n          if state == 1 then\n            live_count = live_count + 1\n          end\n        end\n      end\n\n      -- B3/S23 rules\n      if alive[r][c] then\n        next_alive[r][c] = (live_count == 2 or live_count == 3)\n      else\n        next_alive[r][c] = (live_count == 3)\n      end\n    end\n  end\n\n  -- Update state and draw/erase changed cells\n  for r = 1, ROWS do\n    for c = 1, COLS do\n      if next_alive[r][c] ~= alive[r][c] then\n        local t = cells[r][c]\n        if next_alive[r][c] then\n          t.penmode(\"draw\")\n          t.fillcolor(ALIVE_COLOR)\n          t.pencolor(ALIVE_COLOR)\n          t.rectangle(CELL, CELL)\n        else\n          t.penmode(\"erase\")\n          t.forward(CELL)\n          t.penmode(\"draw\")\n          t.penup()\n          t.backward(CELL)\n          t.pendown()\n        end\n      end\n      alive[r][c] = next_alive[r][c]\n      publish(\"c\" .. r .. \"_\" .. c, alive[r][c] and 1 or 0)\n    end\n  end\nend)\n"
-    },
-    {
-      "id": "langtons-ant",
-      "title": "Langton's Ant",
-      "description": "Langton's Ant cellular automaton — a single turtle walks a grid flipping cell colors. After ~10000 steps the characteristic diagonal \"highway\" emerges from chaos.",
-      "author": "drawfinity",
-      "tags": [
-        "cellular-automata",
-        "simulate",
-        "blackboard",
-        "advanced"
-      ],
-      "path": "scripts/langtons-ant",
-      "version": "1.0.0",
-      "code": "-- Langton's Ant\n-- A single turtle (the ant) walks on an infinite grid, flipping cell colors.\n-- White cell: turn right 90, color black, advance.\n-- Black cell: turn left 90, color white, advance.\n-- After ~10000 steps the ant breaks free of chaotic scribbling and\n-- builds a diagonal \"highway\" — order emerging from simple rules.\n\nspeed(0)\nhide()\nset_max_steps(11000)\n\nlocal ox, oy = position()\nlocal CELL = 6\nlocal STEPS = 10000\n\n-- Ant state: grid position and direction (0=up,1=right,2=down,3=left)\nlocal ax, ay = 0, 0\nlocal dir = 0\n\nlocal dx = {[0] = 0, [1] = 1, [2] = 0, [3] = -1}\nlocal dy = {[0] = -1, [1] = 0, [2] = 1, [3] = 0}\n\nlocal BLACK_COLOR = \"#1e1e2e\"\nlocal WHITE_COLOR = \"#eff1f5\"\n\n-- Mark ant starting position\npencolor(\"#e64553\")\nfillcolor(\"#e64553\")\npenup()\ngoto_pos(ox, oy)\npendown()\nellipse(2, 2)\n\nsimulate(STEPS, function(step)\n  local key = ax .. \"_\" .. ay\n  local wx = ox + ax * CELL\n  local wy = oy + ay * CELL\n  local state = read_board(key)\n\n  if state == 1 then\n    -- Black cell: turn left, flip to white\n    dir = (dir + 3) % 4\n    publish(key, 0)\n    penup()\n    goto_pos(wx, wy)\n    pendown()\n    fillcolor(WHITE_COLOR)\n    pencolor(WHITE_COLOR)\n    rectangle(CELL, CELL)\n  else\n    -- White cell: turn right, flip to black\n    dir = (dir + 1) % 4\n    publish(key, 1)\n    penup()\n    goto_pos(wx, wy)\n    pendown()\n    fillcolor(BLACK_COLOR)\n    pencolor(BLACK_COLOR)\n    rectangle(CELL, CELL)\n  end\n\n  ax = ax + dx[dir]\n  ay = ay + dy[dir]\nend)\n\n-- Mark ant final position\npencolor(\"#e64553\")\nfillcolor(\"#e64553\")\npenup()\ngoto_pos(ox + ax * CELL, oy + ay * CELL)\npendown()\nellipse(3, 3)\n"
     }
   ]
 }

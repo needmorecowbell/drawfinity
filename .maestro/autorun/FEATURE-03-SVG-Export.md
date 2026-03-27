@@ -41,14 +41,14 @@ The SVG export should use the same `ExportDialog.ts` UI, adding a format toggle 
 
 ## Tasks
 
-- [ ] Create `src/ui/SVGExporter.ts`:
+- [x] Create `src/ui/SVGExporter.ts`:
   - `exportSVG(doc: DrawfinityDoc, options: ExportOptions): string` — returns SVG markup as a string
   - Compute the content bounding box (reuse `computeContentBounds()` from `ExportRenderer.ts`)
   - Set SVG `viewBox` to the content bounds (for `fitAll`) or camera viewport (for `viewport`)
   - Set SVG dimensions to match the viewBox aspect ratio at a reasonable default (e.g., 1920px wide)
   - Optionally include a background `<rect>` filling the viewBox
 
-- [ ] Implement stroke-to-SVG conversion:
+- [x] Implement stroke-to-SVG conversion:
   - Port the normal-offset logic from `generateTriangleStrip()` in `StrokeMesh.ts` to compute left/right edge polylines
   - For each stroke: compute left edge points and right edge points, then emit a closed `<path>`:
     `M left[0] L left[1] ... L left[n] L right[n] L right[n-1] ... L right[0] Z`
@@ -56,24 +56,24 @@ The SVG export should use the same `ExportDialog.ts` UI, adding a format toggle 
   - Apply the same pressure-based width scaling: `width * pressure` per point
   - Handle single-point strokes: emit a small `<circle>` at the point
 
-- [ ] Implement shape-to-SVG conversion:
+- [x] Implement shape-to-SVG conversion:
   - Rectangle: `<rect x y width height>` with `transform="rotate(deg, cx, cy)"`
   - Ellipse: `<ellipse cx cy rx ry>` with rotation transform
   - Polygon: compute perimeter points (same logic as `ShapeMesh.ts`), emit `<polygon>`
   - Star: compute inner/outer vertex ring, emit `<polygon>`
   - Apply `stroke`, `stroke-width`, `fill`, `opacity` attributes
 
-- [ ] Integrate with ExportDialog:
+- [x] Integrate with ExportDialog:
   - Add a format selector (PNG / SVG) to `ExportDialog.ts`
   - When SVG is selected, hide the scale option (not applicable)
   - On export: call `exportSVG()`, create a Blob, trigger download as `.svg`
   - Reuse the same `Ctrl+Shift+E` shortcut — the dialog now offers format choice
 
-- [ ] Ensure correct draw ordering:
+- [x] Ensure correct draw ordering:
   - Emit SVG elements in document timestamp order (same order as rendering)
   - Later items appear later in the SVG DOM → render on top (SVG painter's model)
 
-- [ ] Tests:
+- [x] Tests:
   - Test: SVG output for a single straight stroke (2 points) produces a valid closed path
   - Test: SVG output for a pressure-varying stroke has varying width in the outline
   - Test: each shape type produces the correct SVG element with rotation

@@ -13,6 +13,7 @@ import type { SessionSnapshot } from "../ui";
 import { LuaRuntime, TurtleRegistry, TurtleExecutor, TurtleIndicator } from "../turtle";
 import { ICONS } from "../ui/ToolbarIcons";
 import { renderExport, downloadCanvas } from "../ui/ExportRenderer";
+import { exportSVG, downloadSVG } from "../ui/SVGExporter";
 import type { ExportDialogResult } from "../ui/ExportDialog";
 import { ActionRegistry } from "../ui/ActionRegistry";
 import { CheatSheet } from "../ui/CheatSheet";
@@ -1186,6 +1187,27 @@ export class CanvasApp {
   }
 
   private handleExport(options: ExportDialogResult): void {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+
+    if (options.format === "svg") {
+      const items = this.doc.getAllItems();
+      const svg = exportSVG(items, {
+        scope: options.scope,
+        scale: options.scale,
+        includeBackground: options.includeBackground,
+        backgroundColor: this.doc.getBackgroundColor(),
+        viewportBounds: this.camera.getViewportBounds(),
+        viewportMatrix: this.camera.getTransformMatrix(),
+        viewportSize: this.camera.getViewportSize(),
+      });
+      if (!svg) {
+        console.warn("Export: nothing to export");
+        return;
+      }
+      void downloadSVG(svg, `drawfinity-${timestamp}.svg`);
+      return;
+    }
+
     const strokes = this.doc.getStrokes();
     const shapes = this.doc.getShapes ? this.doc.getShapes() : [];
 
@@ -1204,7 +1226,6 @@ export class CanvasApp {
       return;
     }
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
     void downloadCanvas(canvas, `drawfinity-${timestamp}.png`);
   }
 
@@ -1282,12 +1303,21 @@ export class CanvasApp {
 
     // Export
     r.register({ id: "export", label: "Export PNG", shortcut: "Ctrl+Shift+E", category: "Drawing", execute: () => {
-      this.handleExport({ scope: "fitAll", scale: 1, includeBackground: true });
+      this.handleExport({ format: "png", scope: "fitAll", scale: 1, includeBackground: true });
       this.statsTracker?.recordExport();
     }});
   }
 
   private handleKeydown(e: KeyboardEvent): void {
+    // Don't intercept keys when user is typing in an input field or editor
+    const tag = (document.activeElement as HTMLElement)?.tagName;
+    if (
+      tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" ||
+      (document.activeElement as HTMLElement)?.closest?.(".cm-editor")
+    ) {
+      return;
+    }
+
     const mod = e.ctrlKey || e.metaKey;
 
     if (e.key === "F3") {
@@ -1358,7 +1388,7 @@ export class CanvasApp {
 
     if (mod && e.shiftKey && (e.key === "e" || e.key === "E")) {
       e.preventDefault();
-      this.handleExport({ scope: "fitAll", scale: 1, includeBackground: true });
+      this.handleExport({ format: "png", scope: "fitAll", scale: 1, includeBackground: true });
       return;
     }
 

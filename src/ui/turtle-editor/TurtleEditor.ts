@@ -8,11 +8,16 @@
 
 import { EditorView, keymap } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
-import { StreamLanguage } from "@codemirror/language";
-import { bracketMatching } from "@codemirror/language";
+import {
+  StreamLanguage,
+  bracketMatching,
+  syntaxHighlighting,
+  HighlightStyle,
+} from "@codemirror/language";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets } from "@codemirror/autocomplete";
 import { lua } from "@codemirror/legacy-modes/mode/lua";
+import { tags } from "@lezer/highlight";
 import type { Extension } from "@codemirror/state";
 import { turtleAutocompletion } from "./TurtleCompletions";
 
@@ -22,6 +27,29 @@ export interface TurtleEditorOptions {
   onChange?: (value: string) => void;
   onRun?: () => void;
 }
+
+/** Catppuccin Mocha syntax highlighting colors. */
+const luaHighlightStyle = HighlightStyle.define([
+  { tag: tags.keyword, color: "#cba6f7" },           // mauve
+  { tag: tags.controlKeyword, color: "#cba6f7" },
+  { tag: tags.operatorKeyword, color: "#cba6f7" },
+  { tag: tags.definitionKeyword, color: "#cba6f7" },
+  { tag: tags.comment, color: "#6c7086", fontStyle: "italic" }, // overlay0
+  { tag: tags.blockComment, color: "#6c7086", fontStyle: "italic" },
+  { tag: tags.string, color: "#a6e3a1" },             // green
+  { tag: tags.number, color: "#fab387" },              // peach
+  { tag: tags.bool, color: "#fab387" },
+  { tag: tags.null, color: "#fab387" },
+  { tag: tags.function(tags.variableName), color: "#89b4fa" }, // blue
+  { tag: tags.variableName, color: "#cdd6f4" },       // text
+  { tag: tags.operator, color: "#89dceb" },            // sky
+  { tag: tags.punctuation, color: "#9399b2" },         // overlay2
+  { tag: tags.paren, color: "#9399b2" },
+  { tag: tags.brace, color: "#9399b2" },
+  { tag: tags.squareBracket, color: "#9399b2" },
+  { tag: tags.self, color: "#f38ba8" },                // red (self)
+  { tag: tags.atom, color: "#fab387" },
+]);
 
 /** Catppuccin Mocha-inspired theme matching existing .turtle-editor textarea styles. */
 const turtleEditorTheme = EditorView.theme({
@@ -99,6 +127,7 @@ export class TurtleEditor {
       keymap.of([indentWithTab]),
       keymap.of(defaultKeymap),
       StreamLanguage.define(lua),
+      syntaxHighlighting(luaHighlightStyle),
       bracketMatching(),
       closeBrackets(),
       turtleAutocompletion(),

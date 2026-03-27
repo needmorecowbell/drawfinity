@@ -8,7 +8,8 @@ import { DrawfinityDoc, UndoManager } from "../crdt";
 import { StrokeCapture, ShapeCapture, MagnifyCapture } from "../input";
 import { ToolManager, BRUSH_PRESETS, isShapeTool } from "../tools";
 import type { ToolType } from "../tools";
-import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel, TurtlePanel, BookmarkPanel, StatsPanel, BadgeToast, RecordToast } from "../ui";
+import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel, TurtlePanel, BookmarkPanel, StatsPanel, BadgeToast, RecordToast, SessionEventCollector, showSessionSummary, hasSessionActivity, buildSessionData } from "../ui";
+import type { SessionSnapshot } from "../ui";
 import { LuaRuntime, TurtleRegistry, TurtleExecutor, TurtleIndicator } from "../turtle";
 import { ICONS } from "../ui/ToolbarIcons";
 import { renderExport, downloadCanvas } from "../ui/ExportRenderer";
@@ -144,6 +145,9 @@ export class CanvasApp {
   private statsButton!: HTMLButtonElement;
   private initialized = false;
   private callbacks: CanvasAppCallbacks = {};
+  private sessionEventCollector: SessionEventCollector | null = null;
+  private sessionSnapshot: SessionSnapshot | null = null;
+  private sessionStartMs = 0;
 
   /**
    * Initializes all subsystems and starts the render loop.
@@ -350,6 +354,16 @@ export class CanvasApp {
     const userStats = await loadStatsAsync();
     this.statsTracker = new StatsTracker(userStats, this.doc, this.camera, this.undoManager, this.syncManager);
 
+    // Session summary: snapshot stats at session start and begin collecting events
+    this.sessionStartMs = Date.now();
+    this.sessionSnapshot = {
+      totalStrokes: userStats.totalStrokes,
+      totalShapes: userStats.totalShapes,
+      totalTurtleRuns: userStats.totalTurtleRuns,
+      totalTurtlesSpawned: userStats.totalTurtlesSpawned,
+    };
+    this.sessionEventCollector = new SessionEventCollector();
+
     this.fpsCounter = new FpsCounter();
     this.camera.setViewportSize(canvas.clientWidth, canvas.clientHeight);
 
@@ -412,7 +426,7 @@ export class CanvasApp {
         this.renderer.setGridStyle(style);
         this.persistGridStyle(style);
       },
-      onHome: () => this.callbacks.onGoHome?.(),
+      onHome: () => this.goHome(),
       onRenameDrawing: (name) => {
         this.callbacks.onRenameDrawing?.(this.drawingId, name);
       },
@@ -458,7 +472,7 @@ export class CanvasApp {
 
     // Connection panel
     this.connectionPanel = new ConnectionPanel(this.syncManager, {
-      onLeaveSession: () => this.callbacks.onGoHome?.(),
+      onLeaveSession: () => this.goHome(),
     });
 
     // Remote cursors overlay
@@ -471,7 +485,7 @@ export class CanvasApp {
         if (this.browserStorage) {
           await this.browserStorage.clearAllData();
         }
-        this.callbacks.onGoHome?.();
+        this.goHome();
       },
       onSave: (profile, preferences) => {
         userProfile = profile;
@@ -828,6 +842,28 @@ export class CanvasApp {
   }
 
   /**
+   * Intercept the "go home" action to show a session summary before navigating.
+   * Skips the summary if the session had no meaningful activity.
+   */
+  private async goHome(): Promise<void> {
+    if (this.statsTracker && this.sessionSnapshot && this.sessionEventCollector) {
+      const currentStats = this.statsTracker.getStats();
+      const durationMs = Date.now() - this.sessionStartMs;
+      const data = buildSessionData(
+        this.sessionSnapshot,
+        currentStats,
+        durationMs,
+        this.sessionEventCollector.getBadges(),
+        this.sessionEventCollector.getRecords(),
+      );
+      if (hasSessionActivity(data)) {
+        await showSessionSummary(data);
+      }
+    }
+    this.callbacks.onGoHome?.();
+  }
+
+  /**
    * Tears down all subsystems and releases resources.
    *
    * Stops the render loop, flushes pending auto-save data to disk, disconnects
@@ -848,6 +884,12 @@ export class CanvasApp {
     window.removeEventListener("beforeunload", this.beforeUnloadHandler);
     document.removeEventListener("keydown", this.keydownHandler);
     this.canvas.removeEventListener("pointermove", this.pointermoveHandler);
+
+    // Clean up session event collector
+    if (this.sessionEventCollector) {
+      this.sessionEventCollector.destroy();
+      this.sessionEventCollector = null;
+    }
 
     // Flush gamification stats before auto-save
     if (this.statsTracker) {
@@ -1164,7 +1206,7 @@ export class CanvasApp {
     }});
     r.register({ id: "zoom-reset", label: "Reset zoom", shortcut: "Ctrl+0", category: "Navigation", execute: () => this.cameraAnimator.animateZoomCentered(1) });
     r.register({ id: "fit-all", label: "Fit all content", shortcut: "", category: "Navigation", execute: () => this.fitAllContent() });
-    r.register({ id: "go-home", label: "Go home", shortcut: "Escape", category: "Navigation", execute: () => this.callbacks.onGoHome?.() });
+    r.register({ id: "go-home", label: "Go home", shortcut: "Escape", category: "Navigation", execute: () => this.goHome() });
 
     // Panels
     r.register({ id: "toggle-bookmarks", label: "Bookmarks panel", shortcut: "Ctrl+B", category: "Panels", execute: () => this.bookmarkPanel.toggle() });
@@ -1261,14 +1303,14 @@ export class CanvasApp {
 
     if (mod && e.key === "w") {
       e.preventDefault();
-      this.callbacks.onGoHome?.();
+      this.goHome();
       return;
     }
 
     if (mod) return;
 
     if (e.key === "Escape") {
-      this.callbacks.onGoHome?.();
+      this.goHome();
       return;
     }
 

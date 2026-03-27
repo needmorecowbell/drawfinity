@@ -3166,3 +3166,173 @@ html, body {
     flex-direction: column;
   }
 }
+
+/* ========================================================================
+   Session Summary Overlay
+   ======================================================================== */
+
+.session-summary-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  transition: opacity 200ms ease;
+}
+
+.session-summary {
+  background: #1e1e2e;
+  border: 1px solid #313244;
+  border-radius: 16px;
+  padding: 28px 32px;
+  max-width: 480px;
+  width: 90%;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+  color: #cdd6f4;
+}
+
+.session-summary__header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.session-summary__title {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #cdd6f4;
+}
+
+.session-summary__duration {
+  font-size: 14px;
+  color: #6c7086;
+}
+
+.session-summary__stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.session-summary__stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #181825;
+  border-radius: 10px;
+  padding: 12px 8px;
+}
+
+.session-summary__stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #89b4fa;
+}
+
+.session-summary__stat-label {
+  font-size: 12px;
+  color: #6c7086;
+  margin-top: 2px;
+}
+
+.session-summary__section {
+  margin-bottom: 16px;
+}
+
+.session-summary__section-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #a6adc8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.session-summary__badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.session-summary__badge-card {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #181825;
+  border: 1px solid #313244;
+  border-radius: 8px;
+  padding: 8px 12px;
+  border-left-width: 3px;
+}
+
+.session-summary__badge-icon {
+  font-size: 18px;
+}
+
+.session-summary__badge-name {
+  font-size: 13px;
+  color: #cdd6f4;
+  font-weight: 500;
+}
+
+.session-summary__empty {
+  font-size: 13px;
+  color: #6c7086;
+  font-style: italic;
+}
+
+.session-summary__record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.session-summary__record-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #181825;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.session-summary__record-label {
+  font-size: 13px;
+  color: #cdd6f4;
+}
+
+.session-summary__record-arrow {
+  font-size: 12px;
+  color: #a6e3a1;
+  font-family: monospace;
+}
+
+.session-summary__actions {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.session-summary__continue-btn {
+  background: #89b4fa;
+  color: #1e1e2e;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 32px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.session-summary__continue-btn:hover {
+  background: #74c7ec;
+}
+
+.session-summary__continue-btn:focus-visible {
+  outline: 2px solid #89b4fa;
+  outline-offset: 2px;
+}

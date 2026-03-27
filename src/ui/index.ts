@@ -42,3 +42,5 @@ export { BadgeToast } from "./BadgeToast";
 export type { BadgeToastCallbacks } from "./BadgeToast";
 export { RecordToast } from "./RecordToast";
 export type { RecordBrokenEvent } from "./RecordToast";
+export { showSessionSummary, SessionEventCollector, hasSessionActivity, buildSessionData } from "./SessionSummary";
+export type { SessionSnapshot, SessionSummaryData } from "./SessionSummary";

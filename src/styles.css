@@ -2777,6 +2777,117 @@ html, body {
   margin-right: 8px;
 }
 
+/* Turtle REPL Tab Bar */
+.turtle-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 12px;
+  border-bottom: 1px solid #313244;
+  flex-shrink: 0;
+}
+
+.turtle-tab {
+  padding: 6px 16px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #6c7086;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.turtle-tab:hover {
+  color: #a6adc8;
+}
+
+.turtle-tab.active {
+  color: #89b4fa;
+  border-bottom-color: #89b4fa;
+}
+
+/* Turtle REPL Content Area */
+.repl-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: #1e1e2e;
+}
+
+.repl-history {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.repl-entry {
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(49, 50, 68, 0.5);
+}
+
+.repl-entry:last-child {
+  border-bottom: none;
+}
+
+.repl-command {
+  color: #cdd6f4;
+}
+
+.repl-prompt {
+  color: #89b4fa;
+  user-select: none;
+}
+
+.repl-output {
+  color: #a6adc8;
+  padding-left: 28px;
+}
+
+.repl-error {
+  color: #f38ba8;
+  padding-left: 28px;
+}
+
+/* Turtle REPL Input Area */
+.repl-input-wrap {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-top: 1px solid #313244;
+  flex-shrink: 0;
+  gap: 4px;
+}
+
+.repl-input-wrap .repl-prompt {
+  flex-shrink: 0;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.repl-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #cdd6f4;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  caret-color: #89b4fa;
+}
+
+.repl-input::placeholder {
+  color: #585b70;
+}
+
 @media (max-width: 600px) {
   .turtle-content {
     flex-direction: column;

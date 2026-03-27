@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { TurtlePanel } from "../TurtlePanel";
+import type { TurtlePanelCallbacks } from "../TurtlePanel";
 
 const storageMap = new Map<string, string>();
 beforeEach(() => {
@@ -109,7 +110,7 @@ describe("TurtlePanel REPL", () => {
 
     beforeEach(() => {
       onReplCommand = vi.fn().mockResolvedValue({ output: "100", error: null });
-      panel = new TurtlePanel("test-drawing", { onReplCommand });
+      panel = new TurtlePanel("test-drawing", { onReplCommand } as TurtlePanelCallbacks);
       panel.show();
       panel.switchTab("repl");
     });
@@ -194,7 +195,7 @@ describe("TurtlePanel REPL", () => {
   describe("REPL command history navigation", () => {
     beforeEach(() => {
       const onReplCommand = vi.fn().mockResolvedValue({ output: null, error: null });
-      panel = new TurtlePanel("test-drawing", { onReplCommand });
+      panel = new TurtlePanel("test-drawing", { onReplCommand } as TurtlePanelCallbacks);
       panel.show();
       panel.switchTab("repl");
     });
@@ -270,7 +271,7 @@ describe("TurtlePanel REPL", () => {
     it("Reset button calls onReplReset and clears history", async () => {
       const onReplReset = vi.fn().mockResolvedValue(undefined);
       const onReplCommand = vi.fn().mockResolvedValue({ output: "ok", error: null });
-      panel = new TurtlePanel("test-drawing", { onReplCommand, onReplReset });
+      panel = new TurtlePanel("test-drawing", { onReplCommand, onReplReset } as TurtlePanelCallbacks);
       panel.show();
       panel.switchTab("repl");
 
@@ -298,7 +299,7 @@ describe("TurtlePanel REPL", () => {
 
     it("Clear Drawing button calls onReplClear", () => {
       const onReplClear = vi.fn();
-      panel = new TurtlePanel("test-drawing", { onReplClear });
+      panel = new TurtlePanel("test-drawing", { onReplClear } as TurtlePanelCallbacks);
       panel.show();
       panel.switchTab("repl");
 
@@ -309,7 +310,7 @@ describe("TurtlePanel REPL", () => {
 
     it("Clear History button empties the history display", async () => {
       const onReplCommand = vi.fn().mockResolvedValue({ output: null, error: null });
-      panel = new TurtlePanel("test-drawing", { onReplCommand });
+      panel = new TurtlePanel("test-drawing", { onReplCommand } as TurtlePanelCallbacks);
       panel.show();
       panel.switchTab("repl");
 
@@ -332,7 +333,7 @@ describe("TurtlePanel REPL", () => {
   describe("tab state preservation", () => {
     it("REPL history survives tab switch", async () => {
       const onReplCommand = vi.fn().mockResolvedValue({ output: "42", error: null });
-      panel = new TurtlePanel("test-drawing", { onReplCommand });
+      panel = new TurtlePanel("test-drawing", { onReplCommand } as TurtlePanelCallbacks);
       panel.show();
       panel.switchTab("repl");
 

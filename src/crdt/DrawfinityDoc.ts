@@ -402,6 +402,13 @@ export class DrawfinityDoc implements DocumentModel {
   }
 
   /**
+   * Unregisters a previously registered shared-scripts change callback.
+   */
+  offSharedScriptsChanged(callback: () => void): void {
+    this.sharedScripts.unobserve(callback);
+  }
+
+  /**
    * Returns the raw Yjs map backing shared scripts.
    */
   getSharedScriptsMap(): Y.Map<string> {

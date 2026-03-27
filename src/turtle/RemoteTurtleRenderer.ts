@@ -42,6 +42,7 @@ export class RemoteTurtleRenderer {
   private indicators = new Map<string, RemoteIndicatorEntry>();
   private unsubscribe: (() => void) | null = null;
   private globalVisible = false;
+  private lastSnapshot: RemoteTurtles[] = [];
 
   constructor(root: HTMLElement, camera: Camera) {
     this.root = root;
@@ -136,6 +137,7 @@ export class RemoteTurtleRenderer {
    * Creates new indicators, updates existing ones, and removes stale ones.
    */
   syncFromAwareness(remoteTurtles: RemoteTurtles[]): void {
+    this.lastSnapshot = remoteTurtles;
     // Collect all keys that should exist after this sync
     const activeKeys = new Set<string>();
 
@@ -250,5 +252,18 @@ export class RemoteTurtleRenderer {
 
     entry.container.style.transform =
       `translate(${screenX - halfSize}px, ${screenY - halfSize}px) rotate(${turtle.heading}deg)`;
+  }
+
+  /**
+   * Re-render all indicator positions from the last awareness snapshot.
+   * Call this on camera pan/zoom so indicators stay at correct screen positions.
+   */
+  redrawAll(): void {
+    for (const client of this.lastSnapshot) {
+      for (const turtle of client.turtles) {
+        const key = `${client.userId}:${turtle.id}`;
+        this.updateIndicator(key, turtle, client.userName, client.userColor);
+      }
+    }
   }
 }

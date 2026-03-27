@@ -55,6 +55,9 @@ export class TurtlePanel {
   private scriptsBtnBadge: HTMLElement | null = null;
   private drawfinityDoc: DrawfinityDoc | null = null;
   private shareBtn!: HTMLButtonElement;
+  private userDisplayName: string = "Me";
+  private docChangeCallback: (() => void) | null = null;
+  private exchangeSharedCallback: (() => void) | null = null;
 
   constructor(drawingId: string, callbacks?: TurtlePanelCallbacks) {
     this.callbacks = callbacks ?? {};
@@ -335,7 +338,7 @@ export class TurtlePanel {
       id,
       title,
       code: script,
-      author: "Me",
+      author: this.userDisplayName,
       sharedAt: Date.now(),
     });
     this.appendConsole("Script shared with collaborators", "info");
@@ -347,10 +350,15 @@ export class TurtlePanel {
    * Listens for changes and shows notifications when scripts are shared.
    */
   setDrawfinityDoc(doc: DrawfinityDoc | null): void {
+    // Clean up previous listener
+    if (this.drawfinityDoc && this.docChangeCallback) {
+      this.drawfinityDoc.offSharedScriptsChanged(this.docChangeCallback);
+      this.docChangeCallback = null;
+    }
     this.drawfinityDoc = doc;
     if (doc) {
       let previousIds = new Set(doc.getSharedScripts().map((s) => s.id));
-      doc.onSharedScriptsChanged(() => {
+      this.docChangeCallback = () => {
         const currentScripts = doc.getSharedScripts();
         const currentIds = new Set(currentScripts.map((s) => s.id));
         for (const script of currentScripts) {
@@ -362,8 +370,16 @@ export class TurtlePanel {
           }
         }
         previousIds = currentIds;
-      });
+      };
+      doc.onSharedScriptsChanged(this.docChangeCallback);
     }
+  }
+
+  /**
+   * Set the display name used when sharing scripts.
+   */
+  setUserDisplayName(name: string): void {
+    this.userDisplayName = name;
   }
 
   /** Append a message to the console log. */
@@ -627,7 +643,12 @@ export class TurtlePanel {
 
     renderSharedScripts();
     if (this.drawfinityDoc) {
-      this.drawfinityDoc.onSharedScriptsChanged(() => renderSharedScripts());
+      // Clean up previous exchange browser listener if any
+      if (this.exchangeSharedCallback) {
+        this.drawfinityDoc.offSharedScriptsChanged(this.exchangeSharedCallback);
+      }
+      this.exchangeSharedCallback = () => renderSharedScripts();
+      this.drawfinityDoc.onSharedScriptsChanged(this.exchangeSharedCallback);
     }
 
     // Footer with repo link
@@ -917,6 +938,10 @@ export class TurtlePanel {
   }
 
   private closeExchangeBrowser(): void {
+    if (this.exchangeSharedCallback && this.drawfinityDoc) {
+      this.drawfinityDoc.offSharedScriptsChanged(this.exchangeSharedCallback);
+      this.exchangeSharedCallback = null;
+    }
     if (this.exchangeOverlay) {
       this.exchangeOverlay.remove();
       this.exchangeOverlay = null;
@@ -924,6 +949,10 @@ export class TurtlePanel {
   }
 
   destroy(): void {
+    if (this.drawfinityDoc && this.docChangeCallback) {
+      this.drawfinityDoc.offSharedScriptsChanged(this.docChangeCallback);
+      this.docChangeCallback = null;
+    }
     this.closeExchangeBrowser();
     this.hide();
   }

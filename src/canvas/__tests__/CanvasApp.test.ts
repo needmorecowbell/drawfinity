@@ -159,6 +159,15 @@ vi.mock("../../turtle", () => {
     clear = vi.fn();
     destroy = vi.fn();
   },
+  ReplExecutor: class MockReplExecutor {
+    init = vi.fn().mockResolvedValue(undefined);
+    executeCommand = vi.fn().mockResolvedValue({ output: null, error: null });
+    reset = vi.fn().mockResolvedValue(undefined);
+    clearDrawing = vi.fn();
+    destroy = vi.fn();
+    getMainState = vi.fn(() => null);
+    setSyncManager = vi.fn();
+  },
   ExchangeClient: class MockExchangeClient {
     checkForUpdates = vi.fn().mockResolvedValue({ hasUpdates: false, scripts: [] });
     fetchIndex = vi.fn().mockResolvedValue({ scripts: [] });

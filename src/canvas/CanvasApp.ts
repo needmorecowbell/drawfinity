@@ -10,7 +10,7 @@ import { ToolManager, BRUSH_PRESETS, isShapeTool } from "../tools";
 import type { ToolType } from "../tools";
 import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel, TurtlePanel, BookmarkPanel, StatsPanel, BadgeToast, RecordToast, SessionEventCollector, showSessionSummary, hasSessionActivity, buildSessionData } from "../ui";
 import type { SessionSnapshot } from "../ui";
-import { LuaRuntime, TurtleRegistry, TurtleExecutor, TurtleIndicator } from "../turtle";
+import { LuaRuntime, TurtleRegistry, TurtleExecutor, TurtleIndicator, ReplExecutor } from "../turtle";
 import { ICONS } from "../ui/ToolbarIcons";
 import { renderExport, downloadCanvas } from "../ui/ExportRenderer";
 import { exportSVG, downloadSVG } from "../ui/SVGExporter";
@@ -119,6 +119,7 @@ export class CanvasApp {
   private turtleRegistry!: TurtleRegistry;
   private turtleExecutor!: TurtleExecutor;
   private turtleIndicator!: TurtleIndicator;
+  private replExecutor!: ReplExecutor;
   private turtlePlacing = false;
   private turtleOriginPlaced = false;
   private cursorManager!: CursorManager;
@@ -682,7 +683,20 @@ export class CanvasApp {
           canvas.addEventListener("pointerdown", clickHandler);
         }
       },
+      onReplCommand: async (line) => {
+        return this.replExecutor.executeCommand(line);
+      },
+      onReplReset: async () => {
+        await this.replExecutor.reset();
+      },
+      onReplClear: () => {
+        this.replExecutor.clearDrawing();
+      },
     });
+
+    // REPL executor — persistent Lua VM for interactive commands
+    this.replExecutor = new ReplExecutor(this.turtleRegistry, "repl", this.doc);
+    await this.replExecutor.init();
 
     // Turtle toolbar button
     this.turtleButton = document.createElement("button");
@@ -968,6 +982,7 @@ export class CanvasApp {
     this.turtlePanel.destroy();
     this.turtleIndicator.destroy();
     this.turtleRuntime.close();
+    this.replExecutor.destroy();
     this.cheatSheet.destroy();
     this.fpsCounter.destroy();
     this.bookmarkButton.remove();

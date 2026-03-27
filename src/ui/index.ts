@@ -30,7 +30,7 @@ export { exportSVG, downloadSVG, strokeToSVG, shapeToSVG } from "./SVGExporter";
 export { ToolbarOverflow } from "./ToolbarOverflow";
 export type { ToolbarOverflowConfig } from "./ToolbarOverflow";
 export { TurtlePanel } from "./TurtlePanel";
-export type { TurtlePanelCallbacks } from "./TurtlePanel";
+export type { TurtlePanelCallbacks, TurtleTabName } from "./TurtlePanel";
 export { ICONS } from "./ToolbarIcons";
 export { BookmarkPanel } from "./BookmarkPanel";
 export type { BookmarkPanelCallbacks } from "./BookmarkPanel";

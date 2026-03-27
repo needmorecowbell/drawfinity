@@ -6,7 +6,7 @@ import type {
 } from "../turtle";
 import snapshotData from "../turtle/exchange/exchange-snapshot.json";
 import type { DrawfinityDoc } from "../crdt";
-import { TurtleEditor } from "./turtle-editor";
+import { TurtleEditor, ReplInput } from "./turtle-editor";
 
 export interface TurtlePanelCallbacks {
   /** Called when the user clicks Run. Receives the script text. */
@@ -19,9 +19,18 @@ export interface TurtlePanelCallbacks {
   onPlaceRequest?: () => void;
   /** Called when the user clicks Share. Receives the script text. */
   onShare?: (script: string) => void;
+  /** Called when a REPL command is entered. Returns output/error for display. */
+  onReplCommand?: (line: string) => Promise<{ output: string | null; error: string | null }>;
+  /** Called when the REPL is reset. */
+  onReplReset?: () => Promise<void>;
+  /** Called when the REPL drawing is cleared. */
+  onReplClear?: () => void;
 }
 
+export type TurtleTabName = "script" | "repl";
+
 const STORAGE_KEY_PREFIX = "drawfinity:turtle-script:";
+const TAB_STORAGE_KEY = "drawfinity:turtle-tab";
 
 /**
  * Slide-up panel for turtle graphics scripting.
@@ -60,6 +69,22 @@ export class TurtlePanel {
   private docChangeCallback: (() => void) | null = null;
   private exchangeSharedCallback: (() => void) | null = null;
 
+  // Tab state
+  private activeTab: TurtleTabName = "script";
+  private scriptTabBtn!: HTMLButtonElement;
+  private replTabBtn!: HTMLButtonElement;
+  private scriptContent!: HTMLElement;
+  private replContent!: HTMLElement;
+  private scriptBottomBar!: HTMLElement;
+  private replBottomBar!: HTMLElement;
+
+  // REPL state
+  private replHistory!: HTMLElement;
+  private replInput!: ReplInput;
+  private replCommandHistory: string[] = [];
+  private replHistoryIndex = -1;
+  private replExecuting = false;
+
   constructor(drawingId: string, callbacks?: TurtlePanelCallbacks) {
     this.callbacks = callbacks ?? {};
     this.drawingId = drawingId;
@@ -77,6 +102,12 @@ export class TurtlePanel {
 
     // Load saved script from localStorage
     this.loadScript();
+
+    // Restore active tab preference
+    const savedTab = localStorage.getItem(TAB_STORAGE_KEY);
+    if (savedTab === "repl" || savedTab === "script") {
+      this.switchTab(savedTab);
+    }
 
     // Background update check — fire-and-forget
     this.checkForUpdatesInBackground();
@@ -127,7 +158,7 @@ export class TurtlePanel {
     });
     this.panel.appendChild(resizeHandle);
 
-    // Title bar
+    // Title bar with tabs
     const titleBar = document.createElement("div");
     titleBar.className = "turtle-title-bar";
 
@@ -135,6 +166,30 @@ export class TurtlePanel {
     title.className = "turtle-title";
     title.textContent = "Turtle Graphics";
     titleBar.appendChild(title);
+
+    // Tab bar
+    const tabBar = document.createElement("div");
+    tabBar.className = "turtle-tabs";
+
+    this.scriptTabBtn = document.createElement("button");
+    this.scriptTabBtn.className = "turtle-tab active";
+    this.scriptTabBtn.textContent = "Script";
+    this.scriptTabBtn.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.switchTab("script");
+    });
+    tabBar.appendChild(this.scriptTabBtn);
+
+    this.replTabBtn = document.createElement("button");
+    this.replTabBtn.className = "turtle-tab";
+    this.replTabBtn.textContent = "REPL";
+    this.replTabBtn.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.switchTab("repl");
+    });
+    tabBar.appendChild(this.replTabBtn);
+
+    titleBar.appendChild(tabBar);
 
     const closeBtn = document.createElement("button");
     closeBtn.className = "turtle-close-btn";
@@ -148,9 +203,9 @@ export class TurtlePanel {
 
     this.panel.appendChild(titleBar);
 
-    // Main content area: editor + console
-    const content = document.createElement("div");
-    content.className = "turtle-content";
+    // === Script tab content ===
+    this.scriptContent = document.createElement("div");
+    this.scriptContent.className = "turtle-content";
 
     // Left: Code editor
     const editorWrap = document.createElement("div");
@@ -169,7 +224,7 @@ export class TurtlePanel {
       onRun: () => this.handleRun(),
     });
     editorWrap.appendChild(editorContainer);
-    content.appendChild(editorWrap);
+    this.scriptContent.appendChild(editorWrap);
 
     // Right: Console output
     const consoleWrap = document.createElement("div");
@@ -183,13 +238,61 @@ export class TurtlePanel {
     this.consoleLog = document.createElement("div");
     this.consoleLog.className = "turtle-console";
     consoleWrap.appendChild(this.consoleLog);
-    content.appendChild(consoleWrap);
+    this.scriptContent.appendChild(consoleWrap);
 
-    this.panel.appendChild(content);
+    this.panel.appendChild(this.scriptContent);
 
-    // Bottom bar: controls
-    const bottomBar = document.createElement("div");
-    bottomBar.className = "turtle-bottom-bar";
+    // === REPL tab content ===
+    this.replContent = document.createElement("div");
+    this.replContent.className = "turtle-content repl-content";
+    this.replContent.style.display = "none";
+
+    this.replHistory = document.createElement("div");
+    this.replHistory.className = "repl-history";
+    this.replContent.appendChild(this.replHistory);
+
+    const replInputWrap = document.createElement("div");
+    replInputWrap.className = "repl-input-wrap";
+
+    const replPromptLabel = document.createElement("span");
+    replPromptLabel.className = "repl-prompt";
+    replPromptLabel.textContent = ">>>";
+    replInputWrap.appendChild(replPromptLabel);
+
+    this.replInput = new ReplInput({
+      parent: replInputWrap,
+      onSubmit: (line) => {
+        if (this.replExecuting) return;
+        this.replCommandHistory.push(line);
+        this.replHistoryIndex = -1;
+        this.executeReplCommand(line);
+      },
+      onHistoryBack: () => {
+        if (this.replCommandHistory.length === 0) return null;
+        if (this.replHistoryIndex === -1) {
+          this.replHistoryIndex = this.replCommandHistory.length - 1;
+        } else if (this.replHistoryIndex > 0) {
+          this.replHistoryIndex--;
+        }
+        return this.replCommandHistory[this.replHistoryIndex];
+      },
+      onHistoryForward: () => {
+        if (this.replHistoryIndex === -1) return null;
+        if (this.replHistoryIndex < this.replCommandHistory.length - 1) {
+          this.replHistoryIndex++;
+          return this.replCommandHistory[this.replHistoryIndex];
+        }
+        this.replHistoryIndex = -1;
+        return "";
+      },
+    });
+    this.replContent.appendChild(replInputWrap);
+
+    this.panel.appendChild(this.replContent);
+
+    // === Script bottom bar ===
+    this.scriptBottomBar = document.createElement("div");
+    this.scriptBottomBar.className = "turtle-bottom-bar";
 
     // Run button
     this.runBtn = document.createElement("button");
@@ -200,7 +303,7 @@ export class TurtlePanel {
       e.stopPropagation();
       this.handleRun();
     });
-    bottomBar.appendChild(this.runBtn);
+    this.scriptBottomBar.appendChild(this.runBtn);
 
     // Stop button
     this.stopBtn = document.createElement("button");
@@ -211,7 +314,7 @@ export class TurtlePanel {
       e.stopPropagation();
       this.callbacks.onStop?.();
     });
-    bottomBar.appendChild(this.stopBtn);
+    this.scriptBottomBar.appendChild(this.stopBtn);
 
     // Place button — click to place turtle origin on canvas
     this.placeBtn = document.createElement("button");
@@ -222,7 +325,7 @@ export class TurtlePanel {
       e.stopPropagation();
       this.callbacks.onPlaceRequest?.();
     });
-    bottomBar.appendChild(this.placeBtn);
+    this.scriptBottomBar.appendChild(this.placeBtn);
 
     // Share button
     this.shareBtn = document.createElement("button");
@@ -233,7 +336,7 @@ export class TurtlePanel {
       e.stopPropagation();
       this.handleShare();
     });
-    bottomBar.appendChild(this.shareBtn);
+    this.scriptBottomBar.appendChild(this.shareBtn);
 
     // Unified script browser button
     const scriptsBtnWrap = document.createElement("div");
@@ -255,7 +358,7 @@ export class TurtlePanel {
     scriptsBtn.appendChild(badge);
 
     scriptsBtnWrap.appendChild(scriptsBtn);
-    bottomBar.appendChild(scriptsBtnWrap);
+    this.scriptBottomBar.appendChild(scriptsBtnWrap);
 
     // Speed control
     const speedWrap = document.createElement("div");
@@ -284,12 +387,12 @@ export class TurtlePanel {
     this.speedLabel.textContent = "5";
     speedWrap.appendChild(this.speedLabel);
 
-    bottomBar.appendChild(speedWrap);
+    this.scriptBottomBar.appendChild(speedWrap);
 
     // Spacer
     const spacer = document.createElement("div");
     spacer.style.flex = "1";
-    bottomBar.appendChild(spacer);
+    this.scriptBottomBar.appendChild(spacer);
 
     // Clear Console button
     this.clearConsoleBtn = document.createElement("button");
@@ -299,9 +402,180 @@ export class TurtlePanel {
       e.stopPropagation();
       this.clearConsole();
     });
-    bottomBar.appendChild(this.clearConsoleBtn);
+    this.scriptBottomBar.appendChild(this.clearConsoleBtn);
 
-    this.panel.appendChild(bottomBar);
+    this.panel.appendChild(this.scriptBottomBar);
+
+    // === REPL bottom bar ===
+    this.replBottomBar = document.createElement("div");
+    this.replBottomBar.className = "turtle-bottom-bar";
+    this.replBottomBar.style.display = "none";
+
+    const replResetBtn = document.createElement("button");
+    replResetBtn.className = "turtle-btn turtle-btn-secondary repl-reset-btn";
+    replResetBtn.textContent = "Reset";
+    replResetBtn.title = "Reset REPL state and turtle position";
+    replResetBtn.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.handleReplReset();
+    });
+    this.replBottomBar.appendChild(replResetBtn);
+
+    const replClearBtn = document.createElement("button");
+    replClearBtn.className = "turtle-btn turtle-btn-secondary repl-clear-btn";
+    replClearBtn.textContent = "Clear Drawing";
+    replClearBtn.title = "Clear strokes drawn by REPL";
+    replClearBtn.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.callbacks.onReplClear?.();
+      this.appendReplEntry(null, "Drawing cleared.", null);
+    });
+    this.replBottomBar.appendChild(replClearBtn);
+
+    const replSpacer = document.createElement("div");
+    replSpacer.style.flex = "1";
+    this.replBottomBar.appendChild(replSpacer);
+
+    const replClearHistoryBtn = document.createElement("button");
+    replClearHistoryBtn.className = "turtle-btn turtle-btn-secondary";
+    replClearHistoryBtn.textContent = "Clear History";
+    replClearHistoryBtn.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.replHistory.innerHTML = "";
+    });
+    this.replBottomBar.appendChild(replClearHistoryBtn);
+
+    this.panel.appendChild(this.replBottomBar);
+  }
+
+  /** Switch between Script and REPL tabs. */
+  switchTab(tab: TurtleTabName): void {
+    this.activeTab = tab;
+    localStorage.setItem(TAB_STORAGE_KEY, tab);
+
+    if (tab === "script") {
+      this.scriptTabBtn.classList.add("active");
+      this.replTabBtn.classList.remove("active");
+      this.scriptContent.style.display = "";
+      this.replContent.style.display = "none";
+      this.scriptBottomBar.style.display = "";
+      this.replBottomBar.style.display = "none";
+    } else {
+      this.scriptTabBtn.classList.remove("active");
+      this.replTabBtn.classList.add("active");
+      this.scriptContent.style.display = "none";
+      this.replContent.style.display = "";
+      this.scriptBottomBar.style.display = "none";
+      this.replBottomBar.style.display = "";
+      this.replInput.focus();
+    }
+  }
+
+  /** Get the active tab name. */
+  getActiveTab(): TurtleTabName {
+    return this.activeTab;
+  }
+
+  /** Submit a command to the REPL programmatically (useful for tests). */
+  replSubmitCommand(line: string): void {
+    const trimmed = line.trim();
+    if (!trimmed || this.replExecuting) return;
+    this.replCommandHistory.push(trimmed);
+    this.replHistoryIndex = -1;
+    this.executeReplCommand(trimmed);
+  }
+
+  /** Navigate REPL history backward and return the value, or null. */
+  replHistoryBack(): string | null {
+    if (this.replCommandHistory.length === 0) return null;
+    if (this.replHistoryIndex === -1) {
+      this.replHistoryIndex = this.replCommandHistory.length - 1;
+    } else if (this.replHistoryIndex > 0) {
+      this.replHistoryIndex--;
+    }
+    return this.replCommandHistory[this.replHistoryIndex];
+  }
+
+  /** Navigate REPL history forward and return the value, or empty string, or null. */
+  replHistoryForward(): string | null {
+    if (this.replHistoryIndex === -1) return null;
+    if (this.replHistoryIndex < this.replCommandHistory.length - 1) {
+      this.replHistoryIndex++;
+      return this.replCommandHistory[this.replHistoryIndex];
+    }
+    this.replHistoryIndex = -1;
+    return "";
+  }
+
+  private async executeReplCommand(line: string): Promise<void> {
+    if (!this.callbacks.onReplCommand) {
+      this.appendReplEntry(line, null, "REPL not connected");
+      return;
+    }
+
+    this.replExecuting = true;
+    this.replInput.setDisabled(true);
+
+    try {
+      const result = await this.callbacks.onReplCommand(line);
+      this.appendReplEntry(line, result.output, result.error);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.appendReplEntry(line, null, msg);
+    } finally {
+      this.replExecuting = false;
+      this.replInput.setDisabled(false);
+      this.replInput.focus();
+    }
+  }
+
+  private appendReplEntry(
+    command: string | null,
+    output: string | null,
+    error: string | null,
+  ): void {
+    const entry = document.createElement("div");
+    entry.className = "repl-entry";
+
+    if (command !== null) {
+      const cmdLine = document.createElement("div");
+      cmdLine.className = "repl-command";
+      const prompt = document.createElement("span");
+      prompt.className = "repl-prompt";
+      prompt.textContent = ">>>";
+      cmdLine.appendChild(prompt);
+      const cmdText = document.createElement("span");
+      cmdText.textContent = " " + command;
+      cmdLine.appendChild(cmdText);
+      entry.appendChild(cmdLine);
+    }
+
+    if (output !== null) {
+      const outputLine = document.createElement("div");
+      outputLine.className = "repl-output";
+      outputLine.textContent = output;
+      entry.appendChild(outputLine);
+    }
+
+    if (error !== null) {
+      const errorLine = document.createElement("div");
+      errorLine.className = "repl-error";
+      errorLine.textContent = error;
+      entry.appendChild(errorLine);
+    }
+
+    this.replHistory.appendChild(entry);
+    this.replHistory.scrollTop = this.replHistory.scrollHeight;
+  }
+
+  private async handleReplReset(): Promise<void> {
+    if (this.callbacks.onReplReset) {
+      await this.callbacks.onReplReset();
+    }
+    this.replHistory.innerHTML = "";
+    this.replCommandHistory = [];
+    this.replHistoryIndex = -1;
+    this.appendReplEntry(null, "REPL reset.", null);
   }
 
   private handleRun(): void {
@@ -426,7 +700,11 @@ export class TurtlePanel {
     this.visible = true;
     this.panel.style.height = `${this.panelHeight}px`;
     document.body.appendChild(this.overlay);
-    this.editor.focus();
+    if (this.activeTab === "repl") {
+      this.replInput.focus();
+    } else {
+      this.editor.focus();
+    }
   }
 
   hide(): void {

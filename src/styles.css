@@ -2384,20 +2384,52 @@ html, body {
 
 .turtle-editor {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: #1e1e2e;
-  color: #cdd6f4;
-  border: none;
-  outline: none;
-  resize: none;
-  padding: 4px 12px 12px;
+}
+
+.turtle-editor .cm-editor {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   font-size: 13px;
   line-height: 1.5;
-  tab-size: 2;
 }
 
-.turtle-editor::placeholder {
-  color: #585b70;
+.turtle-editor .cm-editor .cm-scroller {
+  overflow: auto;
+}
+
+.turtle-editor .cm-editor .cm-content {
+  padding: 4px 12px 12px;
+}
+
+.turtle-editor .cm-tooltip.cm-tooltip-autocomplete {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  color: #333;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.turtle-editor .cm-tooltip.cm-tooltip-autocomplete ul li[aria-selected] {
+  background: #0066FF;
+  color: #fff;
+}
+
+.turtle-editor .cm-tooltip.cm-tooltip-autocomplete .cm-completionDetail {
+  color: #888;
+  font-style: italic;
+}
+
+.turtle-editor .cm-tooltip.cm-tooltip-autocomplete ul li[aria-selected] .cm-completionDetail {
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .turtle-console {
@@ -3039,20 +3071,52 @@ html, body {
 
 .turtle-editor {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: #1e1e2e;
-  color: #cdd6f4;
-  border: none;
-  outline: none;
-  resize: none;
-  padding: 4px 12px 12px;
+}
+
+.turtle-editor .cm-editor {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   font-size: 13px;
   line-height: 1.5;
-  tab-size: 2;
 }
 
-.turtle-editor::placeholder {
-  color: #585b70;
+.turtle-editor .cm-editor .cm-scroller {
+  overflow: auto;
+}
+
+.turtle-editor .cm-editor .cm-content {
+  padding: 4px 12px 12px;
+}
+
+.turtle-editor .cm-tooltip.cm-tooltip-autocomplete {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  color: #333;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.turtle-editor .cm-tooltip.cm-tooltip-autocomplete ul li[aria-selected] {
+  background: #0066FF;
+  color: #fff;
+}
+
+.turtle-editor .cm-tooltip.cm-tooltip-autocomplete .cm-completionDetail {
+  color: #888;
+  font-style: italic;
+}
+
+.turtle-editor .cm-tooltip.cm-tooltip-autocomplete ul li[aria-selected] .cm-completionDetail {
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .turtle-console {

@@ -1,3 +1,4 @@
+import { DEFAULT_BACKGROUND_COLOR } from "../crdt/DrawfinityDoc";
 import type { DrawfinityDoc } from "../crdt/DrawfinityDoc";
 import { generateTriangleStrip } from "../renderer/StrokeMesh";
 import { generateShapeVertices } from "../renderer/ShapeMesh";
@@ -157,12 +158,15 @@ export class ThumbnailGenerator {
    * @param doc - The Yjs document wrapper containing the drawing's strokes and shapes.
    * @returns A PNG data URL string, or `null` if the drawing is empty or WebGL2 is unavailable.
    */
-  generate(doc: DrawfinityDoc): string | null {
+  generate(
+    doc: DrawfinityDoc,
+    backgroundColor: string = DEFAULT_BACKGROUND_COLOR,
+  ): string | null {
     const strokes = doc.getStrokes();
     const shapes = doc.getShapes ? doc.getShapes() : [];
 
     const bounds = computeContentBounds(strokes, shapes);
-    if (!bounds) return null;
+    if (!bounds && backgroundColor === DEFAULT_BACKGROUND_COLOR) return null;
 
     const offscreen = document.createElement("canvas");
     offscreen.width = THUMBNAIL_WIDTH;
@@ -176,7 +180,14 @@ export class ThumbnailGenerator {
     if (!gl) return null;
 
     try {
-      return this.renderThumbnail(gl, offscreen, strokes, shapes, bounds);
+      return this.renderThumbnail(
+        gl,
+        offscreen,
+        strokes,
+        shapes,
+        bounds,
+        backgroundColor,
+      );
     } finally {
       const ext = gl.getExtension("WEBGL_lose_context");
       if (ext) ext.loseContext();
@@ -188,11 +199,20 @@ export class ThumbnailGenerator {
     canvas: HTMLCanvasElement,
     strokes: Stroke[],
     shapes: Shape[],
-    bounds: BoundsResult,
+    bounds: BoundsResult | null,
+    backgroundColor: string = DEFAULT_BACKGROUND_COLOR,
   ): string {
+    const [bgR, bgG, bgB, bgA] = hexToRgba(backgroundColor);
     gl.viewport(0, 0, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT);
-    gl.clearColor(250 / 255, 250 / 255, 248 / 255, 1.0);
+    gl.clearColor(bgR, bgG, bgB, bgA);
     gl.clear(gl.COLOR_BUFFER_BIT);
+
+    if (!bounds) {
+      this.lastGenerationTime = Date.now();
+      this.activitySinceLastGeneration = false;
+      return canvas.toDataURL("image/png");
+    }
+
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 

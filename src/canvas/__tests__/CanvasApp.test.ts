@@ -106,6 +106,12 @@ vi.mock("../../persistence", () => ({
     updateThumbnail: vi.fn(),
     getDrawingFilePath: vi.fn().mockResolvedValue("/mock/path/test.drawfinity"),
   })),
+  ThumbnailGenerator: class MockThumbnailGenerator {
+    markActivity = vi.fn();
+    shouldGenerate = vi.fn().mockReturnValue(false);
+    forceGenerate = vi.fn().mockReturnValue(false);
+    generate = vi.fn().mockReturnValue(null);
+  },
 }));
 
 // Mock turtle module to avoid wasmoon WASM loading in jsdom

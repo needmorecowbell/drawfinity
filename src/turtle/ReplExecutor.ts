@@ -275,7 +275,7 @@ export class ReplExecutor {
     const mainId = `${this.scriptId}:main`;
     for (const [id] of owned) {
       if (id !== mainId) {
-        this.registry.remove(id.replace(`${this.scriptId}:`, ""), this.scriptId);
+        this.registry.remove(id, this.scriptId);
       }
     }
   }

@@ -70,6 +70,13 @@ Press `Ctrl+K` to open the connection panel, enter a server URL and room ID, and
 - **Smooth zoom** — scroll wheel, trackpad pinch, or `Ctrl+=`/`Ctrl+-` with animation
 - **Dot grid** — toggle a reference grid with `Ctrl+'`
 
+### Home screen
+Launch Drawfinity to the **Home Screen** — a drawing management hub with two tabs:
+- **My Drawings** — create, rename, duplicate, and delete local drawings
+- **Shared** — drawings from collaboration sessions
+
+Press `Ctrl+W` or `Escape` from the canvas to return to the home screen.
+
 ## Screenshots
 
 <!-- screenshots: replace placeholders with actual captures -->

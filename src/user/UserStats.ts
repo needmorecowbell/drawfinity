@@ -199,6 +199,17 @@ export function incrementStat(key: keyof Omit<UserStats, "toolUsage" | "firstSes
   saveStats(stats);
 }
 
+/**
+ * Increments the usage counter for a specific tool in the `toolUsage` record.
+ *
+ * Loads current stats, initializes the tool's counter to `0` if it doesn't
+ * exist yet, adds one, and persists the result via {@link saveStats}.
+ *
+ * @param tool - The tool name key to increment (e.g. `"brush"`, `"eraser"`).
+ *
+ * @see {@link incrementStat} — numeric stat field variant
+ * @see {@link saveStats} — underlying persistence call
+ */
 export function incrementToolUsage(tool: string): void {
   const stats = loadStats();
   stats.toolUsage[tool] = (stats.toolUsage[tool] ?? 0) + 1;

@@ -44,6 +44,17 @@ function defaultRecord(): CanvasRecord {
   return { value: 0, achievedAt: 0 };
 }
 
+/**
+ * Creates a fresh {@link CanvasRecords} object with every personal-best record
+ * initialized to zeroed defaults (value 0, achievedAt 0).
+ *
+ * Used as the baseline when no persisted records exist, and as the merge target
+ * when loading stored data to ensure forward-compatible shape.
+ *
+ * @returns A complete CanvasRecords with all 13 record fields set to `{ value: 0, achievedAt: 0 }`.
+ * @see {@link loadRecords} — synchronous loader that falls back to this function
+ * @see {@link loadRecordsAsync} — async Tauri loader that falls back to this function
+ */
 export function createDefaultRecords(): CanvasRecords {
   return {
     longestSingleStroke: defaultRecord(),

@@ -178,6 +178,21 @@ export function saveStats(stats: UserStats): void {
   writeConfigFile(CONFIG_FILENAME, JSON.stringify(stats)).catch(() => {});
 }
 
+/**
+ * Loads the current stats, increments a single numeric field by the given
+ * amount, and persists the result via {@link saveStats}.
+ *
+ * The `key` parameter is constrained to numeric counter fields — non-numeric
+ * fields (`toolUsage`, `firstSessionAt`, `lastSessionAt`) are excluded at
+ * the type level.
+ *
+ * @param key - The stat field to increment (must be a numeric counter, not
+ *              `toolUsage`, `firstSessionAt`, or `lastSessionAt`).
+ * @param amount - The value to add (defaults to `1`).
+ *
+ * @see {@link incrementToolUsage} — per-tool usage counter variant
+ * @see {@link saveStats} — underlying persistence call
+ */
 export function incrementStat(key: keyof Omit<UserStats, "toolUsage" | "firstSessionAt" | "lastSessionAt">, amount: number = 1): void {
   const stats = loadStats();
   (stats[key] as number) += amount;

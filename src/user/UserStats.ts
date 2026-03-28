@@ -133,6 +133,22 @@ export function loadStats(): UserStats {
   return createDefaultStats();
 }
 
+/**
+ * Loads user stats asynchronously from the Tauri config file (`stats.json`),
+ * falling back to {@link loadStats | localStorage} when the config file is
+ * unavailable (e.g. in browser-only mode). When a Tauri config read succeeds,
+ * the result is also written back to `localStorage` so that subsequent
+ * synchronous {@link loadStats} calls stay in sync.
+ *
+ * Like {@link loadStats}, stored values are merged over
+ * {@link createDefaultStats | defaults} for forward compatibility.
+ *
+ * @returns The persisted {@link UserStats} from Tauri config or localStorage,
+ *          merged with defaults.
+ *
+ * @see {@link loadStats} — synchronous localStorage-only variant
+ * @see {@link saveStats} — dual-writes to both localStorage and Tauri config
+ */
 export async function loadStatsAsync(): Promise<UserStats> {
   const raw = await readConfigFile(CONFIG_FILENAME);
   if (raw) {

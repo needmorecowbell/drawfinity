@@ -31,6 +31,21 @@ async function ensureConfigDir(): Promise<string> {
   return dir;
 }
 
+/**
+ * Reads a configuration file from the Drawfinity config directory.
+ *
+ * In Tauri mode, reads from `{configDir}/drawfinity/{filename}` using the
+ * platform's standard config location (e.g., `~/.config` on Linux,
+ * `AppData/Roaming` on Windows). Returns `null` immediately in browser mode
+ * or if the file does not exist.
+ *
+ * Callers should treat `null` as a signal to fall back to `localStorage`.
+ *
+ * @param filename - The config file name to read (e.g., `"user-stats.json"`).
+ * @returns The file contents as a string, or `null` if unavailable (browser mode,
+ *   file missing, or read error).
+ * @see {@link writeConfigFile} for the corresponding write operation.
+ */
 export async function readConfigFile(filename: string): Promise<string | null> {
   if (!isTauri()) return null;
   try {

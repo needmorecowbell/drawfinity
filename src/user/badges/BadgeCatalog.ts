@@ -23,6 +23,23 @@ export interface BadgeDefinition {
   criteria: (stats: UserStats) => boolean;
 }
 
+/**
+ * Complete catalog of all achievable badges in the gamification system.
+ *
+ * Contains {@link BadgeDefinition} entries organized into six categories:
+ * - **drawing** — stroke, shape, eraser, undo, and tool-usage milestones
+ * - **turtle** — turtle script runs, spawns, distance, imports, and errors
+ * - **turtle-awards** — creative coding feats (speed, depth, colors, clean runs)
+ * - **canvas** — zoom extremes, pan distance, bookmarks, and exports
+ * - **collaboration** — session joins and script sharing
+ * - **dedication** — session count and cumulative drawing time
+ *
+ * Each badge's {@link BadgeDefinition.criteria} function is evaluated by
+ * {@link BadgeEngine.evaluate} against the current {@link UserStats}.
+ *
+ * @see {@link BadgeEngine} for evaluation logic
+ * @see {@link BadgeTier} for tier definitions
+ */
 export const BADGE_CATALOG: BadgeDefinition[] = [
   // --- Drawing badges ---
   {

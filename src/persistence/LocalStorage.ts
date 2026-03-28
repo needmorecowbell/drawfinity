@@ -95,7 +95,19 @@ export async function loadDocument(filePath: string): Promise<Y.Doc | null> {
 }
 
 /**
- * Save a Y.Doc to a drawing managed by DrawingManager, identified by drawing ID.
+ * Persists a Yjs document to a managed drawing, identified by its drawing ID.
+ *
+ * Encodes the document's full CRDT state via {@link Y.encodeStateAsUpdate} and
+ * delegates the binary write to {@link DrawingManager.saveDrawing}. This is the
+ * ID-based counterpart to {@link saveDocument}, which writes to an explicit file path.
+ *
+ * @param doc - The Yjs document whose state will be serialized and saved.
+ * @param drawingId - Unique identifier of the target drawing in the manifest.
+ * @param manager - The {@link DrawingManager} instance that handles file I/O and manifest updates.
+ * @returns Resolves when the drawing file and manifest have been updated.
+ * @throws {Error} If the drawing ID is not found in the manifest.
+ * @see {@link loadDocumentById} for the corresponding load operation.
+ * @see {@link saveDocument} for path-based persistence without a DrawingManager.
  */
 export async function saveDocumentById(
   doc: Y.Doc,
@@ -107,8 +119,19 @@ export async function saveDocumentById(
 }
 
 /**
- * Load a Y.Doc from a drawing managed by DrawingManager, identified by drawing ID.
- * Returns null if the drawing state is empty.
+ * Loads a Yjs document from a managed drawing, identified by its drawing ID.
+ *
+ * Reads binary CRDT state via {@link DrawingManager.openDrawing} and applies it
+ * to a fresh {@link Y.Doc}. Returns `null` when the drawing file is empty (e.g.,
+ * a newly created drawing that has never been saved), allowing callers to
+ * distinguish between an empty canvas and a populated document.
+ *
+ * @param drawingId - Unique identifier of the drawing to load from the manifest.
+ * @param manager - The {@link DrawingManager} instance that handles file I/O.
+ * @returns A hydrated Yjs document, or `null` if the drawing state is empty.
+ * @throws {Error} If the drawing ID is not found in the manifest.
+ * @see {@link saveDocumentById} for the corresponding save operation.
+ * @see {@link loadDocument} for path-based loading without a DrawingManager.
  */
 export async function loadDocumentById(
   drawingId: string,

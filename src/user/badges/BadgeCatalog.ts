@@ -1,5 +1,16 @@
 import type { UserStats } from "../UserStats";
 
+/**
+ * Badge rarity tiers representing ascending levels of achievement difficulty.
+ *
+ * Used by {@link BadgeDefinition} to classify badges and by UI components
+ * to render tier-appropriate colors and icons.
+ *
+ * - `"bronze"` — entry-level achievements (e.g. first stroke, first session)
+ * - `"silver"` — moderate milestones (e.g. 100 strokes, 50 turtle runs)
+ * - `"gold"` — significant accomplishments (e.g. 1,000 strokes, 50 sessions)
+ * - `"platinum"` — exceptional feats (e.g. 10,000 strokes, 100 turtles in one run)
+ */
 export type BadgeTier = "bronze" | "silver" | "gold" | "platinum";
 
 export interface BadgeDefinition {

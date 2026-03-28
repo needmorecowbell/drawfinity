@@ -133,6 +133,15 @@ export async function loadRecordsAsync(): Promise<CanvasRecords> {
   return loadRecords();
 }
 
+/**
+ * Persists canvas personal-best records to both localStorage and the Tauri
+ * config file (`records.json`). The Tauri write is fire-and-forget — failures
+ * are silently ignored so persistence never blocks the UI.
+ *
+ * @param records - The {@link CanvasRecords} object to persist.
+ * @see {@link loadRecords} — synchronous localStorage reader
+ * @see {@link loadRecordsAsync} — async Tauri config reader with localStorage fallback
+ */
 export function saveRecords(records: CanvasRecords): void {
   const json = JSON.stringify(records);
   localStorage.setItem(STORAGE_KEY, json);

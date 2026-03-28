@@ -11,11 +11,30 @@ import type { DrawingManager } from "./DrawingManager";
 const DEFAULT_FOLDER_NAME = "Drawfinity";
 const DEFAULT_FILE_NAME = "drawing.drawfinity";
 
+/**
+ * Returns the default directory path for storing Drawfinity files.
+ *
+ * Resolves to `{documentDir}/Drawfinity` using the Tauri `documentDir` API,
+ * which maps to the OS-standard documents folder (e.g., `~/Documents` on Linux/macOS,
+ * `Documents` on Windows).
+ *
+ * @returns The absolute path to the Drawfinity save directory.
+ * @see {@link getDefaultFilePath} for the full path including the default filename.
+ */
 export async function getDefaultSavePath(): Promise<string> {
   const docDir = await documentDir();
   return join(docDir, DEFAULT_FOLDER_NAME);
 }
 
+/**
+ * Returns the default file path for the primary Drawfinity drawing.
+ *
+ * Resolves to `{documentDir}/Drawfinity/drawing.drawfinity` — the path used
+ * when saving or loading a drawing without an explicit file path.
+ *
+ * @returns The absolute path to the default `.drawfinity` file.
+ * @see {@link getDefaultSavePath} for just the containing directory.
+ */
 export async function getDefaultFilePath(): Promise<string> {
   const folder = await getDefaultSavePath();
   return join(folder, DEFAULT_FILE_NAME);

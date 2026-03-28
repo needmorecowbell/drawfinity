@@ -77,6 +77,17 @@ Launch Drawfinity to the **Home Screen** — a drawing management hub with two t
 
 Press `Ctrl+W` or `Escape` from the canvas to return to the home screen.
 
+### Gamification
+
+Drawfinity tracks your drawing journey with badges, records, and statistics:
+
+- **Badges** — 43 achievements across 4 tiers (Bronze, Silver, Gold, Platinum) in categories like drawing, turtle graphics, collaboration, and dedication
+- **Personal records** — 13 tracked metrics (longest stroke, most strokes per canvas, etc.) with toast notifications when you beat your best
+- **Statistics** — real-time metrics tracking your drawing sessions, tool usage, and more
+- **Session summary** — end-of-session overlay showing what you accomplished
+
+Open the stats panel with `Ctrl+Shift+S` to view your badges, records, and statistics.
+
 ## Screenshots
 
 <!-- screenshots: replace placeholders with actual captures -->

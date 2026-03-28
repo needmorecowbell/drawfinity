@@ -65,6 +65,19 @@ export function loadBadgeState(): BadgeState {
   return createDefaultBadgeState();
 }
 
+/**
+ * Reads persisted badge state from the Tauri config file, falling back
+ * to localStorage if the config file is unavailable or unreadable.
+ *
+ * When a Tauri config file is successfully read, its contents are
+ * synced back to localStorage so that the synchronous {@link loadBadgeState}
+ * stays current. Stored values are merged over defaults for forward
+ * compatibility with new fields.
+ *
+ * @returns Badge state from Tauri config or localStorage, merged with defaults.
+ * @see loadBadgeState — synchronous localStorage-only variant
+ * @see saveBadgeState
+ */
 export async function loadBadgeStateAsync(): Promise<BadgeState> {
   const raw = await readConfigFile(CONFIG_FILENAME);
   if (raw) {

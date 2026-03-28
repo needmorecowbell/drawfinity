@@ -60,6 +60,18 @@ export async function readConfigFile(filename: string): Promise<string | null> {
   }
 }
 
+/**
+ * Writes a configuration file to the Drawfinity config directory.
+ *
+ * In Tauri mode, writes to `{configDir}/drawfinity/{filename}`, creating the
+ * directory if it does not already exist. Silently no-ops in browser mode or
+ * if the write fails, so callers should always persist to `localStorage` as
+ * the primary store and treat this as a durable backup.
+ *
+ * @param filename - The config file name to write (e.g., `"user-stats.json"`).
+ * @param content - The string content to write to the file.
+ * @see {@link readConfigFile} for the corresponding read operation.
+ */
 export async function writeConfigFile(filename: string, content: string): Promise<void> {
   if (!isTauri()) return;
   try {

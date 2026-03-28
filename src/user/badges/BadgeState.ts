@@ -90,6 +90,17 @@ export async function loadBadgeStateAsync(): Promise<BadgeState> {
   return loadBadgeState();
 }
 
+/**
+ * Dual-writes badge state to both localStorage and the Tauri config file.
+ *
+ * localStorage is written synchronously so that subsequent calls to
+ * {@link loadBadgeState} immediately reflect the new state. The Tauri
+ * config file write is fire-and-forget — failures are silently ignored.
+ *
+ * @param state - The badge state to persist.
+ * @see loadBadgeState — synchronous reader
+ * @see loadBadgeStateAsync — async reader with Tauri config priority
+ */
 export function saveBadgeState(state: BadgeState): void {
   const json = JSON.stringify(state);
   localStorage.setItem(STORAGE_KEY, json);

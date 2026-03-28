@@ -161,6 +161,18 @@ export async function loadStatsAsync(): Promise<UserStats> {
   return loadStats();
 }
 
+/**
+ * Persists user stats to both `localStorage` and the Tauri config file
+ * (`stats.json`), ensuring the two storage backends stay in sync.
+ *
+ * The Tauri config write is fire-and-forget — failures (e.g. in browser-only
+ * mode) are silently ignored so the localStorage write always succeeds.
+ *
+ * @param stats - The {@link UserStats} object to persist.
+ *
+ * @see {@link loadStats} — synchronous reader (localStorage)
+ * @see {@link loadStatsAsync} — async reader (Tauri config with localStorage fallback)
+ */
 export function saveStats(stats: UserStats): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
   writeConfigFile(CONFIG_FILENAME, JSON.stringify(stats)).catch(() => {});

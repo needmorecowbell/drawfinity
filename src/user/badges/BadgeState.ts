@@ -41,6 +41,17 @@ function createDefaultBadgeState(): BadgeState {
   return { earned: [], lastCheckedAt: 0 };
 }
 
+/**
+ * Reads persisted badge state from localStorage, merging stored values
+ * over defaults for forward compatibility with new fields.
+ *
+ * Falls back to a fresh default state (empty earned list, lastCheckedAt 0)
+ * if nothing is stored or the stored JSON is corrupt.
+ *
+ * @returns Badge state merged with defaults, or fresh defaults on failure.
+ * @see loadBadgeStateAsync — async variant that reads from Tauri config first
+ * @see saveBadgeState
+ */
 export function loadBadgeState(): BadgeState {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (raw) {

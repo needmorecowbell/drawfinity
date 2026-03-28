@@ -113,6 +113,14 @@ export interface DocumentModel {
 
 let idCounter = 0;
 
+/**
+ * Generates a unique identifier for a new stroke.
+ *
+ * IDs are formatted as `"stroke-{timestamp}-{counter}"` to ensure uniqueness
+ * across sessions and within rapid successive calls.
+ *
+ * @returns A unique string identifier for use as a {@link Stroke.id}.
+ */
 export function generateStrokeId(): string {
   return `stroke-${Date.now()}-${idCounter++}`;
 }

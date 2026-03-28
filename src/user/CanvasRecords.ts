@@ -89,6 +89,16 @@ function parseRecords(raw: string): CanvasRecords | null {
   }
 }
 
+/**
+ * Loads canvas personal-best records from localStorage, merging stored data
+ * over {@link createDefaultRecords | defaults} to ensure forward compatibility
+ * when new record fields are added.
+ *
+ * @returns Persisted {@link CanvasRecords} merged with defaults, or fresh defaults
+ *   if nothing is stored or the stored data is corrupt.
+ * @see {@link loadRecordsAsync} — async variant that reads from Tauri config first
+ * @see {@link saveRecords} — persists records to localStorage and Tauri config
+ */
 export function loadRecords(): CanvasRecords {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (raw) {

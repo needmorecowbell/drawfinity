@@ -16,8 +16,21 @@ export interface EarnedBadge {
   earnedAt: number;
 }
 
+/**
+ * Top-level persistence model for the badge/gamification system.
+ *
+ * Tracks which badges the user has unlocked and when the engine last
+ * evaluated badge criteria. Persisted to both localStorage and Tauri
+ * config via {@link saveBadgeState}, loaded via {@link loadBadgeState}
+ * or {@link loadBadgeStateAsync}.
+ *
+ * @see EarnedBadge
+ * @see BadgeEngine
+ */
 export interface BadgeState {
+  /** List of all badges the user has earned so far. */
   earned: EarnedBadge[];
+  /** Unix-millisecond timestamp of the last badge evaluation run. */
   lastCheckedAt: number;
 }
 

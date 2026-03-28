@@ -108,6 +108,18 @@ export function createDefaultStats(): UserStats {
   };
 }
 
+/**
+ * Loads user stats synchronously from `localStorage`, merging stored values
+ * over {@link createDefaultStats | defaults} for forward compatibility —
+ * newly added stat fields receive sensible zero-values even when reading
+ * data saved by an older version of the app.
+ *
+ * @returns The persisted {@link UserStats} merged with defaults,
+ *          or a fresh default object if nothing is stored or the data is corrupt.
+ *
+ * @see {@link loadStatsAsync} — async variant that reads from Tauri config first
+ * @see {@link saveStats} — persists stats to both localStorage and Tauri config
+ */
 export function loadStats(): UserStats {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (raw) {

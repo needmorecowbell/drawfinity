@@ -57,6 +57,18 @@ export interface UserStats {
 const STORAGE_KEY = "drawfinity:user-stats";
 const CONFIG_FILENAME = "stats.json";
 
+/**
+ * Creates a {@link UserStats} object with all counters zeroed and timestamps initialized.
+ *
+ * Used as the base template when no persisted stats exist, and as a merge target
+ * for forward-compatible deserialization (new fields get sensible defaults).
+ *
+ * @returns A fresh `UserStats` with every numeric field set to `0`,
+ *          `toolUsage` set to an empty record, and `firstSessionAt` set to `Date.now()`.
+ *
+ * @see {@link loadStats} — merges persisted data over these defaults
+ * @see {@link loadStatsAsync} — async variant that reads from Tauri config first
+ */
 export function createDefaultStats(): UserStats {
   return {
     totalStrokes: 0,

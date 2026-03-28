@@ -1,7 +1,18 @@
 import { readConfigFile, writeConfigFile } from "../ConfigFile";
 
+/**
+ * Persisted record of a badge the user has earned.
+ *
+ * Stored as part of {@link BadgeState} and written to both localStorage
+ * and Tauri config via {@link saveBadgeState}.
+ *
+ * @see BadgeState
+ * @see BadgeEngine
+ */
 export interface EarnedBadge {
+  /** Badge identifier, matching the corresponding {@link BadgeDefinition}.id. */
   id: string;
+  /** Unix-millisecond timestamp of when the badge was earned. */
   earnedAt: number;
 }
 

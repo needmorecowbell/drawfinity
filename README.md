@@ -14,13 +14,12 @@
 
 Drawfinity is a free, open-source drawing app with an infinite canvas. Use pressure-sensitive brushes to sketch, write Lua scripts to generate geometric art with turtle graphics, or draw together in real-time with friends. Runs as a native desktop app on Linux, macOS, and Windows.
 
-<!-- Replace placeholder screenshots with actual captures -->
 <p align="center">
-  <img src="docs/assets/screenshot-canvas.png" alt="Drawfinity canvas with brush strokes and shapes" width="720">
+  <img src="docs/assets/screenshot-turtle.png" alt="Sakura cherry blossom tree generated with turtle graphics in Drawfinity" width="720">
 </p>
 
 <p align="center">
-  <img src="docs/assets/screenshot-turtle.png" alt="Turtle graphics mode generating a fractal tree" width="720">
+  <img src="docs/assets/screenshot-canvas.png" alt="Drawfinity canvas with brush strokes and shapes" width="720">
 </p>
 
 ## Features
@@ -90,8 +89,6 @@ Open the stats panel with `Ctrl+Shift+S` to view your badges, records, and stati
 
 ## Screenshots
 
-<!-- screenshots: replace placeholders with actual captures -->
-
 <table>
 <tr>
 <td align="center">
@@ -99,7 +96,7 @@ Open the stats panel with `Ctrl+Shift+S` to view your badges, records, and stati
 <em>Infinite canvas drawing</em>
 </td>
 <td align="center">
-<img src="docs/assets/screenshot-turtle.png" alt="Turtle graphics panel with Lua code generating a fractal tree" width="360"><br>
+<img src="docs/assets/screenshot-turtle.png" alt="Sakura cherry blossom tree generated with turtle graphics scripting" width="360"><br>
 <em>Turtle graphics scripting</em>
 </td>
 </tr>
@@ -111,6 +108,16 @@ Open the stats panel with `Ctrl+Shift+S` to view your badges, records, and stati
 <td align="center">
 <img src="docs/assets/screenshot-collab.png" alt="Two users drawing together in a shared collaboration room" width="360"><br>
 <em>Real-time collaboration</em>
+</td>
+</tr>
+<tr>
+<td align="center">
+<img src="docs/assets/screenshot-zoom.png" alt="Infinite zoom showing worlds within worlds on the canvas" width="360"><br>
+<em>Infinite zoom — worlds within worlds</em>
+</td>
+<td align="center">
+<img src="docs/assets/screenshot-home.png" alt="Home screen with drawing management and tabs" width="360"><br>
+<em>Home screen</em>
 </td>
 </tr>
 </table>

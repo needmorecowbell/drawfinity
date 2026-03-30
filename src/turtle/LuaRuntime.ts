@@ -77,6 +77,11 @@ export class LuaRuntime {
   protected engine: LuaEngine | null = null;
   protected commands: TurtleCommand[] = [];
   protected stateQuery: TurtleStateQuery | null = null;
+  /** When true, commands are eagerly applied to TurtleState during collection
+   *  so that position()/heading()/isdown() reflect current values mid-script.
+   *  TurtleExecutor enables this (it resets state before replay to avoid
+   *  double-application). ReplExecutor leaves it off (replay IS the application). */
+  private eagerStateApply = false;
   /** The turtle ID that new commands will be tagged with. Defaults to "main". */
   private activeTurtleId = "main";
   /** Spawn context set by TurtleExecutor before script execution. */
@@ -174,6 +179,13 @@ export class LuaRuntime {
     this.stateQuery = query;
   }
 
+  /** Enable eager state application during command collection so that
+   *  position()/heading()/isdown() return current values mid-script.
+   *  Callers that enable this MUST reset turtle state before replay. */
+  setEagerStateApply(enabled: boolean): void {
+    this.eagerStateApply = enabled;
+  }
+
   /**
    * Execute a Lua script. Returns the list of commands produced.
    * The commands are collected synchronously — the executor is responsible
@@ -234,12 +246,13 @@ export class LuaRuntime {
   }
 
   /**
-   * Push a command and, when inside simulate(), eagerly apply it to the
-   * active turtle's state so that spatial queries reflect current positions.
+   * Push a command and, when eager state is enabled or inside simulate(),
+   * apply it to the active turtle's state so that position(), heading(),
+   * and isdown() queries reflect current values during script collection.
    */
   private pushAndApply(cmd: TurtleCommandVariant): void {
     this.pushCommand(cmd);
-    if (this.currentStep > 0) {
+    if (this.eagerStateApply || this.currentStep > 0) {
       const state = this.getActiveTurtleState();
       if (state) {
         state.applyCommand(cmd as TurtleCommand);
@@ -480,10 +493,10 @@ export class LuaRuntime {
     // --- Spawn infrastructure ---
 
     const pushTagged = this.pushTaggedCommand.bind(this);
-    /** Push a tagged command and eagerly apply state during simulate(). */
+    /** Push a tagged command and eagerly apply state when enabled or during simulate(). */
     const pushTaggedApply = (turtleId: string, cmd: TurtleCommandVariant) => {
       pushTagged(turtleId, cmd);
-      if (this.currentStep > 0 && this.spawnRegistry && this.spawnScriptId) {
+      if ((this.eagerStateApply || this.currentStep > 0) && this.spawnRegistry && this.spawnScriptId) {
         const fullId = `${this.spawnScriptId}:${turtleId}`;
         const entry = this.spawnRegistry.get(fullId);
         if (entry) {

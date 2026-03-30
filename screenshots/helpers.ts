@@ -82,7 +82,10 @@ export async function addShape(
     height: number;
     strokeColor: string;
     fillColor?: string;
+    strokeWidth?: number;
+    rotation?: number;
     sides?: number;
+    starInnerRadius?: number;
     opacity?: number;
   }
 ) {
@@ -98,11 +101,13 @@ export async function addShape(
       y: o.y,
       width: o.width,
       height: o.height,
+      rotation: o.rotation ?? 0,
       strokeColor: o.strokeColor,
-      fillColor: o.fillColor,
+      strokeWidth: o.strokeWidth ?? 2,
+      fillColor: o.fillColor ?? null,
+      opacity: o.opacity ?? 1,
       sides: o.sides,
-      opacity: o.opacity,
-      strokeWidth: 2,
+      starInnerRadius: o.starInnerRadius,
       timestamp: Date.now(),
     });
   }, opts);

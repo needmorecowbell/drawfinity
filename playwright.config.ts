@@ -5,14 +5,14 @@ export default defineConfig({
   retries: 0,
   workers: 1,
   use: {
-    baseURL: "http://localhost:1420",
+    baseURL: "http://localhost:1430",
     viewport: { width: 1280, height: 720 },
     screenshot: "off",
   },
   webServer: {
-    command: "npm run dev",
-    port: 1420,
-    reuseExistingServer: true,
+    command: "npx vite --port 1430 --strictPort",
+    port: 1430,
+    reuseExistingServer: false,
   },
   projects: [
     {

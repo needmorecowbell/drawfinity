@@ -12,6 +12,12 @@ export async function getViewManager(page: Page) {
  * Navigate to a canvas view. Creates a new drawing if no drawingId is provided.
  */
 export async function navigateToCanvas(page: Page, drawingId?: string) {
+  // Wait for the app to finish bootstrapping
+  await page.waitForFunction(
+    () => (window as any).__drawfinity?.viewManager,
+    null,
+    { timeout: 10000 }
+  );
   await page.evaluate(async (id) => {
     const vm = (window as any).__drawfinity.viewManager;
     if (id) {
@@ -29,6 +35,11 @@ export async function navigateToCanvas(page: Page, drawingId?: string) {
  * Navigate to the home screen.
  */
 export async function navigateToHome(page: Page) {
+  await page.waitForFunction(
+    () => (window as any).__drawfinity?.viewManager,
+    null,
+    { timeout: 10000 }
+  );
   await page.evaluate(async () => {
     const vm = (window as any).__drawfinity.viewManager;
     await vm.showHome();

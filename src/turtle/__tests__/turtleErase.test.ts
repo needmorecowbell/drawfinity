@@ -38,6 +38,7 @@ class FakeLuaRuntime {
   }
 
   setStateQuery(): void {}
+  setEagerStateApply(): void {}
   setActiveTurtle(): void {}
   setSpawnContext(): void {}
   setMessagingContext(): void {}

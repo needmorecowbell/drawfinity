@@ -63,6 +63,10 @@ class FakeLuaRuntime {
     // no-op for testing
   }
 
+  setEagerStateApply(): void {
+    // no-op for testing
+  }
+
   setActiveTurtle(): void {
     // no-op for testing
   }

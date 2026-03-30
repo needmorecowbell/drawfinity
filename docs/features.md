@@ -11,7 +11,7 @@ Drawfinity is an infinite canvas drawing app with pressure-sensitive brushes, re
 
 Draw without boundaries on a smooth, zoomable canvas. The camera supports momentum panning — flick the canvas and it glides with inertia — and log-space zoom for perceptually uniform speed at any scale.
 
-<!-- ![Infinite canvas with brush strokes and dot grid](/assets/screenshot-canvas.png) -->
+![Infinite canvas drawing with pressure-sensitive brushes and dot grid](assets/screenshot-canvas.png)
 
 - Zoom range from `1e-10` to `1e10` (effectively infinite)
 - Scroll wheel, trackpad pinch, or keyboard shortcuts for zoom
@@ -42,7 +42,7 @@ Four shape tools for quick geometry, each supporting pressure-sensitive stroke w
 - **Polygon** (`P`) — click and drag to draw polygons
 - **Star** (`S`) — click and drag to draw stars
 
-<!-- ![Shape tools drawing rectangles, ellipses, polygons, and stars](/assets/screenshot-shapes.png) -->
+![Shape tools showcasing rectangles, ellipses, polygons, and stars on the canvas](assets/screenshot-shapes.png)
 
 ### Eraser
 
@@ -52,7 +52,7 @@ Press `E` to switch to the eraser tool and remove strokes by drawing over them.
 
 Connect to a shared room and draw together — all changes sync instantly and conflict-free via Yjs CRDTs. Multiple users can draw at the same time without conflicts or overwrites.
 
-<!-- ![Two users drawing together in a shared collaboration room](/assets/screenshot-collab.png) -->
+![Real-time collaboration with multiple users drawing simultaneously](assets/screenshot-collab.png)
 
 1. Press `Ctrl+K` to open the connection panel
 2. Enter a server URL and room ID
@@ -64,7 +64,7 @@ See [Collaboration](./collaboration) for details on server setup and architectur
 
 Open the turtle panel with `` Ctrl+` `` and write Lua scripts to drive a virtual turtle across the canvas. The turtle draws real canvas strokes as it moves — use it to generate spirals, fractal trees, recursive snowflakes, and other geometric patterns.
 
-<!-- ![Turtle graphics panel with Lua code generating a fractal tree](/assets/screenshot-turtle.png) -->
+![Sakura cherry blossom tree generated with turtle graphics scripting](assets/screenshot-turtle.png)
 
 ```lua
 -- Draw a square
@@ -77,6 +77,8 @@ end
 Built-in examples are included to help you get started. See the [Turtle Graphics guide](./turtle-graphics) and [Turtle API reference](./turtle-api) for full details.
 
 ## Camera & Navigation
+
+![Infinite zoom showing worlds within worlds on the canvas](assets/screenshot-zoom.png)
 
 - **Momentum panning** — flick the canvas and it glides with inertia
 - **Smooth zoom** — scroll wheel, trackpad pinch, or `Ctrl+=`/`Ctrl+-` with animation

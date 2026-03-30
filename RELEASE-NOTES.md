@@ -24,7 +24,7 @@ Rectangle, ellipse, polygon, and star tools with pressure-sensitive stroke width
 A drawing management hub with tabs for local drawings and shared collaboration sessions. Create, rename, duplicate, and delete drawings from one place.
 
 ### Gamification
-43 badges across 4 tiers, 13 personal records, real-time statistics, and end-of-session summaries to track your creative journey.
+45 badges across 4 tiers, 13 personal records, real-time statistics, and end-of-session summaries to track your creative journey.
 
 ### Bookmarks & Camera
 Save and recall camera positions with bookmarks. Smooth animated zoom, momentum panning, and infinite zoom let you work at any scale.

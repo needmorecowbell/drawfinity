@@ -1323,6 +1323,7 @@ export class CanvasApp {
     }});
   }
 
+  /** @internal For Playwright screenshot automation only — do not call in production code. */
   getInternals() {
     return {
       camera: this.camera,

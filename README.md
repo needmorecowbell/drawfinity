@@ -80,7 +80,7 @@ Press `Ctrl+W` or `Escape` from the canvas to return to the home screen.
 
 Drawfinity tracks your drawing journey with badges, records, and statistics:
 
-- **Badges** — 43 achievements across 4 tiers (Bronze, Silver, Gold, Platinum) in categories like drawing, turtle graphics, collaboration, and dedication
+- **Badges** — 45 achievements across 4 tiers (Bronze, Silver, Gold, Platinum) in categories like drawing, turtle graphics, collaboration, and dedication
 - **Personal records** — 13 tracked metrics (longest stroke, most strokes per canvas, etc.) with toast notifications when you beat your best
 - **Statistics** — real-time metrics tracking your drawing sessions, tool usage, and more
 - **Session summary** — end-of-session overlay showing what you accomplished

@@ -34,7 +34,7 @@ export interface BadgeUnlockEvent {
  * }
  * ```
  *
- * @see {@link BADGE_CATALOG} — the default set of 44 badge definitions
+ * @see {@link BADGE_CATALOG} — the default set of 45 badge definitions
  * @see {@link BadgeState} — persistence model consumed by this engine
  */
 export class BadgeEngine {

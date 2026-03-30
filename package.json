@@ -1,7 +1,7 @@
 {
   "name": "drawfinity",
   "private": true,
-  "version": "0.0.3",
+  "version": "1.0.0",
   "homepage": "https://needmorecowbell.github.io/drawfinity/",
   "type": "module",
   "scripts": {

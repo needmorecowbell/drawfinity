@@ -1,10 +1,10 @@
-# Drawfinity v1.0.0
+# Drawfinity v0.1.0
 
 <p align="center">
   <img src="docs/assets/screenshot-turtle.png" alt="Sakura cherry blossom tree generated with turtle graphics in Drawfinity" width="720">
 </p>
 
-We're excited to release **Drawfinity v1.0.0** — a free, open-source infinite canvas for drawing, creative coding, and real-time collaboration.
+We're excited to release **Drawfinity v0.1.0** — a free, open-source infinite canvas for drawing, creative coding, and real-time collaboration.
 
 ## What's New
 

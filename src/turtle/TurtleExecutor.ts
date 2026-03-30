@@ -165,8 +165,11 @@ export class TurtleExecutor {
     this.blackboard.clear();
     this.messageBus.register(mainId);
 
-    // Wire up state query, spawn context, and messaging for Lua
+    // Wire up state query, spawn context, and messaging for Lua.
+    // Enable eager state application so position()/heading() return current
+    // values mid-script. State is reset before replay to avoid double-application.
     this.runtime.setStateQuery(mainEntry.state);
+    this.runtime.setEagerStateApply(true);
     this.runtime.setActiveTurtle("main");
     this.runtime.setSpawnContext(this.registry, this.scriptId, this.doc);
     this.runtime.setMessagingContext(this.messageBus, this.blackboard);

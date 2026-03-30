@@ -41,3 +41,4 @@ docs/.vitepress/cache
 # Maestro Auto Run Docs (local development workflow)
 Auto\ Run\ Docs/
 coverage/
+/screenshots/results/

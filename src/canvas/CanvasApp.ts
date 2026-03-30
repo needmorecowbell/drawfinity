@@ -1323,6 +1323,17 @@ export class CanvasApp {
     }});
   }
 
+  getInternals() {
+    return {
+      camera: this.camera,
+      toolManager: this.toolManager,
+      turtleExecutor: this.turtleExecutor,
+      turtlePanel: this.turtlePanel,
+      renderer: this.renderer,
+      doc: this.doc,
+    };
+  }
+
   private handleKeydown(e: KeyboardEvent): void {
     // Don't intercept keys when user is typing in an input field or editor
     const tag = (document.activeElement as HTMLElement)?.tagName;

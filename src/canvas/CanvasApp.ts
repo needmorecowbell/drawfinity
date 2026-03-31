@@ -1323,6 +1323,18 @@ export class CanvasApp {
     }});
   }
 
+  /** @internal For Playwright screenshot automation only — do not call in production code. */
+  getInternals() {
+    return {
+      camera: this.camera,
+      toolManager: this.toolManager,
+      turtleExecutor: this.turtleExecutor,
+      turtlePanel: this.turtlePanel,
+      renderer: this.renderer,
+      doc: this.doc,
+    };
+  }
+
   private handleKeydown(e: KeyboardEvent): void {
     // Don't intercept keys when user is typing in an input field or editor
     const tag = (document.activeElement as HTMLElement)?.tagName;

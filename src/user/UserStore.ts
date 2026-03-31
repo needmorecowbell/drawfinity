@@ -69,7 +69,20 @@ export function saveProfile(profile: UserProfile): void {
   }
 }
 
-/** Load profile from config file (Tauri) with localStorage fallback. */
+/**
+ * Loads the user profile from the Tauri config file, falling back to localStorage.
+ *
+ * Attempts to read `profile.json` from the Tauri config directory. If the file
+ * contains a valid profile with required fields (`id`, `name`, `color`), it is
+ * returned and synced back to localStorage for fast synchronous access on
+ * subsequent calls to {@link loadProfile}. If the config file is missing,
+ * unreadable, or contains invalid data, falls back to {@link loadProfile}
+ * which reads from localStorage or creates a new default profile.
+ *
+ * @returns The user's profile from Tauri config, localStorage, or a freshly created default.
+ * @see {@link loadProfile} for the synchronous localStorage-only loader
+ * @see {@link saveProfile} for the dual-write persistence function
+ */
 export async function loadProfileAsync(): Promise<UserProfile> {
   const raw = await readConfigFile(CONFIG_FILENAME);
   if (raw) {

@@ -13,6 +13,8 @@ The Turtle Exchange is a community repository of turtle graphics scripts. Browse
 
 Open the turtle panel (<kbd>Ctrl</kbd>+<kbd>`</kbd>) and click the **Scripts** button. This opens the exchange browser, which fetches the latest catalog from GitHub.
 
+![Sakura cherry blossom tree generated from a Turtle Exchange script](assets/screenshot-turtle.png)
+
 Each script in the catalog shows:
 
 - **Title** and **description**

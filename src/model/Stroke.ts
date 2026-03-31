@@ -47,23 +47,80 @@ export interface Stroke {
   timestamp: number;
 }
 
-/** Minimal document interface for stroke storage — implemented by both DrawDocument and DrawfinityDoc. */
+/**
+ * Core document model contract for stroke and shape storage.
+ *
+ * This is the primary abstraction that decouples drawing tools, the renderer, and
+ * persistence from any specific storage backend. Both {@link DrawDocument} (in-memory)
+ * and {@link DrawfinityDoc} (Yjs CRDT) implement this interface, allowing the
+ * application to swap between local-only and collaborative modes transparently.
+ *
+ * Required methods (`addStroke`, `getStrokes`) cover the minimal stroke lifecycle.
+ * Optional methods provide eraser support (`removeStroke`, `replaceStroke`) and
+ * shape primitives (`addShape`, `getShapes`, `removeShape`) — implementations may
+ * omit these if the feature is not supported.
+ *
+ * @example
+ * ```ts
+ * function drawAndRender(doc: DocumentModel, stroke: Stroke, renderer: Renderer) {
+ *   doc.addStroke(stroke);
+ *   renderer.render(doc.getStrokes());
+ * }
+ * ```
+ */
 export interface DocumentModel {
+  /** Append a stroke to the document. */
   addStroke(stroke: Stroke): void;
+  /** Return all strokes in the document, ordered by insertion time. */
   getStrokes(): Stroke[];
+  /**
+   * Remove a stroke by its unique ID.
+   *
+   * @param strokeId - The {@link Stroke.id} to remove.
+   * @returns `true` if the stroke was found and removed, `false` otherwise.
+   */
   removeStroke?(strokeId: string): boolean;
-  /** Atomically remove a stroke and insert replacements (for partial erasing). */
+  /**
+   * Atomically remove a stroke and insert zero or more replacements in its place.
+   * Used by the eraser tool to split a stroke into segments.
+   *
+   * @param strokeId - The {@link Stroke.id} of the stroke to replace.
+   * @param replacements - New strokes that represent the surviving segments.
+   * @returns `true` if the original stroke was found and replaced, `false` otherwise.
+   */
   replaceStroke?(strokeId: string, replacements: Stroke[]): boolean;
-  /** Add a shape to the document (optional — only available when shapes are supported). */
+  /**
+   * Add a shape to the document.
+   * Optional — only available when shape primitives are supported.
+   *
+   * @param shape - The shape to add.
+   */
   addShape?(shape: import("./Shape").Shape): void;
-  /** Returns all shapes in the document (optional — only available when shapes are supported). */
+  /**
+   * Return all shapes in the document.
+   * Optional — only available when shape primitives are supported.
+   */
   getShapes?(): import("./Shape").Shape[];
-  /** Remove a shape by ID (optional — whole-shape erasure). */
+  /**
+   * Remove a shape by its unique ID.
+   * Optional — only available when shape primitives are supported.
+   *
+   * @param shapeId - The shape ID to remove.
+   * @returns `true` if the shape was found and removed, `false` otherwise.
+   */
   removeShape?(shapeId: string): boolean;
 }
 
 let idCounter = 0;
 
+/**
+ * Generates a unique identifier for a new stroke.
+ *
+ * IDs are formatted as `"stroke-{timestamp}-{counter}"` to ensure uniqueness
+ * across sessions and within rapid successive calls.
+ *
+ * @returns A unique string identifier for use as a {@link Stroke.id}.
+ */
 export function generateStrokeId(): string {
   return `stroke-${Date.now()}-${idCounter++}`;
 }

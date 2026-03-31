@@ -1,5 +1,16 @@
 import type { UserStats } from "../UserStats";
 
+/**
+ * Badge rarity tiers representing ascending levels of achievement difficulty.
+ *
+ * Used by {@link BadgeDefinition} to classify badges and by UI components
+ * to render tier-appropriate colors and icons.
+ *
+ * - `"bronze"` — entry-level achievements (e.g. first stroke, first session)
+ * - `"silver"` — moderate milestones (e.g. 100 strokes, 50 turtle runs)
+ * - `"gold"` — significant accomplishments (e.g. 1,000 strokes, 50 sessions)
+ * - `"platinum"` — exceptional feats (e.g. 10,000 strokes, 100 turtles in one run)
+ */
 export type BadgeTier = "bronze" | "silver" | "gold" | "platinum";
 
 export interface BadgeDefinition {
@@ -12,6 +23,23 @@ export interface BadgeDefinition {
   criteria: (stats: UserStats) => boolean;
 }
 
+/**
+ * Complete catalog of all achievable badges in the gamification system.
+ *
+ * Contains {@link BadgeDefinition} entries organized into six categories:
+ * - **drawing** — stroke, shape, eraser, undo, and tool-usage milestones
+ * - **turtle** — turtle script runs, spawns, distance, imports, and errors
+ * - **turtle-awards** — creative coding feats (speed, depth, colors, clean runs)
+ * - **canvas** — zoom extremes, pan distance, bookmarks, and exports
+ * - **collaboration** — session joins and script sharing
+ * - **dedication** — session count and cumulative drawing time
+ *
+ * Each badge's {@link BadgeDefinition.criteria} function is evaluated by
+ * {@link BadgeEngine.evaluate} against the current {@link UserStats}.
+ *
+ * @see {@link BadgeEngine} for evaluation logic
+ * @see {@link BadgeTier} for tier definitions
+ */
 export const BADGE_CATALOG: BadgeDefinition[] = [
   // --- Drawing badges ---
   {

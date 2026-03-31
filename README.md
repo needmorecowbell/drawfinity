@@ -14,13 +14,12 @@
 
 Drawfinity is a free, open-source drawing app with an infinite canvas. Use pressure-sensitive brushes to sketch, write Lua scripts to generate geometric art with turtle graphics, or draw together in real-time with friends. Runs as a native desktop app on Linux, macOS, and Windows.
 
-<!-- Replace placeholder screenshots with actual captures -->
 <p align="center">
-  <img src="docs/assets/screenshot-canvas.png" alt="Drawfinity canvas with brush strokes and shapes" width="720">
+  <img src="docs/assets/screenshot-turtle.png" alt="Sakura cherry blossom tree generated with turtle graphics in Drawfinity" width="720">
 </p>
 
 <p align="center">
-  <img src="docs/assets/screenshot-turtle.png" alt="Turtle graphics mode generating a fractal tree" width="720">
+  <img src="docs/assets/screenshot-canvas.png" alt="Drawfinity canvas with brush strokes and shapes" width="720">
 </p>
 
 ## Features
@@ -70,9 +69,25 @@ Press `Ctrl+K` to open the connection panel, enter a server URL and room ID, and
 - **Smooth zoom** — scroll wheel, trackpad pinch, or `Ctrl+=`/`Ctrl+-` with animation
 - **Dot grid** — toggle a reference grid with `Ctrl+'`
 
-## Screenshots
+### Home screen
+Launch Drawfinity to the **Home Screen** — a drawing management hub with two tabs:
+- **My Drawings** — create, rename, duplicate, and delete local drawings
+- **Shared** — drawings from collaboration sessions
 
-<!-- screenshots: replace placeholders with actual captures -->
+Press `Ctrl+W` or `Escape` from the canvas to return to the home screen.
+
+### Gamification
+
+Drawfinity tracks your drawing journey with badges, records, and statistics:
+
+- **Badges** — 45 achievements across 4 tiers (Bronze, Silver, Gold, Platinum) in categories like drawing, turtle graphics, collaboration, and dedication
+- **Personal records** — 13 tracked metrics (longest stroke, most strokes per canvas, etc.) with toast notifications when you beat your best
+- **Statistics** — real-time metrics tracking your drawing sessions, tool usage, and more
+- **Session summary** — end-of-session overlay showing what you accomplished
+
+Open the stats panel with `Ctrl+Shift+S` to view your badges, records, and statistics.
+
+## Screenshots
 
 <table>
 <tr>
@@ -81,7 +96,7 @@ Press `Ctrl+K` to open the connection panel, enter a server URL and room ID, and
 <em>Infinite canvas drawing</em>
 </td>
 <td align="center">
-<img src="docs/assets/screenshot-turtle.png" alt="Turtle graphics panel with Lua code generating a fractal tree" width="360"><br>
+<img src="docs/assets/screenshot-turtle.png" alt="Sakura cherry blossom tree generated with turtle graphics scripting" width="360"><br>
 <em>Turtle graphics scripting</em>
 </td>
 </tr>
@@ -93,6 +108,16 @@ Press `Ctrl+K` to open the connection panel, enter a server URL and room ID, and
 <td align="center">
 <img src="docs/assets/screenshot-collab.png" alt="Two users drawing together in a shared collaboration room" width="360"><br>
 <em>Real-time collaboration</em>
+</td>
+</tr>
+<tr>
+<td align="center">
+<img src="docs/assets/screenshot-zoom.png" alt="Infinite zoom showing worlds within worlds on the canvas" width="360"><br>
+<em>Infinite zoom — worlds within worlds</em>
+</td>
+<td align="center">
+<img src="docs/assets/screenshot-home.png" alt="Home screen with drawing management and tabs" width="360"><br>
+<em>Home screen</em>
 </td>
 </tr>
 </table>

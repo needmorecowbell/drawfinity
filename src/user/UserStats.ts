@@ -57,6 +57,18 @@ export interface UserStats {
 const STORAGE_KEY = "drawfinity:user-stats";
 const CONFIG_FILENAME = "stats.json";
 
+/**
+ * Creates a {@link UserStats} object with all counters zeroed and timestamps initialized.
+ *
+ * Used as the base template when no persisted stats exist, and as a merge target
+ * for forward-compatible deserialization (new fields get sensible defaults).
+ *
+ * @returns A fresh `UserStats` with every numeric field set to `0`,
+ *          `toolUsage` set to an empty record, and `firstSessionAt` set to `Date.now()`.
+ *
+ * @see {@link loadStats} — merges persisted data over these defaults
+ * @see {@link loadStatsAsync} — async variant that reads from Tauri config first
+ */
 export function createDefaultStats(): UserStats {
   return {
     totalStrokes: 0,
@@ -96,6 +108,18 @@ export function createDefaultStats(): UserStats {
   };
 }
 
+/**
+ * Loads user stats synchronously from `localStorage`, merging stored values
+ * over {@link createDefaultStats | defaults} for forward compatibility —
+ * newly added stat fields receive sensible zero-values even when reading
+ * data saved by an older version of the app.
+ *
+ * @returns The persisted {@link UserStats} merged with defaults,
+ *          or a fresh default object if nothing is stored or the data is corrupt.
+ *
+ * @see {@link loadStatsAsync} — async variant that reads from Tauri config first
+ * @see {@link saveStats} — persists stats to both localStorage and Tauri config
+ */
 export function loadStats(): UserStats {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (raw) {
@@ -109,6 +133,22 @@ export function loadStats(): UserStats {
   return createDefaultStats();
 }
 
+/**
+ * Loads user stats asynchronously from the Tauri config file (`stats.json`),
+ * falling back to {@link loadStats | localStorage} when the config file is
+ * unavailable (e.g. in browser-only mode). When a Tauri config read succeeds,
+ * the result is also written back to `localStorage` so that subsequent
+ * synchronous {@link loadStats} calls stay in sync.
+ *
+ * Like {@link loadStats}, stored values are merged over
+ * {@link createDefaultStats | defaults} for forward compatibility.
+ *
+ * @returns The persisted {@link UserStats} from Tauri config or localStorage,
+ *          merged with defaults.
+ *
+ * @see {@link loadStats} — synchronous localStorage-only variant
+ * @see {@link saveStats} — dual-writes to both localStorage and Tauri config
+ */
 export async function loadStatsAsync(): Promise<UserStats> {
   const raw = await readConfigFile(CONFIG_FILENAME);
   if (raw) {
@@ -121,17 +161,55 @@ export async function loadStatsAsync(): Promise<UserStats> {
   return loadStats();
 }
 
+/**
+ * Persists user stats to both `localStorage` and the Tauri config file
+ * (`stats.json`), ensuring the two storage backends stay in sync.
+ *
+ * The Tauri config write is fire-and-forget — failures (e.g. in browser-only
+ * mode) are silently ignored so the localStorage write always succeeds.
+ *
+ * @param stats - The {@link UserStats} object to persist.
+ *
+ * @see {@link loadStats} — synchronous reader (localStorage)
+ * @see {@link loadStatsAsync} — async reader (Tauri config with localStorage fallback)
+ */
 export function saveStats(stats: UserStats): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
   writeConfigFile(CONFIG_FILENAME, JSON.stringify(stats)).catch(() => {});
 }
 
+/**
+ * Loads the current stats, increments a single numeric field by the given
+ * amount, and persists the result via {@link saveStats}.
+ *
+ * The `key` parameter is constrained to numeric counter fields — non-numeric
+ * fields (`toolUsage`, `firstSessionAt`, `lastSessionAt`) are excluded at
+ * the type level.
+ *
+ * @param key - The stat field to increment (must be a numeric counter, not
+ *              `toolUsage`, `firstSessionAt`, or `lastSessionAt`).
+ * @param amount - The value to add (defaults to `1`).
+ *
+ * @see {@link incrementToolUsage} — per-tool usage counter variant
+ * @see {@link saveStats} — underlying persistence call
+ */
 export function incrementStat(key: keyof Omit<UserStats, "toolUsage" | "firstSessionAt" | "lastSessionAt">, amount: number = 1): void {
   const stats = loadStats();
   (stats[key] as number) += amount;
   saveStats(stats);
 }
 
+/**
+ * Increments the usage counter for a specific tool in the `toolUsage` record.
+ *
+ * Loads current stats, initializes the tool's counter to `0` if it doesn't
+ * exist yet, adds one, and persists the result via {@link saveStats}.
+ *
+ * @param tool - The tool name key to increment (e.g. `"brush"`, `"eraser"`).
+ *
+ * @see {@link incrementStat} — numeric stat field variant
+ * @see {@link saveStats} — underlying persistence call
+ */
 export function incrementToolUsage(tool: string): void {
   const stats = loadStats();
   stats.toolUsage[tool] = (stats.toolUsage[tool] ?? 0) + 1;

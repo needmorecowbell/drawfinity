@@ -11,11 +11,30 @@ import type { DrawingManager } from "./DrawingManager";
 const DEFAULT_FOLDER_NAME = "Drawfinity";
 const DEFAULT_FILE_NAME = "drawing.drawfinity";
 
+/**
+ * Returns the default directory path for storing Drawfinity files.
+ *
+ * Resolves to `{documentDir}/Drawfinity` using the Tauri `documentDir` API,
+ * which maps to the OS-standard documents folder (e.g., `~/Documents` on Linux/macOS,
+ * `Documents` on Windows).
+ *
+ * @returns The absolute path to the Drawfinity save directory.
+ * @see {@link getDefaultFilePath} for the full path including the default filename.
+ */
 export async function getDefaultSavePath(): Promise<string> {
   const docDir = await documentDir();
   return join(docDir, DEFAULT_FOLDER_NAME);
 }
 
+/**
+ * Returns the default file path for the primary Drawfinity drawing.
+ *
+ * Resolves to `{documentDir}/Drawfinity/drawing.drawfinity` — the path used
+ * when saving or loading a drawing without an explicit file path.
+ *
+ * @returns The absolute path to the default `.drawfinity` file.
+ * @see {@link getDefaultSavePath} for just the containing directory.
+ */
 export async function getDefaultFilePath(): Promise<string> {
   const folder = await getDefaultSavePath();
   return join(folder, DEFAULT_FILE_NAME);
@@ -76,7 +95,19 @@ export async function loadDocument(filePath: string): Promise<Y.Doc | null> {
 }
 
 /**
- * Save a Y.Doc to a drawing managed by DrawingManager, identified by drawing ID.
+ * Persists a Yjs document to a managed drawing, identified by its drawing ID.
+ *
+ * Encodes the document's full CRDT state via {@link Y.encodeStateAsUpdate} and
+ * delegates the binary write to {@link DrawingManager.saveDrawing}. This is the
+ * ID-based counterpart to {@link saveDocument}, which writes to an explicit file path.
+ *
+ * @param doc - The Yjs document whose state will be serialized and saved.
+ * @param drawingId - Unique identifier of the target drawing in the manifest.
+ * @param manager - The {@link DrawingManager} instance that handles file I/O and manifest updates.
+ * @returns Resolves when the drawing file and manifest have been updated.
+ * @throws {Error} If the drawing ID is not found in the manifest.
+ * @see {@link loadDocumentById} for the corresponding load operation.
+ * @see {@link saveDocument} for path-based persistence without a DrawingManager.
  */
 export async function saveDocumentById(
   doc: Y.Doc,
@@ -88,8 +119,19 @@ export async function saveDocumentById(
 }
 
 /**
- * Load a Y.Doc from a drawing managed by DrawingManager, identified by drawing ID.
- * Returns null if the drawing state is empty.
+ * Loads a Yjs document from a managed drawing, identified by its drawing ID.
+ *
+ * Reads binary CRDT state via {@link DrawingManager.openDrawing} and applies it
+ * to a fresh {@link Y.Doc}. Returns `null` when the drawing file is empty (e.g.,
+ * a newly created drawing that has never been saved), allowing callers to
+ * distinguish between an empty canvas and a populated document.
+ *
+ * @param drawingId - Unique identifier of the drawing to load from the manifest.
+ * @param manager - The {@link DrawingManager} instance that handles file I/O.
+ * @returns A hydrated Yjs document, or `null` if the drawing state is empty.
+ * @throws {Error} If the drawing ID is not found in the manifest.
+ * @see {@link saveDocumentById} for the corresponding save operation.
+ * @see {@link loadDocument} for path-based loading without a DrawingManager.
  */
 export async function loadDocumentById(
   drawingId: string,

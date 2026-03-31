@@ -44,6 +44,17 @@ function defaultRecord(): CanvasRecord {
   return { value: 0, achievedAt: 0 };
 }
 
+/**
+ * Creates a fresh {@link CanvasRecords} object with every personal-best record
+ * initialized to zeroed defaults (value 0, achievedAt 0).
+ *
+ * Used as the baseline when no persisted records exist, and as the merge target
+ * when loading stored data to ensure forward-compatible shape.
+ *
+ * @returns A complete CanvasRecords with all 13 record fields set to `{ value: 0, achievedAt: 0 }`.
+ * @see {@link loadRecords} — synchronous loader that falls back to this function
+ * @see {@link loadRecordsAsync} — async Tauri loader that falls back to this function
+ */
 export function createDefaultRecords(): CanvasRecords {
   return {
     longestSingleStroke: defaultRecord(),
@@ -78,6 +89,16 @@ function parseRecords(raw: string): CanvasRecords | null {
   }
 }
 
+/**
+ * Loads canvas personal-best records from localStorage, merging stored data
+ * over {@link createDefaultRecords | defaults} to ensure forward compatibility
+ * when new record fields are added.
+ *
+ * @returns Persisted {@link CanvasRecords} merged with defaults, or fresh defaults
+ *   if nothing is stored or the stored data is corrupt.
+ * @see {@link loadRecordsAsync} — async variant that reads from Tauri config first
+ * @see {@link saveRecords} — persists records to localStorage and Tauri config
+ */
 export function loadRecords(): CanvasRecords {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (raw) {
@@ -87,6 +108,19 @@ export function loadRecords(): CanvasRecords {
   return createDefaultRecords();
 }
 
+/**
+ * Asynchronously loads canvas personal-best records, preferring the Tauri config
+ * file (`records.json`) and falling back to localStorage via {@link loadRecords}.
+ *
+ * When a valid Tauri config file is found, its contents are synced back to
+ * localStorage so that subsequent synchronous {@link loadRecords} calls return
+ * up-to-date data.
+ *
+ * @returns Persisted {@link CanvasRecords} from Tauri config or localStorage,
+ *   merged with {@link createDefaultRecords | defaults} for forward compatibility.
+ * @see {@link loadRecords} — synchronous localStorage-only variant
+ * @see {@link saveRecords} — persists records to both localStorage and Tauri config
+ */
 export async function loadRecordsAsync(): Promise<CanvasRecords> {
   const raw = await readConfigFile(CONFIG_FILENAME);
   if (raw) {
@@ -99,6 +133,15 @@ export async function loadRecordsAsync(): Promise<CanvasRecords> {
   return loadRecords();
 }
 
+/**
+ * Persists canvas personal-best records to both localStorage and the Tauri
+ * config file (`records.json`). The Tauri write is fire-and-forget — failures
+ * are silently ignored so persistence never blocks the UI.
+ *
+ * @param records - The {@link CanvasRecords} object to persist.
+ * @see {@link loadRecords} — synchronous localStorage reader
+ * @see {@link loadRecordsAsync} — async Tauri config reader with localStorage fallback
+ */
 export function saveRecords(records: CanvasRecords): void {
   const json = JSON.stringify(records);
   localStorage.setItem(STORAGE_KEY, json);

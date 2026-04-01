@@ -191,4 +191,42 @@ describe("Cross-platform guards", () => {
         violations.join("\n"),
     ).toHaveLength(0);
   });
+
+  it("backdrop-filter in CSS has -webkit- fallback for WebKitGTK/Safari", () => {
+    // Rule: Every `backdrop-filter` must be preceded by `-webkit-backdrop-filter`
+    // with the same value. WebKitGTK (Linux Tauri) and older Safari WebViews
+    // only support the prefixed version.
+    const stylesPath = join(SRC_ROOT, "styles.css");
+    const css = readFileSync(stylesPath, "utf-8");
+    const lines = css.split("\n");
+    const violations: string[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (
+        line.startsWith("backdrop-filter:") &&
+        !line.startsWith("-webkit-backdrop-filter")
+      ) {
+        // Check the previous non-empty line for -webkit- prefix
+        let prevLine = "";
+        for (let j = i - 1; j >= 0; j--) {
+          if (lines[j].trim()) {
+            prevLine = lines[j].trim();
+            break;
+          }
+        }
+        if (!prevLine.startsWith("-webkit-backdrop-filter")) {
+          violations.push(
+            `styles.css:${i + 1} — backdrop-filter without -webkit- fallback: ${line}`,
+          );
+        }
+      }
+    }
+
+    expect(
+      violations,
+      "backdrop-filter missing -webkit- fallback. Add -webkit-backdrop-filter on the line before.\n" +
+        violations.join("\n"),
+    ).toHaveLength(0);
+  });
 });

@@ -929,7 +929,11 @@ export class HomeScreen {
   }
 
   private async handleCreate(): Promise<void> {
-    await this.callbacks.onCreateDrawing();
+    try {
+      await this.callbacks.onCreateDrawing();
+    } catch (err) {
+      console.error("HomeScreen: create drawing failed:", err);
+    }
   }
 
   private handleRename(drawing: DrawingMetadata): void {
@@ -974,9 +978,13 @@ export class HomeScreen {
 
   private async handleChangeSaveDir(): Promise<void> {
     if (!this.callbacks.onChangeSaveDirectory) return;
-    const newDir = await this.callbacks.onChangeSaveDirectory();
-    if (newDir) {
-      this.setSaveDirectory(newDir);
+    try {
+      const newDir = await this.callbacks.onChangeSaveDirectory();
+      if (newDir) {
+        this.setSaveDirectory(newDir);
+      }
+    } catch (err) {
+      console.error("HomeScreen: change save directory failed:", err);
     }
   }
 

@@ -569,13 +569,17 @@ export class TurtlePanel {
   }
 
   private async handleReplReset(): Promise<void> {
-    if (this.callbacks.onReplReset) {
-      await this.callbacks.onReplReset();
+    try {
+      if (this.callbacks.onReplReset) {
+        await this.callbacks.onReplReset();
+      }
+      this.replHistory.innerHTML = "";
+      this.replCommandHistory = [];
+      this.replHistoryIndex = -1;
+      this.appendReplEntry(null, "REPL reset.", null);
+    } catch (err) {
+      console.error("TurtlePanel: REPL reset failed:", err);
     }
-    this.replHistory.innerHTML = "";
-    this.replCommandHistory = [];
-    this.replHistoryIndex = -1;
-    this.appendReplEntry(null, "REPL reset.", null);
   }
 
   private handleRun(): void {

@@ -13,6 +13,10 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
 vi.mock("@tauri-apps/api/path", () => ({
   documentDir: vi.fn(async () => "/home/user/Documents"),
   join: vi.fn(async (...parts: string[]) => parts.join("/")),
+  dirname: vi.fn(async (path: string) => {
+    const lastSep = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+    return lastSep > 0 ? path.substring(0, lastSep) : null;
+  }),
 }));
 
 import { readFile, writeFile, exists, mkdir } from "@tauri-apps/plugin-fs";

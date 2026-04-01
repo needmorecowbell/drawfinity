@@ -31,6 +31,29 @@ function httpUrl(serverUrl: string): string {
     .replace(/\/+$/, "");
 }
 
+/**
+ * Attempt a fetch via the Tauri HTTP plugin (Rust-side networking).
+ * Returns null if the plugin is unavailable (e.g. running in browser).
+ */
+async function tauriFetch(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<Response | null> {
+  try {
+    const { fetch: tFetch } = await import("@tauri-apps/plugin-http");
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await tFetch(url, { ...init, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  } catch {
+    return null; // Not running in Tauri, or plugin not available
+  }
+}
+
 async function fetchWithTimeout(
   url: string,
   init: RequestInit,
@@ -41,6 +64,10 @@ async function fetchWithTimeout(
   try {
     return await fetch(url, { ...init, signal: controller.signal });
   } catch (err) {
+    // Try Tauri HTTP fallback — handles WebView2 network issues on Windows
+    const tauriResponse = await tauriFetch(url, init, timeoutMs);
+    if (tauriResponse) return tauriResponse;
+
     if (err instanceof DOMException && err.name === "AbortError") {
       throw new ServerApiError("Request timed out");
     }

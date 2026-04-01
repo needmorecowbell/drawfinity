@@ -17,7 +17,8 @@
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "exchange:snapshot": "node scripts/generate-exchange-snapshot.mjs",
-    "screenshots": "npx playwright test --project=screenshots"
+    "screenshots": "npx playwright test --project=screenshots",
+    "prepare": "git rev-parse --git-common-dir > /dev/null 2>&1 && mkdir -p $(git rev-parse --git-common-dir)/hooks && cp scripts/pre-commit-crossplatform.sh $(git rev-parse --git-common-dir)/hooks/pre-commit && chmod +x $(git rev-parse --git-common-dir)/hooks/pre-commit || true"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.1",

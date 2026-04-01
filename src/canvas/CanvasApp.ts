@@ -897,21 +897,26 @@ export class CanvasApp {
   /**
    * Intercept the "go home" action to show a session summary before navigating.
    * Skips the summary if the session had no meaningful activity.
+   * Always navigates home even if the summary flow throws.
    */
   private async goHome(): Promise<void> {
-    if (this.statsTracker && this.sessionSnapshot && this.sessionEventCollector) {
-      const currentStats = this.statsTracker.getStats();
-      const durationMs = Date.now() - this.sessionStartMs;
-      const data = buildSessionData(
-        this.sessionSnapshot,
-        currentStats,
-        durationMs,
-        this.sessionEventCollector.getBadges(),
-        this.sessionEventCollector.getRecords(),
-      );
-      if (hasSessionActivity(data)) {
-        await showSessionSummary(data);
+    try {
+      if (this.statsTracker && this.sessionSnapshot && this.sessionEventCollector) {
+        const currentStats = this.statsTracker.getStats();
+        const durationMs = Date.now() - this.sessionStartMs;
+        const data = buildSessionData(
+          this.sessionSnapshot,
+          currentStats,
+          durationMs,
+          this.sessionEventCollector.getBadges(),
+          this.sessionEventCollector.getRecords(),
+        );
+        if (hasSessionActivity(data)) {
+          await showSessionSummary(data);
+        }
       }
+    } catch (e) {
+      console.warn("CanvasApp: session summary failed, navigating home anyway", e);
     }
     this.callbacks.onGoHome?.();
   }

@@ -15,10 +15,23 @@ const SCRIPT_TIMEOUT_MS = 5000;
 /**
  * Attempt a fetch via the Tauri HTTP plugin (Rust-side networking).
  * Returns null if the plugin is unavailable (e.g. running in browser).
+ * Accepts an optional timeout to prevent unbounded waits.
  */
-async function tauriFetch(url: string): Promise<Response | null> {
+async function tauriFetch(
+  url: string,
+  timeoutMs?: number,
+): Promise<Response | null> {
   try {
     const { fetch: tFetch } = await import("@tauri-apps/plugin-http");
+    if (timeoutMs != null) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        return await tFetch(url, { signal: controller.signal });
+      } finally {
+        clearTimeout(timer);
+      }
+    }
     return await tFetch(url);
   } catch {
     return null; // Not running in Tauri, or plugin not available
@@ -27,8 +40,9 @@ async function tauriFetch(url: string): Promise<Response | null> {
 
 /**
  * Fetch with an AbortController-based timeout.
- * Tries standard fetch first; if it fails, retries once via Tauri HTTP plugin
- * (which bypasses WebView2's network stack).
+ * Tries standard fetch first; if it fails for any reason (including timeout),
+ * retries once via Tauri HTTP plugin (which bypasses WebView2's network stack
+ * on Windows where standard fetch may hang).
  */
 async function fetchWithTimeout(
   url: string,
@@ -39,11 +53,10 @@ async function fetchWithTimeout(
   try {
     return await fetch(url, { signal: controller.signal });
   } catch (err) {
-    // Do not retry via Tauri when the request was deliberately aborted (timeout)
-    if ((err as Error).name !== "AbortError") {
-      const tauriResponse = await tauriFetch(url);
-      if (tauriResponse) return tauriResponse;
-    }
+    // Always try Tauri HTTP fallback — handles both immediate failures
+    // (e.g. WebView2 cross-origin TypeError) and timeouts (e.g. WebView2 hang).
+    const tauriResponse = await tauriFetch(url, timeoutMs);
+    if (tauriResponse) return tauriResponse;
     throw err;
   } finally {
     clearTimeout(timer);

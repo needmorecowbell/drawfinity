@@ -5,7 +5,7 @@ import {
   exists,
   mkdir,
 } from "@tauri-apps/plugin-fs";
-import { documentDir, join } from "@tauri-apps/api/path";
+import { dirname, documentDir, join } from "@tauri-apps/api/path";
 import type { DrawingManager } from "./DrawingManager";
 
 const DEFAULT_FOLDER_NAME = "Drawfinity";
@@ -58,10 +58,9 @@ export async function saveDocument(
 ): Promise<void> {
   const update = Y.encodeStateAsUpdate(doc);
 
-  // Ensure parent directory exists
-  const lastSep = filePath.lastIndexOf("/");
-  if (lastSep > 0) {
-    const dir = filePath.substring(0, lastSep);
+  // Ensure parent directory exists (use Tauri's dirname for cross-platform path handling)
+  const dir = await dirname(filePath);
+  if (dir) {
     const dirExists = await exists(dir);
     if (!dirExists) {
       await mkdir(dir, { recursive: true });

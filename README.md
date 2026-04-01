@@ -7,6 +7,10 @@
 <p align="center"><em>An infinite canvas for drawing, collaboration, and creative coding.</em></p>
 
 <p align="center">
+  <a href="https://runmaestro.ai"><img src="https://raw.githubusercontent.com/RunMaestro/Maestro/main/docs/assets/made-with-maestro.svg" alt="Made with Maestro"></a>
+</p>
+
+<p align="center">
   <a href="https://needmorecowbell.github.io/drawfinity/">Documentation</a> &middot;
   <a href="https://github.com/needmorecowbell/drawfinity/releases">Downloads</a> &middot;
   <a href="https://needmorecowbell.github.io/drawfinity/getting-started">Getting Started</a>

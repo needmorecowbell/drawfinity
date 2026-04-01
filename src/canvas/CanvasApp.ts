@@ -792,7 +792,7 @@ export class CanvasApp {
       } catch (e) {
         console.error("CanvasApp: beforeunload save failed", e);
       }
-      this.autoSave.saveNow();
+      Promise.resolve(this.autoSave.saveNow()).catch(() => {});
     };
     window.addEventListener("beforeunload", this.beforeUnloadHandler);
 

@@ -200,7 +200,7 @@ export class AutoSave {
     }
     this.timer = setTimeout(() => {
       this.timer = null;
-      this.saveNow();
+      this.saveNow().catch(() => {});
     }, this.debounceMs);
   }
 }

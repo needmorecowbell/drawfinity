@@ -156,4 +156,39 @@ describe("Cross-platform guards", () => {
         violations.join("\n"),
     ).toHaveLength(0);
   });
+
+  it("Promise .then() chains in UI/canvas code have .catch() handlers", () => {
+    // Rule: Any .then() chain in UI or canvas code must include a .catch()
+    // to prevent unhandled rejections. On Windows WebView2, unhandled
+    // rejections can silently swallow errors with no console output.
+    const violations: string[] = [];
+
+    for (const file of sourceFiles) {
+      if (!file.includes("/canvas/") && !file.includes("/ui/")) continue;
+      const { content, rel } = readSource(file);
+      const lines = content.split("\n");
+
+      for (let i = 0; i < lines.length; i++) {
+        if (!lines[i].includes(".then(")) continue;
+
+        // Look ahead for .catch() in the same statement (within 10 lines)
+        let hasCatch = false;
+        for (let j = i; j < Math.min(i + 10, lines.length); j++) {
+          if (lines[j].includes(".catch(")) {
+            hasCatch = true;
+            break;
+          }
+        }
+        if (!hasCatch) {
+          violations.push(`${rel}:${i + 1} — .then() without .catch(): ${lines[i].trim()}`);
+        }
+      }
+    }
+
+    expect(
+      violations,
+      "Promise chain missing .catch() handler. Add .catch() to prevent silent failures on Windows WebView2.\n" +
+        violations.join("\n"),
+    ).toHaveLength(0);
+  });
 });

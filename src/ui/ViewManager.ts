@@ -88,10 +88,14 @@ export class ViewManager {
     this.canvasContainer = canvasContainer;
 
     const callbacks: HomeScreenCallbacks = {
-      onOpenDrawing: (id: string) => this.showCanvas(id),
+      onOpenDrawing: (id: string) => {
+        this.showCanvas(id).catch((err) =>
+          console.error("Failed to open drawing:", err),
+        );
+      },
       onCreateDrawing: async () => {
         const drawing = await deps.createDrawing("Untitled");
-        this.showCanvas(drawing.id);
+        await this.showCanvas(drawing.id);
         return drawing;
       },
       onDeleteDrawing: (id: string) => deps.deleteDrawing(id),
@@ -100,8 +104,11 @@ export class ViewManager {
       onDuplicateDrawing: (id: string, newName: string) =>
         deps.duplicateDrawing(id, newName),
       onChangeSaveDirectory: deps.onChangeSaveDirectory,
-      onJoinRoom: (roomId: string, serverUrl: string, roomName?: string) =>
-        this.showCanvasWithRoom(roomId, serverUrl, roomName),
+      onJoinRoom: (roomId: string, serverUrl: string, roomName?: string) => {
+        this.showCanvasWithRoom(roomId, serverUrl, roomName).catch((err) =>
+          console.error("Failed to join room:", err),
+        );
+      },
     };
 
     this.homeScreen = new HomeScreen(callbacks);

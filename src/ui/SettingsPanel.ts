@@ -373,7 +373,7 @@ export class SettingsPanel {
       dialog.remove();
       this.callbacks.onClearData?.()?.then(() => {
         this.hide();
-      });
+      }).catch((err) => console.error("Clear data failed:", err));
     });
     btnRow.appendChild(confirmBtn);
 

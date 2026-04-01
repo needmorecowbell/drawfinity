@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://needmorecowbell.github.io/drawfinity/"><img src="https://img.shields.io/badge/docs-drawfinity-blue?style=flat-square" alt="Documentation"></a>
-  <a href="https://maestro.sh"><img src="https://raw.githubusercontent.com/RunMaestro/Maestro/main/docs/assets/made-with-maestro.svg" alt="Made with Maestro"></a>
+  <a href="https://runmaestro.ai"><img src="https://raw.githubusercontent.com/RunMaestro/Maestro/main/docs/assets/made-with-maestro.svg" alt="Made with Maestro"></a>
 </p>
 
 <p align="center">

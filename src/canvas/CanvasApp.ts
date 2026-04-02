@@ -16,6 +16,7 @@ import { renderExport, downloadCanvas } from "../ui/ExportRenderer";
 import { exportSVG, downloadSVG } from "../ui/SVGExporter";
 import type { ExportDialogResult } from "../ui/ExportDialog";
 import { ActionRegistry } from "../ui/ActionRegistry";
+import type { ThemeManager } from "../ui/ThemeManager";
 import { CheatSheet } from "../ui/CheatSheet";
 import { CursorManager } from "../ui/CursorManager";
 import { FpsCounter } from "../ui/FpsCounter";
@@ -38,6 +39,8 @@ export interface CanvasAppCallbacks {
   drawingManager?: unknown;
   /** When provided, CanvasApp uses this browser storage adapter (IndexedDB/localStorage). */
   browserStorage?: unknown;
+  /** When provided, CanvasApp can notify ThemeManager of theme changes for live updates. */
+  themeManager?: ThemeManager;
 }
 
 /** Encode Uint8Array to base64 without spread operator (safe for large arrays). */
@@ -523,6 +526,9 @@ export class CanvasApp {
         this.gridStyle = preferences.gridStyle ?? "dots";
         this.toolbar.setGridStyle(this.gridStyle);
         this.updateUserColorIndicator(userProfile);
+        if (this.callbacks.themeManager) {
+          this.callbacks.themeManager.setTheme(preferences.theme ?? "auto");
+        }
       },
     });
 

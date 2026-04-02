@@ -1,6 +1,7 @@
 import { CanvasApp } from "../canvas";
 import { HomeScreen, HomeScreenCallbacks } from "./HomeScreen";
 import type { DrawingMetadata } from "../persistence/DrawingManifest";
+import type { ThemeManager } from "./ThemeManager";
 
 /**
  * Union type representing the two top-level application view states.
@@ -43,6 +44,8 @@ export interface ViewManagerDeps {
   drawingManager?: unknown;
   /** When provided, the browser storage adapter is passed to CanvasApp for IndexedDB persistence. */
   browserStorage?: unknown;
+  /** When provided, ThemeManager is passed to CanvasApp so theme changes apply live on save. */
+  themeManager?: ThemeManager;
 }
 
 /**
@@ -182,6 +185,7 @@ export class ViewManager {
         onRenameDrawing: (id, name) => this.deps.renameDrawing(id, name),
         drawingManager: this.deps.drawingManager,
         browserStorage: this.deps.browserStorage,
+        themeManager: this.deps.themeManager,
       });
 
       // Set drawing name in toolbar
@@ -222,6 +226,7 @@ export class ViewManager {
         onRenameDrawing: (id, name) => this.deps.renameDrawing(id, name),
         drawingManager: this.deps.drawingManager,
         browserStorage: this.deps.browserStorage,
+        themeManager: this.deps.themeManager,
       });
 
       // Connect to the room

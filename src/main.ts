@@ -1,4 +1,5 @@
 import { ViewManager } from "./ui/ViewManager";
+import { ThemeManager } from "./ui/ThemeManager";
 import { createBrowserStorage } from "./persistence/BrowserStorage";
 import type { DrawingMetadata } from "./persistence/DrawingManifest";
 
@@ -6,6 +7,10 @@ import type { DrawingMetadata } from "./persistence/DrawingManifest";
 window.addEventListener("unhandledrejection", (e) => {
   console.error("Drawfinity: unhandled rejection:", e.reason);
 });
+
+// Apply theme before any UI renders to avoid flash of wrong theme
+const themeManager = new ThemeManager();
+themeManager.init();
 
 (async () => {
   console.log("Drawfinity: init starting");
@@ -36,6 +41,7 @@ window.addEventListener("unhandledrejection", (e) => {
       getSaveDirectory: () => drawingManager.getSaveDirectory(),
       getDrawingName: (id) => drawingManager.getDrawingName(id),
       drawingManager,
+      themeManager,
     });
   } catch {
     console.log(
@@ -94,13 +100,14 @@ window.addEventListener("unhandledrejection", (e) => {
         return d?.name ?? "Untitled";
       },
       browserStorage: storage,
+      themeManager,
     });
   }
 
   await viewManager.showHome();
 
   // Expose for debugging
-  (window as unknown as Record<string, unknown>).__drawfinity = { viewManager };
+  (window as unknown as Record<string, unknown>).__drawfinity = { viewManager, themeManager };
 
   console.log("Drawfinity: init complete");
 })().catch((err) => {

@@ -41,6 +41,7 @@ themeManager.init();
       getSaveDirectory: () => drawingManager.getSaveDirectory(),
       getDrawingName: (id) => drawingManager.getDrawingName(id),
       drawingManager,
+      themeManager,
     });
   } catch {
     console.log(
@@ -99,6 +100,7 @@ themeManager.init();
         return d?.name ?? "Untitled";
       },
       browserStorage: storage,
+      themeManager,
     });
   }
 

@@ -105,14 +105,19 @@
   --turtle-surface: #313244;
   --turtle-surface-hover: #45475a;
   --turtle-text: #cdd6f4;
-  --turtle-subtext: #6c7086;
-  --turtle-overlay: #a6adc8;
+  --turtle-subtext: #a6adc8;
+  --turtle-overlay: #45475a;
+  --turtle-muted: #6c7086;
+  --turtle-handle: #585b70;
   --turtle-blue: #89b4fa;
   --turtle-green: #a6e3a1;
   --turtle-red: #f38ba8;
   --turtle-peach: #fab387;
   --turtle-teal: #94e2d5;
   --turtle-pink: #eba0ac;
+  --turtle-yellow: #f9e2af;
+  --turtle-mauve: #cba6f7;
+  --turtle-crust: #11111b;
   --turtle-mantle: #181825;
 
   /* Session summary */
@@ -124,24 +129,6 @@
   --summary-accent: #89b4fa;
   --summary-accent-hover: #74c7ec;
   --summary-success: #a6e3a1;
-  /* Turtle panel (Catppuccin Mocha) */
-  --turtle-bg: #1e1e2e;
-  --turtle-surface: #313244;
-  --turtle-overlay: #45475a;
-  --turtle-text: #cdd6f4;
-  --turtle-subtext: #a6adc8;
-  --turtle-muted: #6c7086;
-  --turtle-handle: #585b70;
-  --turtle-green: #a6e3a1;
-  --turtle-red: #f38ba8;
-  --turtle-blue: #89b4fa;
-  --turtle-peach: #fab387;
-  --turtle-teal: #94e2d5;
-  --turtle-pink: #eba0ac;
-  --turtle-yellow: #f9e2af;
-  --turtle-mauve: #cba6f7;
-  --turtle-crust: #11111b;
-  --turtle-mantle: #181825;
 
   /* Session summary */
   --session-bg: #1e1e2e;

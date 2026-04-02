@@ -13,6 +13,18 @@ import { readConfigFile, writeConfigFile } from "./ConfigFile";
 export type GridStyle = "dots" | "lines" | "none";
 
 /**
+ * Theme mode for UI chrome (homepage, toolbar, panels).
+ *
+ * - `"auto"` — Follows OS `prefers-color-scheme` (default)
+ * - `"light"` — Forces light theme
+ * - `"dark"` — Forces dark theme
+ *
+ * Used by {@link UserPreferences.theme} and the {@link ThemeManager} to control
+ * the `data-theme` attribute on `<html>`.
+ */
+export type ThemeMode = "auto" | "light" | "dark";
+
+/**
  * Core user settings persisted to localStorage and (when available) to a Tauri config file.
  *
  * All optional fields default to `undefined` and are filled with sensible defaults
@@ -39,6 +51,8 @@ export interface UserPreferences {
   serverUrl?: string;
   /** ID of the last joined collaboration room, used for quick-reconnect. */
   lastRoomId?: string;
+  /** UI theme mode: `"auto"` (follows OS), `"light"`, or `"dark"` (default: `"auto"`). */
+  theme?: ThemeMode;
 }
 
 const STORAGE_KEY = "drawfinity:user-preferences";

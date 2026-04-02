@@ -1,5 +1,5 @@
 import { UserProfile } from "../user/UserProfile";
-import { UserPreferences } from "../user/UserPreferences";
+import { UserPreferences, ThemeMode } from "../user/UserPreferences";
 import type { GridStyle } from "../user/UserPreferences";
 import { USER_COLORS, saveProfile } from "../user/UserStore";
 import { savePreferences } from "../user/UserPreferences";
@@ -48,6 +48,7 @@ export class SettingsPanel {
   private nameInput!: HTMLInputElement;
   private colorSwatches: HTMLButtonElement[] = [];
   private brushPresetButtons: HTMLButtonElement[] = [];
+  private themeButtons: HTMLButtonElement[] = [];
   private serverUrlInput!: HTMLInputElement;
   private gridStyleSelect!: HTMLSelectElement;
   private saveDirectoryDisplay!: HTMLSpanElement;
@@ -60,6 +61,7 @@ export class SettingsPanel {
   private selectedColor: string;
   private selectedBrushIndex: number;
   private selectedGridStyle: GridStyle;
+  private selectedTheme: ThemeMode;
 
   constructor(
     profile: UserProfile,
@@ -72,6 +74,7 @@ export class SettingsPanel {
     this.selectedColor = profile.color;
     this.selectedBrushIndex = preferences.defaultBrush;
     this.selectedGridStyle = preferences.gridStyle ?? "dots";
+    this.selectedTheme = preferences.theme ?? "auto";
 
     this.overlay = document.createElement("div");
     this.overlay.id = "settings-overlay";
@@ -179,6 +182,34 @@ export class SettingsPanel {
     this.gridStyleSelect.addEventListener("pointerdown", (e) => e.stopPropagation());
     this.panel.appendChild(this.gridStyleSelect);
 
+    // Theme selector
+    const themeLabel = document.createElement("label");
+    themeLabel.className = "settings-label";
+    themeLabel.textContent = "Theme";
+    this.panel.appendChild(themeLabel);
+
+    const themeRow = document.createElement("div");
+    themeRow.className = "settings-theme-row";
+    const themeOptions: { value: ThemeMode; label: string; icon: string }[] = [
+      { value: "auto", label: "Auto", icon: "◑" },
+      { value: "light", label: "Light", icon: "☀" },
+      { value: "dark", label: "Dark", icon: "☾" },
+    ];
+    for (const opt of themeOptions) {
+      const btn = document.createElement("button");
+      btn.className = "settings-theme-btn";
+      btn.dataset.theme = opt.value;
+      btn.innerHTML = `<span class="settings-theme-icon">${opt.icon}</span>${opt.label}`;
+      if (opt.value === this.selectedTheme) btn.classList.add("active");
+      btn.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        this.selectTheme(opt.value);
+      });
+      themeRow.appendChild(btn);
+      this.themeButtons.push(btn);
+    }
+    this.panel.appendChild(themeRow);
+
     // Server URL
     const serverLabel = document.createElement("label");
     serverLabel.className = "settings-label";
@@ -275,6 +306,13 @@ export class SettingsPanel {
     }
   }
 
+  private selectTheme(theme: ThemeMode): void {
+    this.selectedTheme = theme;
+    for (const btn of this.themeButtons) {
+      btn.classList.toggle("active", btn.dataset.theme === theme);
+    }
+  }
+
   private handleSave(): void {
     const name = this.nameInput.value.trim() || "Anonymous";
     const updatedProfile: UserProfile = {
@@ -289,6 +327,7 @@ export class SettingsPanel {
       defaultBrush: this.selectedBrushIndex,
       gridStyle: this.selectedGridStyle,
       serverUrl,
+      theme: this.selectedTheme,
     };
 
     saveProfile(updatedProfile);
@@ -330,6 +369,7 @@ export class SettingsPanel {
     this.preferences = { ...preferences };
     this.selectedBrushIndex = preferences.defaultBrush;
     this.selectedGridStyle = preferences.gridStyle ?? "dots";
+    this.selectedTheme = preferences.theme ?? "auto";
     if (this.gridStyleSelect) {
       this.gridStyleSelect.value = this.selectedGridStyle;
     }
@@ -343,6 +383,7 @@ export class SettingsPanel {
         preferences.saveDirectory !== undefined ? "" : "none";
     }
     this.selectBrush(preferences.defaultBrush);
+    this.selectTheme(this.selectedTheme);
   }
 
   private showClearConfirmation(): void {

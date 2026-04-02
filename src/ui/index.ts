@@ -1,3 +1,4 @@
+export { ThemeManager } from "./ThemeManager";
 export { Toolbar } from "./Toolbar";
 export type { ToolbarCallbacks, ToolbarGroup } from "./Toolbar";
 export { ConnectionPanel } from "./ConnectionPanel";

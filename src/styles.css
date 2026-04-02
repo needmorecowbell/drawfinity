@@ -1713,6 +1713,81 @@ html, body {
   color: var(--accent);
 }
 
+/* Theme selector buttons */
+.settings-theme-row {
+  display: flex;
+  gap: 4px;
+}
+
+.settings-theme-btn {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  background: var(--input-bg);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--text-secondary);
+  transition: background 0.1s, border-color 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.settings-theme-btn:hover {
+  background: var(--bg-tertiary);
+}
+
+.settings-theme-btn.active {
+  background: var(--bg-active);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.settings-theme-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+
+
+.settings-theme-row {
+  display: flex;
+  gap: 4px;
+}
+
+.settings-theme-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  background: var(--input-bg);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--text-secondary);
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.settings-theme-btn:hover {
+  background: var(--bg-tertiary);
+}
+
+.settings-theme-btn.active {
+  background: var(--bg-active);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.settings-theme-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
 .settings-save-dir {
   display: flex;
   flex-direction: column;

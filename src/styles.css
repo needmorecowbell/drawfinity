@@ -4,14 +4,19 @@
   --bg-tertiary: #f5f5f5;
   --bg-hover: rgba(0, 0, 0, 0.06);
   --bg-active: rgba(0, 102, 255, 0.12);
+  --bg-danger: rgba(229, 57, 53, 0.06);
   --text-primary: #222;
   --text-secondary: #444;
   --text-tertiary: #666;
   --text-muted: #999;
+  --text-subtle: #bbb;
+  --text-on-accent: #fff;
   --border-primary: #e0e0e0;
   --border-secondary: #eee;
   --accent: #0066FF;
   --accent-hover: #0052cc;
+  --status-connected: #33CC33;
+  --status-connecting: #FFCC00;
   --danger: #e53935;
   --warning: #f9a825;
   --shadow-color: rgba(0, 0, 0, 0.08);
@@ -31,14 +36,19 @@
   --bg-tertiary: #2a2a2a;
   --bg-hover: rgba(255, 255, 255, 0.08);
   --bg-active: rgba(0, 102, 255, 0.2);
+  --bg-danger: rgba(255, 82, 82, 0.12);
   --text-primary: #e8e8e8;
   --text-secondary: #b0b0b0;
   --text-tertiary: #888;
   --text-muted: #666;
+  --text-subtle: #555;
+  --text-on-accent: #fff;
   --border-primary: #3a3a3a;
   --border-secondary: #333;
   --accent: #4d8eff;
   --accent-hover: #6ba1ff;
+  --status-connected: #4ade80;
+  --status-connecting: #ffca28;
   --danger: #ff5252;
   --warning: #ffca28;
   --shadow-color: rgba(0, 0, 0, 0.3);
@@ -59,14 +69,19 @@
     --bg-tertiary: #2a2a2a;
     --bg-hover: rgba(255, 255, 255, 0.08);
     --bg-active: rgba(0, 102, 255, 0.2);
+    --bg-danger: rgba(255, 82, 82, 0.12);
     --text-primary: #e8e8e8;
     --text-secondary: #b0b0b0;
     --text-tertiary: #888;
     --text-muted: #666;
+    --text-subtle: #555;
+    --text-on-accent: #fff;
     --border-primary: #3a3a3a;
     --border-secondary: #333;
     --accent: #4d8eff;
     --accent-hover: #6ba1ff;
+    --status-connected: #4ade80;
+    --status-connecting: #ffca28;
     --danger: #ff5252;
     --warning: #ffca28;
     --shadow-color: rgba(0, 0, 0, 0.3);
@@ -1828,7 +1843,7 @@ html, body {
 #home-screen {
   position: fixed;
   inset: 0;
-  background: #FAFAF8;
+  background: var(--bg-primary);
   z-index: 50;
   display: flex;
   flex-direction: column;
@@ -1851,7 +1866,7 @@ html, body {
 .home-title {
   font-size: 24px;
   font-weight: 700;
-  color: #222;
+  color: var(--text-primary);
   letter-spacing: -0.5px;
 }
 
@@ -1866,32 +1881,34 @@ html, body {
   flex: 1;
   max-width: 320px;
   padding: 8px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--input-border);
   border-radius: 8px;
   font-size: 13px;
   font-family: system-ui, -apple-system, sans-serif;
   outline: none;
   transition: border-color 0.15s;
-  background: #fff;
+  background: var(--input-bg);
+  color: var(--text-primary);
 }
 
 .home-search-input:focus {
-  border-color: #0066FF;
+  border-color: var(--accent);
 }
 
 .home-sort-select {
   padding: 8px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--input-border);
   border-radius: 8px;
   font-size: 13px;
   font-family: system-ui, -apple-system, sans-serif;
-  background: #fff;
+  background: var(--input-bg);
+  color: var(--text-primary);
   outline: none;
   cursor: pointer;
 }
 
 .home-sort-select:focus {
-  border-color: #0066FF;
+  border-color: var(--accent);
 }
 
 #home-screen .home-btn {
@@ -1907,21 +1924,21 @@ html, body {
 }
 
 #home-screen .home-btn-primary {
-  background: #0066FF;
-  color: #fff;
+  background: var(--accent);
+  color: var(--text-on-accent);
 }
 
 #home-screen .home-btn-primary:hover {
-  background: #0052cc;
+  background: var(--accent-hover);
 }
 
 #home-screen .home-btn-secondary {
-  background: #f0f0f0;
-  color: #444;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
 }
 
 #home-screen .home-btn-secondary:hover {
-  background: #e0e0e0;
+  background: var(--bg-hover);
 }
 
 #home-screen .home-btn-small {
@@ -1937,14 +1954,14 @@ html, body {
   border-radius: 50%;
   font-size: 16px;
   font-weight: bold;
-  border: 1.5px solid rgba(0, 0, 0, 0.15);
+  border: 1.5px solid var(--border-primary);
   cursor: pointer;
 }
 
 .home-help-btn:hover {
-  background: rgba(0, 102, 255, 0.1);
-  border-color: rgba(0, 102, 255, 0.3);
-  color: #0066FF;
+  background: var(--bg-active);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* Drawing grid */
@@ -1959,8 +1976,8 @@ html, body {
 }
 
 .home-card {
-  background: #fff;
-  border: 1px solid #e8e8e8;
+  background: var(--card-bg);
+  border: 1px solid var(--border-primary);
   border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
@@ -1969,14 +1986,14 @@ html, body {
 }
 
 .home-card:hover {
-  border-color: #ccc;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border-color: var(--input-border);
+  box-shadow: 0 2px 12px var(--shadow-color);
 }
 
 .home-card-thumbnail {
   width: 100%;
   aspect-ratio: 4 / 3;
-  background: #f5f5f3;
+  background: var(--bg-tertiary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1991,7 +2008,7 @@ html, body {
 
 .home-card-placeholder {
   font-size: 12px;
-  color: #bbb;
+  color: var(--text-subtle);
 }
 
 .home-card-info {
@@ -2001,7 +2018,7 @@ html, body {
 .home-card-name {
   font-size: 13px;
   font-weight: 600;
-  color: #222;
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2010,7 +2027,7 @@ html, body {
 
 .home-card-date {
   font-size: 11px;
-  color: #999;
+  color: var(--text-muted);
   margin-top: 2px;
 }
 
@@ -2025,7 +2042,7 @@ html, body {
   background: transparent;
   cursor: pointer;
   font-size: 16px;
-  color: #999;
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2033,17 +2050,17 @@ html, body {
 }
 
 .home-card-menu-btn:hover {
-  background: rgba(0, 0, 0, 0.06);
-  color: #444;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 /* Context menu */
 .home-context-menu {
   position: fixed;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--card-bg);
+  border: 1px solid var(--border-primary);
   border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 16px var(--shadow-color);
   padding: 4px 0;
   min-width: 140px;
   z-index: 200;
@@ -2058,21 +2075,21 @@ html, body {
   text-align: left;
   font-size: 13px;
   font-family: system-ui, -apple-system, sans-serif;
-  color: #333;
+  color: var(--text-primary);
   cursor: pointer;
   transition: background 0.1s;
 }
 
 .home-context-menu-item:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--bg-hover);
 }
 
 .home-context-menu-danger {
-  color: #e53935;
+  color: var(--danger);
 }
 
 .home-context-menu-danger:hover {
-  background: rgba(229, 57, 53, 0.06);
+  background: var(--bg-danger);
 }
 
 /* Empty state */
@@ -2082,7 +2099,7 @@ html, body {
   align-items: center;
   justify-content: center;
   font-size: 16px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 .home-no-results {
@@ -2090,13 +2107,13 @@ html, body {
   text-align: center;
   padding: 40px 0;
   font-size: 14px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 /* Save directory footer */
 .home-save-dir-row {
   padding: 12px 40px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-secondary);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2105,12 +2122,12 @@ html, body {
 
 .home-save-dir-label {
   font-size: 12px;
-  color: #666;
+  color: var(--text-tertiary);
 }
 
 .home-save-dir-path {
   font-size: 12px;
-  color: #999;
+  color: var(--text-muted);
   font-family: monospace;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2122,7 +2139,7 @@ html, body {
 .home-tab-bar {
   display: flex;
   gap: 0;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid var(--border-primary);
   margin-bottom: 16px;
 }
 
@@ -2133,7 +2150,7 @@ html, body {
   font-size: 14px;
   font-weight: 500;
   font-family: system-ui, -apple-system, sans-serif;
-  color: #888;
+  color: var(--text-tertiary);
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
@@ -2141,12 +2158,12 @@ html, body {
 }
 
 .home-tab:hover {
-  color: #444;
+  color: var(--text-secondary);
 }
 
 .home-tab.active {
-  color: #0066FF;
-  border-bottom-color: #0066FF;
+  color: var(--accent);
+  border-bottom-color: var(--accent);
 }
 
 /* My Drawings content wrapper */
@@ -2177,17 +2194,18 @@ html, body {
   flex: 1;
   max-width: 400px;
   padding: 8px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--input-border);
   border-radius: 8px;
   font-size: 13px;
   font-family: monospace;
   outline: none;
   transition: border-color 0.15s;
-  background: #fff;
+  background: var(--input-bg);
+  color: var(--text-primary);
 }
 
 .home-shared-server-input:focus {
-  border-color: #0066FF;
+  border-color: var(--accent);
 }
 
 .home-shared-status-row {
@@ -2201,34 +2219,34 @@ html, body {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #aaa;
+  background: var(--text-muted);
   flex-shrink: 0;
 }
 
 .home-shared-status-dot[data-state="connected"] {
-  background: #33CC33;
+  background: var(--status-connected);
 }
 
 .home-shared-status-dot[data-state="connecting"] {
-  background: #FFCC00;
+  background: var(--status-connecting);
 }
 
 .home-shared-status-dot[data-state="disconnected"] {
-  background: #aaa;
+  background: var(--text-muted);
 }
 
 .home-shared-status-dot[data-state="error"] {
-  background: #e53935;
+  background: var(--danger);
 }
 
 .home-shared-status-text {
   font-size: 12px;
-  color: #666;
+  color: var(--text-tertiary);
 }
 
 /* Room cards */
 .home-room-thumbnail {
-  background: #eef3ff;
+  background: var(--bg-active);
 }
 
 .home-room-icon {
@@ -2244,7 +2262,7 @@ html, body {
 
 .home-room-meta {
   font-size: 11px;
-  color: #888;
+  color: var(--text-tertiary);
 }
 
 /* Cheat Sheet Modal */

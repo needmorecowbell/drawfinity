@@ -28,6 +28,7 @@ describe("UserPreferences", () => {
     expect(prefs.saveDirectory).toBeUndefined();
     expect(prefs.serverUrl).toBeUndefined();
     expect(prefs.lastRoomId).toBeUndefined();
+    expect(prefs.theme).toBe("auto");
   });
 
   it("saves and loads preferences", () => {
@@ -79,6 +80,18 @@ describe("UserPreferences", () => {
   it("defaults gridStyle to undefined when not stored", () => {
     const prefs = loadPreferences();
     expect(prefs.gridStyle).toBeUndefined();
+  });
+
+  it("saves and loads theme preference", () => {
+    const prefs: UserPreferences = {
+      defaultBrush: 0,
+      defaultColor: "#000000",
+      theme: "dark",
+    };
+    savePreferences(prefs);
+
+    const loaded = loadPreferences();
+    expect(loaded.theme).toBe("dark");
   });
 
   it("handles corrupted localStorage data gracefully", () => {

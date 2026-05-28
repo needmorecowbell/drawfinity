@@ -7,6 +7,8 @@ export { FpsCounter } from "./FpsCounter";
 export { RemoteCursors } from "./RemoteCursors";
 export { SettingsPanel } from "./SettingsPanel";
 export type { SettingsPanelCallbacks } from "./SettingsPanel";
+export { ThemeManager, initializeThemeManager, getThemeManager, THEME_CHANGE_EVENT } from "./ThemeManager";
+export type { ThemePreference } from "./ThemeManager";
 export { HomeScreen } from "./HomeScreen";
 export type { HomeScreenCallbacks, TabName, SharedConnectionStatus } from "./HomeScreen";
 export { ViewManager } from "./ViewManager";

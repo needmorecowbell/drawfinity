@@ -13,7 +13,7 @@ const mockLocalStorage = {
 };
 Object.defineProperty(globalThis, "localStorage", { value: mockLocalStorage, writable: true });
 
-import { loadProfile, saveProfile, onProfileChange } from "../UserStore";
+import { loadProfile, saveProfile, onProfileChange, getTheme, setTheme } from "../UserStore";
 
 describe("UserStore", () => {
   beforeEach(() => {
@@ -90,5 +90,15 @@ describe("UserStore", () => {
     storageMap.set("drawfinity:user-profile", JSON.stringify({ id: "x" }));
     const profile = loadProfile();
     expect(profile.name).toBe("Anonymous");
+  });
+
+  it("gets and sets theme through user preferences", () => {
+    expect(getTheme()).toBe("auto");
+
+    setTheme("dark");
+
+    expect(getTheme()).toBe("dark");
+    const stored = JSON.parse(storageMap.get("drawfinity:user-preferences")!);
+    expect(stored.theme).toBe("dark");
   });
 });

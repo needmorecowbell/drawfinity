@@ -12,6 +12,9 @@ import { readConfigFile, writeConfigFile } from "./ConfigFile";
  */
 export type GridStyle = "dots" | "lines" | "none";
 
+/** Application chrome theme preference. */
+export type ThemePreference = "auto" | "light" | "dark";
+
 /**
  * Core user settings persisted to localStorage and (when available) to a Tauri config file.
  *
@@ -39,6 +42,8 @@ export interface UserPreferences {
   serverUrl?: string;
   /** ID of the last joined collaboration room, used for quick-reconnect. */
   lastRoomId?: string;
+  /** Theme preference for application chrome, defaulting to OS-aware auto. */
+  theme?: ThemePreference;
 }
 
 const STORAGE_KEY = "drawfinity:user-preferences";
@@ -47,6 +52,7 @@ const CONFIG_FILENAME = "preferences.json";
 const DEFAULT_PREFERENCES: UserPreferences = {
   defaultBrush: 0,
   defaultColor: "#000000",
+  theme: "auto",
 };
 
 /**

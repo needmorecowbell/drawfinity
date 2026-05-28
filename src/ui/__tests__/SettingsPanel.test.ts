@@ -75,6 +75,27 @@ describe("SettingsPanel", () => {
     expect(input.value).toBe("TestUser");
   });
 
+  it("renders theme selector with auto selected by default", () => {
+    panel.show();
+    const buttons = document.querySelectorAll(".settings-theme-btn");
+    expect(buttons.length).toBe(3);
+    const active = document.querySelector(".settings-theme-btn.active") as HTMLButtonElement;
+    expect(active.dataset.theme).toBe("auto");
+  });
+
+  it("clicking a theme option applies and persists it", () => {
+    panel.show();
+    const darkButton = document.querySelector(
+      '.settings-theme-btn[data-theme="dark"]',
+    ) as HTMLButtonElement;
+    darkButton.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+    expect(darkButton.classList.contains("active")).toBe(true);
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    const stored = JSON.parse(storageMap.get("drawfinity:user-preferences")!);
+    expect(stored.theme).toBe("dark");
+  });
+
   it("renders user color swatches", () => {
     panel.show();
     const swatches = document.querySelectorAll(".settings-color-swatch");
@@ -148,6 +169,12 @@ describe("SettingsPanel", () => {
       new PointerEvent("pointerdown", { bubbles: true }),
     );
 
+    // Change theme
+    const darkTheme = document.querySelector(
+      '.settings-theme-btn[data-theme="dark"]',
+    ) as HTMLButtonElement;
+    darkTheme.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
     // Click Save
     const saveBtn = document.querySelector(".settings-btn-primary") as HTMLButtonElement;
     saveBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
@@ -157,6 +184,7 @@ describe("SettingsPanel", () => {
     expect(savedProfile.name).toBe("NewName");
     expect(savedProfile.color).toBe(USER_COLORS[2]);
     expect(savedPrefs.defaultBrush).toBe(1);
+    expect(savedPrefs.theme).toBe("dark");
   });
 
   it("Save persists to localStorage", () => {
@@ -215,7 +243,7 @@ describe("SettingsPanel", () => {
 
   it("updatePreferences updates the UI state", () => {
     panel.show();
-    panel.updatePreferences({ defaultBrush: 2, defaultColor: "#000000", serverUrl: "ws://other:9090" });
+    panel.updatePreferences({ defaultBrush: 2, defaultColor: "#000000", serverUrl: "ws://other:9090", theme: "light" });
 
     const inputs = document.querySelectorAll(".settings-input");
     const serverInput = inputs[1] as HTMLInputElement;
@@ -223,6 +251,8 @@ describe("SettingsPanel", () => {
 
     const active = document.querySelector(".settings-brush-btn.active") as HTMLElement;
     expect(active.textContent).toBe("Marker");
+    const activeTheme = document.querySelector(".settings-theme-btn.active") as HTMLElement;
+    expect(activeTheme.dataset.theme).toBe("light");
   });
 
   it("save directory is hidden when not set", () => {

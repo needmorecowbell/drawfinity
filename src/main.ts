@@ -1,4 +1,5 @@
 import { ViewManager } from "./ui/ViewManager";
+import { initializeThemeManager } from "./ui/ThemeManager";
 import { createBrowserStorage } from "./persistence/BrowserStorage";
 import type { DrawingMetadata } from "./persistence/DrawingManifest";
 
@@ -9,6 +10,7 @@ window.addEventListener("unhandledrejection", (e) => {
 
 (async () => {
   console.log("Drawfinity: init starting");
+  const themeManager = initializeThemeManager();
 
   const canvasContainer = document.getElementById("canvas-view");
   if (!canvasContainer) {
@@ -100,7 +102,7 @@ window.addEventListener("unhandledrejection", (e) => {
   await viewManager.showHome();
 
   // Expose for debugging
-  (window as unknown as Record<string, unknown>).__drawfinity = { viewManager };
+  (window as unknown as Record<string, unknown>).__drawfinity = { viewManager, themeManager };
 
   console.log("Drawfinity: init complete");
 })().catch((err) => {

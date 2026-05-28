@@ -1468,6 +1468,45 @@ html, body {
   transform: scale(1.15);
 }
 
+.settings-theme-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.settings-theme-btn {
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  background: var(--card-bg);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+}
+
+.settings-theme-btn svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.settings-theme-btn:hover {
+  background: var(--bg-disabled);
+}
+
+.settings-theme-btn.active {
+  background: var(--bg-active);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .settings-brush-row {
   display: flex;
   gap: 4px;

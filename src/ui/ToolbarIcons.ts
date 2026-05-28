@@ -72,6 +72,15 @@ export const ICONS = {
   /** Gear icon for settings */
   settings: svg('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1.08 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09c-.658.003-1.25.396-1.51 1z"/>'),
 
+  /** Sun icon for light theme */
+  sun: svg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M6.34 17.66l-1.41 1.41"/><path d="M19.07 4.93l-1.41 1.41"/>'),
+
+  /** Crescent moon icon for dark theme */
+  moon: svg('<path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/>'),
+
+  /** Combined sun and moon for automatic theme */
+  sunMoon: svg('<circle cx="7" cy="7" r="3"/><path d="M7 1v1"/><path d="M7 12v1"/><path d="M1 7h1"/><path d="M12 7h1"/><path d="M17.5 7.5A7 7 0 1 0 22 17a5.5 5.5 0 0 1-4.5-9.5z"/>'),
+
   /** Half-filled square for fill toggle */
   fillToggle: svg('<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 3h18v18" fill="currentColor" opacity="0.3"/>'),
 

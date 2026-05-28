@@ -1217,6 +1217,20 @@ html, body {
 }
 
 /* Turtle Indicator */
+.remote-turtle-trails {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.remote-turtle-trail {
+  filter: drop-shadow(0 0 3px currentColor);
+}
+
 .turtle-indicator {
   position: absolute;
   top: 0;
@@ -1226,6 +1240,24 @@ html, body {
   z-index: 6;
   line-height: 0;
   color: #000000;
+}
+
+.turtle-indicator--remote {
+  filter: drop-shadow(0 0 5px var(--remote-turtle-color, currentColor));
+}
+
+.turtle-indicator--remote .turtle-indicator__glyph {
+  line-height: 0;
+  transform-origin: 50% 50%;
+  transition: transform 100ms linear;
+  will-change: transform;
+}
+
+.turtle-indicator--remote .turtle-indicator__label {
+  color: currentColor;
+  text-shadow:
+    0 1px 2px rgba(255, 255, 255, 0.95),
+    0 0 4px rgba(255, 255, 255, 0.8);
 }
 
 /* Settings Panel */

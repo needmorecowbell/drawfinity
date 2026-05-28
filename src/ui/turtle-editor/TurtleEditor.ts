@@ -29,64 +29,64 @@ export interface TurtleEditorOptions {
   onRun?: () => void;
 }
 
-/** Catppuccin Mocha syntax highlighting colors. */
+/** Syntax highlighting colors are sourced from CSS theme variables. */
 const luaHighlightStyle = HighlightStyle.define([
-  { tag: tags.keyword, color: "#cba6f7" },           // mauve
-  { tag: tags.controlKeyword, color: "#cba6f7" },
-  { tag: tags.operatorKeyword, color: "#cba6f7" },
-  { tag: tags.definitionKeyword, color: "#cba6f7" },
-  { tag: tags.comment, color: "#6c7086", fontStyle: "italic" }, // overlay0
-  { tag: tags.blockComment, color: "#6c7086", fontStyle: "italic" },
-  { tag: tags.string, color: "#a6e3a1" },             // green
-  { tag: tags.number, color: "#fab387" },              // peach
-  { tag: tags.bool, color: "#fab387" },
-  { tag: tags.null, color: "#fab387" },
-  { tag: tags.function(tags.variableName), color: "#89b4fa" }, // blue
-  { tag: tags.variableName, color: "#cdd6f4" },       // text
-  { tag: tags.operator, color: "#89dceb" },            // sky
-  { tag: tags.punctuation, color: "#9399b2" },         // overlay2
-  { tag: tags.paren, color: "#9399b2" },
-  { tag: tags.brace, color: "#9399b2" },
-  { tag: tags.squareBracket, color: "#9399b2" },
-  { tag: tags.self, color: "#f38ba8" },                // red (self)
-  { tag: tags.atom, color: "#fab387" },
+  { tag: tags.keyword, color: "var(--turtle-syntax-keyword)" },
+  { tag: tags.controlKeyword, color: "var(--turtle-syntax-keyword)" },
+  { tag: tags.operatorKeyword, color: "var(--turtle-syntax-keyword)" },
+  { tag: tags.definitionKeyword, color: "var(--turtle-syntax-keyword)" },
+  { tag: tags.comment, color: "var(--turtle-syntax-comment)", fontStyle: "italic" },
+  { tag: tags.blockComment, color: "var(--turtle-syntax-comment)", fontStyle: "italic" },
+  { tag: tags.string, color: "var(--turtle-syntax-string)" },
+  { tag: tags.number, color: "var(--turtle-syntax-number)" },
+  { tag: tags.bool, color: "var(--turtle-syntax-number)" },
+  { tag: tags.null, color: "var(--turtle-syntax-number)" },
+  { tag: tags.function(tags.variableName), color: "var(--turtle-syntax-function)" },
+  { tag: tags.variableName, color: "var(--turtle-text)" },
+  { tag: tags.operator, color: "var(--turtle-syntax-operator)" },
+  { tag: tags.punctuation, color: "var(--turtle-syntax-punctuation)" },
+  { tag: tags.paren, color: "var(--turtle-syntax-punctuation)" },
+  { tag: tags.brace, color: "var(--turtle-syntax-punctuation)" },
+  { tag: tags.squareBracket, color: "var(--turtle-syntax-punctuation)" },
+  { tag: tags.self, color: "var(--turtle-danger)" },
+  { tag: tags.atom, color: "var(--turtle-syntax-number)" },
 ]);
 
-/** Catppuccin Mocha-inspired theme matching existing .turtle-editor textarea styles. */
+/** Theme values read from CSS variables so the editor follows app theme changes. */
 const turtleEditorTheme = EditorView.theme({
   "&": {
     flex: "1",
     minHeight: "0",
     overflow: "auto",
-    backgroundColor: "#1e1e2e",
-    color: "#cdd6f4",
+    backgroundColor: "var(--turtle-bg)",
+    color: "var(--turtle-text)",
     fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
     fontSize: "13px",
     lineHeight: "1.5",
   },
   ".cm-content": {
     padding: "4px 12px 12px",
-    caretColor: "#cdd6f4",
+    caretColor: "var(--turtle-text)",
   },
   ".cm-gutters": {
-    backgroundColor: "#1e1e2e",
-    color: "#585b70",
+    backgroundColor: "var(--turtle-bg)",
+    color: "var(--turtle-handle)",
     border: "none",
   },
   ".cm-activeLineGutter": {
-    backgroundColor: "#28283d",
+    backgroundColor: "var(--turtle-active-line)",
   },
   ".cm-activeLine": {
-    backgroundColor: "#28283d",
+    backgroundColor: "var(--turtle-active-line)",
   },
   ".cm-cursor": {
-    borderLeftColor: "#cdd6f4",
+    borderLeftColor: "var(--turtle-text)",
   },
   ".cm-selectionBackground": {
-    backgroundColor: "#44475a !important",
+    backgroundColor: "var(--turtle-selection) !important",
   },
   "&.cm-focused .cm-selectionBackground": {
-    backgroundColor: "#44475a !important",
+    backgroundColor: "var(--turtle-selection) !important",
   },
   ".cm-scroller": {
     overflow: "auto",

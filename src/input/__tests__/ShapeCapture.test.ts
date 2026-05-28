@@ -200,6 +200,18 @@ describe("ShapeCapture", () => {
     expect(capture.getPreviewShape()).toBeNull();
   });
 
+  it("notifies when shape drawing starts and stops", () => {
+    const onDrawingStateChange = vi.fn();
+    capture.onDrawingStateChange = onDrawingStateChange;
+    capture.setEnabled(true);
+
+    canvas.__fire("pointerdown", { button: 0, ctrlKey: false, shiftKey: false, altKey: false, clientX: 400, clientY: 300, pointerId: 1 });
+    canvas.__fire("pointerup", { clientX: 500, clientY: 400, shiftKey: false, altKey: false, pointerId: 1 });
+
+    expect(onDrawingStateChange).toHaveBeenNthCalledWith(1, true);
+    expect(onDrawingStateChange).toHaveBeenNthCalledWith(2, false);
+  });
+
   it("converts screen coordinates to world coordinates with camera offset", () => {
     capture.setEnabled(true);
     camera.x = 100;

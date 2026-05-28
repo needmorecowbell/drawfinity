@@ -122,6 +122,7 @@ export class CanvasApp {
   private replExecutor!: ReplExecutor;
   private turtlePlacing = false;
   private turtleOriginPlaced = false;
+  private turtleRunningPresence = false;
   private cursorManager!: CursorManager;
   private fpsCounter!: FpsCounter;
   private actionRegistry!: ActionRegistry;
@@ -359,8 +360,14 @@ export class CanvasApp {
     this.strokeCapture = new StrokeCapture(this.camera, this.cameraController, this.doc, canvas);
     this.strokeCapture.setBrushConfig(this.toolManager.getBrush());
     this.strokeCapture.onEraseComplete = () => this.statsTracker?.recordEraseAction();
+    this.strokeCapture.onDrawingStateChange = (isDrawing) => {
+      this.syncManager.updateDrawingState(isDrawing);
+    };
     this.shapeCapture = new ShapeCapture(this.camera, this.cameraController, this.doc, canvas);
     this.shapeCapture.setEnabled(false);
+    this.shapeCapture.onDrawingStateChange = (isDrawing) => {
+      this.syncManager.updateDrawingState(isDrawing);
+    };
     this.magnifyCapture = new MagnifyCapture(this.camera, this.cameraAnimator, this.cameraController, canvas);
     this.magnifyCapture.setEnabled(false);
     this.magnifyCapture.onCursorChange = (mode) => this.cursorManager.setMagnifyMode(mode);
@@ -415,6 +422,7 @@ export class CanvasApp {
         this.toolbar.setBrushSize(this.toolManager.getBrush().baseWidth);
         this.cursorManager.setTool("brush");
         this.cursorManager.setBrushWidth(this.toolManager.getBrush().baseWidth);
+        this.broadcastActiveTool();
       },
       onColorChange: (color) => {
         this.toolManager.setColor(color);
@@ -484,6 +492,7 @@ export class CanvasApp {
     if (userPreferences.defaultBrush >= 0 && userPreferences.defaultBrush < BRUSH_PRESETS.length) {
       this.toolbar.selectBrush(userPreferences.defaultBrush);
     }
+    this.broadcastActiveTool();
     this.toolbar.setColorUI(userPreferences.defaultColor);
     this.toolbar.setBackgroundColorUI(this.doc.getBackgroundColor());
 
@@ -595,6 +604,7 @@ export class CanvasApp {
         this.turtleButton.classList.add("turtle-executing");
         this.turtleIndicator.addTurtle("main", true);
         this.turtleIndicator.show();
+        this.setTurtlePresence(true, false);
         this.statsTracker?.setTurtleRunning(true);
       },
       onStep: () => {
@@ -604,6 +614,7 @@ export class CanvasApp {
         this.turtlePanel.setRunning(false);
         this.turtleButton.classList.remove("turtle-executing");
         this.turtleIndicator.hide();
+        this.setTurtlePresence(false, false);
         this.statsTracker?.setTurtleRunning(false);
         if (!result.success && result.error) {
           this.turtlePanel.appendConsole(`Error: ${result.error}`, "error");
@@ -638,6 +649,10 @@ export class CanvasApp {
       },
       onStop: () => {
         this.turtleExecutor.stop();
+        this.setTurtlePresence(false, false);
+      },
+      onTypingChange: (typing) => {
+        this.setTurtlePresence(this.turtleRunningPresence, typing);
       },
       onSpeedChange: (speed) => {
         const ms = this.turtleExecutor.getMainState();
@@ -1081,6 +1096,7 @@ export class CanvasApp {
 
     this.toolManager.setTool(tool);
     this.statsTracker?.recordToolUsage(tool);
+    this.broadcastActiveTool();
 
     if (tool === "magnify") {
       this.strokeCapture.setEnabled(false);
@@ -1132,6 +1148,16 @@ export class CanvasApp {
     this.strokeCapture.setBrushConfig(this.toolManager.getBrush());
     this.toolbar.selectBrush(index);
     this.cursorManager.setBrushWidth(this.toolManager.getBrush().baseWidth);
+    this.broadcastActiveTool();
+  }
+
+  private broadcastActiveTool(): void {
+    this.syncManager.updateActiveTool(this.toolManager.getTool());
+  }
+
+  private setTurtlePresence(running: boolean, typing: boolean): void {
+    this.turtleRunningPresence = running;
+    this.syncManager.updateTurtleActivity(running, typing);
   }
 
   private doUndo(): void {

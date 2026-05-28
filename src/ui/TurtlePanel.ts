@@ -19,6 +19,8 @@ export interface TurtlePanelCallbacks {
   onPlaceRequest?: () => void;
   /** Called when the user clicks Share. Receives the script text. */
   onShare?: (script: string) => void;
+  /** Called when the script editor typing indicator changes. */
+  onTypingChange?: (typing: boolean) => void;
   /** Called when a REPL command is entered. Returns output/error for display. */
   onReplCommand?: (line: string) => Promise<{ output: string | null; error: string | null }>;
   /** Called when the REPL is reset. */
@@ -68,6 +70,9 @@ export class TurtlePanel {
   private userDisplayName: string = "Me";
   private docChangeCallback: (() => void) | null = null;
   private exchangeSharedCallback: (() => void) | null = null;
+  private typingDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private typingIdleTimer: ReturnType<typeof setTimeout> | null = null;
+  private typingActive = false;
 
   // Tab state
   private activeTab: TurtleTabName = "script";
@@ -220,7 +225,10 @@ export class TurtlePanel {
     editorContainer.className = "turtle-editor";
     this.editor = new TurtleEditor({
       parent: editorContainer,
-      onChange: () => this.saveScript(),
+      onChange: () => {
+        this.saveScript();
+        this.handleEditorInput();
+      },
       onRun: () => this.handleRun(),
     });
     editorWrap.appendChild(editorContainer);
@@ -582,6 +590,31 @@ export class TurtlePanel {
     const script = this.editor.getValue().trim();
     if (!script) return;
     this.callbacks.onRun?.(script);
+  }
+
+  private handleEditorInput(): void {
+    if (this.typingDebounceTimer) clearTimeout(this.typingDebounceTimer);
+    if (this.typingIdleTimer) clearTimeout(this.typingIdleTimer);
+
+    this.typingDebounceTimer = setTimeout(() => {
+      this.typingDebounceTimer = null;
+      this.setTypingActive(true);
+    }, 500);
+
+    this.typingIdleTimer = setTimeout(() => {
+      this.typingIdleTimer = null;
+      if (this.typingDebounceTimer) {
+        clearTimeout(this.typingDebounceTimer);
+        this.typingDebounceTimer = null;
+      }
+      this.setTypingActive(false);
+    }, 2000);
+  }
+
+  private setTypingActive(typing: boolean): void {
+    if (this.typingActive === typing) return;
+    this.typingActive = typing;
+    this.callbacks.onTypingChange?.(typing);
   }
 
   private handleShare(): void {
@@ -1217,6 +1250,15 @@ export class TurtlePanel {
       this.drawfinityDoc.offSharedScriptsChanged(this.docChangeCallback);
       this.docChangeCallback = null;
     }
+    if (this.typingDebounceTimer) {
+      clearTimeout(this.typingDebounceTimer);
+      this.typingDebounceTimer = null;
+    }
+    if (this.typingIdleTimer) {
+      clearTimeout(this.typingIdleTimer);
+      this.typingIdleTimer = null;
+    }
+    this.setTypingActive(false);
     this.closeExchangeBrowser();
     this.hide();
     this.editor.destroy();

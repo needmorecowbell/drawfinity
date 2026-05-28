@@ -211,6 +211,67 @@ describe("RemoteCursors", () => {
     expect(svg).not.toBeNull();
   });
 
+  it("shows active tool label when the remote user reports a tool", () => {
+    const { syncManager, triggerUsers } = createMockSyncManager();
+    remoteCursors.attach(syncManager);
+
+    triggerUsers([{ ...makeUser("abc"), activeTool: "eraser" }]);
+
+    const tool = root.querySelector(".remote-cursor-tool") as HTMLElement;
+    expect(tool.textContent).toBe("eraser");
+    expect(tool.style.display).toBe("");
+  });
+
+  it("hides active tool label for older clients without tool presence", () => {
+    const { syncManager, triggerUsers } = createMockSyncManager();
+    remoteCursors.attach(syncManager);
+
+    triggerUsers([makeUser("abc")]);
+
+    const tool = root.querySelector(".remote-cursor-tool") as HTMLElement;
+    expect(tool.textContent).toBe("");
+    expect(tool.style.display).toBe("none");
+  });
+
+  it("toggles drawing pulse and activity dot from remote drawing state", () => {
+    const { syncManager, triggerUsers } = createMockSyncManager();
+    remoteCursors.attach(syncManager);
+
+    triggerUsers([{ ...makeUser("abc"), isDrawing: true }]);
+
+    const arrow = root.querySelector(".remote-cursor-arrow") as HTMLElement;
+    const drawing = root.querySelector(".remote-cursor-active-dot") as HTMLElement;
+    expect(arrow.classList.contains("remote-cursor-drawing")).toBe(true);
+    expect(drawing.style.display).toBe("");
+
+    triggerUsers([{ ...makeUser("abc"), isDrawing: false }]);
+
+    expect(arrow.classList.contains("remote-cursor-drawing")).toBe(false);
+    expect(drawing.style.display).toBe("none");
+  });
+
+  it("shows turtle running indicator when a remote turtle script is active", () => {
+    const { syncManager, triggerUsers } = createMockSyncManager();
+    remoteCursors.attach(syncManager);
+
+    triggerUsers([{ ...makeUser("abc"), isTurtleRunning: true }]);
+
+    const turtle = root.querySelector(".remote-cursor-turtle") as HTMLElement;
+    expect(turtle.style.display).toBe("");
+    expect(turtle.querySelector("svg")).not.toBeNull();
+  });
+
+  it("shows three-dot typing indicator while remote turtle typing is active", () => {
+    const { syncManager, triggerUsers } = createMockSyncManager();
+    remoteCursors.attach(syncManager);
+
+    triggerUsers([{ ...makeUser("abc"), isTurtleTyping: true }]);
+
+    const typing = root.querySelector(".remote-cursor-typing") as HTMLElement;
+    expect(typing.style.display).toBe("");
+    expect(typing.querySelectorAll("span").length).toBe(3);
+  });
+
   it("updatePositions repositions all cursors", () => {
     const { syncManager, triggerUsers } = createMockSyncManager();
     remoteCursors.attach(syncManager);

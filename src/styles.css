@@ -1091,6 +1091,11 @@ html, body {
   line-height: 0;
 }
 
+.remote-cursor-drawing {
+  animation: remote-cursor-drawing-pulse 600ms ease-in-out infinite;
+  transform-origin: 4px 4px;
+}
+
 .remote-cursor-label {
   position: absolute;
   top: 16px;
@@ -1102,6 +1107,111 @@ html, body {
   border-radius: 3px;
   white-space: nowrap;
   line-height: 1.4;
+}
+
+.remote-cursor-tool {
+  position: absolute;
+  top: 35px;
+  left: 10px;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 10px;
+  line-height: 1.3;
+  opacity: 0.75;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9);
+}
+
+.remote-cursor-status {
+  position: absolute;
+  top: 15px;
+  left: -7px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.remote-cursor-active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
+  animation: remote-cursor-dot-pulse 600ms ease-in-out infinite;
+}
+
+.remote-cursor-turtle {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  line-height: 0;
+}
+
+.remote-cursor-turtle svg {
+  width: 10px;
+  height: 10px;
+  margin: 1px;
+  display: block;
+}
+
+.remote-cursor-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
+  opacity: 0.7;
+}
+
+.remote-cursor-typing span {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: remote-cursor-typing-bounce 900ms ease-in-out infinite;
+}
+
+.remote-cursor-typing span:nth-child(2) {
+  animation-delay: 120ms;
+}
+
+.remote-cursor-typing span:nth-child(3) {
+  animation-delay: 240ms;
+}
+
+@keyframes remote-cursor-drawing-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.3);
+  }
+}
+
+@keyframes remote-cursor-dot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+}
+
+@keyframes remote-cursor-typing-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-2px);
+  }
 }
 
 /* Turtle Indicator */

@@ -8,6 +8,10 @@ interface CursorEntry {
   container: HTMLElement;
   arrow: HTMLElement;
   label: HTMLElement;
+  tool: HTMLElement;
+  drawing: HTMLElement;
+  turtle: HTMLElement;
+  typing: HTMLElement;
   lastUpdate: number;
   fading: boolean;
 }
@@ -128,10 +132,20 @@ export class RemoteCursors {
         this.cursors.set(user.id, entry);
       }
 
-      // Update color and name
+      // Update color, name, and presence activity indicators.
       entry.arrow.style.color = user.color;
       entry.label.textContent = user.name;
       entry.label.style.background = user.color;
+      entry.tool.textContent = user.activeTool ?? "";
+      entry.tool.style.color = user.color;
+      entry.tool.style.display = user.activeTool ? "" : "none";
+      entry.drawing.style.background = user.color;
+      entry.drawing.style.display = user.isDrawing ? "" : "none";
+      entry.turtle.style.color = user.color;
+      entry.turtle.style.display = user.isTurtleRunning ? "" : "none";
+      entry.typing.style.color = user.color;
+      entry.typing.style.display = user.isTurtleTyping ? "" : "none";
+      entry.arrow.classList.toggle("remote-cursor-drawing", user.isDrawing);
 
       if (user.cursor) {
         entry.lastUpdate = now;
@@ -179,12 +193,47 @@ export class RemoteCursors {
     label.style.background = user.color;
     container.appendChild(label);
 
+    // Compact presence indicators
+    const tool = document.createElement("div");
+    tool.className = "remote-cursor-tool";
+    tool.style.display = "none";
+    container.appendChild(tool);
+
+    const status = document.createElement("div");
+    status.className = "remote-cursor-status";
+
+    const drawing = document.createElement("span");
+    drawing.className = "remote-cursor-active-dot";
+    drawing.style.display = "none";
+    status.appendChild(drawing);
+
+    const turtle = document.createElement("span");
+    turtle.className = "remote-cursor-turtle";
+    turtle.innerHTML =
+      '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5c2.4 0 4.2 1.6 4.2 3.9 0 2.4-1.8 4.1-4.2 4.1S3.8 9.8 3.8 7.4C3.8 5.1 5.6 3.5 8 3.5Z" fill="currentColor"/><path d="M7.2 1.9h1.6v1.7H7.2V1.9Zm0 9.8h1.6v1.8H7.2v-1.8ZM2.2 6.7h1.7v1.5H2.2V6.7Zm9.9 0h1.7v1.5h-1.7V6.7Zm-8-2.7 1.2 1-1 1.1-1.2-1 1-1.1Zm7.8 0 1 1.1-1.2 1-1-1.1 1.2-1Zm-7.6 4.7 1 1.1-1.2 1-1-1.1 1.2-1Zm7.4 0 1.2 1-1 1.1-1.2-1 1-1.1Z" fill="currentColor" opacity=".75"/></svg>';
+    turtle.style.display = "none";
+    status.appendChild(turtle);
+
+    const typing = document.createElement("span");
+    typing.className = "remote-cursor-typing";
+    typing.style.display = "none";
+    for (let i = 0; i < 3; i++) {
+      const dot = document.createElement("span");
+      typing.appendChild(dot);
+    }
+    status.appendChild(typing);
+    container.appendChild(status);
+
     this.root.appendChild(container);
 
     return {
       container,
       arrow,
       label,
+      tool,
+      drawing,
+      turtle,
+      typing,
       lastUpdate: Date.now(),
       fading: false,
     };

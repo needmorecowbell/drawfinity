@@ -1139,17 +1139,19 @@ html, body {
 }
 
 .remote-cursor-turtle {
+  box-sizing: border-box;
   width: 12px;
   height: 12px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.9);
+  border: 1px solid currentColor;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
   line-height: 0;
 }
 
 .remote-cursor-turtle svg {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   margin: 1px;
   display: block;
 }

@@ -61,4 +61,6 @@ Drawfinity already has basic collaboration infrastructure: Yjs CRDT sync for str
   - Verified existing implementation in `src/turtle/RemoteTurtleRenderer.ts`: trails are keyed by `${clientId}:${turtleId}`, deduplicate unchanged points, trim to the last 20 positions, render dotted SVG polyline segments with newest segments reaching 30% opacity, redraw on camera changes, and clear stale trails when turtles disappear.
   - Existing focused coverage in `src/turtle/__tests__/RemoteTurtleRenderer.test.ts` checks dotted trail rendering, 20-position trimming, camera redraw, and cleanup.
 
-- [ ] **Run full test suite and type-check.** Run `npx vitest run` and `npx tsc --noEmit`. Fix any failures. Pay special attention to tests that mock SyncManager or awareness state — update them to handle the new fields.
+- [x] **Run full test suite and type-check.** Run `npx vitest run` and `npx tsc --noEmit`. Fix any failures. Pay special attention to tests that mock SyncManager or awareness state — update them to handle the new fields.
+  - Verified with `npx vitest run`: 108 test files passed, 2,297 tests passed.
+  - Verified with `npx tsc --noEmit`: completed without TypeScript errors.

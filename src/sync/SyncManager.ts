@@ -50,12 +50,20 @@ const DEFAULT_RECONNECT_CONFIG: ReconnectConfig = {
  * @property name - Display name shown next to the remote cursor.
  * @property color - CSS color string used for the cursor and presence indicator.
  * @property cursor - Current cursor position in world coordinates, or `null` if the cursor is off-canvas.
+ * @property activeTool - Current drawing tool name, if reported by this client.
+ * @property isDrawing - Whether the collaborator is actively drawing a stroke.
+ * @property isTurtleRunning - Whether the collaborator is executing a turtle script.
+ * @property isTurtleTyping - Whether the collaborator is typing in the turtle panel.
  */
 export interface RemoteUser {
   id: string;
   name: string;
   color: string;
   cursor: { x: number; y: number } | null;
+  activeTool?: string;
+  isDrawing: boolean;
+  isTurtleRunning: boolean;
+  isTurtleTyping: boolean;
 }
 
 /**
@@ -117,6 +125,11 @@ export class SyncManager {
   private doc: Y.Doc;
   private listeners: Set<(state: ConnectionState) => void> = new Set();
   private userProfile: UserProfile | null = null;
+  private cursor: { x: number; y: number } | null = null;
+  private activeTool: string | undefined;
+  private isDrawing = false;
+  private isTurtleRunning = false;
+  private isTurtleTyping = false;
   private remoteUserListeners: Set<(users: RemoteUser[]) => void> = new Set();
   private remoteTurtleListeners: Set<(turtles: RemoteTurtles[]) => void> =
     new Set();
@@ -152,12 +165,7 @@ export class SyncManager {
   setUser(profile: UserProfile): void {
     this.userProfile = profile;
     if (this.provider) {
-      this.provider.awareness.setLocalStateField("user", {
-        id: profile.id,
-        name: profile.name,
-        color: profile.color,
-        cursor: null,
-      });
+      this.updateLocalUserAwareness();
     }
   }
 
@@ -222,13 +230,27 @@ export class SyncManager {
 
   private setAwarenessState(): void {
     if (this.provider && this.userProfile) {
-      this.provider.awareness.setLocalStateField("user", {
-        id: this.userProfile.id,
-        name: this.userProfile.name,
-        color: this.userProfile.color,
-        cursor: null,
-      });
+      this.updateLocalUserAwareness();
     }
+  }
+
+  private updateLocalUserAwareness(): void {
+    if (!this.provider) return;
+
+    this.provider.awareness.setLocalStateField("user", {
+      ...(this.userProfile
+        ? {
+            id: this.userProfile.id,
+            name: this.userProfile.name,
+            color: this.userProfile.color,
+          }
+        : {}),
+      cursor: this.cursor,
+      activeTool: this.activeTool,
+      isDrawing: this.isDrawing,
+      isTurtleRunning: this.isTurtleRunning,
+      isTurtleTyping: this.isTurtleTyping,
+    });
   }
 
   private handleDisconnect(): void {
@@ -354,18 +376,40 @@ export class SyncManager {
    * @param worldY - Cursor Y position in world (canvas) coordinates.
    */
   updateCursorPosition(worldX: number, worldY: number): void {
-    if (this.provider) {
-      this.provider.awareness.setLocalStateField("user", {
-        ...(this.userProfile
-          ? {
-              id: this.userProfile.id,
-              name: this.userProfile.name,
-              color: this.userProfile.color,
-            }
-          : {}),
-        cursor: { x: worldX, y: worldY },
-      });
-    }
+    this.cursor = { x: worldX, y: worldY };
+    this.updateLocalUserAwareness();
+  }
+
+  /**
+   * Broadcasts the currently selected local drawing tool.
+   *
+   * @param tool - Current tool name, such as `"brush"`, `"eraser"`, or `"rectangle"`.
+   */
+  updateActiveTool(tool: string): void {
+    this.activeTool = tool;
+    this.updateLocalUserAwareness();
+  }
+
+  /**
+   * Broadcasts whether the local user is actively drawing a stroke.
+   *
+   * @param isDrawing - `true` while a stroke is in progress, otherwise `false`.
+   */
+  updateDrawingState(isDrawing: boolean): void {
+    this.isDrawing = isDrawing;
+    this.updateLocalUserAwareness();
+  }
+
+  /**
+   * Broadcasts local turtle panel activity.
+   *
+   * @param running - Whether a turtle script is currently executing.
+   * @param typing - Whether the user is currently typing in the turtle panel.
+   */
+  updateTurtleActivity(running: boolean, typing: boolean): void {
+    this.isTurtleRunning = running;
+    this.isTurtleTyping = typing;
+    this.updateLocalUserAwareness();
   }
 
   /**
@@ -392,6 +436,11 @@ export class SyncManager {
           name: user.name,
           color: user.color,
           cursor: user.cursor || null,
+          activeTool:
+            typeof user.activeTool === "string" ? user.activeTool : undefined,
+          isDrawing: user.isDrawing === true,
+          isTurtleRunning: user.isTurtleRunning === true,
+          isTurtleTyping: user.isTurtleTyping === true,
         });
       }
     });

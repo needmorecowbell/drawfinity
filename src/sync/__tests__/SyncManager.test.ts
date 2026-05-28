@@ -426,6 +426,10 @@ describe("SyncManager", () => {
         name: "Test",
         color: "#ff0000",
         cursor: null,
+        activeTool: undefined,
+        isDrawing: false,
+        isTurtleRunning: false,
+        isTurtleTyping: false,
       });
     });
 
@@ -519,6 +523,10 @@ describe("SyncManager", () => {
         name: "Test User",
         color: "#e74c3c",
         cursor: null,
+        activeTool: undefined,
+        isDrawing: false,
+        isTurtleRunning: false,
+        isTurtleTyping: false,
       });
     });
 
@@ -533,6 +541,10 @@ describe("SyncManager", () => {
         name: "Test User",
         color: "#e74c3c",
         cursor: null,
+        activeTool: undefined,
+        isDrawing: false,
+        isTurtleRunning: false,
+        isTurtleTyping: false,
       });
     });
 
@@ -555,6 +567,89 @@ describe("SyncManager", () => {
         name: "Test User",
         color: "#e74c3c",
         cursor: { x: 100, y: 200 },
+        activeTool: undefined,
+        isDrawing: false,
+        isTurtleRunning: false,
+        isTurtleTyping: false,
+      });
+    });
+
+    it("updateActiveTool sets the current tool in awareness", () => {
+      syncManager.setUser(testProfile);
+      syncManager.connect("ws://localhost:8080", "test-room");
+      mockAwareness.setLocalStateField.mockClear();
+
+      syncManager.updateActiveTool("brush");
+
+      expect(mockAwareness.setLocalStateField).toHaveBeenCalledWith("user", {
+        id: "user-123",
+        name: "Test User",
+        color: "#e74c3c",
+        cursor: null,
+        activeTool: "brush",
+        isDrawing: false,
+        isTurtleRunning: false,
+        isTurtleTyping: false,
+      });
+    });
+
+    it("updateDrawingState sets drawing activity in awareness", () => {
+      syncManager.setUser(testProfile);
+      syncManager.connect("ws://localhost:8080", "test-room");
+      mockAwareness.setLocalStateField.mockClear();
+
+      syncManager.updateDrawingState(true);
+
+      expect(mockAwareness.setLocalStateField).toHaveBeenCalledWith("user", {
+        id: "user-123",
+        name: "Test User",
+        color: "#e74c3c",
+        cursor: null,
+        activeTool: undefined,
+        isDrawing: true,
+        isTurtleRunning: false,
+        isTurtleTyping: false,
+      });
+    });
+
+    it("updateTurtleActivity sets turtle running and typing in awareness", () => {
+      syncManager.setUser(testProfile);
+      syncManager.connect("ws://localhost:8080", "test-room");
+      mockAwareness.setLocalStateField.mockClear();
+
+      syncManager.updateTurtleActivity(true, true);
+
+      expect(mockAwareness.setLocalStateField).toHaveBeenCalledWith("user", {
+        id: "user-123",
+        name: "Test User",
+        color: "#e74c3c",
+        cursor: null,
+        activeTool: undefined,
+        isDrawing: false,
+        isTurtleRunning: true,
+        isTurtleTyping: true,
+      });
+    });
+
+    it("presence updates preserve cursor and other local activity fields", () => {
+      syncManager.setUser(testProfile);
+      syncManager.connect("ws://localhost:8080", "test-room");
+      syncManager.updateCursorPosition(100, 200);
+      syncManager.updateActiveTool("eraser");
+      syncManager.updateDrawingState(true);
+      mockAwareness.setLocalStateField.mockClear();
+
+      syncManager.updateTurtleActivity(true, false);
+
+      expect(mockAwareness.setLocalStateField).toHaveBeenCalledWith("user", {
+        id: "user-123",
+        name: "Test User",
+        color: "#e74c3c",
+        cursor: { x: 100, y: 200 },
+        activeTool: "eraser",
+        isDrawing: true,
+        isTurtleRunning: true,
+        isTurtleTyping: false,
       });
     });
 
@@ -589,8 +684,66 @@ describe("SyncManager", () => {
           name: "Remote User",
           color: "#3498db",
           cursor: { x: 50, y: 75 },
+          activeTool: undefined,
+          isDrawing: false,
+          isTurtleRunning: false,
+          isTurtleTyping: false,
         },
       ]);
+    });
+
+    it("getRemoteUsers returns remote presence fields when available", () => {
+      syncManager.connect("ws://localhost:8080", "test-room");
+
+      awarenessStates.set(2, {
+        user: {
+          id: "remote-456",
+          name: "Remote User",
+          color: "#3498db",
+          cursor: { x: 50, y: 75 },
+          activeTool: "rectangle",
+          isDrawing: true,
+          isTurtleRunning: true,
+          isTurtleTyping: true,
+        },
+      });
+
+      expect(syncManager.getRemoteUsers()).toEqual([
+        {
+          id: "remote-456",
+          name: "Remote User",
+          color: "#3498db",
+          cursor: { x: 50, y: 75 },
+          activeTool: "rectangle",
+          isDrawing: true,
+          isTurtleRunning: true,
+          isTurtleTyping: true,
+        },
+      ]);
+    });
+
+    it("getRemoteUsers defaults missing remote presence fields", () => {
+      syncManager.connect("ws://localhost:8080", "test-room");
+
+      awarenessStates.set(2, {
+        user: {
+          id: "legacy-client",
+          name: "Legacy Client",
+          color: "#3498db",
+          cursor: null,
+        },
+      });
+
+      expect(syncManager.getRemoteUsers()[0]).toEqual({
+        id: "legacy-client",
+        name: "Legacy Client",
+        color: "#3498db",
+        cursor: null,
+        activeTool: undefined,
+        isDrawing: false,
+        isTurtleRunning: false,
+        isTurtleTyping: false,
+      });
     });
 
     it("getRemoteUsers filters out states without valid user data", () => {
@@ -634,7 +787,16 @@ describe("SyncManager", () => {
       awarenessListeners[0]();
 
       expect(callback).toHaveBeenCalledWith([
-        { id: "r1", name: "R1", color: "#abc", cursor: null },
+        {
+          id: "r1",
+          name: "R1",
+          color: "#abc",
+          cursor: null,
+          activeTool: undefined,
+          isDrawing: false,
+          isTurtleRunning: false,
+          isTurtleTyping: false,
+        },
       ]);
     });
 

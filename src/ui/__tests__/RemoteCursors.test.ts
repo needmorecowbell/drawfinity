@@ -42,6 +42,9 @@ function makeUser(id: string, cursor: { x: number; y: number } | null = { x: 100
     name: `User ${id}`,
     color: `#${id.padStart(6, "0")}`,
     cursor,
+    isDrawing: false,
+    isTurtleRunning: false,
+    isTurtleTyping: false,
   };
 }
 
@@ -133,6 +136,9 @@ describe("RemoteCursors", () => {
       name: "New Name",
       color: "#ff0000",
       cursor: { x: 100, y: 200 },
+      isDrawing: false,
+      isTurtleRunning: false,
+      isTurtleTyping: false,
     };
     triggerUsers([updated]);
 

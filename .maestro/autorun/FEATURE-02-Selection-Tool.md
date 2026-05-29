@@ -50,13 +50,14 @@ Once a region is selected, the user can:
   - Update `CursorManager.ts` with a crosshair cursor for selection mode
   - Notes: Added selection mode state (`rectangle`/`ellipse`/`lasso`) to `ToolManager`, wired the toolbar selection mode picker and `V` shortcut, updated the cheat sheet references, and added focused tests for tool state, toolbar selection UI, and cursor behavior. Verified with `npx tsc --noEmit`, focused Vitest tests, and full `npx vitest run`.
 
-- [ ] Create `src/input/SelectionCapture.ts`:
+- [x] Create `src/input/SelectionCapture.ts`:
   - Handle pointer events for all three selection modes
   - **Rectangle mode**: `pointerdown` sets corner 1, `pointermove` updates corner 2, `pointerup` finalizes
   - **Ellipse mode**: Same drag mechanic, defines bounding box of ellipse
   - **Lasso mode**: Each `pointerdown` adds a vertex; double-click or clicking near the first vertex closes the polygon
   - Convert screen coordinates to world coordinates using `camera.screenToWorld()`
   - Emit a `SelectionRegion` object: `{ type: "rect" | "ellipse" | "lasso", bounds: ... , points?: ... }`
+  - Notes: Added `SelectionCapture` with rectangle/ellipse drag selection, Shift-constrained square/circle bounds, lasso vertex capture with double-click/near-first closure, preview access, and a completion callback. Wired it into `CanvasApp` select-tool activation and toolbar mode changes, exported the new capture/types, and added focused tests. Verified with `npx tsc --noEmit`, `npx vitest run src/input/__tests__/SelectionCapture.test.ts`, and full `npx vitest run`.
 
 - [ ] Create `src/model/Selection.ts`:
   - `SelectionRegion` type definition (rect, ellipse, lasso with their parameters)

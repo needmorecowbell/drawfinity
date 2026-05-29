@@ -5,7 +5,8 @@ import { generateShapeVertices } from "../renderer/ShapeMesh";
 import { Camera, CameraAnimator, CameraController } from "../camera";
 import * as Y from "yjs";
 import { DrawfinityDoc, UndoManager } from "../crdt";
-import { StrokeCapture, ShapeCapture, MagnifyCapture } from "../input";
+import { StrokeCapture, ShapeCapture, MagnifyCapture, SelectionCapture } from "../input";
+import type { SelectionRegion } from "../input";
 import { ToolManager, BRUSH_PRESETS, isShapeTool } from "../tools";
 import type { ToolType } from "../tools";
 import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel, TurtlePanel, BookmarkPanel, StatsPanel, BadgeToast, RecordToast, SessionEventCollector, showSessionSummary, hasSessionActivity, buildSessionData } from "../ui";
@@ -107,6 +108,7 @@ export class CanvasApp {
   private toolManager!: ToolManager;
   private strokeCapture!: StrokeCapture;
   private shapeCapture!: ShapeCapture;
+  private selectionCapture!: SelectionCapture;
   private magnifyCapture!: MagnifyCapture;
   private undoManager!: UndoManager;
   private toolbar!: Toolbar;
@@ -153,6 +155,7 @@ export class CanvasApp {
   private sessionEventCollector: SessionEventCollector | null = null;
   private sessionSnapshot: SessionSnapshot | null = null;
   private sessionStartMs = 0;
+  private activeSelectionRegion: SelectionRegion | null = null;
 
   /**
    * Initializes all subsystems and starts the render loop.
@@ -361,6 +364,11 @@ export class CanvasApp {
     this.strokeCapture.onEraseComplete = () => this.statsTracker?.recordEraseAction();
     this.shapeCapture = new ShapeCapture(this.camera, this.cameraController, this.doc, canvas);
     this.shapeCapture.setEnabled(false);
+    this.selectionCapture = new SelectionCapture(this.camera, this.cameraController, canvas);
+    this.selectionCapture.setEnabled(false);
+    this.selectionCapture.onSelectionComplete = (region) => {
+      this.activeSelectionRegion = region;
+    };
     this.magnifyCapture = new MagnifyCapture(this.camera, this.cameraAnimator, this.cameraController, canvas);
     this.magnifyCapture.setEnabled(false);
     this.magnifyCapture.onCursorChange = (mode) => this.cursorManager.setMagnifyMode(mode);
@@ -407,6 +415,7 @@ export class CanvasApp {
         this.toolManager.setTool("brush");
         this.toolManager.setBrush(brush);
         this.shapeCapture.setEnabled(false);
+        this.selectionCapture.setEnabled(false);
         this.magnifyCapture.setEnabled(false);
         this.strokeCapture.setEnabled(true);
         this.strokeCapture.setTool("brush");
@@ -426,6 +435,7 @@ export class CanvasApp {
       },
       onSelectionModeChange: (mode) => {
         this.toolManager.setSelectionConfig({ mode });
+        this.selectionCapture.setMode(mode);
       },
       onUndo: () => this.doUndo(),
       onRedo: () => this.doRedo(),
@@ -1002,6 +1012,7 @@ export class CanvasApp {
     // Clean up input
     this.strokeCapture.destroy();
     this.shapeCapture.destroy();
+    this.selectionCapture.destroy();
     this.magnifyCapture.destroy();
     this.cameraController.destroy();
 
@@ -1023,6 +1034,11 @@ export class CanvasApp {
   /** Returns the Yjs-backed CRDT document that holds all strokes, shapes, and metadata. */
   getDoc(): DrawfinityDoc {
     return this.doc;
+  }
+
+  /** Returns the most recently finalized selection region, if one exists. */
+  getActiveSelectionRegion(): SelectionRegion | null {
+    return this.activeSelectionRegion;
   }
 
   /**
@@ -1088,6 +1104,7 @@ export class CanvasApp {
     if (tool === "magnify") {
       this.strokeCapture.setEnabled(false);
       this.shapeCapture.setEnabled(false);
+      this.selectionCapture.setEnabled(false);
       this.magnifyCapture.setEnabled(true);
       this.cameraController.panToolActive = false;
       this.toolbar.setToolUI(tool);
@@ -1095,6 +1112,7 @@ export class CanvasApp {
     } else if (tool === "pan") {
       this.strokeCapture.setEnabled(false);
       this.shapeCapture.setEnabled(false);
+      this.selectionCapture.setEnabled(false);
       this.magnifyCapture.setEnabled(false);
       this.cameraController.panToolActive = true;
       this.toolbar.setToolUI(tool);
@@ -1102,6 +1120,8 @@ export class CanvasApp {
     } else if (tool === "select") {
       this.strokeCapture.setEnabled(false);
       this.shapeCapture.setEnabled(false);
+      this.selectionCapture.setEnabled(true);
+      this.selectionCapture.setMode(this.toolManager.getSelectionConfig().mode);
       this.magnifyCapture.setEnabled(false);
       this.cameraController.panToolActive = false;
       this.toolbar.setToolUI(tool);
@@ -1110,6 +1130,7 @@ export class CanvasApp {
       this.strokeCapture.setTool("brush");
       this.strokeCapture.setEnabled(false);
       this.shapeCapture.setEnabled(true);
+      this.selectionCapture.setEnabled(false);
       this.magnifyCapture.setEnabled(false);
       this.shapeCapture.setConfig({
         shapeType: tool,
@@ -1124,6 +1145,7 @@ export class CanvasApp {
       this.cursorManager.setTool("brush");
     } else {
       this.shapeCapture.setEnabled(false);
+      this.selectionCapture.setEnabled(false);
       this.magnifyCapture.setEnabled(false);
       this.strokeCapture.setEnabled(true);
       this.strokeCapture.setTool(tool as "brush" | "eraser");

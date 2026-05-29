@@ -7,6 +7,8 @@ import * as Y from "yjs";
 import { DrawfinityDoc, UndoManager } from "../crdt";
 import { StrokeCapture, ShapeCapture, MagnifyCapture, SelectionCapture } from "../input";
 import type { SelectionRegion } from "../input";
+import { getSelectedItems, translateSelectionRegion } from "../model";
+import type { CanvasItem } from "../model";
 import { ToolManager, BRUSH_PRESETS, isShapeTool } from "../tools";
 import type { ToolType } from "../tools";
 import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel, TurtlePanel, BookmarkPanel, StatsPanel, BadgeToast, RecordToast, SessionEventCollector, showSessionSummary, hasSessionActivity, buildSessionData } from "../ui";
@@ -156,6 +158,7 @@ export class CanvasApp {
   private sessionSnapshot: SessionSnapshot | null = null;
   private sessionStartMs = 0;
   private activeSelectionRegion: SelectionRegion | null = null;
+  private movingSelectionItems: CanvasItem[] = [];
 
   /**
    * Initializes all subsystems and starts the render loop.
@@ -368,6 +371,28 @@ export class CanvasApp {
     this.selectionCapture.setEnabled(false);
     this.selectionCapture.onSelectionComplete = (region) => {
       this.activeSelectionRegion = region;
+      this.selectionCapture.setActiveRegion(region);
+    };
+    this.selectionCapture.onSelectionMoveStart = () => {
+      this.movingSelectionItems = this.refreshActiveSelectionItems();
+      if (this.movingSelectionItems.length > 0) {
+        this.undoManager.beginBatch();
+      }
+    };
+    this.selectionCapture.onSelectionMove = (dx, dy) => {
+      if (this.movingSelectionItems.length === 0) return;
+      this.doc.translateItems(this.movingSelectionItems, dx, dy);
+      if (this.activeSelectionRegion) {
+        this.activeSelectionRegion = translateSelectionRegion(this.activeSelectionRegion, dx, dy);
+      }
+    };
+    this.selectionCapture.onSelectionMoveEnd = () => {
+      if (this.movingSelectionItems.length > 0) {
+        this.undoManager.endBatch();
+        this.updateUndoRedoState();
+      }
+      this.movingSelectionItems = [];
+      this.refreshActiveSelectionItems();
     };
     this.magnifyCapture = new MagnifyCapture(this.camera, this.cameraAnimator, this.cameraController, canvas);
     this.magnifyCapture.setEnabled(false);
@@ -1276,6 +1301,47 @@ export class CanvasApp {
     void downloadCanvas(canvas, `drawfinity-${timestamp}.png`);
   }
 
+  private refreshActiveSelectionItems(): CanvasItem[] {
+    if (!this.activeSelectionRegion) {
+      return [];
+    }
+    return getSelectedItems(this.doc, this.activeSelectionRegion);
+  }
+
+  private clearSelection(): void {
+    this.activeSelectionRegion = null;
+    this.movingSelectionItems = [];
+    this.selectionCapture.setActiveRegion(null);
+  }
+
+  private deleteActiveSelection(): void {
+    const items = this.refreshActiveSelectionItems();
+    if (items.length === 0) return;
+
+    this.undoManager.beginBatch();
+    this.doc.removeItems(items);
+    this.undoManager.endBatch();
+    this.clearSelection();
+    this.updateUndoRedoState();
+  }
+
+  private duplicateActiveSelection(): boolean {
+    if (!this.activeSelectionRegion) return false;
+
+    const items = this.refreshActiveSelectionItems();
+    if (items.length === 0) return false;
+
+    const offset = 24 / this.camera.zoom;
+    this.undoManager.beginBatch();
+    this.doc.duplicateItems(items, offset, offset);
+    this.undoManager.endBatch();
+
+    this.activeSelectionRegion = translateSelectionRegion(this.activeSelectionRegion, offset, offset);
+    this.selectionCapture.setActiveRegion(this.activeSelectionRegion);
+    this.updateUndoRedoState();
+    return true;
+  }
+
   private updateUserColorIndicator(profile: { color: string; name: string }): void {
     this.userColorIndicator.style.backgroundColor = profile.color;
     this.userColorIndicator.title = profile.name;
@@ -1340,7 +1406,11 @@ export class CanvasApp {
 
     // Panels
     r.register({ id: "toggle-bookmarks", label: "Bookmarks panel", shortcut: "Ctrl+B", category: "Panels", execute: () => this.bookmarkPanel.toggle() });
-    r.register({ id: "quick-add-bookmark", label: "Add bookmark", shortcut: "Ctrl+D", category: "Panels", execute: () => { this.bookmarkPanel.addBookmark(); this.statsTracker?.recordBookmarkCreated(); } });
+    r.register({ id: "quick-add-bookmark", label: "Add bookmark", shortcut: "Ctrl+D", category: "Panels", execute: () => {
+      if (this.duplicateActiveSelection()) return;
+      this.bookmarkPanel.addBookmark();
+      this.statsTracker?.recordBookmarkCreated();
+    } });
     r.register({ id: "toggle-connection", label: "Connection panel", shortcut: "Ctrl+K", category: "Panels", execute: () => this.connectionPanel.toggle() });
     r.register({ id: "toggle-settings", label: "Settings", shortcut: "Ctrl+,", category: "Panels", execute: () => this.settingsPanel.toggle() });
     r.register({ id: "toggle-turtle", label: "Turtle graphics", shortcut: "Ctrl+`", category: "Panels", execute: () => this.turtlePanel.toggle() });
@@ -1405,6 +1475,7 @@ export class CanvasApp {
 
     if (mod && (e.key === "d" || e.key === "D") && !e.shiftKey) {
       e.preventDefault();
+      if (this.duplicateActiveSelection()) return;
       this.bookmarkPanel.addBookmark();
       this.statsTracker?.recordBookmarkCreated();
       return;
@@ -1459,6 +1530,12 @@ export class CanvasApp {
     }
 
     if (mod) return;
+
+    if (e.key === "Backspace" || e.key === "Delete") {
+      e.preventDefault();
+      this.deleteActiveSelection();
+      return;
+    }
 
     if (e.key === "Escape") {
       this.goHome();

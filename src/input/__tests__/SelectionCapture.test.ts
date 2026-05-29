@@ -206,6 +206,27 @@ describe("SelectionCapture", () => {
     expect(completed).toHaveLength(0);
   });
 
+  it("moves the active selection instead of starting a new region when dragging inside it", () => {
+    capture.setEnabled(true);
+    capture.setActiveRegion({ type: "rect", bounds: { x: 0, y: 0, width: 100, height: 100 } });
+    const onMoveStart = vi.fn();
+    const onMove = vi.fn();
+    const onMoveEnd = vi.fn();
+    capture.onSelectionMoveStart = onMoveStart;
+    capture.onSelectionMove = onMove;
+    capture.onSelectionMoveEnd = onMoveEnd;
+
+    canvas.__fire("pointerdown", { button: 0, ctrlKey: false, clientX: 450, clientY: 350, pointerId: 1 });
+    canvas.__fire("pointermove", { clientX: 470, clientY: 380, pointerId: 1 });
+    canvas.__fire("pointerup", { clientX: 470, clientY: 380, pointerId: 1 });
+
+    expect(completed).toHaveLength(0);
+    expect(onMoveStart).toHaveBeenCalledTimes(1);
+    expect(onMove).toHaveBeenCalledWith(20, 30);
+    expect(onMoveEnd).toHaveBeenCalledTimes(1);
+    expect(capture.getPreviewRegion()).toBeNull();
+  });
+
   it("clears active selection input when disabled or mode changes", () => {
     capture.setEnabled(true);
 

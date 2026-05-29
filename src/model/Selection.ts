@@ -81,6 +81,28 @@ export function pointInRegion(point: SelectionPoint, region: SelectionRegion): b
   return pointInPolygon(point, region.points);
 }
 
+/**
+ * Returns a copy of the selection region translated by the given world-space delta.
+ */
+export function translateSelectionRegion(region: SelectionRegion, dx: number, dy: number): SelectionRegion {
+  const bounds = {
+    x: region.bounds.x + dx,
+    y: region.bounds.y + dy,
+    width: region.bounds.width,
+    height: region.bounds.height,
+  };
+
+  if (region.type === "lasso") {
+    return {
+      type: "lasso",
+      bounds,
+      points: region.points.map((point) => ({ x: point.x + dx, y: point.y + dy })),
+    };
+  }
+
+  return { ...region, bounds };
+}
+
 function pointInBounds(point: SelectionPoint, bounds: SelectionBounds): boolean {
   return (
     point.x >= bounds.x &&

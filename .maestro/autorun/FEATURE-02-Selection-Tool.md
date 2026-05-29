@@ -68,10 +68,11 @@ Once a region is selected, the user can:
   - Point-in-polygon: ray-casting algorithm for lasso regions
   - Notes: Added the shared selection model/types, point-in-region helpers for rectangle/ellipse/lasso, stroke and shape hit testing, and `getSelectedItems()` with `getAllItems()` document-order support plus fallback document querying. Updated `SelectionCapture` and barrels to use/re-export the model types, and added focused model tests. Verified with `npx tsc --noEmit`, focused Vitest selection tests, and full `npx vitest run`.
 
-- [ ] Implement selection actions:
+- [x] Implement selection actions:
   - **Delete**: call `doc.removeStroke(id)` / `doc.removeShape(id)` for each selected item, wrapped in a single Yjs transaction for atomic undo
   - **Move**: on drag, compute delta in world coordinates, update all point positions (strokes) and center coordinates (shapes) via CRDT mutations
   - **Duplicate**: clone selected items with new IDs and offset positions, add to document
+  - Notes: Added bulk selection mutation APIs to `DrawfinityDoc` for atomic remove, in-place translate, and duplicate of mixed stroke/shape selections. Extended `SelectionCapture` so dragging inside an active region moves the selection, wired CanvasApp delete (`Backspace`/`Delete`), duplicate (`Ctrl+D` when a selection is active), and drag-move behavior, and added focused tests for CRDT selection actions and selection-region move capture. Verified with `npx tsc --noEmit`, focused Vitest selection/CRDT tests, and full `npx vitest run`.
 
 - [ ] Render selection overlay in `src/renderer/Renderer.ts`:
   - Draw selection region outline (dashed rectangle/ellipse/polygon)

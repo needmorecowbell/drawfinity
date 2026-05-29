@@ -1,4 +1,5 @@
 import { Camera, CameraController } from "../camera";
+import { pointInRegion, translateSelectionRegion } from "../model";
 import type { SelectionBounds, SelectionPoint, SelectionRegion } from "../model";
 import type { SelectionMode } from "../tools";
 
@@ -24,10 +25,16 @@ export class SelectionCapture {
   private shiftHeld = false;
   private lassoPoints: SelectionPoint[] = [];
   private lassoPreviewPoint: SelectionPoint | null = null;
+  private activeRegion: SelectionRegion | null = null;
+  private movingSelection = false;
+  private lastMovePoint: SelectionPoint | null = null;
 
   private static readonly CLOSE_THRESHOLD_SCREEN_PX = 10;
 
   onSelectionComplete: ((region: SelectionRegion) => void) | null = null;
+  onSelectionMoveStart: (() => void) | null = null;
+  onSelectionMove: ((dx: number, dy: number) => void) | null = null;
+  onSelectionMoveEnd: (() => void) | null = null;
 
   private onPointerDown: (e: PointerEvent) => void;
   private onPointerMove: (e: PointerEvent) => void;
@@ -81,12 +88,24 @@ export class SelectionCapture {
     return this.computeDragRegion();
   }
 
+  setActiveRegion(region: SelectionRegion | null): void {
+    this.activeRegion = region;
+  }
+
   private handlePointerDown(e: PointerEvent): void {
     if (!this.enabled) return;
     if (e.button !== 0 || e.ctrlKey) return;
     if (this.cameraController.panning) return;
 
     const world = this.camera.screenToWorld(e.clientX, e.clientY);
+
+    if (this.activeRegion && pointInRegion(world, this.activeRegion)) {
+      this.movingSelection = true;
+      this.lastMovePoint = world;
+      this.onSelectionMoveStart?.();
+      this.canvas.setPointerCapture(e.pointerId);
+      return;
+    }
 
     if (this.mode === "lasso") {
       this.handleLassoPointerDown(world, e);
@@ -105,6 +124,19 @@ export class SelectionCapture {
 
     const world = this.camera.screenToWorld(e.clientX, e.clientY);
 
+    if (this.movingSelection && this.lastMovePoint) {
+      const dx = world.x - this.lastMovePoint.x;
+      const dy = world.y - this.lastMovePoint.y;
+      this.lastMovePoint = world;
+      if (dx !== 0 || dy !== 0) {
+        this.activeRegion = this.activeRegion
+          ? translateSelectionRegion(this.activeRegion, dx, dy)
+          : null;
+        this.onSelectionMove?.(dx, dy);
+      }
+      return;
+    }
+
     if (this.mode === "lasso") {
       if (this.lassoPoints.length > 0) {
         this.lassoPreviewPoint = world;
@@ -118,6 +150,14 @@ export class SelectionCapture {
   }
 
   private handlePointerUp(e: PointerEvent): void {
+    if (this.movingSelection) {
+      this.movingSelection = false;
+      this.lastMovePoint = null;
+      this.onSelectionMoveEnd?.();
+      this.canvas.releasePointerCapture(e.pointerId);
+      return;
+    }
+
     if (!this.activeDrag) return;
 
     this.current = this.camera.screenToWorld(e.clientX, e.clientY);
@@ -194,8 +234,10 @@ export class SelectionCapture {
 
   private resetState(): void {
     this.activeDrag = false;
+    this.movingSelection = false;
     this.start = null;
     this.current = null;
+    this.lastMovePoint = null;
     this.lassoPoints = [];
     this.lassoPreviewPoint = null;
   }

@@ -62,8 +62,30 @@ vi.mock("../WebGLContext", () => ({
 import { Renderer } from "../Renderer";
 
 describe("Renderer", () => {
+  const mockOverlayContext = {
+    clearRect: vi.fn(),
+    save: vi.fn(),
+    restore: vi.fn(),
+    setTransform: vi.fn(),
+    setLineDash: vi.fn(),
+    beginPath: vi.fn(),
+    rect: vi.fn(),
+    ellipse: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    closePath: vi.fn(),
+    fill: vi.fn(),
+    stroke: vi.fn(),
+    lineWidth: 1,
+    lineJoin: "miter",
+    lineCap: "butt",
+    strokeStyle: "",
+    fillStyle: "",
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
+    mockContextInstance.canvas = {} as HTMLCanvasElement;
   });
 
   it("creates without error", () => {
@@ -107,5 +129,62 @@ describe("Renderer", () => {
     const renderer = new Renderer({} as HTMLCanvasElement);
     expect(() => renderer.destroy()).not.toThrow();
     expect(mockContextInstance.destroy).toHaveBeenCalled();
+  });
+
+  it("drawSelectionOverlay() renders a fixed-screen dashed region on an overlay canvas", () => {
+    let removed = false;
+    const createdOverlay: {
+      className: string;
+      style: Record<string, string>;
+      width: number;
+      height: number;
+      setAttribute: ReturnType<typeof vi.fn>;
+      getContext: ReturnType<typeof vi.fn>;
+      remove: ReturnType<typeof vi.fn>;
+    } = {
+      className: "",
+      style: {},
+      width: 0,
+      height: 0,
+      setAttribute: vi.fn(),
+      getContext: vi.fn((contextId: string) =>
+        contextId === "2d" ? mockOverlayContext : null,
+      ),
+      remove: vi.fn(() => {
+        removed = true;
+      }),
+    };
+    const host = {
+      appendChild: vi.fn(),
+    };
+    const ownerDocument = {
+      createElement: vi.fn(() => createdOverlay),
+    };
+    const canvas = {
+      ownerDocument,
+      parentElement: host,
+    } as unknown as HTMLCanvasElement;
+    mockContextInstance.canvas = canvas;
+
+    const renderer = new Renderer(canvas);
+    renderer.drawSelectionOverlay(
+      {
+        x: 0,
+        y: 0,
+        zoom: 2,
+        getViewportSize: () => [200, 100],
+      },
+      [{ type: "rect", bounds: { x: -10, y: -5, width: 20, height: 10 } }],
+    );
+
+    expect(host.appendChild).toHaveBeenCalledWith(createdOverlay);
+    expect(createdOverlay.className).toBe("selection-overlay-canvas");
+    expect(createdOverlay.style.pointerEvents).toBe("none");
+    expect(mockOverlayContext.setLineDash).toHaveBeenCalledWith([6, 4]);
+    expect(mockOverlayContext.rect).toHaveBeenCalledWith(80, 40, 40, 20);
+    expect(mockOverlayContext.stroke).toHaveBeenCalled();
+
+    renderer.destroy();
+    expect(removed).toBe(true);
   });
 });

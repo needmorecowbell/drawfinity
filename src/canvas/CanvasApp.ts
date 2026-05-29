@@ -912,6 +912,11 @@ export class CanvasApp {
         if (pvd.outline) this.renderer.drawShapeOutlineBatch([pvd.outline]);
       }
 
+      this.renderer.drawSelectionOverlay(this.camera, [
+        this.activeSelectionRegion,
+        this.selectionCapture.getPreviewRegion(),
+      ]);
+
       this.fpsCounter.update(now, allStrokes.length, visibleStrokeCount);
 
       // Periodic thumbnail generation (throttled to every 30s by ThumbnailGenerator)

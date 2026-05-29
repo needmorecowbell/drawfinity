@@ -74,10 +74,11 @@ Once a region is selected, the user can:
   - **Duplicate**: clone selected items with new IDs and offset positions, add to document
   - Notes: Added bulk selection mutation APIs to `DrawfinityDoc` for atomic remove, in-place translate, and duplicate of mixed stroke/shape selections. Extended `SelectionCapture` so dragging inside an active region moves the selection, wired CanvasApp delete (`Backspace`/`Delete`), duplicate (`Ctrl+D` when a selection is active), and drag-move behavior, and added focused tests for CRDT selection actions and selection-region move capture. Verified with `npx tsc --noEmit`, focused Vitest selection/CRDT tests, and full `npx vitest run`.
 
-- [ ] Render selection overlay in `src/renderer/Renderer.ts`:
+- [x] Render selection overlay in `src/renderer/Renderer.ts`:
   - Draw selection region outline (dashed rectangle/ellipse/polygon)
   - Use a separate shader pass or overlay canvas for the selection visualization
   - The selection overlay should be in screen-space (doesn't scale with zoom)
+  - Notes: Added a pointer-transparent 2D overlay canvas owned by `Renderer`, drawing dashed rectangle, ellipse, and lasso paths from world-space selection regions with fixed screen-space line/dash styling. Wired `CanvasApp` to render both active and preview selection regions each frame, cleaned up the overlay on renderer destroy, and added focused renderer coverage. Verified with `npx tsc --noEmit`, focused Vitest renderer/selection tests, and full `npx vitest run`.
 
 - [ ] Integrate turtle bounds constraining:
   - When a `SelectionRegion` is active, pass it to `TurtleDrawing.ts`

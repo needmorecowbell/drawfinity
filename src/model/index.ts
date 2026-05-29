@@ -5,3 +5,5 @@ export { generateShapeId } from "./Shape";
 export type { Shape, ShapeType, CanvasItem, CanvasItemKind } from "./Shape";
 export { generateBookmarkId } from "./Bookmark";
 export type { CameraBookmark } from "./Bookmark";
+export { getSelectedItems, hitTestShape, hitTestStroke, pointInRegion } from "./Selection";
+export type { SelectionBounds, SelectionDocumentModel, SelectionPoint, SelectionRegion } from "./Selection";

@@ -1,22 +1,8 @@
 import { Camera, CameraController } from "../camera";
+import type { SelectionBounds, SelectionPoint, SelectionRegion } from "../model";
 import type { SelectionMode } from "../tools";
 
-export interface SelectionPoint {
-  x: number;
-  y: number;
-}
-
-export interface SelectionBounds {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-export type SelectionRegion =
-  | { type: "rect"; bounds: SelectionBounds }
-  | { type: "ellipse"; bounds: SelectionBounds }
-  | { type: "lasso"; bounds: SelectionBounds; points: SelectionPoint[] };
+export type { SelectionBounds, SelectionPoint, SelectionRegion } from "../model";
 
 /**
  * Captures pointer input for the selection tool and emits finalized selection regions.

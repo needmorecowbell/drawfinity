@@ -59,13 +59,14 @@ Once a region is selected, the user can:
   - Emit a `SelectionRegion` object: `{ type: "rect" | "ellipse" | "lasso", bounds: ... , points?: ... }`
   - Notes: Added `SelectionCapture` with rectangle/ellipse drag selection, Shift-constrained square/circle bounds, lasso vertex capture with double-click/near-first closure, preview access, and a completion callback. Wired it into `CanvasApp` select-tool activation and toolbar mode changes, exported the new capture/types, and added focused tests. Verified with `npx tsc --noEmit`, `npx vitest run src/input/__tests__/SelectionCapture.test.ts`, and full `npx vitest run`.
 
-- [ ] Create `src/model/Selection.ts`:
+- [x] Create `src/model/Selection.ts`:
   - `SelectionRegion` type definition (rect, ellipse, lasso with their parameters)
   - `hitTestStroke(stroke, region): boolean` — check if any stroke point falls inside the region
   - `hitTestShape(shape, region): boolean` — check if shape bounding box intersects the region
   - `getSelectedItems(doc, region): CanvasItem[]` — query document for all items in region
   - Point-in-ellipse: `((x-cx)/rx)^2 + ((y-cy)/ry)^2 <= 1`
   - Point-in-polygon: ray-casting algorithm for lasso regions
+  - Notes: Added the shared selection model/types, point-in-region helpers for rectangle/ellipse/lasso, stroke and shape hit testing, and `getSelectedItems()` with `getAllItems()` document-order support plus fallback document querying. Updated `SelectionCapture` and barrels to use/re-export the model types, and added focused model tests. Verified with `npx tsc --noEmit`, focused Vitest selection tests, and full `npx vitest run`.
 
 - [ ] Implement selection actions:
   - **Delete**: call `doc.removeStroke(id)` / `doc.removeShape(id)` for each selected item, wrapped in a single Yjs transaction for atomic undo

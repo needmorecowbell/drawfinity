@@ -89,7 +89,7 @@ Once a region is selected, the user can:
   - If the turtle moves entirely outside the region, the pen produces no stroke
   - Notes: Added selection-region constraints to `TurtleDrawing`, propagated the active selection through `TurtleRegistry` when the turtle panel is open, and clipped turtle stroke segments against rectangle, ellipse, and lasso boundaries. Outside-only movements now produce no stroke, and batched drawing flushes across selection gaps to avoid drawing outside the active region. Added focused turtle clipping tests. Verified with `npx tsc --noEmit`, focused turtle tests, and full `npx vitest run`.
 
-- [ ] Tests:
+- [x] Tests:
   - Test: point-in-rectangle hit testing (inside, outside, on edge)
   - Test: point-in-ellipse hit testing
   - Test: point-in-polygon (lasso) hit testing with convex and concave polygons
@@ -98,3 +98,4 @@ Once a region is selected, the user can:
   - Test: move action translates all selected item coordinates correctly
   - Test: turtle line clipping at rectangle boundary
   - All existing tests must still pass: `npx vitest run`
+  - Notes: Confirmed existing selection, CRDT action, and turtle clipping coverage; added explicit `getSelectedItems()` assertions for rectangle, ellipse, and lasso modes, and tightened the bulk delete test to assert exactly one undo stack item. Verified with focused Vitest runs for selection, CRDT shape actions, and turtle drawing, plus `npx tsc --noEmit` and full `npx vitest run` (110 files / 2316 tests).

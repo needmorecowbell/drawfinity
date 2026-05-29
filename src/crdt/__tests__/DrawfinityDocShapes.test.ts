@@ -139,9 +139,11 @@ describe("DrawfinityDoc — shape support", () => {
 
       expect(doc.removeItems(selected)).toBe(2);
       expect(doc.getAllItems().map((entry) => entry.item.id)).toEqual(["s2"]);
+      expect(undoManager.getRawUndoManager().undoStack).toHaveLength(1);
 
       undoManager.undo();
       expect(doc.getAllItems().map((entry) => entry.item.id)).toEqual(["s1", "sh1", "s2"]);
+      expect(undoManager.canUndo()).toBe(false);
     });
 
     it("translates selected stroke points and shape centers", () => {

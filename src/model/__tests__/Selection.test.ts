@@ -156,6 +156,42 @@ describe("selection hit testing", () => {
     ]);
   });
 
+  it("returns correct document items for each selection mode", () => {
+    const strokeHit = makeStroke("stroke-hit", [{ x: 5, y: 5 }]);
+    const strokeMiss = makeStroke("stroke-miss", [{ x: 40, y: 40 }]);
+    const shapeHit = makeShape("shape-hit", { x: 6, y: 6, width: 2, height: 2 });
+    const shapeMiss = makeShape("shape-miss", { x: 40, y: 40, width: 2, height: 2 });
+    const doc: SelectionDocumentModel = {
+      addStroke: () => undefined,
+      getStrokes: () => [strokeHit, strokeMiss],
+      getShapes: () => [shapeHit, shapeMiss],
+      getAllItems: () => [
+        { kind: "stroke", item: strokeHit },
+        { kind: "shape", item: shapeHit },
+        { kind: "stroke", item: strokeMiss },
+        { kind: "shape", item: shapeMiss },
+      ],
+    };
+    const regions: SelectionRegion[] = [
+      { type: "rect", bounds: { x: 0, y: 0, width: 12, height: 12 } },
+      { type: "ellipse", bounds: { x: 0, y: 0, width: 12, height: 12 } },
+      {
+        type: "lasso",
+        bounds: { x: 0, y: 0, width: 12, height: 12 },
+        points: [
+          { x: 0, y: 0 },
+          { x: 12, y: 0 },
+          { x: 12, y: 12 },
+          { x: 0, y: 12 },
+        ],
+      },
+    ];
+
+    for (const region of regions) {
+      expect(getSelectedItems(doc, region).map((entry) => entry.item.id)).toEqual(["stroke-hit", "shape-hit"]);
+    }
+  });
+
   it("falls back to strokes and optional shapes when getAllItems is unavailable", () => {
     const stroke = makeStroke("stroke", [{ x: 2, y: 2 }]);
     const shape = makeShape("shape", { x: 4, y: 4, width: 2, height: 2 });

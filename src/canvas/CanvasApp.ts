@@ -824,7 +824,7 @@ export class CanvasApp {
       let pendingStrips: Float32Array[] = [];
       let pendingShapeFills: Float32Array[] = [];
       let pendingShapeOutlines: Float32Array[] = [];
-      let lastKind: "stroke" | "shape" | null = null;
+      let lastKind: "stroke" | "shape" | "image" | null = null;
 
       const flushBatch = (): void => {
         if (pendingShapeFills.length > 0) this.renderer.drawShapeFillBatch(pendingShapeFills);
@@ -849,11 +849,13 @@ export class CanvasApp {
           const lodPoints = getStrokeLOD(stroke.id, stroke.points, currentZoom);
           const data = vertexCache.get(stroke.id, lodPoints, rgba, stroke.width, currentZoom);
           if (data) pendingStrips.push(data);
-        } else {
+        } else if (ci.kind === "shape") {
           const shape = ci.item;
           const vd = shapeVertexCache.get(shape);
           if (vd.fill) pendingShapeFills.push(vd.fill);
           if (vd.outline) pendingShapeOutlines.push(vd.outline);
+        } else {
+          flushBatch();
         }
       }
       flushBatch();

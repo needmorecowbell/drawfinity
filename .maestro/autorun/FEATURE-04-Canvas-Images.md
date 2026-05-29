@@ -34,7 +34,7 @@ Images are textured quads — two triangles forming a rectangle. This requires:
 
 ## Tasks
 
-- [ ] Define the Image data model in `src/model/Image.ts`:
+- [x] Define the Image data model in `src/model/Image.ts`:
   ```ts
   interface CanvasImage {
     id: string;              // "image-{timestamp}-{counter}"
@@ -49,6 +49,7 @@ Images are textured quads — two triangles forming a rectangle. This requires:
   ```
   - Add `CanvasImage` to the `CanvasItem` union type
   - Enforce a max source size (e.g., 2MB) — reject or resize larger images
+  - Completed: added `CanvasImage`, image ID generation, 2MB encoded-source validation helpers, model tests, and image-aware `CanvasItem` narrowing at existing render/export call sites.
 
 - [ ] Create `src/crdt/ImageAdapter.ts`:
   - `imageToYMap(image: CanvasImage): Y.Map<any>` — serialize to Yjs map

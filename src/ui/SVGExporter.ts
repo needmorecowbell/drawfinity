@@ -87,7 +87,7 @@ export function exportSVG(
   for (const item of sorted) {
     if (item.kind === "stroke") {
       parts.push(strokeToSVG(item.item));
-    } else {
+    } else if (item.kind === "shape") {
       parts.push(shapeToSVG(item.item));
     }
   }

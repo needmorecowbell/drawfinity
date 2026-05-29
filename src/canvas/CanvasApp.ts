@@ -24,6 +24,7 @@ import { SyncManager } from "../sync";
 import { loadProfileAsync, loadPreferencesAsync, savePreferences, loadStatsAsync, loadBadgeStateAsync, loadRecordsAsync, loadBadgeState, loadRecords, StatsTracker, type UserPreferences, type GridStyle } from "../user";
 import { showStorageNotification } from "../ui/StorageNotification";
 import { showCorruptionDialog } from "../ui/CorruptionDialog";
+import { createCanvasImageFromFile, isSupportedImageFile } from "./ImageUpload";
 
 /**
  * Callbacks for CanvasApp lifecycle events, provided by the parent view manager.
@@ -132,6 +133,9 @@ export class CanvasApp {
   private animFrameId = 0;
   private keydownHandler!: (e: KeyboardEvent) => void;
   private pointermoveHandler!: (e: PointerEvent) => void;
+  private pasteHandler!: (e: ClipboardEvent) => void;
+  private dragoverHandler!: (e: DragEvent) => void;
+  private dropHandler!: (e: DragEvent) => void;
   private beforeUnloadHandler!: () => void;
   private bookmarkPanel!: BookmarkPanel;
   private browserStorage: { clearAllData(): Promise<void>; updateThumbnail(id: string, thumb: string): Promise<void> } | null = null;
@@ -153,6 +157,7 @@ export class CanvasApp {
   private sessionEventCollector: SessionEventCollector | null = null;
   private sessionSnapshot: SessionSnapshot | null = null;
   private sessionStartMs = 0;
+  private imageFileInput!: HTMLInputElement;
 
   /**
    * Initializes all subsystems and starts the render loop.
@@ -448,6 +453,7 @@ export class CanvasApp {
         this.callbacks.onRenameDrawing?.(this.drawingId, name);
       },
       onExport: (options: ExportDialogResult) => this.handleExport(options),
+      onInsertImage: () => this.openImageFilePicker(),
       onCheatSheet: () => this.cheatSheet.toggle(),
       onZoomIn: () => {
         const [vw, vh] = this.camera.getViewportSize();
@@ -486,6 +492,7 @@ export class CanvasApp {
     }
     this.toolbar.setColorUI(userPreferences.defaultColor);
     this.toolbar.setBackgroundColorUI(this.doc.getBackgroundColor());
+    this.setupImageFileInput();
 
     // Connection panel
     this.connectionPanel = new ConnectionPanel(this.syncManager, {
@@ -773,6 +780,14 @@ export class CanvasApp {
     };
     canvas.addEventListener("pointermove", this.pointermoveHandler);
 
+    this.pasteHandler = (e: ClipboardEvent) => this.handlePaste(e);
+    document.addEventListener("paste", this.pasteHandler);
+
+    this.dragoverHandler = (e: DragEvent) => this.handleDragOver(e);
+    this.dropHandler = (e: DragEvent) => this.handleDrop(e);
+    canvas.addEventListener("dragover", this.dragoverHandler);
+    canvas.addEventListener("drop", this.dropHandler);
+
     // Keyboard shortcuts
     this.keydownHandler = (e: KeyboardEvent) => this.handleKeydown(e);
     document.addEventListener("keydown", this.keydownHandler);
@@ -939,6 +954,9 @@ export class CanvasApp {
     window.removeEventListener("beforeunload", this.beforeUnloadHandler);
     document.removeEventListener("keydown", this.keydownHandler);
     this.canvas.removeEventListener("pointermove", this.pointermoveHandler);
+    document.removeEventListener("paste", this.pasteHandler);
+    this.canvas.removeEventListener("dragover", this.dragoverHandler);
+    this.canvas.removeEventListener("drop", this.dropHandler);
 
     // Clean up session event collector
     if (this.sessionEventCollector) {
@@ -975,6 +993,7 @@ export class CanvasApp {
 
     // Clean up UI components
     this.toolbar.destroy();
+    this.imageFileInput.remove();
     this.connectionPanel.destroy();
     this.settingsPanel.destroy();
     this.statsPanel.destroy();
@@ -1244,6 +1263,96 @@ export class CanvasApp {
     }
 
     void downloadCanvas(canvas, `drawfinity-${timestamp}.png`);
+  }
+
+  private setupImageFileInput(): void {
+    this.imageFileInput = document.createElement("input");
+    this.imageFileInput.type = "file";
+    this.imageFileInput.accept = "image/png,image/jpeg,image/webp,image/*";
+    this.imageFileInput.className = "image-file-input";
+    this.imageFileInput.style.display = "none";
+    this.imageFileInput.addEventListener("change", () => {
+      const file = this.imageFileInput.files?.[0];
+      this.imageFileInput.value = "";
+      if (file) {
+        void this.insertImageFile(file);
+      }
+    });
+    document.body.appendChild(this.imageFileInput);
+  }
+
+  private openImageFilePicker(): void {
+    this.imageFileInput.click();
+  }
+
+  private async insertImageFile(file: File, screenPoint?: { x: number; y: number }): Promise<void> {
+    if (!isSupportedImageFile(file)) {
+      showStorageNotification("Only PNG, JPG, and WebP images can be inserted.", "error", 6000);
+      return;
+    }
+
+    try {
+      const [viewportWidth, viewportHeight] = this.camera.getViewportSize();
+      const center = screenPoint
+        ? this.camera.screenToWorld(screenPoint.x, screenPoint.y)
+        : { x: this.camera.x, y: this.camera.y };
+      const image = await createCanvasImageFromFile(file, {
+        viewportWidth,
+        viewportHeight,
+        zoom: this.camera.zoom,
+        centerX: center.x,
+        centerY: center.y,
+      });
+      this.doc.addImage(image);
+    } catch (error) {
+      console.error("CanvasApp: failed to insert image", error);
+      showStorageNotification(
+        error instanceof Error ? error.message : "Image could not be inserted.",
+        "error",
+        8000,
+      );
+    }
+  }
+
+  private handlePaste(e: ClipboardEvent): void {
+    if (this.isEditingText()) return;
+
+    const file = Array.from(e.clipboardData?.files ?? []).find(isSupportedImageFile);
+    if (!file) return;
+
+    e.preventDefault();
+    void this.insertImageFile(file);
+  }
+
+  private handleDragOver(e: DragEvent): void {
+    const hasImage = Array.from(e.dataTransfer?.items ?? []).some((item) =>
+      item.kind === "file" && /^image\//i.test(item.type),
+    );
+    if (!hasImage) return;
+
+    e.preventDefault();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = "copy";
+    }
+  }
+
+  private handleDrop(e: DragEvent): void {
+    const file = Array.from(e.dataTransfer?.files ?? []).find(isSupportedImageFile);
+    if (!file) return;
+
+    e.preventDefault();
+    const rect = this.canvas.getBoundingClientRect();
+    void this.insertImageFile(file, {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+  }
+
+  private isEditingText(): boolean {
+    const active = document.activeElement as HTMLElement | null;
+    const tag = active?.tagName;
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" ||
+      Boolean(active?.closest?.(".cm-editor"));
   }
 
   private updateUserColorIndicator(profile: { color: string; name: string }): void {

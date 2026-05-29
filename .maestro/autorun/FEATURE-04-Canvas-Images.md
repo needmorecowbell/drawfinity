@@ -65,7 +65,7 @@ Images are textured quads — two triangles forming a rectangle. This requires:
   - Include images in `getAllItems()` with correct timestamp ordering
   - Completed: added Yjs-backed image add/get/remove/update methods, image-aware `getAllItems()` timestamp ordering, source-size validation on add/update, CRDT sync/undo/change notification coverage, and full test/type-check verification.
 
-- [ ] Create upload UI:
+- [x] Create upload UI:
   - Add an "Insert Image" button to the toolbar (or a menu option)
   - On click: open a file picker (`<input type="file" accept="image/*">`)
   - Read the file as a data URI via `FileReader.readAsDataURL()`
@@ -73,6 +73,7 @@ Images are textured quads — two triangles forming a rectangle. This requires:
   - Place the image centered at the current viewport center
   - Set initial world-space width to fill ~50% of the viewport width, preserving aspect ratio
   - Also support **paste** (`Ctrl+V`) and **drag-and-drop** onto the canvas
+  - Completed: added a toolbar Insert Image action, hidden image file picker, data URI import and client-side canvas resizing before CRDT storage, viewport-centered image placement at ~50% viewport width, paste and drag/drop insertion support, and focused toolbar/app/image-import tests.
 
 - [ ] Create the texture shader in `src/renderer/`:
   - Vertex shader: transform position by camera matrix, pass through UV coordinates

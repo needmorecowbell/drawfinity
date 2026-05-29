@@ -88,7 +88,8 @@ describe("Toolbar", () => {
   it("renders undo and redo buttons in actions group", () => {
     const actionsGroup = document.querySelector('[data-group="actions"]');
     const buttons = actionsGroup!.querySelectorAll(".toolbar-btn");
-    expect(buttons.length).toBe(3); // undo + redo + export
+    expect(buttons.length).toBe(4); // undo + redo + insert image + export
+    expect(actionsGroup!.querySelector(".insert-image-btn")).not.toBeNull();
   });
 
   it("renders zoom display in navigation group", () => {
@@ -202,6 +203,15 @@ describe("Toolbar", () => {
     const redoBtn = actionsGroup!.querySelectorAll(".toolbar-btn")[1] as HTMLButtonElement;
     redoBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
     expect(callbacks.onRedo).toHaveBeenCalled();
+  });
+
+  it("clicking insert image button fires onInsertImage", () => {
+    callbacks.onInsertImage = vi.fn();
+    const insertBtn = document.querySelector(".insert-image-btn") as HTMLButtonElement;
+
+    insertBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+    expect(callbacks.onInsertImage).toHaveBeenCalled();
   });
 
   it("clicking eraser toggles to eraser tool", () => {

@@ -310,6 +310,27 @@ describe("CanvasApp", () => {
     const settingsBtn = document.querySelector(".settings-btn");
     expect(settingsBtn).not.toBeNull();
 
+    const insertImageBtn = document.querySelector(".insert-image-btn");
+    const imageInput = document.querySelector(".image-file-input") as HTMLInputElement;
+    expect(insertImageBtn).not.toBeNull();
+    expect(imageInput).not.toBeNull();
+    expect(imageInput.accept).toContain("image/png");
+
+    await app.destroy();
+  });
+
+  it("opens the image file picker from the toolbar insert image button", async () => {
+    const app = new CanvasApp();
+    await app.init("test-image-picker");
+
+    const insertImageBtn = document.querySelector(".insert-image-btn") as HTMLButtonElement;
+    const imageInput = document.querySelector(".image-file-input") as HTMLInputElement;
+    const clickSpy = vi.spyOn(imageInput, "click").mockImplementation(() => {});
+
+    insertImageBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+    expect(clickSpy).toHaveBeenCalled();
+
     await app.destroy();
   });
 

@@ -101,7 +101,7 @@ Images are textured quads — two triangles forming a rectangle. This requires:
   - **SVG export** (if FEATURE-03 is implemented): emit `<image>` elements with embedded base64 data URIs
   - Completed: added image-aware PNG export with async texture preloading and timestamp-ordered rendering through the texture shader, included image bounds in fit-all export sizing, emitted embedded-data-URI SVG `<image>` elements with rotation/opacity, and covered image export behavior with focused tests plus full Vitest/type-check verification.
 
-- [ ] Tests:
+- [x] Tests:
   - Test: `CanvasImage` model creation with valid fields
   - Test: ImageAdapter round-trip (serialize → deserialize)
   - Test: image added to doc appears in `getAllItems()` at correct timestamp position
@@ -109,3 +109,4 @@ Images are textured quads — two triangles forming a rectangle. This requires:
   - Test: oversized image source is rejected or resized
   - Test: spatial index includes image bounding boxes
   - All existing tests must still pass: `npx vitest run`
+  - Completed: verified existing focused coverage in `Image.test.ts`, `ImageAdapter.test.ts`, `DrawfinityDocImages.test.ts`, `ImageUpload.test.ts`, and `SpatialIndex.test.ts`; ran full Vitest and TypeScript type-check successfully.

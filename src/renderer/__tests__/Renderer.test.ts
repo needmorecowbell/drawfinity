@@ -28,6 +28,15 @@ const mockGl = {
   deleteBuffer: vi.fn(),
   deleteVertexArray: vi.fn(),
   deleteProgram: vi.fn(),
+  createTexture: vi.fn().mockReturnValue({}),
+  uniform1i: vi.fn(),
+  uniform1f: vi.fn(),
+  activeTexture: vi.fn(),
+  bindTexture: vi.fn(),
+  pixelStorei: vi.fn(),
+  texParameteri: vi.fn(),
+  texImage2D: vi.fn(),
+  deleteTexture: vi.fn(),
   enable: vi.fn(),
   blendFunc: vi.fn(),
   VERTEX_SHADER: 0x8b31,
@@ -40,6 +49,17 @@ const mockGl = {
   FLOAT: 0x1406,
   LINE_STRIP: 0x0003,
   TRIANGLE_STRIP: 0x0005,
+  TEXTURE0: 0x84c0,
+  TEXTURE_2D: 0x0de1,
+  TEXTURE_WRAP_S: 0x2802,
+  TEXTURE_WRAP_T: 0x2803,
+  CLAMP_TO_EDGE: 0x812f,
+  TEXTURE_MIN_FILTER: 0x2801,
+  TEXTURE_MAG_FILTER: 0x2800,
+  LINEAR: 0x2601,
+  RGBA: 0x1908,
+  UNSIGNED_BYTE: 0x1401,
+  UNPACK_PREMULTIPLY_ALPHA_WEBGL: 0x9241,
   BLEND: 0x0be2,
   SRC_ALPHA: 0x0302,
   ONE_MINUS_SRC_ALPHA: 0x0303,
@@ -47,7 +67,10 @@ const mockGl = {
 
 const mockContextInstance = {
   gl: mockGl,
-  canvas: {} as HTMLCanvasElement,
+  canvas: {
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  } as unknown as HTMLCanvasElement,
   resize: vi.fn(),
   clear: vi.fn(),
   destroy: vi.fn(),
@@ -67,25 +90,25 @@ describe("Renderer", () => {
   });
 
   it("creates without error", () => {
-    const renderer = new Renderer({} as HTMLCanvasElement);
+    const renderer = new Renderer(mockContextInstance.canvas);
     expect(renderer).toBeDefined();
   });
 
   it("exposes gl and canvas properties", () => {
-    const renderer = new Renderer({} as HTMLCanvasElement);
+    const renderer = new Renderer(mockContextInstance.canvas);
     expect(renderer.gl).toBe(mockGl);
     expect(renderer.canvas).toBeDefined();
   });
 
   it("clear() delegates to context", () => {
-    const renderer = new Renderer({} as HTMLCanvasElement);
+    const renderer = new Renderer(mockContextInstance.canvas);
     renderer.clear();
     expect(mockContextInstance.resize).toHaveBeenCalled();
     expect(mockContextInstance.clear).toHaveBeenCalled();
   });
 
   it("drawStroke() calls gl.drawArrays with TRIANGLE_STRIP for valid input", () => {
-    const renderer = new Renderer({} as HTMLCanvasElement);
+    const renderer = new Renderer(mockContextInstance.canvas);
     const points = [
       { x: 0, y: 0 },
       { x: 1, y: 1 },
@@ -96,7 +119,7 @@ describe("Renderer", () => {
   });
 
   it("drawStroke() skips draw for fewer than 2 points", () => {
-    const renderer = new Renderer({} as HTMLCanvasElement);
+    const renderer = new Renderer(mockContextInstance.canvas);
     mockGl.drawArrays.mockClear();
     renderer.drawStroke([{ x: 0, y: 0 }], [0, 0, 0, 1], 2);
     renderer.drawStroke([], [0, 0, 0, 1], 2);
@@ -104,7 +127,7 @@ describe("Renderer", () => {
   });
 
   it("destroy() cleans up resources", () => {
-    const renderer = new Renderer({} as HTMLCanvasElement);
+    const renderer = new Renderer(mockContextInstance.canvas);
     expect(() => renderer.destroy()).not.toThrow();
     expect(mockContextInstance.destroy).toHaveBeenCalled();
   });

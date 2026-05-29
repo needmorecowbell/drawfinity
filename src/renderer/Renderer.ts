@@ -21,6 +21,8 @@ export class Renderer {
   private gridStyle: GridStyle = "dots";
   readonly vertexCache: StrokeVertexCache;
   readonly shapeVertexCache: ShapeVertexCache;
+  private contextLostHandler: (event: Event) => void;
+  private contextRestoredHandler: () => void;
 
   constructor(canvas: HTMLCanvasElement) {
     this.context = new WebGLContext(canvas);
@@ -30,6 +32,16 @@ export class Renderer {
     this.lineGridRenderer = new LineGridRenderer(this.context.gl);
     this.vertexCache = new StrokeVertexCache();
     this.shapeVertexCache = new ShapeVertexCache();
+
+    this.contextLostHandler = (event: Event): void => {
+      event.preventDefault();
+      this.imageRenderer.handleContextLost();
+    };
+    this.contextRestoredHandler = (): void => {
+      this.imageRenderer.handleContextRestored();
+    };
+    canvas.addEventListener("webglcontextlost", this.contextLostHandler);
+    canvas.addEventListener("webglcontextrestored", this.contextRestoredHandler);
   }
 
   get gl(): WebGL2RenderingContext {
@@ -195,6 +207,13 @@ export class Renderer {
   }
 
   /**
+   * Releases cached image textures that no longer have a document image.
+   */
+  retainImageTextures(imageIds: Iterable<string>): void {
+    this.imageRenderer.retainTextures(imageIds);
+  }
+
+  /**
    * Clears all image textures so they can be recreated after WebGL context restore.
    */
   clearImageTextures(): void {
@@ -209,6 +228,8 @@ export class Renderer {
    * After calling destroy(), this Renderer instance must not be used again.
    */
   destroy(): void {
+    this.canvas.removeEventListener("webglcontextlost", this.contextLostHandler);
+    this.canvas.removeEventListener("webglcontextrestored", this.contextRestoredHandler);
     this.strokeRenderer.destroy();
     this.imageRenderer.destroy();
     this.dotGridRenderer.destroy();

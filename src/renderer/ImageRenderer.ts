@@ -4,13 +4,7 @@ import {
   IMAGE_VERTEX_SHADER,
   ShaderProgram,
 } from "./ShaderProgram";
-
-interface TextureEntry {
-  src: string;
-  texture: WebGLTexture | null;
-  promise: Promise<WebGLTexture> | null;
-  error: Error | null;
-}
+import { TextureCache } from "./TextureCache";
 
 /**
  * Generates two textured triangles for a canvas image.
@@ -56,10 +50,11 @@ export class ImageRenderer {
   private uCameraLoc: WebGLUniformLocation | null;
   private uSamplerLoc: WebGLUniformLocation | null;
   private uOpacityLoc: WebGLUniformLocation | null;
-  private textures = new Map<string, TextureEntry>();
+  private textureCache: TextureCache;
 
   constructor(gl: WebGL2RenderingContext) {
     this.gl = gl;
+    this.textureCache = new TextureCache(gl);
     this.shader = new ShaderProgram(gl, IMAGE_VERTEX_SHADER, IMAGE_FRAGMENT_SHADER);
 
     this.aPositionLoc = this.shader.getAttribLocation("a_position");
@@ -100,7 +95,7 @@ export class ImageRenderer {
    * Starts texture upload for an image and resolves when it is ready to draw.
    */
   async preloadImage(image: CanvasImage): Promise<void> {
-    await this.ensureTexture(image);
+    await this.textureCache.preload(image);
   }
 
   /**
@@ -109,19 +104,15 @@ export class ImageRenderer {
    * Returns `false` while the texture is still loading or if upload failed.
    */
   drawImage(image: CanvasImage): boolean {
-    const entry = this.textures.get(image.id);
-    if (!entry || entry.src !== image.src) {
-      void this.ensureTexture(image);
-      return false;
-    }
-    if (!entry.texture) return false;
+    const texture = this.textureCache.getTexture(image);
+    if (!texture) return false;
 
     const gl = this.gl;
     const vertices = generateImageQuadVertices(image);
 
     this.shader.use();
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, entry.texture);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
     if (this.uSamplerLoc) gl.uniform1i(this.uSamplerLoc, 0);
     if (this.uOpacityLoc) gl.uniform1f(this.uOpacityLoc, image.opacity);
 
@@ -138,21 +129,29 @@ export class ImageRenderer {
    * Removes one image texture from GPU memory.
    */
   deleteTexture(imageId: string): void {
-    const entry = this.textures.get(imageId);
-    if (entry?.texture) {
-      this.gl.deleteTexture(entry.texture);
-    }
-    this.textures.delete(imageId);
+    this.textureCache.delete(imageId);
+  }
+
+  /**
+   * Releases textures for images that are no longer present in the document.
+   */
+  retainTextures(imageIds: Iterable<string>): void {
+    this.textureCache.retain(imageIds);
   }
 
   /**
    * Drops all cached textures so they can be re-uploaded after context restore.
    */
   clearTextures(): void {
-    for (const entry of this.textures.values()) {
-      if (entry.texture) this.gl.deleteTexture(entry.texture);
-    }
-    this.textures.clear();
+    this.textureCache.clear();
+  }
+
+  handleContextLost(): void {
+    this.textureCache.handleContextLost();
+  }
+
+  handleContextRestored(): void {
+    this.textureCache.handleContextRestored();
   }
 
   destroy(): void {
@@ -160,85 +159,5 @@ export class ImageRenderer {
     this.gl.deleteBuffer(this.vbo);
     this.gl.deleteVertexArray(this.vao);
     this.shader.destroy();
-  }
-
-  private async ensureTexture(image: CanvasImage): Promise<WebGLTexture> {
-    const existing = this.textures.get(image.id);
-    if (existing?.src === image.src) {
-      if (existing.texture) return existing.texture;
-      if (existing.promise) return existing.promise;
-      if (existing.error) throw existing.error;
-    } else if (existing?.texture) {
-      this.gl.deleteTexture(existing.texture);
-    }
-
-    const entry: TextureEntry = {
-      src: image.src,
-      texture: null,
-      promise: null,
-      error: null,
-    };
-    this.textures.set(image.id, entry);
-
-    entry.promise = this.loadHtmlImage(image.src)
-      .then((element) => this.uploadTexture(element))
-      .then((texture) => {
-        entry.texture = texture;
-        entry.promise = null;
-        return texture;
-      })
-      .catch((error: unknown) => {
-        const err = error instanceof Error ? error : new Error(String(error));
-        entry.error = err;
-        entry.promise = null;
-        throw err;
-      });
-
-    return entry.promise;
-  }
-
-  private loadHtmlImage(src: string): Promise<HTMLImageElement> {
-    return new Promise((resolve, reject) => {
-      const element = new Image();
-      element.onload = async (): Promise<void> => {
-        try {
-          if (typeof element.decode === "function") {
-            await element.decode();
-          }
-          resolve(element);
-        } catch (error) {
-          reject(error);
-        }
-      };
-      element.onerror = (): void => reject(new Error("Failed to decode image source"));
-      element.src = src;
-      if (element.complete && element.naturalWidth > 0) {
-        element.onload?.(new Event("load"));
-      }
-    });
-  }
-
-  private uploadTexture(element: HTMLImageElement): WebGLTexture {
-    const gl = this.gl;
-    const texture = gl.createTexture();
-    if (!texture) throw new Error("Failed to create image texture");
-
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      element,
-    );
-    gl.bindTexture(gl.TEXTURE_2D, null);
-
-    return texture;
   }
 }

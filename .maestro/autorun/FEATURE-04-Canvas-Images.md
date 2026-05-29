@@ -82,12 +82,13 @@ Images are textured quads — two triangles forming a rectangle. This requires:
   - Create `ImageRenderer.ts` that manages textures and draws image quads
   - Completed: added GLSL ES 300 image shader constants, `ImageRenderer` textured-quad drawing with `[x, y, u, v]` vertices, async data URI image decode/upload via `gl.texImage2D()`, renderer wrapper APIs, barrel exports, and focused shader/image-renderer tests.
 
-- [ ] Implement texture management:
+- [x] Implement texture management:
   - `TextureCache`: map from `image.id` → `WebGLTexture`
   - Upload texture on first render, cache for reuse
   - Delete texture when image is removed from document
   - Handle context loss gracefully (re-upload on restore)
   - Use `gl.texImage2D()` with the image element decoded from the data URI
+  - Completed: extracted image GPU lifecycle into `TextureCache`, added lazy first-render upload and reuse, source-change replacement cleanup, document-retain cleanup for removed images, context loss/restore invalidation for re-upload, renderer wrapper APIs, and focused lifecycle test coverage.
 
 - [ ] Integrate with spatial index and rendering:
   - Add image bounding boxes to `SpatialIndex.ts`

@@ -92,6 +92,8 @@ class MockImage {
 describe("ImageRenderer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    let textureId = 0;
+    mockGl.createTexture.mockImplementation(() => ({ textureId: textureId++ }));
     vi.stubGlobal("Image", MockImage);
   });
 
@@ -114,6 +116,54 @@ describe("ImageRenderer", () => {
     expect(mockGl.texImage2D).toHaveBeenCalled();
     expect(mockGl.uniform1f).toHaveBeenCalledWith({}, 0.75);
     expect(mockGl.drawArrays).toHaveBeenCalledWith(mockGl.TRIANGLES, 0, 6);
+  });
+
+  it("reuses a cached texture across draws", async () => {
+    const renderer = new ImageRenderer(mockGl as unknown as WebGL2RenderingContext);
+    const image = makeImage();
+
+    await renderer.preloadImage(image);
+    renderer.drawImage(image);
+    renderer.drawImage(image);
+
+    expect(mockGl.texImage2D).toHaveBeenCalledTimes(1);
+    expect(mockGl.drawArrays).toHaveBeenCalledTimes(2);
+  });
+
+  it("deletes the previous texture when an image source changes", async () => {
+    const renderer = new ImageRenderer(mockGl as unknown as WebGL2RenderingContext);
+    const image = makeImage();
+    const updated = makeImage({ src: "data:image/png;base64,bmV3" });
+
+    await renderer.preloadImage(image);
+    await renderer.preloadImage(updated);
+
+    expect(mockGl.deleteTexture).toHaveBeenCalledWith({ textureId: 0 });
+    expect(mockGl.texImage2D).toHaveBeenCalledTimes(2);
+  });
+
+  it("retains only textures for active image IDs", async () => {
+    const renderer = new ImageRenderer(mockGl as unknown as WebGL2RenderingContext);
+
+    await renderer.preloadImage(makeImage({ id: "image-1" }));
+    await renderer.preloadImage(makeImage({ id: "image-2" }));
+    renderer.retainTextures(["image-2"]);
+
+    expect(mockGl.deleteTexture).toHaveBeenCalledWith({ textureId: 0 });
+  });
+
+  it("invalidates texture handles on context loss and re-uploads after restore", async () => {
+    const renderer = new ImageRenderer(mockGl as unknown as WebGL2RenderingContext);
+    const image = makeImage();
+
+    await renderer.preloadImage(image);
+    renderer.handleContextLost();
+    renderer.handleContextRestored();
+    expect(renderer.drawImage(image)).toBe(false);
+    await renderer.preloadImage(image);
+    expect(renderer.drawImage(image)).toBe(true);
+
+    expect(mockGl.texImage2D).toHaveBeenCalledTimes(2);
   });
 
   it("starts loading and skips drawing when texture is not ready", () => {

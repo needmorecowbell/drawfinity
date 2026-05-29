@@ -336,9 +336,11 @@ export class CanvasApp {
 
     this.spatialIndex = new SpatialIndex();
     this.spatialIndex.rebuildAll(this.doc.getStrokes(), this.doc.getShapes());
+    this.renderer.retainImageTextures(this.doc.getImages().map((image) => image.id));
 
     this.doc.onStrokesChanged(() => {
       this.spatialIndex.rebuildAll(this.doc.getStrokes(), this.doc.getShapes());
+      this.renderer.retainImageTextures(this.doc.getImages().map((image) => image.id));
       clearLODCache();
       this.renderer.vertexCache.clear();
       this.renderer.shapeVertexCache.clear();

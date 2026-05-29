@@ -75,11 +75,12 @@ Images are textured quads — two triangles forming a rectangle. This requires:
   - Also support **paste** (`Ctrl+V`) and **drag-and-drop** onto the canvas
   - Completed: added a toolbar Insert Image action, hidden image file picker, data URI import and client-side canvas resizing before CRDT storage, viewport-centered image placement at ~50% viewport width, paste and drag/drop insertion support, and focused toolbar/app/image-import tests.
 
-- [ ] Create the texture shader in `src/renderer/`:
+- [x] Create the texture shader in `src/renderer/`:
   - Vertex shader: transform position by camera matrix, pass through UV coordinates
   - Fragment shader: `texture(sampler, uv) * vec4(1, 1, 1, opacity)`
   - Vertex format: `[x, y, u, v]` (position + texture coordinates)
   - Create `ImageRenderer.ts` that manages textures and draws image quads
+  - Completed: added GLSL ES 300 image shader constants, `ImageRenderer` textured-quad drawing with `[x, y, u, v]` vertices, async data URI image decode/upload via `gl.texImage2D()`, renderer wrapper APIs, barrel exports, and focused shader/image-renderer tests.
 
 - [ ] Implement texture management:
   - `TextureCache`: map from `image.id` → `WebGLTexture`

@@ -1,8 +1,9 @@
 export { WebGLContext } from "./WebGLContext";
 export { hexLuminance, autoContrastDotColor } from "./DotGridRenderer";
 export { LineGridRenderer } from "./LineGridRenderer";
-export { ShaderProgram, STROKE_VERTEX_SHADER, STROKE_FRAGMENT_SHADER } from "./ShaderProgram";
+export { ShaderProgram, STROKE_VERTEX_SHADER, STROKE_FRAGMENT_SHADER, IMAGE_VERTEX_SHADER, IMAGE_FRAGMENT_SHADER } from "./ShaderProgram";
 export { StrokeRenderer } from "./StrokeRenderer";
+export { ImageRenderer, generateImageQuadVertices } from "./ImageRenderer";
 export type { StrokePoint } from "./StrokeRenderer";
 export { Renderer } from "./Renderer";
 export { generateTriangleStrip, generateDotQuad } from "./StrokeMesh";

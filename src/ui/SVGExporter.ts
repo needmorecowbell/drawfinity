@@ -1,6 +1,7 @@
 import type { Stroke, StrokePoint } from "../model/Stroke";
 import type { Shape } from "../model/Shape";
 import type { CanvasItem } from "../model/Shape";
+import type { CanvasImage } from "../model/Image";
 import type { ExportOptions } from "./ExportRenderer";
 import { computeContentBounds } from "./ExportRenderer";
 
@@ -33,6 +34,9 @@ export function exportSVG(
   const shapes = items
     .filter((i): i is { kind: "shape"; item: Shape } => i.kind === "shape")
     .map((i) => i.item);
+  const images = items
+    .filter((i): i is { kind: "image"; item: CanvasImage } => i.kind === "image")
+    .map((i) => i.item);
 
   let viewBox: { minX: number; minY: number; maxX: number; maxY: number };
 
@@ -40,7 +44,7 @@ export function exportSVG(
     if (!options.viewportBounds) return null;
     viewBox = options.viewportBounds;
   } else {
-    const bounds = computeContentBounds(strokes, shapes);
+    const bounds = computeContentBounds(strokes, shapes, images);
     if (!bounds) return null;
     // Add 5% padding like the raster export
     const contentW = bounds.maxX - bounds.minX;
@@ -89,6 +93,8 @@ export function exportSVG(
       parts.push(strokeToSVG(item.item));
     } else if (item.kind === "shape") {
       parts.push(shapeToSVG(item.item));
+    } else if (item.kind === "image") {
+      parts.push(imageToSVG(item.item));
     }
   }
 
@@ -309,6 +315,23 @@ function shapeStyleAttrs(shape: Shape): string {
     parts.push(` opacity="${fmt(shape.opacity)}"`);
   }
   return parts.join("");
+}
+
+// ── Image → SVG ───────────────────────────────────────────────────
+
+/**
+ * Converts a canvas image to an SVG `<image>` element with its embedded data URI.
+ */
+export function imageToSVG(image: CanvasImage): string {
+  const x = image.x - image.width / 2;
+  const y = image.y - image.height / 2;
+  const rotDeg = (image.rotation * 180) / Math.PI;
+  const transform = image.rotation !== 0
+    ? ` transform="rotate(${fmt(rotDeg)}, ${fmt(image.x)}, ${fmt(image.y)})"`
+    : "";
+  const opacity = image.opacity < 1 ? ` opacity="${fmt(image.opacity)}"` : "";
+
+  return `<image href="${escapeAttr(image.src)}" x="${fmt(x)}" y="${fmt(y)}" width="${fmt(image.width)}" height="${fmt(image.height)}"${transform}${opacity} />`;
 }
 
 /**

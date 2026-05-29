@@ -96,9 +96,10 @@ Images are textured quads — two triangles forming a rectangle. This requires:
   - Switch shader programs between image quads and stroke/shape geometry
   - Completed: added rotated image AABB computation and image culling/query support to `SpatialIndex`, included document images in CanvasApp index rebuilds and texture retention, drew image quads through the existing texture renderer in timestamp order between stroke/shape batches, and verified with focused spatial-index tests, full Vitest, and TypeScript type-check.
 
-- [ ] Integrate with export:
+- [x] Integrate with export:
   - **PNG export** (`ExportRenderer.ts`): render image quads in the offscreen canvas using the texture shader
   - **SVG export** (if FEATURE-03 is implemented): emit `<image>` elements with embedded base64 data URIs
+  - Completed: added image-aware PNG export with async texture preloading and timestamp-ordered rendering through the texture shader, included image bounds in fit-all export sizing, emitted embedded-data-URI SVG `<image>` elements with rotation/opacity, and covered image export behavior with focused tests plus full Vitest/type-check verification.
 
 - [ ] Tests:
   - Test: `CanvasImage` model creation with valid fields

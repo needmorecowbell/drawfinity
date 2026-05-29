@@ -1225,7 +1225,7 @@ export class CanvasApp {
     this.cameraAnimator.animateToFit(minX, minY, maxX, maxY);
   }
 
-  private handleExport(options: ExportDialogResult): void {
+  private async handleExport(options: ExportDialogResult): Promise<void> {
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
 
     if (options.format === "svg") {
@@ -1249,8 +1249,9 @@ export class CanvasApp {
 
     const strokes = this.doc.getStrokes();
     const shapes = this.doc.getShapes ? this.doc.getShapes() : [];
+    const images = this.doc.getImages();
 
-    const canvas = renderExport(strokes, shapes, {
+    const canvas = await renderExport(strokes, shapes, {
       scope: options.scope,
       scale: options.scale,
       includeBackground: options.includeBackground,
@@ -1258,7 +1259,7 @@ export class CanvasApp {
       viewportBounds: this.camera.getViewportBounds(),
       viewportMatrix: this.camera.getTransformMatrix(),
       viewportSize: this.camera.getViewportSize(),
-    });
+    }, images);
 
     if (!canvas) {
       console.warn("Export: nothing to export");

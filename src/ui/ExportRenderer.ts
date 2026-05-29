@@ -1,7 +1,10 @@
 import { generateTriangleStrip } from "../renderer/StrokeMesh";
 import { generateShapeVertices } from "../renderer/ShapeMesh";
+import { ImageRenderer } from "../renderer/ImageRenderer";
+import { computeImageBounds } from "../renderer/SpatialIndex";
 import type { Stroke } from "../model/Stroke";
 import type { Shape } from "../model/Shape";
+import type { CanvasImage } from "../model/Image";
 
 /** Export scope: viewport crops to current view, fitAll includes all content. */
 export type ExportScope = "viewport" | "fitAll";
@@ -43,6 +46,7 @@ function hexToRgba(hex: string): [number, number, number, number] {
 export function computeContentBounds(
   strokes: Stroke[],
   shapes: Shape[],
+  images: CanvasImage[] = [],
 ): BoundsResult | null {
   let minX = Infinity;
   let minY = Infinity;
@@ -72,6 +76,15 @@ export function computeContentBounds(
     if (shape.y - rotatedHalfH < minY) minY = shape.y - rotatedHalfH;
     if (shape.x + rotatedHalfW > maxX) maxX = shape.x + rotatedHalfW;
     if (shape.y + rotatedHalfH > maxY) maxY = shape.y + rotatedHalfH;
+    hasContent = true;
+  }
+
+  for (const image of images) {
+    const bounds = computeImageBounds(image);
+    if (bounds.minX < minX) minX = bounds.minX;
+    if (bounds.minY < minY) minY = bounds.minY;
+    if (bounds.maxX > maxX) maxX = bounds.maxX;
+    if (bounds.maxY > maxY) maxY = bounds.maxY;
     hasContent = true;
   }
 
@@ -106,46 +119,6 @@ function computeFitTransform(
   return new Float32Array([sx, 0, 0, 0, sy, 0, tx, ty, 1]);
 }
 
-/** Concatenate multiple Float32Arrays without degenerate triangles. */
-function concatArrays(arrays: Float32Array[]): Float32Array {
-  let totalLen = 0;
-  for (const arr of arrays) totalLen += arr.length;
-  const result = new Float32Array(totalLen);
-  let offset = 0;
-  for (const arr of arrays) {
-    result.set(arr, offset);
-    offset += arr.length;
-  }
-  return result;
-}
-
-/** Concatenate triangle strips with degenerate triangles between them. */
-function concatStrips(strips: Float32Array[]): Float32Array {
-  if (strips.length === 0) return new Float32Array(0);
-  if (strips.length === 1) return strips[0];
-
-  let totalLen = 0;
-  for (const s of strips) totalLen += s.length;
-  totalLen += (strips.length - 1) * 12;
-
-  const result = new Float32Array(totalLen);
-  let offset = 0;
-
-  for (let i = 0; i < strips.length; i++) {
-    const strip = strips[i];
-    if (i > 0 && strip.length >= 6) {
-      result.set(result.subarray(offset - 6, offset), offset);
-      offset += 6;
-      result.set(strip.subarray(0, 6), offset);
-      offset += 6;
-    }
-    result.set(strip, offset);
-    offset += strip.length;
-  }
-
-  return result.subarray(0, offset);
-}
-
 /**
  * Render strokes and shapes to a Blob for export/download.
  * Returns null if there is no content to render (fitAll with empty canvas)
@@ -155,7 +128,17 @@ export function renderExport(
   strokes: Stroke[],
   shapes: Shape[],
   options: ExportOptions,
-): HTMLCanvasElement | null {
+  images: CanvasImage[] = [],
+): Promise<HTMLCanvasElement | null> {
+  return renderExportAsync(strokes, shapes, options, images);
+}
+
+async function renderExportAsync(
+  strokes: Stroke[],
+  shapes: Shape[],
+  options: ExportOptions,
+  images: CanvasImage[],
+): Promise<HTMLCanvasElement | null> {
   let canvasW: number;
   let canvasH: number;
   let cameraMatrix: Float32Array;
@@ -173,7 +156,7 @@ export function renderExport(
       m[6], m[7], m[8],
     ]);
   } else {
-    const bounds = computeContentBounds(strokes, shapes);
+    const bounds = computeContentBounds(strokes, shapes, images);
     if (!bounds) return null;
 
     // Base size: fit content into a reasonable canvas (max 2048 base)
@@ -209,7 +192,7 @@ export function renderExport(
   if (!gl) return null;
 
   try {
-    renderToGL(gl, offscreen, strokes, shapes, cameraMatrix, options.includeBackground, options.backgroundColor);
+    await renderToGL(gl, offscreen, strokes, shapes, images, cameraMatrix, options.includeBackground, options.backgroundColor);
 
     // Copy to a 2D canvas before losing the WebGL context — loseContext()
     // clears the drawing buffer, so toBlob() on the WebGL canvas would
@@ -232,10 +215,24 @@ function renderToGL(
   canvas: HTMLCanvasElement,
   strokes: Stroke[],
   shapes: Shape[],
+  images: CanvasImage[],
   cameraMatrix: Float32Array,
   includeBackground: boolean,
   backgroundColor?: string,
-): void {
+): Promise<void> {
+  return renderToGLAsync(gl, canvas, strokes, shapes, images, cameraMatrix, includeBackground, backgroundColor);
+}
+
+async function renderToGLAsync(
+  gl: WebGL2RenderingContext,
+  canvas: HTMLCanvasElement,
+  strokes: Stroke[],
+  shapes: Shape[],
+  images: CanvasImage[],
+  cameraMatrix: Float32Array,
+  includeBackground: boolean,
+  backgroundColor?: string,
+): Promise<void> {
   gl.viewport(0, 0, canvas.width, canvas.height);
 
   if (includeBackground) {
@@ -272,42 +269,48 @@ function renderToGL(
   gl.enableVertexAttribArray(aColor);
   gl.vertexAttribPointer(aColor, 4, gl.FLOAT, false, stride, 2 * 4);
 
-  // Shape fills (GL_TRIANGLES)
-  const shapeFills: Float32Array[] = [];
-  const shapeOutlines: Float32Array[] = [];
-  for (const shape of shapes) {
-    const vd = generateShapeVertices(shape);
-    if (vd.fill) shapeFills.push(vd.fill);
-    if (vd.outline) shapeOutlines.push(vd.outline);
+  let imageRenderer: ImageRenderer | null = null;
+  if (images.length > 0) {
+    imageRenderer = new ImageRenderer(gl);
+    imageRenderer.setCameraMatrix(cameraMatrix);
+    await Promise.all(images.map((image) => imageRenderer!.preloadImage(image)));
   }
 
-  if (shapeFills.length > 0) {
-    const batch = concatArrays(shapeFills);
-    gl.bufferData(gl.ARRAY_BUFFER, batch, gl.DYNAMIC_DRAW);
-    gl.drawArrays(gl.TRIANGLES, 0, batch.length / 6);
+  const items = [
+    ...strokes.map((item) => ({ kind: "stroke" as const, item })),
+    ...shapes.map((item) => ({ kind: "shape" as const, item })),
+    ...images.map((item) => ({ kind: "image" as const, item })),
+  ].sort((a, b) => a.item.timestamp - b.item.timestamp);
+
+  for (const canvasItem of items) {
+    if (canvasItem.kind === "shape") {
+      gl.useProgram(program);
+      gl.bindVertexArray(vao);
+      const vd = generateShapeVertices(canvasItem.item);
+      if (vd.fill) {
+        gl.bufferData(gl.ARRAY_BUFFER, vd.fill, gl.DYNAMIC_DRAW);
+        gl.drawArrays(gl.TRIANGLES, 0, vd.fill.length / 6);
+      }
+      if (vd.outline) {
+        gl.bufferData(gl.ARRAY_BUFFER, vd.outline, gl.DYNAMIC_DRAW);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, vd.outline.length / 6);
+      }
+    } else if (canvasItem.kind === "stroke") {
+      const rgba = hexToRgba(canvasItem.item.color);
+      rgba[3] = canvasItem.item.opacity ?? 1.0;
+      const strip = generateTriangleStrip(canvasItem.item.points, canvasItem.item.width, rgba);
+      if (strip) {
+        gl.useProgram(program);
+        gl.bindVertexArray(vao);
+        gl.bufferData(gl.ARRAY_BUFFER, strip, gl.DYNAMIC_DRAW);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, strip.length / 6);
+      }
+    } else {
+      imageRenderer?.drawImage(canvasItem.item);
+    }
   }
 
-  if (shapeOutlines.length > 0) {
-    const batch = concatStrips(shapeOutlines);
-    gl.bufferData(gl.ARRAY_BUFFER, batch, gl.DYNAMIC_DRAW);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, batch.length / 6);
-  }
-
-  // Strokes (TRIANGLE_STRIP with degenerates)
-  const strokeStrips: Float32Array[] = [];
-  for (const stroke of strokes) {
-    const rgba = hexToRgba(stroke.color);
-    rgba[3] = stroke.opacity ?? 1.0;
-    const strip = generateTriangleStrip(stroke.points, stroke.width, rgba);
-    if (strip) strokeStrips.push(strip);
-  }
-
-  if (strokeStrips.length > 0) {
-    const batch = concatStrips(strokeStrips);
-    gl.bufferData(gl.ARRAY_BUFFER, batch, gl.DYNAMIC_DRAW);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, batch.length / 6);
-  }
-
+  imageRenderer?.destroy();
   gl.deleteBuffer(buffer);
   gl.deleteVertexArray(vao);
   gl.deleteProgram(program);

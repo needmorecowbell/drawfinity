@@ -372,6 +372,7 @@ export class CanvasApp {
     this.selectionCapture.onSelectionComplete = (region) => {
       this.activeSelectionRegion = region;
       this.selectionCapture.setActiveRegion(region);
+      this.syncTurtleSelectionConstraint();
     };
     this.selectionCapture.onSelectionMoveStart = () => {
       this.movingSelectionItems = this.refreshActiveSelectionItems();
@@ -385,6 +386,7 @@ export class CanvasApp {
       if (this.activeSelectionRegion) {
         this.activeSelectionRegion = translateSelectionRegion(this.activeSelectionRegion, dx, dy);
       }
+      this.syncTurtleSelectionConstraint();
     };
     this.selectionCapture.onSelectionMoveEnd = () => {
       if (this.movingSelectionItems.length > 0) {
@@ -668,6 +670,7 @@ export class CanvasApp {
     this.turtlePanel = new TurtlePanel(drawingId, {
       onRun: (script) => {
         this.turtlePanel.clearConsole();
+        this.syncTurtleSelectionConstraint();
         // Only set origin to camera center if not explicitly placed
         if (!this.turtleOriginPlaced) {
           this.turtleExecutor.getMainState()?.setOrigin(this.camera.x, this.camera.y);
@@ -722,6 +725,7 @@ export class CanvasApp {
         }
       },
       onReplCommand: async (line) => {
+        this.syncTurtleSelectionConstraint();
         return this.replExecutor.executeCommand(line);
       },
       onReplReset: async () => {
@@ -744,6 +748,7 @@ export class CanvasApp {
     this.turtleButton.addEventListener("pointerdown", (e) => {
       e.stopPropagation();
       this.turtlePanel.toggle();
+      this.syncTurtleSelectionConstraint();
     });
     const panelsGroup = this.toolbar.getGroup("panels");
     if (panelsGroup) {
@@ -1317,6 +1322,14 @@ export class CanvasApp {
     this.activeSelectionRegion = null;
     this.movingSelectionItems = [];
     this.selectionCapture.setActiveRegion(null);
+    this.syncTurtleSelectionConstraint();
+  }
+
+  private syncTurtleSelectionConstraint(): void {
+    if (!this.turtleRegistry || !this.turtlePanel) return;
+    this.turtleRegistry.setSelectionRegion(
+      this.turtlePanel.isVisible() ? this.activeSelectionRegion : null,
+    );
   }
 
   private deleteActiveSelection(): void {
@@ -1418,7 +1431,10 @@ export class CanvasApp {
     } });
     r.register({ id: "toggle-connection", label: "Connection panel", shortcut: "Ctrl+K", category: "Panels", execute: () => this.connectionPanel.toggle() });
     r.register({ id: "toggle-settings", label: "Settings", shortcut: "Ctrl+,", category: "Panels", execute: () => this.settingsPanel.toggle() });
-    r.register({ id: "toggle-turtle", label: "Turtle graphics", shortcut: "Ctrl+`", category: "Panels", execute: () => this.turtlePanel.toggle() });
+    r.register({ id: "toggle-turtle", label: "Turtle graphics", shortcut: "Ctrl+`", category: "Panels", execute: () => {
+      this.turtlePanel.toggle();
+      this.syncTurtleSelectionConstraint();
+    } });
     r.register({ id: "toggle-stats", label: "Stats & Achievements", shortcut: "Ctrl+Shift+S", category: "Panels", execute: () => this.statsPanel.toggle() });
     r.register({ id: "toggle-cheatsheet", label: "Keyboard shortcuts", shortcut: "Ctrl+?", category: "Panels", execute: () => this.cheatSheet.toggle() });
     r.register({ id: "toggle-grid", label: "Toggle grid", shortcut: "Ctrl+'", category: "Navigation", execute: () => this.toggleGrid() });
@@ -1507,6 +1523,7 @@ export class CanvasApp {
     if (mod && e.key === "`") {
       e.preventDefault();
       this.turtlePanel.toggle();
+      this.syncTurtleSelectionConstraint();
       return;
     }
 

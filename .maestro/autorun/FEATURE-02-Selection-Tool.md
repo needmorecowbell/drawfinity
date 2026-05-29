@@ -80,13 +80,14 @@ Once a region is selected, the user can:
   - The selection overlay should be in screen-space (doesn't scale with zoom)
   - Notes: Added a pointer-transparent 2D overlay canvas owned by `Renderer`, drawing dashed rectangle, ellipse, and lasso paths from world-space selection regions with fixed screen-space line/dash styling. Wired `CanvasApp` to render both active and preview selection regions each frame, cleaned up the overlay on renderer destroy, and added focused renderer coverage. Verified with `npx tsc --noEmit`, focused Vitest renderer/selection tests, and full `npx vitest run`.
 
-- [ ] Integrate turtle bounds constraining:
+- [x] Integrate turtle bounds constraining:
   - When a `SelectionRegion` is active, pass it to `TurtleDrawing.ts`
   - In `TurtleDrawing.addSegment()`, clip the line segment to the selection boundary
   - For rectangle: standard line-rect clipping (Cohen-Sutherland or similar)
   - For ellipse: line-ellipse intersection
   - For lasso: line-polygon clipping (Sutherland-Hodgman)
   - If the turtle moves entirely outside the region, the pen produces no stroke
+  - Notes: Added selection-region constraints to `TurtleDrawing`, propagated the active selection through `TurtleRegistry` when the turtle panel is open, and clipped turtle stroke segments against rectangle, ellipse, and lasso boundaries. Outside-only movements now produce no stroke, and batched drawing flushes across selection gaps to avoid drawing outside the active region. Added focused turtle clipping tests. Verified with `npx tsc --noEmit`, focused turtle tests, and full `npx vitest run`.
 
 - [ ] Tests:
   - Test: point-in-rectangle hit testing (inside, outside, on edge)

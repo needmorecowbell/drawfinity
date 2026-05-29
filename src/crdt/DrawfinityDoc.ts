@@ -2,8 +2,10 @@ import * as Y from "yjs";
 import { Stroke, DocumentModel } from "../model/Stroke";
 import { Shape } from "../model/Shape";
 import { CanvasItem } from "../model/Shape";
+import { CanvasImage, createCanvasImage } from "../model/Image";
 import { strokeToYMap, yMapToStroke } from "./StrokeAdapter";
 import { shapeToYMap, yMapToShape } from "./ShapeAdapter";
+import { imageToYMap, yMapToImage } from "./ImageAdapter";
 import { CameraBookmark } from "../model/Bookmark";
 import { bookmarkToYMap, yMapToBookmark } from "./BookmarkAdapter";
 
@@ -13,12 +15,12 @@ export const DEFAULT_BACKGROUND_COLOR = "#FAFAF8";
 /**
  * Yjs CRDT document wrapper that serves as the single source of truth for all drawing data.
  *
- * DrawfinityDoc wraps a Yjs `Y.Doc` and exposes a typed API for managing strokes, shapes,
+ * DrawfinityDoc wraps a Yjs `Y.Doc` and exposes a typed API for managing strokes, shapes, images,
  * bookmarks, and document metadata. All mutations are performed inside Yjs transactions,
  * ensuring atomic updates and automatic conflict resolution during real-time collaboration.
  *
  * Internally the document uses three shared data structures:
- * - `"strokes"` — a `Y.Array` holding both strokes and shapes (distinguished by a `type` field)
+ * - `"strokes"` — a `Y.Array` holding drawable canvas items (distinguished by a `type` field)
  * - `"meta"` — a `Y.Map` for key-value metadata such as background color
  * - `"bookmarks"` — a `Y.Array` of camera bookmark entries
  *
@@ -187,16 +189,89 @@ export class DrawfinityDoc implements DocumentModel {
   }
 
   /**
-   * Returns all canvas items (strokes and shapes) in document order.
+   * Adds an image to the document inside a Yjs transaction.
+   *
+   * @param image - The canvas image to add, including inline data URI, transform, and timestamp.
+   */
+  addImage(image: CanvasImage): void {
+    this.doc.transact(() => {
+      const yMap = imageToYMap(image);
+      this.items.push([yMap]);
+    });
+  }
+
+  /**
+   * Returns all images in the document, filtering out stroke and shape items.
+   *
+   * @returns An array of images in document order.
+   */
+  getImages(): CanvasImage[] {
+    return this.items
+      .toArray()
+      .filter((yMap) => yMap.get("type") === "image")
+      .map(yMapToImage);
+  }
+
+  /**
+   * Removes an image by ID from the document.
+   *
+   * @param imageId - The unique identifier of the image to remove.
+   * @returns `true` if the image was found and removed, `false` otherwise.
+   */
+  removeImage(imageId: string): boolean {
+    let removed = false;
+    this.doc.transact(() => {
+      const arr = this.items.toArray();
+      for (let i = arr.length - 1; i >= 0; i--) {
+        if (arr[i].get("id") === imageId) {
+          this.items.delete(i, 1);
+          removed = true;
+          break;
+        }
+      }
+    });
+    return removed;
+  }
+
+  /**
+   * Partially updates an image's properties.
+   *
+   * @param imageId - The unique identifier of the image to update.
+   * @param updates - The image fields to update. `id` is ignored to keep item identity stable.
+   */
+  updateImage(imageId: string, updates: Partial<CanvasImage>): void {
+    this.doc.transact(() => {
+      const arr = this.items.toArray();
+      for (const yMap of arr) {
+        if (yMap.get("type") === "image" && yMap.get("id") === imageId) {
+          const current = yMapToImage(yMap);
+          const next = createCanvasImage({ ...current, ...updates, id: imageId });
+          for (const [key, value] of Object.entries(next)) {
+            yMap.set(key, value);
+          }
+          break;
+        }
+      }
+    });
+  }
+
+  /**
+   * Returns all canvas items in timestamp order.
    */
   getAllItems(): CanvasItem[] {
-    return this.items.toArray().map((yMap) => {
-      const type = yMap.get("type") as string | undefined;
-      if (type === "shape") {
-        return { kind: "shape" as const, item: yMapToShape(yMap) };
-      }
-      return { kind: "stroke" as const, item: yMapToStroke(yMap) };
-    });
+    return this.items
+      .toArray()
+      .map((yMap) => {
+        const type = yMap.get("type") as string | undefined;
+        if (type === "shape") {
+          return { kind: "shape" as const, item: yMapToShape(yMap) };
+        }
+        if (type === "image") {
+          return { kind: "image" as const, item: yMapToImage(yMap) };
+        }
+        return { kind: "stroke" as const, item: yMapToStroke(yMap) };
+      })
+      .sort((a, b) => a.item.timestamp - b.item.timestamp);
   }
 
   /**

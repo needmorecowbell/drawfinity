@@ -57,12 +57,13 @@ Images are textured quads — two triangles forming a rectangle. This requires:
   - Store `src` as a string field in the Y.Map (base64 data URI)
   - Completed: added `ImageAdapter` with `type: "image"` Y.Map serialization, base64 `src` storage, deserialization defaults, source size validation, barrel export, and adapter round-trip tests.
 
-- [ ] Add image CRUD to `DrawfinityDoc.ts`:
+- [x] Add image CRUD to `DrawfinityDoc.ts`:
   - `addImage(image: CanvasImage): void`
   - `getImages(): CanvasImage[]`
   - `removeImage(id: string): boolean`
   - `updateImage(id: string, updates: Partial<CanvasImage>): void` (for move/resize)
   - Include images in `getAllItems()` with correct timestamp ordering
+  - Completed: added Yjs-backed image add/get/remove/update methods, image-aware `getAllItems()` timestamp ordering, source-size validation on add/update, CRDT sync/undo/change notification coverage, and full test/type-check verification.
 
 - [ ] Create upload UI:
   - Add an "Insert Image" button to the toolbar (or a menu option)

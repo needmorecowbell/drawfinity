@@ -424,6 +424,9 @@ export class CanvasApp {
       onToolChange: (tool: ToolType) => {
         this.switchTool(tool);
       },
+      onSelectionModeChange: (mode) => {
+        this.toolManager.setSelectionConfig({ mode });
+      },
       onUndo: () => this.doUndo(),
       onRedo: () => this.doRedo(),
       onBrushSizeChange: (size) => {
@@ -1096,6 +1099,13 @@ export class CanvasApp {
       this.cameraController.panToolActive = true;
       this.toolbar.setToolUI(tool);
       this.cursorManager.setTool("pan");
+    } else if (tool === "select") {
+      this.strokeCapture.setEnabled(false);
+      this.shapeCapture.setEnabled(false);
+      this.magnifyCapture.setEnabled(false);
+      this.cameraController.panToolActive = false;
+      this.toolbar.setToolUI(tool);
+      this.cursorManager.setTool("select");
     } else if (isShapeTool(tool)) {
       this.strokeCapture.setTool("brush");
       this.strokeCapture.setEnabled(false);
@@ -1259,6 +1269,7 @@ export class CanvasApp {
     r.register({ id: "tool-ellipse", label: "Ellipse", shortcut: "O", category: "Tools", execute: () => this.switchTool("ellipse") });
     r.register({ id: "tool-polygon", label: "Polygon", shortcut: "P", category: "Tools", execute: () => this.switchTool("polygon") });
     r.register({ id: "tool-star", label: "Star", shortcut: "S", category: "Tools", execute: () => this.switchTool("star") });
+    r.register({ id: "tool-select", label: "Select", shortcut: "V", category: "Tools", execute: () => this.switchTool("select") });
     r.register({ id: "tool-pan", label: "Pan/Zoom", shortcut: "G", category: "Tools", execute: () => {
       if (this.toolManager.getTool() === "pan") {
         this.switchTool(this.toolbar.getPreviousTool());
@@ -1444,6 +1455,8 @@ export class CanvasApp {
       this.switchTool("polygon");
     } else if (e.key === "s" || e.key === "S") {
       this.switchTool("star");
+    } else if (e.key === "v" || e.key === "V") {
+      this.switchTool("select");
     } else if (e.key === "g" || e.key === "G") {
       if (this.toolManager.getTool() === "pan") {
         this.switchTool(this.toolbar.getPreviousTool());

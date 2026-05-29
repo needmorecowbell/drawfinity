@@ -13,6 +13,8 @@ describe("ToolManager", () => {
     const tm = new ToolManager();
     tm.setTool("eraser");
     expect(tm.getTool()).toBe("eraser");
+    tm.setTool("select");
+    expect(tm.getTool()).toBe("select");
     tm.setTool("brush");
     expect(tm.getTool()).toBe("brush");
   });
@@ -65,6 +67,7 @@ describe("ToolManager", () => {
     expect(config.shapeConfig.sides).toBe(5);
     expect(config.shapeConfig.starInnerRadius).toBe(0.4);
     expect(config.shapeConfig.fillColor).toBeNull();
+    expect(config.selectionConfig).toEqual({ mode: "rectangle" });
   });
 
   it("does not mutate the original preset", () => {
@@ -90,6 +93,12 @@ describe("ToolManager", () => {
     config.sides = 99;
     expect(tm.getShapeConfig().sides).toBe(5); // unchanged
   });
+
+  it("sets and gets selection config", () => {
+    const tm = new ToolManager();
+    tm.setSelectionConfig({ mode: "lasso" });
+    expect(tm.getSelectionConfig()).toEqual({ mode: "lasso" });
+  });
 });
 
 describe("isShapeTool", () => {
@@ -103,6 +112,7 @@ describe("isShapeTool", () => {
   it("returns false for non-shape tool types", () => {
     expect(isShapeTool("brush")).toBe(false);
     expect(isShapeTool("eraser")).toBe(false);
+    expect(isShapeTool("select")).toBe(false);
   });
 });
 

@@ -44,10 +44,11 @@ Once a region is selected, the user can:
 
 ## Tasks
 
-- [ ] Add `"select"` to the tool type enum in `ToolManager.ts`:
+- [x] Add `"select"` to the tool type enum in `ToolManager.ts`:
   - Add keyboard shortcut `V` to activate (standard selection shortcut)
   - Add a selection tool button to the toolbar with a mode picker (rectangle/ellipse/lasso)
   - Update `CursorManager.ts` with a crosshair cursor for selection mode
+  - Notes: Added selection mode state (`rectangle`/`ellipse`/`lasso`) to `ToolManager`, wired the toolbar selection mode picker and `V` shortcut, updated the cheat sheet references, and added focused tests for tool state, toolbar selection UI, and cursor behavior. Verified with `npx tsc --noEmit`, focused Vitest tests, and full `npx vitest run`.
 
 - [ ] Create `src/input/SelectionCapture.ts`:
   - Handle pointer events for all three selection modes

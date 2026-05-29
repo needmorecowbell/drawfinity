@@ -78,6 +78,11 @@ describe("CursorManager", () => {
     expect(canvas.style.cursor).toContain("zoom-in");
   });
 
+  it("sets crosshair cursor when tool is select", () => {
+    cursor.setTool("select");
+    expect(canvas.style.cursor).toBe("crosshair");
+  });
+
   it("buildMagnifyCursor returns SVG data URI with magnifying glass", () => {
     const result = cursor.buildMagnifyCursor("default");
     expect(result).toContain("data:image/svg+xml");

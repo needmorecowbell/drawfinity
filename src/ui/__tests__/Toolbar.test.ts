@@ -23,6 +23,7 @@ function makeCallbacks(): ToolbarCallbacks {
     onBrushSizeChange: vi.fn(),
     onOpacityChange: vi.fn(),
     onShapeConfigChange: vi.fn(),
+    onSelectionModeChange: vi.fn(),
     onHome: vi.fn(),
     onRenameDrawing: vi.fn(),
   };
@@ -76,6 +77,12 @@ describe("Toolbar", () => {
   it("renders a single shape button with hold-to-select in tools group", () => {
     const toolsGroup = document.querySelector('[data-group="tools"]');
     const buttons = toolsGroup!.querySelectorAll(".shape-btn");
+    expect(buttons.length).toBe(1);
+  });
+
+  it("renders a single select button with hold-to-select in tools group", () => {
+    const toolsGroup = document.querySelector('[data-group="tools"]');
+    const buttons = toolsGroup!.querySelectorAll(".select-btn");
     expect(buttons.length).toBe(1);
   });
 
@@ -233,6 +240,24 @@ describe("Toolbar", () => {
 
     expect(document.querySelector(".eraser-btn")!.classList.contains("active")).toBe(false);
     expect(document.querySelector(".brush-btn")!.classList.contains("active")).toBe(false);
+  });
+
+  it("quick-clicking select button selects last-used selection mode and activates select", () => {
+    const selectBtn = document.querySelector(".select-btn") as HTMLButtonElement;
+    selectBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    selectBtn.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+
+    expect(callbacks.onSelectionModeChange).toHaveBeenCalledWith("rectangle");
+    expect(callbacks.onToolChange).toHaveBeenCalledWith("select");
+  });
+
+  it("setToolUI highlights select button when select tool is active", () => {
+    toolbar.setToolUI("select");
+    const selectBtn = document.querySelector(".select-btn")!;
+    expect(selectBtn.classList.contains("active")).toBe(true);
+    expect(document.querySelector(".brush-btn")!.classList.contains("active")).toBe(false);
+    expect(document.querySelector(".eraser-btn")!.classList.contains("active")).toBe(false);
+    expect(document.querySelector(".shape-btn")!.classList.contains("active")).toBe(false);
   });
 
   it("setToolUI shows shape options panel for shape tools", () => {
@@ -743,6 +768,28 @@ describe("Toolbar", () => {
 
     expect(callbacks.onToolChange).toHaveBeenCalledWith("ellipse");
     expect(document.querySelector(".subtool-popover")).toBeNull();
+
+    vi.useRealTimers();
+  });
+
+  it("hold select button shows selection modes and selecting lasso activates select", () => {
+    vi.useFakeTimers();
+
+    const selectBtn = document.querySelector(".select-btn") as HTMLButtonElement;
+    selectBtn.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    vi.advanceTimersByTime(300);
+
+    const popover = document.querySelector(".subtool-popover");
+    expect(popover).not.toBeNull();
+
+    const options = document.querySelectorAll(".subtool-option");
+    expect(options.length).toBe(3);
+
+    options[2].dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+    expect(callbacks.onSelectionModeChange).toHaveBeenCalledWith("lasso");
+    expect(callbacks.onToolChange).toHaveBeenCalledWith("select");
+    expect(toolbar.getSelectionPicker().getLastUsedId()).toBe("lasso");
 
     vi.useRealTimers();
   });

@@ -118,6 +118,8 @@ export class CursorManager {
       return;
     } else if (this.currentTool === "magnify") {
       this.canvas.style.cursor = this.buildMagnifyCursor(this.magnifyMode);
+    } else if (this.currentTool === "select") {
+      this.canvas.style.cursor = "crosshair";
     } else if (this.currentTool === "brush") {
       // Cursor reflects the brush setting size, not the zoomed world-space size.
       // A 2px brush always shows as a ~2px cursor regardless of zoom.

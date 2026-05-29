@@ -15,6 +15,7 @@ description: Complete keyboard shortcut reference for Drawfinity.
 | <kbd>O</kbd> | Ellipse shape tool |
 | <kbd>P</kbd> | Polygon shape tool |
 | <kbd>S</kbd> | Star shape tool |
+| <kbd>V</kbd> | Selection tool |
 | <kbd>G</kbd> | Toggle pan/zoom tool |
 
 ## Brush Presets

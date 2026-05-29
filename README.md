@@ -37,7 +37,7 @@ Drawfinity is a free, open-source drawing app with an infinite canvas. Use press
 
 ### Drawing Tools
 
-Drawfinity comes with a **brush tool** offering four presets, an **eraser**, and four **shape tools** for quick geometry.
+Drawfinity comes with a **brush tool** offering four presets, an **eraser**, a **selection tool**, and four **shape tools** for quick geometry.
 
 | Preset | Width | Pressure | Opacity | Use case |
 |--------|-------|----------|---------|----------|
@@ -47,6 +47,8 @@ Drawfinity comes with a **brush tool** offering four presets, an **eraser**, and
 | **Highlighter** | 16px | Constant | 30% | Overlay marking |
 
 **Shape tools:** Rectangle (`R`), Ellipse (`O`), Polygon (`P`), and Star (`S`). Each supports pressure-sensitive stroke width.
+
+**Selection tool:** Press `V` to activate selection mode and choose rectangle, ellipse, or lasso from the toolbar picker.
 
 ### Turtle Graphics
 
@@ -308,6 +310,7 @@ Multiple clients in the same room see each other's strokes in real time — all 
 | `O` | Ellipse shape tool |
 | `P` | Polygon shape tool |
 | `S` | Star shape tool |
+| `V` | Selection tool |
 | `1`–`4` | Select brush preset (Pen, Pencil, Marker, Highlighter) |
 | `[` / `]` | Decrease / increase brush size |
 

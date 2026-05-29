@@ -90,10 +90,11 @@ Images are textured quads — two triangles forming a rectangle. This requires:
   - Use `gl.texImage2D()` with the image element decoded from the data URI
   - Completed: extracted image GPU lifecycle into `TextureCache`, added lazy first-render upload and reuse, source-change replacement cleanup, document-retain cleanup for removed images, context loss/restore invalidation for re-upload, renderer wrapper APIs, and focused lifecycle test coverage.
 
-- [ ] Integrate with spatial index and rendering:
+- [x] Integrate with spatial index and rendering:
   - Add image bounding boxes to `SpatialIndex.ts`
   - In the render loop, draw images interleaved with strokes/shapes by timestamp
   - Switch shader programs between image quads and stroke/shape geometry
+  - Completed: added rotated image AABB computation and image culling/query support to `SpatialIndex`, included document images in CanvasApp index rebuilds and texture retention, drew image quads through the existing texture renderer in timestamp order between stroke/shape batches, and verified with focused spatial-index tests, full Vitest, and TypeScript type-check.
 
 - [ ] Integrate with export:
   - **PNG export** (`ExportRenderer.ts`): render image quads in the offscreen canvas using the texture shader

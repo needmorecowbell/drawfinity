@@ -1,5 +1,6 @@
 import { Stroke } from "../model/Stroke";
 import { Shape, CanvasItem } from "../model/Shape";
+import type { CanvasImage } from "../model/Image";
 
 /**
  * Axis-aligned bounding box used for spatial queries and viewport culling.
@@ -96,6 +97,36 @@ export function computeShapeBounds(shape: Shape): AABB {
   };
 }
 
+/**
+ * Computes the axis-aligned bounding box (AABB) of an image, accounting for
+ * rotation around its center point.
+ */
+export function computeImageBounds(image: CanvasImage): AABB {
+  const hw = image.width / 2;
+  const hh = image.height / 2;
+
+  if (image.rotation === 0) {
+    return {
+      minX: image.x - hw,
+      minY: image.y - hh,
+      maxX: image.x + hw,
+      maxY: image.y + hh,
+    };
+  }
+
+  const cos = Math.abs(Math.cos(image.rotation));
+  const sin = Math.abs(Math.sin(image.rotation));
+  const rotatedHalfW = hw * cos + hh * sin;
+  const rotatedHalfH = hw * sin + hh * cos;
+
+  return {
+    minX: image.x - rotatedHalfW,
+    minY: image.y - rotatedHalfH,
+    maxX: image.x + rotatedHalfW,
+    maxY: image.y + rotatedHalfH,
+  };
+}
+
 interface CellEntry {
   stroke: Stroke;
   bounds: AABB;
@@ -106,8 +137,13 @@ interface ShapeCellEntry {
   bounds: AABB;
 }
 
+interface ImageCellEntry {
+  image: CanvasImage;
+  bounds: AABB;
+}
+
 /**
- * Grid-based spatial index for efficient viewport culling of strokes and shapes.
+ * Grid-based spatial index for efficient viewport culling of strokes, shapes, and images.
  * Divides world space into fixed-size cells and maps items to all cells
  * their bounding boxes overlap.
  */
@@ -120,6 +156,10 @@ export class SpatialIndex {
   private shapeCells = new Map<string, ShapeCellEntry[]>();
   private shapeBoundsMap = new Map<string, AABB>();
   private shapeMap = new Map<string, Shape>();
+
+  private imageCells = new Map<string, ImageCellEntry[]>();
+  private imageBoundsMap = new Map<string, AABB>();
+  private imageMap = new Map<string, CanvasImage>();
 
   constructor(cellSize = 500) {
     this.cellSize = cellSize;
@@ -202,6 +242,29 @@ export class SpatialIndex {
   }
 
   /**
+   * Adds an image to the spatial index for viewport culling queries.
+   */
+  addImage(image: CanvasImage): void {
+    const bounds = computeImageBounds(image);
+    this.imageBoundsMap.set(image.id, bounds);
+    this.imageMap.set(image.id, image);
+
+    const range = this.getCellRange(bounds);
+    const entry: ImageCellEntry = { image, bounds };
+    for (let cx = range.x0; cx <= range.x1; cx++) {
+      for (let cy = range.y0; cy <= range.y1; cy++) {
+        const key = this.cellKey(cx, cy);
+        let cell = this.imageCells.get(key);
+        if (!cell) {
+          cell = [];
+          this.imageCells.set(key, cell);
+        }
+        cell.push(entry);
+      }
+    }
+  }
+
+  /**
    * Removes a stroke from the spatial index by its unique identifier.
    *
    * Looks up the stroke's previously computed bounding box, iterates over
@@ -270,13 +333,39 @@ export class SpatialIndex {
   }
 
   /**
-   * Removes all strokes and shapes from the spatial index.
+   * Removes an image from the spatial index by its unique identifier.
+   */
+  removeImage(imageId: string): void {
+    const bounds = this.imageBoundsMap.get(imageId);
+    if (!bounds) return;
+
+    const range = this.getCellRange(bounds);
+    for (let cx = range.x0; cx <= range.x1; cx++) {
+      for (let cy = range.y0; cy <= range.y1; cy++) {
+        const key = this.cellKey(cx, cy);
+        const cell = this.imageCells.get(key);
+        if (cell) {
+          const filtered = cell.filter((e) => e.image.id !== imageId);
+          if (filtered.length === 0) {
+            this.imageCells.delete(key);
+          } else {
+            this.imageCells.set(key, filtered);
+          }
+        }
+      }
+    }
+    this.imageBoundsMap.delete(imageId);
+    this.imageMap.delete(imageId);
+  }
+
+  /**
+   * Removes all strokes, shapes, and images from the spatial index.
    *
    * Clears every internal data structure — grid cells, bounding-box caches,
-   * and item lookup maps — for both strokes and shapes. After calling this
-   * method, {@link size} and {@link shapeSize} will both return `0` and all
-   * subsequent {@link query} / {@link queryShapes} calls will return empty
-   * arrays until new items are added.
+   * and item lookup maps — for strokes, shapes, and images. After calling this
+   * method, {@link size}, {@link shapeSize}, and {@link imageSize} will return `0`
+   * and all subsequent {@link query}, {@link queryShapes}, and {@link queryImages}
+   * calls will return empty arrays until new items are added.
    *
    * This is called internally by {@link rebuild} and {@link rebuildAll}
    * before re-populating the index.
@@ -288,6 +377,9 @@ export class SpatialIndex {
     this.shapeCells.clear();
     this.shapeBoundsMap.clear();
     this.shapeMap.clear();
+    this.imageCells.clear();
+    this.imageBoundsMap.clear();
+    this.imageMap.clear();
   }
 
   /**
@@ -311,9 +403,9 @@ export class SpatialIndex {
   }
 
   /**
-   * Clears all existing index data and re-indexes both strokes and shapes
+   * Clears all existing index data and re-indexes strokes, shapes, and images
    * from scratch. This is the combined equivalent of calling {@link rebuild}
-   * for strokes followed by re-adding all shapes, but performed in a single
+   * for strokes followed by re-adding shapes and images, but performed in a single
    * pass after one {@link clear} call.
    *
    * Use this after bulk operations that invalidate both stroke and shape
@@ -325,14 +417,19 @@ export class SpatialIndex {
    *   the appropriate grid cells.
    * @param shapes - The complete array of shapes to index. Each shape is
    *   inserted via {@link addShape}.
+   * @param images - The complete array of images to index. Each image is
+   *   inserted via {@link addImage}.
    */
-  rebuildAll(strokes: Stroke[], shapes: Shape[]): void {
+  rebuildAll(strokes: Stroke[], shapes: Shape[], images: CanvasImage[] = []): void {
     this.clear();
     for (const stroke of strokes) {
       this.add(stroke);
     }
     for (const shape of shapes) {
       this.addShape(shape);
+    }
+    for (const image of images) {
+      this.addImage(image);
     }
   }
 
@@ -421,34 +518,53 @@ export class SpatialIndex {
   }
 
   /**
-   * Queries the spatial index for all strokes and shapes whose bounding boxes
+   * Queries the spatial index for all images whose bounding boxes intersect
+   * the given viewport rectangle. Images that span multiple grid cells are
+   * deduplicated so each image appears at most once in the result.
+   */
+  queryImages(viewport: AABB): CanvasImage[] {
+    const range = this.getCellRange(viewport);
+    const seen = new Set<string>();
+    const result: CanvasImage[] = [];
+
+    for (let cx = range.x0; cx <= range.x1; cx++) {
+      for (let cy = range.y0; cy <= range.y1; cy++) {
+        const cell = this.imageCells.get(this.cellKey(cx, cy));
+        if (!cell) continue;
+        for (const entry of cell) {
+          if (seen.has(entry.image.id)) continue;
+          seen.add(entry.image.id);
+          if (
+            entry.bounds.maxX >= viewport.minX &&
+            entry.bounds.minX <= viewport.maxX &&
+            entry.bounds.maxY >= viewport.minY &&
+            entry.bounds.minY <= viewport.maxY
+          ) {
+            result.push(entry.image);
+          }
+        }
+      }
+    }
+
+    result.sort((a, b) => a.timestamp - b.timestamp);
+    return result;
+  }
+
+  /**
+   * Queries the spatial index for all strokes, shapes, and images whose bounding boxes
    * intersect the given viewport, returning them as a unified array sorted by
    * timestamp. This enables interleaved rendering in correct document order.
    */
   queryAll(viewport: AABB): CanvasItem[] {
     const strokes = this.query(viewport);
     const shapes = this.queryShapes(viewport);
+    const images = this.queryImages(viewport);
 
-    const items: CanvasItem[] = [];
-    let si = 0;
-    let shi = 0;
-
-    // Merge two already-sorted arrays by timestamp
-    while (si < strokes.length && shi < shapes.length) {
-      if (strokes[si].timestamp <= shapes[shi].timestamp) {
-        items.push({ kind: "stroke", item: strokes[si++] });
-      } else {
-        items.push({ kind: "shape", item: shapes[shi++] });
-      }
-    }
-    while (si < strokes.length) {
-      items.push({ kind: "stroke", item: strokes[si++] });
-    }
-    while (shi < shapes.length) {
-      items.push({ kind: "shape", item: shapes[shi++] });
-    }
-
-    return items;
+    return [
+      ...strokes.map((item) => ({ kind: "stroke" as const, item })),
+      ...shapes.map((item) => ({ kind: "shape" as const, item })),
+      ...images.map((item) => ({ kind: "image" as const, item })),
+    ].sort((a, b) => a.item.timestamp - b.item.timestamp);
   }
 
   /** Returns the number of indexed strokes. */
@@ -461,6 +577,11 @@ export class SpatialIndex {
     return this.shapeMap.size;
   }
 
+  /** Returns the number of indexed images. */
+  get imageSize(): number {
+    return this.imageMap.size;
+  }
+
   /** Check if a stroke is in the index. */
   has(strokeId: string): boolean {
     return this.strokeMap.has(strokeId);
@@ -469,5 +590,10 @@ export class SpatialIndex {
   /** Check if a shape is in the index. */
   hasShape(shapeId: string): boolean {
     return this.shapeMap.has(shapeId);
+  }
+
+  /** Check if an image is in the index. */
+  hasImage(imageId: string): boolean {
+    return this.imageMap.has(imageId);
   }
 }

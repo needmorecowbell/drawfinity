@@ -87,26 +87,26 @@ export function luaBlockDepth(code: string): number {
 
 // ── Highlight + theme ──────────────────────────────────────────────────
 
-/** Catppuccin Mocha highlighting (shared palette with TurtleEditor). */
+/** Highlighting palette follows CSS theme variables shared with TurtleEditor. */
 const replHighlightStyle = HighlightStyle.define([
-  { tag: tags.keyword, color: "#cba6f7" },
-  { tag: tags.controlKeyword, color: "#cba6f7" },
-  { tag: tags.operatorKeyword, color: "#cba6f7" },
-  { tag: tags.definitionKeyword, color: "#cba6f7" },
-  { tag: tags.comment, color: "#6c7086", fontStyle: "italic" },
-  { tag: tags.string, color: "#a6e3a1" },
-  { tag: tags.number, color: "#fab387" },
-  { tag: tags.bool, color: "#fab387" },
-  { tag: tags.null, color: "#fab387" },
-  { tag: tags.function(tags.variableName), color: "#89b4fa" },
-  { tag: tags.variableName, color: "#cdd6f4" },
-  { tag: tags.operator, color: "#89dceb" },
-  { tag: tags.punctuation, color: "#9399b2" },
-  { tag: tags.paren, color: "#9399b2" },
-  { tag: tags.brace, color: "#9399b2" },
-  { tag: tags.squareBracket, color: "#9399b2" },
-  { tag: tags.self, color: "#f38ba8" },
-  { tag: tags.atom, color: "#fab387" },
+  { tag: tags.keyword, color: "var(--turtle-syntax-keyword)" },
+  { tag: tags.controlKeyword, color: "var(--turtle-syntax-keyword)" },
+  { tag: tags.operatorKeyword, color: "var(--turtle-syntax-keyword)" },
+  { tag: tags.definitionKeyword, color: "var(--turtle-syntax-keyword)" },
+  { tag: tags.comment, color: "var(--turtle-syntax-comment)", fontStyle: "italic" },
+  { tag: tags.string, color: "var(--turtle-syntax-string)" },
+  { tag: tags.number, color: "var(--turtle-syntax-number)" },
+  { tag: tags.bool, color: "var(--turtle-syntax-number)" },
+  { tag: tags.null, color: "var(--turtle-syntax-number)" },
+  { tag: tags.function(tags.variableName), color: "var(--turtle-syntax-function)" },
+  { tag: tags.variableName, color: "var(--turtle-text)" },
+  { tag: tags.operator, color: "var(--turtle-syntax-operator)" },
+  { tag: tags.punctuation, color: "var(--turtle-syntax-punctuation)" },
+  { tag: tags.paren, color: "var(--turtle-syntax-punctuation)" },
+  { tag: tags.brace, color: "var(--turtle-syntax-punctuation)" },
+  { tag: tags.squareBracket, color: "var(--turtle-syntax-punctuation)" },
+  { tag: tags.self, color: "var(--turtle-danger)" },
+  { tag: tags.atom, color: "var(--turtle-syntax-number)" },
 ]);
 
 /** Theme: starts as single-line, grows up to a max height for multiline. */
@@ -114,7 +114,7 @@ const replInputTheme = EditorView.theme({
   "&": {
     flex: "1",
     backgroundColor: "transparent",
-    color: "#cdd6f4",
+    color: "var(--turtle-text)",
     fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
     fontSize: "13px",
     lineHeight: "1.5",
@@ -122,7 +122,7 @@ const replInputTheme = EditorView.theme({
   },
   ".cm-content": {
     padding: "0",
-    caretColor: "#89b4fa",
+    caretColor: "var(--turtle-accent)",
   },
   ".cm-line": {
     padding: "0",
@@ -131,13 +131,13 @@ const replInputTheme = EditorView.theme({
     overflow: "auto",
   },
   ".cm-cursor": {
-    borderLeftColor: "#89b4fa",
+    borderLeftColor: "var(--turtle-accent)",
   },
   ".cm-selectionBackground": {
-    backgroundColor: "#44475a !important",
+    backgroundColor: "var(--turtle-selection) !important",
   },
   "&.cm-focused .cm-selectionBackground": {
-    backgroundColor: "#44475a !important",
+    backgroundColor: "var(--turtle-selection) !important",
   },
   "&.cm-focused": {
     outline: "none",

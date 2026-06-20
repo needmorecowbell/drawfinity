@@ -3,7 +3,10 @@ import { UserPreferences } from "../user/UserPreferences";
 import type { GridStyle } from "../user/UserPreferences";
 import { USER_COLORS, saveProfile } from "../user/UserStore";
 import { savePreferences } from "../user/UserPreferences";
+import type { ThemePreference } from "../user/UserPreferences";
 import { BRUSH_PRESETS } from "../tools/BrushPresets";
+import { getThemeManager } from "./ThemeManager";
+import { ICONS } from "./ToolbarIcons";
 
 /**
  * Callbacks for SettingsPanel user interactions.
@@ -47,6 +50,7 @@ export class SettingsPanel {
 
   private nameInput!: HTMLInputElement;
   private colorSwatches: HTMLButtonElement[] = [];
+  private themeButtons: HTMLButtonElement[] = [];
   private brushPresetButtons: HTMLButtonElement[] = [];
   private serverUrlInput!: HTMLInputElement;
   private gridStyleSelect!: HTMLSelectElement;
@@ -58,6 +62,7 @@ export class SettingsPanel {
   private callbacks: SettingsPanelCallbacks;
 
   private selectedColor: string;
+  private selectedTheme: ThemePreference;
   private selectedBrushIndex: number;
   private selectedGridStyle: GridStyle;
 
@@ -70,6 +75,7 @@ export class SettingsPanel {
     this.preferences = { ...preferences };
     this.callbacks = callbacks;
     this.selectedColor = profile.color;
+    this.selectedTheme = preferences.theme ?? "auto";
     this.selectedBrushIndex = preferences.defaultBrush;
     this.selectedGridStyle = preferences.gridStyle ?? "dots";
 
@@ -91,6 +97,36 @@ export class SettingsPanel {
     title.className = "settings-title";
     title.textContent = "Settings";
     this.panel.appendChild(title);
+
+    // Theme selector
+    const themeLabel = document.createElement("label");
+    themeLabel.className = "settings-label";
+    themeLabel.textContent = "Theme";
+    this.panel.appendChild(themeLabel);
+
+    const themeRow = document.createElement("div");
+    themeRow.className = "settings-theme-row";
+    const themeOptions: { value: ThemePreference; label: string; icon: string }[] = [
+      { value: "auto", label: "Auto", icon: ICONS.sunMoon },
+      { value: "light", label: "Light", icon: ICONS.sun },
+      { value: "dark", label: "Dark", icon: ICONS.moon },
+    ];
+    for (const option of themeOptions) {
+      const btn = document.createElement("button");
+      btn.className = "settings-theme-btn";
+      btn.dataset.theme = option.value;
+      btn.type = "button";
+      btn.innerHTML = `${option.icon}<span>${option.label}</span>`;
+      btn.setAttribute("aria-label", `${option.label} theme`);
+      if (option.value === this.selectedTheme) btn.classList.add("active");
+      btn.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        this.selectTheme(option.value);
+      });
+      themeRow.appendChild(btn);
+      this.themeButtons.push(btn);
+    }
+    this.panel.appendChild(themeRow);
 
     // Name input
     const nameLabel = document.createElement("label");
@@ -268,6 +304,14 @@ export class SettingsPanel {
     }
   }
 
+  private selectTheme(theme: ThemePreference): void {
+    this.selectedTheme = theme;
+    for (const btn of this.themeButtons) {
+      btn.classList.toggle("active", btn.dataset.theme === theme);
+    }
+    getThemeManager().setTheme(theme);
+  }
+
   private selectBrush(index: number): void {
     this.selectedBrushIndex = index;
     for (const btn of this.brushPresetButtons) {
@@ -289,6 +333,7 @@ export class SettingsPanel {
       defaultBrush: this.selectedBrushIndex,
       gridStyle: this.selectedGridStyle,
       serverUrl,
+      theme: this.selectedTheme,
     };
 
     saveProfile(updatedProfile);
@@ -330,6 +375,8 @@ export class SettingsPanel {
     this.preferences = { ...preferences };
     this.selectedBrushIndex = preferences.defaultBrush;
     this.selectedGridStyle = preferences.gridStyle ?? "dots";
+    this.selectedTheme = preferences.theme ?? "auto";
+    this.selectTheme(this.selectedTheme);
     if (this.gridStyleSelect) {
       this.gridStyleSelect.value = this.selectedGridStyle;
     }

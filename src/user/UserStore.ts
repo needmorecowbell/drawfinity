@@ -1,5 +1,7 @@
 import type { UserProfile } from "./UserProfile";
 import { readConfigFile, writeConfigFile } from "./ConfigFile";
+import { loadPreferences, savePreferences } from "./UserPreferences";
+import type { ThemePreference } from "./UserPreferences";
 
 const STORAGE_KEY = "drawfinity:user-profile";
 const CONFIG_FILENAME = "profile.json";
@@ -126,6 +128,16 @@ export function onProfileChange(callback: (profile: UserProfile) => void): () =>
   return () => {
     profileListeners.delete(callback);
   };
+}
+
+/** Returns the saved application theme preference. */
+export function getTheme(): ThemePreference {
+  return loadPreferences().theme ?? "auto";
+}
+
+/** Persists the application theme preference with the rest of user settings. */
+export function setTheme(theme: ThemePreference): void {
+  savePreferences({ ...loadPreferences(), theme });
 }
 
 export { USER_COLORS };

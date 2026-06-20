@@ -119,6 +119,29 @@ describe("StrokeCapture", () => {
     expect(capture.getActiveStroke()).toBeNull();
   });
 
+  it("notifies when brush drawing starts and stops", () => {
+    const onDrawingStateChange = vi.fn();
+    capture.onDrawingStateChange = onDrawingStateChange;
+
+    canvas.__fire("pointerdown", { button: 0, ctrlKey: false, clientX: 400, clientY: 300, pressure: 0.5, pointerId: 1 });
+    canvas.__fire("pointerup", { pointerId: 1 });
+
+    expect(onDrawingStateChange).toHaveBeenNthCalledWith(1, true);
+    expect(onDrawingStateChange).toHaveBeenNthCalledWith(2, false);
+  });
+
+  it("notifies when erasing starts and stops", () => {
+    const onDrawingStateChange = vi.fn();
+    capture.onDrawingStateChange = onDrawingStateChange;
+    capture.setTool("eraser");
+
+    canvas.__fire("pointerdown", { button: 0, ctrlKey: false, clientX: 400, clientY: 300, pressure: 0.5, pointerId: 1 });
+    canvas.__fire("pointerup", { pointerId: 1 });
+
+    expect(onDrawingStateChange).toHaveBeenNthCalledWith(1, true);
+    expect(onDrawingStateChange).toHaveBeenNthCalledWith(2, false);
+  });
+
   it("uses default pressure of 0.5 when pressure is 0", () => {
     canvas.__fire("pointerdown", { button: 0, ctrlKey: false, clientX: 400, clientY: 300, pressure: 0, pointerId: 1 });
     canvas.__fire("pointermove", { clientX: 410, clientY: 310, pressure: 0, pointerId: 1 });

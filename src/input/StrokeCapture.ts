@@ -44,6 +44,8 @@ export class StrokeCapture {
   private enabled = true;
   /** Optional callback fired when an eraser action completes (pointer up). */
   onEraseComplete: (() => void) | null = null;
+  /** Optional callback fired when brush/eraser pointer activity starts or stops. */
+  onDrawingStateChange: ((isDrawing: boolean) => void) | null = null;
 
   private onPointerDown: (e: PointerEvent) => void;
   private onPointerMove: (e: PointerEvent) => void;
@@ -91,6 +93,7 @@ export class StrokeCapture {
       this.isErasing = true;
       this.undoManager?.beginBatch();
       this.canvas.setPointerCapture(e.pointerId);
+      this.onDrawingStateChange?.(true);
       this.eraseAt(world.x, world.y);
       return;
     }
@@ -102,6 +105,7 @@ export class StrokeCapture {
     // Convert screen-space brush width to world-space at current zoom
     this.activeStrokeWorldWidth = this.strokeWidth / this.camera.zoom;
     this.canvas.setPointerCapture(e.pointerId);
+    this.onDrawingStateChange?.(true);
   }
 
   private handlePointerMove(e: PointerEvent): void {
@@ -126,6 +130,7 @@ export class StrokeCapture {
       this.undoManager?.endBatch();
       this.canvas.releasePointerCapture(e.pointerId);
       this.onEraseComplete?.();
+      this.onDrawingStateChange?.(false);
       return;
     }
 
@@ -163,6 +168,7 @@ export class StrokeCapture {
 
     this.activeStroke = null;
     this.canvas.releasePointerCapture(e.pointerId);
+    this.onDrawingStateChange?.(false);
   }
 
   private eraseAt(worldX: number, worldY: number): void {
@@ -211,6 +217,7 @@ export class StrokeCapture {
     if (!enabled) {
       this.activeStroke = null;
       this.isErasing = false;
+      this.onDrawingStateChange?.(false);
     }
   }
 

@@ -307,9 +307,11 @@ describe("RemoteTurtleRenderer", () => {
       ]);
 
       const el = root.querySelector('[data-turtle-id="user-1:main"]') as HTMLElement;
+      const glyph = el.querySelector(".turtle-indicator__glyph") as HTMLElement;
       // screenX = (0-0)*1 + 400 = 400, screenY = (0-0)*1 + 300 = 300
       // offset by -9 (half of 18) for centering
-      expect(el.style.transform).toBe("translate(391px, 291px) rotate(0deg)");
+      expect(el.style.transform).toBe("translate(391px, 291px)");
+      expect(glyph.style.transform).toBe("rotate(0deg)");
     });
 
     it("accounts for camera offset", () => {
@@ -324,7 +326,7 @@ describe("RemoteTurtleRenderer", () => {
 
       const el = root.querySelector('[data-turtle-id="user-1:main"]') as HTMLElement;
       // screenX = (0-100)*1 + 400 = 300, screenY = (0-50)*1 + 300 = 250
-      expect(el.style.transform).toBe("translate(291px, 241px) rotate(0deg)");
+      expect(el.style.transform).toBe("translate(291px, 241px)");
     });
 
     it("accounts for zoom level", () => {
@@ -338,7 +340,7 @@ describe("RemoteTurtleRenderer", () => {
 
       const el = root.querySelector('[data-turtle-id="user-1:main"]') as HTMLElement;
       // screenX = (50-0)*2 + 400 = 500, screenY = (25-0)*2 + 300 = 350
-      expect(el.style.transform).toBe("translate(491px, 341px) rotate(0deg)");
+      expect(el.style.transform).toBe("translate(491px, 341px)");
     });
 
     it("applies heading rotation", () => {
@@ -350,7 +352,92 @@ describe("RemoteTurtleRenderer", () => {
       ]);
 
       const el = root.querySelector('[data-turtle-id="user-1:main"]') as HTMLElement;
-      expect(el.style.transform).toBe("translate(391px, 291px) rotate(90deg)");
+      const glyph = el.querySelector(".turtle-indicator__glyph") as HTMLElement;
+      expect(el.style.transform).toBe("translate(391px, 291px)");
+      expect(glyph.style.transform).toBe("rotate(90deg)");
+    });
+  });
+
+  describe("trail rendering", () => {
+    it("renders a dotted trail from recent remote turtle positions", () => {
+      renderer.show();
+      renderer.syncFromAwareness([
+        makeRemoteTurtles("user-1", "Alice", [
+          { id: "main", x: 0, y: 0, heading: 0 },
+        ]),
+      ]);
+      renderer.syncFromAwareness([
+        makeRemoteTurtles("user-1", "Alice", [
+          { id: "main", x: 10, y: 5, heading: 0 },
+        ]),
+      ]);
+
+      const trail = root.querySelector(
+        '[data-turtle-trail-id="user-1:main"] polyline',
+      );
+      expect(trail).toBeTruthy();
+      expect(trail?.getAttribute("stroke-dasharray")).toBe("3 4");
+      expect(trail?.getAttribute("opacity")).toBe("0.3");
+      expect(trail?.getAttribute("points")).toBe("400,300 410,305");
+    });
+
+    it("keeps only the last 20 trail positions", () => {
+      renderer.show();
+      for (let index = 0; index < 25; index++) {
+        renderer.syncFromAwareness([
+          makeRemoteTurtles("user-1", "Alice", [
+            { id: "main", x: index, y: 0, heading: 0 },
+          ]),
+        ]);
+      }
+
+      const segments = root.querySelectorAll(
+        '[data-turtle-trail-id="user-1:main"] polyline',
+      );
+      expect(segments).toHaveLength(19);
+      expect(segments[0].getAttribute("points")).toBe("405,300 406,300");
+    });
+
+    it("redraws trail screen coordinates when the camera changes", () => {
+      renderer.show();
+      renderer.syncFromAwareness([
+        makeRemoteTurtles("user-1", "Alice", [
+          { id: "main", x: 0, y: 0, heading: 0 },
+        ]),
+      ]);
+      renderer.syncFromAwareness([
+        makeRemoteTurtles("user-1", "Alice", [
+          { id: "main", x: 10, y: 0, heading: 0 },
+        ]),
+      ]);
+
+      camera.x = 5;
+      camera.zoom = 2;
+      renderer.redrawAll();
+
+      const trail = root.querySelector(
+        '[data-turtle-trail-id="user-1:main"] polyline',
+      );
+      expect(trail?.getAttribute("points")).toBe("390,300 410,300");
+    });
+
+    it("removes trails when remote turtles disappear", () => {
+      renderer.show();
+      renderer.syncFromAwareness([
+        makeRemoteTurtles("user-1", "Alice", [
+          { id: "main", x: 0, y: 0, heading: 0 },
+        ]),
+      ]);
+      renderer.syncFromAwareness([
+        makeRemoteTurtles("user-1", "Alice", [
+          { id: "main", x: 10, y: 0, heading: 0 },
+        ]),
+      ]);
+      expect(root.querySelector('[data-turtle-trail-id="user-1:main"]')).toBeTruthy();
+
+      renderer.syncFromAwareness([]);
+
+      expect(root.querySelector('[data-turtle-trail-id="user-1:main"]')).toBeNull();
     });
   });
 

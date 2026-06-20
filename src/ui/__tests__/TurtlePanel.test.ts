@@ -144,6 +144,31 @@ describe("TurtlePanel", () => {
     expect(storageMap.get("drawfinity:turtle-script:test-drawing")).toBe("right(90)");
   });
 
+  it("debounces typing activity and clears it after inactivity", () => {
+    vi.useFakeTimers();
+    const onTypingChange = vi.fn();
+    panel.destroy();
+    panel = new TurtlePanel("test-drawing", { onTypingChange });
+    const triggerEditorInput = panel as unknown as { handleEditorInput(): void };
+
+    try {
+      triggerEditorInput.handleEditorInput();
+      vi.advanceTimersByTime(499);
+      expect(onTypingChange).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(1);
+      expect(onTypingChange).toHaveBeenCalledWith(true);
+
+      vi.advanceTimersByTime(1499);
+      expect(onTypingChange).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(1);
+      expect(onTypingChange).toHaveBeenLastCalledWith(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("getSpeed and setSpeed work correctly", () => {
     expect(panel.getSpeed()).toBe(5);
     panel.setSpeed(0);

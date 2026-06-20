@@ -266,8 +266,24 @@ describe("ConnectionPanel", () => {
       panel.show();
       sync._simulateState("connected");
       sync._simulateUsers([
-        { id: "u1", name: "Alice", color: "#ff0000", cursor: null },
-        { id: "u2", name: "Bob", color: "#00ff00", cursor: null },
+        {
+          id: "u1",
+          name: "Alice",
+          color: "#ff0000",
+          cursor: null,
+          isDrawing: false,
+          isTurtleRunning: false,
+          isTurtleTyping: false,
+        },
+        {
+          id: "u2",
+          name: "Bob",
+          color: "#00ff00",
+          cursor: null,
+          isDrawing: false,
+          isTurtleRunning: false,
+          isTurtleTyping: false,
+        },
       ]);
       const count = document.querySelector(".conn-participant-count") as HTMLElement;
       expect(count.textContent).toBe("3 participants");
@@ -277,7 +293,15 @@ describe("ConnectionPanel", () => {
       panel.show();
       sync._simulateState("connected");
       sync._simulateUsers([
-        { id: "u1", name: "Alice", color: "#ff0000", cursor: null },
+        {
+          id: "u1",
+          name: "Alice",
+          color: "#ff0000",
+          cursor: null,
+          isDrawing: false,
+          isTurtleRunning: false,
+          isTurtleTyping: false,
+        },
       ]);
       const items = document.querySelectorAll(".conn-user-item");
       expect(items.length).toBe(1);

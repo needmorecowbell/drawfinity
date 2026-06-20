@@ -95,6 +95,8 @@ export class ShapeCapture {
   private onPointerDown: (e: PointerEvent) => void;
   private onPointerMove: (e: PointerEvent) => void;
   private onPointerUp: (e: PointerEvent) => void;
+  /** Optional callback fired when shape drag activity starts or stops. */
+  onDrawingStateChange: ((isDrawing: boolean) => void) | null = null;
 
   constructor(
     camera: Camera,
@@ -122,6 +124,7 @@ export class ShapeCapture {
     this.enabled = enabled;
     if (!enabled && this.active) {
       this.active = false;
+      this.onDrawingStateChange?.(false);
     }
   }
 
@@ -168,6 +171,7 @@ export class ShapeCapture {
     this.capturedZoom = this.camera.zoom;
     this.active = true;
     this.canvas.setPointerCapture(e.pointerId);
+    this.onDrawingStateChange?.(true);
   }
 
   private handlePointerMove(e: PointerEvent): void {
@@ -197,6 +201,7 @@ export class ShapeCapture {
     }
 
     this.canvas.releasePointerCapture(e.pointerId);
+    this.onDrawingStateChange?.(false);
   }
 
   /**

@@ -7,9 +7,15 @@ const REMOTE_SIZE = 18;
 /** Opacity for remote turtle indicators (visually distinct from local). */
 const REMOTE_OPACITY = 0.5;
 
+/** Number of recent world-space positions to keep for each remote trail. */
+const MAX_TRAIL_POINTS = 20;
+
+type TrailPoint = { x: number; y: number };
+
 /** Internal state for a single remote turtle indicator element. */
 interface RemoteIndicatorEntry {
   container: HTMLElement;
+  glyph: HTMLElement;
   clientId: string;
 }
 
@@ -40,6 +46,9 @@ export class RemoteTurtleRenderer {
   private root: HTMLElement;
   private camera: Camera;
   private indicators = new Map<string, RemoteIndicatorEntry>();
+  private trails = new Map<string, TrailPoint[]>();
+  private trailGroups = new Map<string, SVGGElement>();
+  private trailLayer: SVGSVGElement;
   private unsubscribe: (() => void) | null = null;
   private globalVisible = false;
   private lastSnapshot: RemoteTurtles[] = [];
@@ -47,6 +56,7 @@ export class RemoteTurtleRenderer {
   constructor(root: HTMLElement, camera: Camera) {
     this.root = root;
     this.camera = camera;
+    this.trailLayer = this.createTrailLayer();
   }
 
   /**
@@ -75,6 +85,7 @@ export class RemoteTurtleRenderer {
   /** Show all remote turtle indicators (global visibility). */
   show(): void {
     this.globalVisible = true;
+    this.trailLayer.style.display = "";
     for (const [, entry] of this.indicators) {
       entry.container.style.display = "";
     }
@@ -83,6 +94,7 @@ export class RemoteTurtleRenderer {
   /** Hide all remote turtle indicators (global visibility). */
   hide(): void {
     this.globalVisible = false;
+    this.trailLayer.style.display = "none";
     for (const [, entry] of this.indicators) {
       entry.container.style.display = "none";
     }
@@ -104,6 +116,9 @@ export class RemoteTurtleRenderer {
       entry.container.remove();
     }
     this.indicators.clear();
+    this.trails.clear();
+    this.trailGroups.clear();
+    this.trailLayer.replaceChildren();
   }
 
   /**
@@ -119,6 +134,9 @@ export class RemoteTurtleRenderer {
     }
     for (const key of toRemove) {
       this.indicators.delete(key);
+      this.trails.delete(key);
+      this.trailGroups.get(key)?.remove();
+      this.trailGroups.delete(key);
     }
   }
 
@@ -130,6 +148,7 @@ export class RemoteTurtleRenderer {
     }
     this.hide();
     this.clear();
+    this.trailLayer.remove();
   }
 
   /**
@@ -165,14 +184,26 @@ export class RemoteTurtleRenderer {
       const entry = this.indicators.get(key)!;
       entry.container.remove();
       this.indicators.delete(key);
+      this.trails.delete(key);
+      this.trailGroups.get(key)?.remove();
+      this.trailGroups.delete(key);
     }
+  }
+
+  private createTrailLayer(): SVGSVGElement {
+    const layer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    layer.classList.add("remote-turtle-trails");
+    layer.setAttribute("aria-hidden", "true");
+    layer.style.display = this.globalVisible ? "" : "none";
+    this.root.appendChild(layer);
+    return layer;
   }
 
   private createIndicator(
     key: string,
     clientId: string,
     clientName: string,
-    _clientColor: string,
+    clientColor: string,
   ): void {
     const container = document.createElement("div");
     container.className = "turtle-indicator turtle-indicator--remote";
@@ -180,6 +211,9 @@ export class RemoteTurtleRenderer {
     container.setAttribute("data-remote-client", clientId);
     container.style.display = this.globalVisible ? "" : "none";
     container.style.opacity = String(REMOTE_OPACITY);
+
+    const glyph = document.createElement("div");
+    glyph.className = "turtle-indicator__glyph";
 
     // SVG with dashed outline to distinguish from local turtles
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -197,7 +231,8 @@ export class RemoteTurtleRenderer {
     path.setAttribute("stroke-dasharray", "3 2");
 
     svg.appendChild(path);
-    container.appendChild(svg);
+    glyph.appendChild(svg);
+    container.appendChild(glyph);
 
     // Client name label
     const label = document.createElement("span");
@@ -212,19 +247,18 @@ export class RemoteTurtleRenderer {
     label.style.pointerEvents = "none";
     container.appendChild(label);
 
-    // Apply hue-based color from client ID
-    const hue = hueFromClientId(clientId);
-    container.style.color = `hsl(${hue}, 80%, 55%)`;
+    container.style.color = clientColor || `hsl(${hueFromClientId(clientId)}, 80%, 55%)`;
+    container.style.setProperty("--remote-turtle-color", container.style.color);
 
     this.root.appendChild(container);
-    this.indicators.set(key, { container, clientId });
+    this.indicators.set(key, { container, glyph, clientId });
   }
 
   private updateIndicator(
     key: string,
     turtle: AwarenessTurtleState,
     clientName: string,
-    _clientColor: string,
+    clientColor: string,
   ): void {
     const entry = this.indicators.get(key);
     if (!entry) return;
@@ -244,14 +278,74 @@ export class RemoteTurtleRenderer {
       label.textContent = clientName;
     }
 
+    if (clientColor) {
+      entry.container.style.color = clientColor;
+      entry.container.style.setProperty("--remote-turtle-color", clientColor);
+    }
+
     // Position in screen coordinates
     const [vw, vh] = this.camera.getViewportSize();
     const screenX = (turtle.x - this.camera.x) * this.camera.zoom + vw / 2;
     const screenY = (turtle.y - this.camera.y) * this.camera.zoom + vh / 2;
     const halfSize = REMOTE_SIZE / 2;
 
-    entry.container.style.transform =
-      `translate(${screenX - halfSize}px, ${screenY - halfSize}px) rotate(${turtle.heading}deg)`;
+    entry.container.style.transform = `translate(${screenX - halfSize}px, ${screenY - halfSize}px)`;
+    entry.glyph.style.transform = `rotate(${turtle.heading}deg)`;
+
+    this.recordTrailPoint(key, turtle.x, turtle.y);
+    this.renderTrail(key, clientColor || entry.container.style.color);
+  }
+
+  private recordTrailPoint(key: string, x: number, y: number): void {
+    const trail = this.trails.get(key) ?? [];
+    const last = trail[trail.length - 1];
+    if (!last || last.x !== x || last.y !== y) {
+      trail.push({ x, y });
+      if (trail.length > MAX_TRAIL_POINTS) {
+        trail.splice(0, trail.length - MAX_TRAIL_POINTS);
+      }
+    }
+    this.trails.set(key, trail);
+  }
+
+  private renderTrail(key: string, color: string): void {
+    const trail = this.trails.get(key);
+    if (!trail || trail.length < 2) return;
+
+    let group = this.trailGroups.get(key);
+    if (!group) {
+      group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      group.classList.add("remote-turtle-trail");
+      group.setAttribute("data-turtle-trail-id", key);
+      this.trailLayer.appendChild(group);
+      this.trailGroups.set(key, group);
+    }
+
+    group.replaceChildren();
+    for (let index = 1; index < trail.length; index++) {
+      const from = trail[index - 1];
+      const to = trail[index];
+      const start = this.worldToScreen(from);
+      const end = this.worldToScreen(to);
+      const segment = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+      segment.setAttribute("points", `${start.x},${start.y} ${end.x},${end.y}`);
+      segment.setAttribute("fill", "none");
+      segment.setAttribute("stroke", color);
+      segment.setAttribute("stroke-width", "2");
+      segment.setAttribute("stroke-linecap", "round");
+      segment.setAttribute("stroke-linejoin", "round");
+      segment.setAttribute("stroke-dasharray", "3 4");
+      segment.setAttribute("opacity", String(0.08 + (index / (trail.length - 1)) * 0.22));
+      group.appendChild(segment);
+    }
+  }
+
+  private worldToScreen(point: TrailPoint): TrailPoint {
+    const [vw, vh] = this.camera.getViewportSize();
+    return {
+      x: (point.x - this.camera.x) * this.camera.zoom + vw / 2,
+      y: (point.y - this.camera.y) * this.camera.zoom + vh / 2,
+    };
   }
 
   /**
@@ -263,6 +357,7 @@ export class RemoteTurtleRenderer {
       for (const turtle of client.turtles) {
         const key = `${client.userId}:${turtle.id}`;
         this.updateIndicator(key, turtle, client.userName, client.userColor);
+        this.renderTrail(key, client.userColor);
       }
     }
   }

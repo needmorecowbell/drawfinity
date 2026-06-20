@@ -159,6 +159,17 @@ vi.mock("../../turtle", () => {
     clear = vi.fn();
     destroy = vi.fn();
   },
+  RemoteTurtleRenderer: class MockRemoteTurtleRenderer {
+    constructor() {}
+    setSyncManager = vi.fn();
+    show = vi.fn();
+    hide = vi.fn();
+    redrawAll = vi.fn();
+    syncFromAwareness = vi.fn();
+    removeClient = vi.fn();
+    clear = vi.fn();
+    destroy = vi.fn();
+  },
   ReplExecutor: class MockReplExecutor {
     init = vi.fn().mockResolvedValue(undefined);
     executeCommand = vi.fn().mockResolvedValue({ output: null, error: null });

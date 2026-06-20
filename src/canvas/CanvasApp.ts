@@ -13,7 +13,7 @@ import { ToolManager, BRUSH_PRESETS, isShapeTool } from "../tools";
 import type { ToolType, SelectionMode } from "../tools";
 import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel, TurtlePanel, BookmarkPanel, StatsPanel, BadgeToast, RecordToast, SessionEventCollector, showSessionSummary, hasSessionActivity, buildSessionData } from "../ui";
 import type { SessionSnapshot } from "../ui";
-import { LuaRuntime, TurtleRegistry, TurtleExecutor, TurtleIndicator, ReplExecutor } from "../turtle";
+import { LuaRuntime, TurtleRegistry, TurtleExecutor, TurtleIndicator, RemoteTurtleRenderer, ReplExecutor } from "../turtle";
 import { ICONS } from "../ui/ToolbarIcons";
 import { renderExport, downloadCanvas } from "../ui/ExportRenderer";
 import { exportSVG, downloadSVG } from "../ui/SVGExporter";
@@ -124,6 +124,7 @@ export class CanvasApp {
   private turtleRegistry!: TurtleRegistry;
   private turtleExecutor!: TurtleExecutor;
   private turtleIndicator!: TurtleIndicator;
+  private remoteTurtleRenderer!: RemoteTurtleRenderer;
   private replExecutor!: ReplExecutor;
   private turtlePlacing = false;
   private turtleOriginPlaced = false;
@@ -685,6 +686,10 @@ export class CanvasApp {
     // Eagerly create the main turtle so origin placement has a stable state reference
     this.turtleExecutor.ensureMainTurtle();
     this.turtleIndicator = new TurtleIndicator(canvas.parentElement!, this.camera);
+    // Renders remote peers' turtles (and trails) from awareness updates.
+    this.remoteTurtleRenderer = new RemoteTurtleRenderer(canvas.parentElement!, this.camera);
+    this.remoteTurtleRenderer.setSyncManager(this.syncManager);
+    this.remoteTurtleRenderer.show();
     this.turtleRuntime.init();
 
     this.turtlePanel = new TurtlePanel(drawingId, {
@@ -882,6 +887,7 @@ export class CanvasApp {
       this.toolbar.updateZoom(this.camera.zoom * 100);
       this.cursorManager.setZoom(this.camera.zoom);
       this.remoteCursors.updatePositions();
+      this.remoteTurtleRenderer.redrawAll();
 
       const viewportBounds = this.camera.getViewportBounds();
       this.renderer.drawGrid(cameraMatrix, viewportBounds, this.camera.zoom);
@@ -1054,6 +1060,7 @@ export class CanvasApp {
 
     // Disconnect collaboration
     this.remoteCursors.detach();
+    this.remoteTurtleRenderer.destroy();
     this.syncManager.disconnect();
     this.syncManager.destroy();
 
@@ -1616,6 +1623,7 @@ export class CanvasApp {
       turtlePanel: this.turtlePanel,
       renderer: this.renderer,
       doc: this.doc,
+      remoteTurtleRenderer: this.remoteTurtleRenderer,
     };
   }
 

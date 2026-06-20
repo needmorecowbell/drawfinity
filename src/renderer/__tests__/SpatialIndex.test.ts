@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { SpatialIndex, computeStrokeBounds, computeShapeBounds } from "../SpatialIndex";
+import { SpatialIndex, computeStrokeBounds, computeShapeBounds, computeImageBounds } from "../SpatialIndex";
 import { Stroke } from "../../model/Stroke";
 import type { Shape } from "../../model/Shape";
+import type { CanvasImage } from "../../model/Image";
 
 function makeStroke(
   id: string,
@@ -168,6 +169,28 @@ function makeShape(
   };
 }
 
+function makeImage(
+  id: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  overrides: Partial<CanvasImage> = {},
+): CanvasImage {
+  return {
+    id,
+    src: "data:image/png;base64,aW1hZ2U=",
+    x,
+    y,
+    width,
+    height,
+    rotation: 0,
+    opacity: 1.0,
+    timestamp: Date.now(),
+    ...overrides,
+  };
+}
+
 describe("computeShapeBounds", () => {
   it("computes bounding box for unrotated shape", () => {
     const shape = makeShape("s1", 50, 30, 100, 60);
@@ -279,26 +302,133 @@ describe("SpatialIndex — shapes", () => {
   });
 });
 
+describe("computeImageBounds", () => {
+  it("computes bounding box for unrotated image", () => {
+    const image = makeImage("img1", 50, 30, 100, 60);
+    const bounds = computeImageBounds(image);
+
+    expect(bounds.minX).toBe(0);
+    expect(bounds.maxX).toBe(100);
+    expect(bounds.minY).toBe(0);
+    expect(bounds.maxY).toBe(60);
+  });
+
+  it("computes larger AABB for rotated image", () => {
+    const image = makeImage("img1", 0, 0, 100, 0, { rotation: Math.PI / 4 });
+    const bounds = computeImageBounds(image);
+    const expected = 50 * Math.cos(Math.PI / 4);
+
+    expect(bounds.maxX).toBeCloseTo(expected, 5);
+    expect(bounds.maxY).toBeCloseTo(expected, 5);
+  });
+});
+
+describe("SpatialIndex — images", () => {
+  it("adds and queries images within viewport", () => {
+    const index = new SpatialIndex(100);
+    const image1 = makeImage("img1", 50, 50, 40, 40);
+    const image2 = makeImage("img2", 500, 500, 40, 40);
+    index.addImage(image1);
+    index.addImage(image2);
+
+    const result = index.queryImages({ minX: 0, minY: 0, maxX: 100, maxY: 100 });
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("img1");
+  });
+
+  it("excludes images outside viewport", () => {
+    const index = new SpatialIndex(100);
+    index.addImage(makeImage("img1", 500, 500, 20, 20));
+
+    const result = index.queryImages({ minX: 0, minY: 0, maxX: 100, maxY: 100 });
+    expect(result).toHaveLength(0);
+  });
+
+  it("removes images by ID", () => {
+    const index = new SpatialIndex(100);
+    index.addImage(makeImage("img1", 50, 50, 20, 20));
+    expect(index.imageSize).toBe(1);
+    expect(index.hasImage("img1")).toBe(true);
+
+    index.removeImage("img1");
+    expect(index.imageSize).toBe(0);
+    expect(index.hasImage("img1")).toBe(false);
+  });
+
+  it("rebuildAll indexes strokes, shapes, and images", () => {
+    const index = new SpatialIndex(100);
+    index.add(makeStroke("old", [{ x: 50, y: 50 }]));
+    index.addShape(makeShape("old-shape", 50, 50, 20, 20));
+    index.addImage(makeImage("old-image", 50, 50, 20, 20));
+
+    index.rebuildAll(
+      [makeStroke("s1", [{ x: 10, y: 10 }])],
+      [makeShape("sh1", 50, 50, 20, 20)],
+      [makeImage("img1", 75, 75, 20, 20)],
+    );
+
+    expect(index.size).toBe(1);
+    expect(index.shapeSize).toBe(1);
+    expect(index.imageSize).toBe(1);
+    expect(index.has("old")).toBe(false);
+    expect(index.hasShape("old-shape")).toBe(false);
+    expect(index.hasImage("old-image")).toBe(false);
+    expect(index.has("s1")).toBe(true);
+    expect(index.hasShape("sh1")).toBe(true);
+    expect(index.hasImage("img1")).toBe(true);
+  });
+
+  it("clear removes images too", () => {
+    const index = new SpatialIndex(100);
+    index.add(makeStroke("s1", [{ x: 10, y: 10 }]));
+    index.addShape(makeShape("sh1", 50, 50, 20, 20));
+    index.addImage(makeImage("img1", 50, 50, 20, 20));
+
+    index.clear();
+
+    expect(index.size).toBe(0);
+    expect(index.shapeSize).toBe(0);
+    expect(index.imageSize).toBe(0);
+  });
+
+  it("deduplicates images spanning multiple cells", () => {
+    const index = new SpatialIndex(100);
+    index.addImage(makeImage("img1", 150, 150, 400, 400));
+
+    const result = index.queryImages({ minX: 0, minY: 0, maxX: 500, maxY: 500 });
+    expect(result).toHaveLength(1);
+  });
+
+  it("removing non-existent image is a no-op", () => {
+    const index = new SpatialIndex(100);
+    index.removeImage("nonexistent");
+    expect(index.imageSize).toBe(0);
+  });
+});
+
 describe("queryAll — interleaved document order", () => {
-  it("returns strokes and shapes merged by timestamp", () => {
+  it("returns strokes, shapes, and images merged by timestamp", () => {
     const index = new SpatialIndex(500);
     const stroke1 = makeStroke("st1", [{ x: 10, y: 10 }, { x: 20, y: 20 }]);
     stroke1.timestamp = 100;
 
     const shape1 = makeShape("sh1", 30, 30, 20, 20, { timestamp: 200 });
+    const image1 = makeImage("img1", 35, 35, 20, 20, { timestamp: 250 });
 
     const stroke2 = makeStroke("st2", [{ x: 40, y: 40 }, { x: 50, y: 50 }]);
     stroke2.timestamp = 300;
 
     index.add(stroke1);
     index.addShape(shape1);
+    index.addImage(image1);
     index.add(stroke2);
 
     const items = index.queryAll({ minX: 0, minY: 0, maxX: 500, maxY: 500 });
-    expect(items).toHaveLength(3);
+    expect(items).toHaveLength(4);
     expect(items[0]).toEqual({ kind: "stroke", item: stroke1 });
     expect(items[1]).toEqual({ kind: "shape", item: shape1 });
-    expect(items[2]).toEqual({ kind: "stroke", item: stroke2 });
+    expect(items[2]).toEqual({ kind: "image", item: image1 });
+    expect(items[3]).toEqual({ kind: "stroke", item: stroke2 });
   });
 
   it("shape drawn after stroke appears later in results", () => {
@@ -347,5 +477,15 @@ describe("queryAll — interleaved document order", () => {
     const items = index.queryAll({ minX: 0, minY: 0, maxX: 500, maxY: 500 });
     expect(items).toHaveLength(1);
     expect(items[0].kind).toBe("stroke");
+  });
+
+  it("handles images-only correctly", () => {
+    const index = new SpatialIndex(500);
+    const image = makeImage("img1", 50, 50, 20, 20, { timestamp: 100 });
+    index.addImage(image);
+
+    const items = index.queryAll({ minX: 0, minY: 0, maxX: 500, maxY: 500 });
+    expect(items).toHaveLength(1);
+    expect(items[0].kind).toBe("image");
   });
 });

@@ -26,7 +26,7 @@ export { ExportDialog } from "./ExportDialog";
 export type { ExportDialogConfig, ExportDialogResult, ExportFormat } from "./ExportDialog";
 export { renderExport, downloadCanvas, computeContentBounds } from "./ExportRenderer";
 export type { ExportScope, ExportOptions } from "./ExportRenderer";
-export { exportSVG, downloadSVG, strokeToSVG, shapeToSVG } from "./SVGExporter";
+export { exportSVG, downloadSVG, strokeToSVG, shapeToSVG, imageToSVG } from "./SVGExporter";
 export { ToolbarOverflow } from "./ToolbarOverflow";
 export type { ToolbarOverflowConfig } from "./ToolbarOverflow";
 export { TurtlePanel } from "./TurtlePanel";

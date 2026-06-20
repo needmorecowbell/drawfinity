@@ -2,9 +2,11 @@ import { WebGLContext } from "./WebGLContext";
 import { StrokeRenderer, StrokePoint } from "./StrokeRenderer";
 import { DotGridRenderer, autoContrastDotColor } from "./DotGridRenderer";
 import { LineGridRenderer } from "./LineGridRenderer";
+import { ImageRenderer } from "./ImageRenderer";
 import { StrokeVertexCache } from "./StrokeVertexCache";
 import { ShapeVertexCache } from "./ShapeVertexCache";
 import type { GridStyle } from "../user/UserPreferences";
+import type { CanvasImage } from "../model/Image";
 
 /**
  * Top-level renderer that owns the WebGL context, shaders, and stroke/shape renderers.
@@ -13,19 +15,33 @@ import type { GridStyle } from "../user/UserPreferences";
 export class Renderer {
   private context: WebGLContext;
   private strokeRenderer: StrokeRenderer;
+  private imageRenderer: ImageRenderer;
   private dotGridRenderer: DotGridRenderer;
   private lineGridRenderer: LineGridRenderer;
   private gridStyle: GridStyle = "dots";
   readonly vertexCache: StrokeVertexCache;
   readonly shapeVertexCache: ShapeVertexCache;
+  private contextLostHandler: (event: Event) => void;
+  private contextRestoredHandler: () => void;
 
   constructor(canvas: HTMLCanvasElement) {
     this.context = new WebGLContext(canvas);
     this.strokeRenderer = new StrokeRenderer(this.context.gl);
+    this.imageRenderer = new ImageRenderer(this.context.gl);
     this.dotGridRenderer = new DotGridRenderer(this.context.gl);
     this.lineGridRenderer = new LineGridRenderer(this.context.gl);
     this.vertexCache = new StrokeVertexCache();
     this.shapeVertexCache = new ShapeVertexCache();
+
+    this.contextLostHandler = (event: Event): void => {
+      event.preventDefault();
+      this.imageRenderer.handleContextLost();
+    };
+    this.contextRestoredHandler = (): void => {
+      this.imageRenderer.handleContextRestored();
+    };
+    canvas.addEventListener("webglcontextlost", this.contextLostHandler);
+    canvas.addEventListener("webglcontextrestored", this.contextRestoredHandler);
   }
 
   get gl(): WebGL2RenderingContext {
@@ -90,6 +106,7 @@ export class Renderer {
    */
   setCameraMatrix(matrix: Float32Array): void {
     this.strokeRenderer.setCameraMatrix(matrix);
+    this.imageRenderer.setCameraMatrix(matrix);
   }
 
   /**
@@ -169,6 +186,41 @@ export class Renderer {
   }
 
   /**
+   * Starts decoding and uploading an image texture before it is rendered.
+   */
+  preloadImage(image: CanvasImage): Promise<void> {
+    return this.imageRenderer.preloadImage(image);
+  }
+
+  /**
+   * Draws a canvas image as a textured quad when its texture is available.
+   */
+  drawImage(image: CanvasImage): boolean {
+    return this.imageRenderer.drawImage(image);
+  }
+
+  /**
+   * Releases one cached image texture.
+   */
+  deleteImageTexture(imageId: string): void {
+    this.imageRenderer.deleteTexture(imageId);
+  }
+
+  /**
+   * Releases cached image textures that no longer have a document image.
+   */
+  retainImageTextures(imageIds: Iterable<string>): void {
+    this.imageRenderer.retainTextures(imageIds);
+  }
+
+  /**
+   * Clears all image textures so they can be recreated after WebGL context restore.
+   */
+  clearImageTextures(): void {
+    this.imageRenderer.clearTextures();
+  }
+
+  /**
    * Releases all WebGL resources held by this renderer, including the stroke renderer,
    * grid renderers, and the underlying WebGL context. Call this when the canvas is being
    * removed from the DOM or the application is shutting down to avoid GPU memory leaks.
@@ -176,7 +228,10 @@ export class Renderer {
    * After calling destroy(), this Renderer instance must not be used again.
    */
   destroy(): void {
+    this.canvas.removeEventListener("webglcontextlost", this.contextLostHandler);
+    this.canvas.removeEventListener("webglcontextrestored", this.contextRestoredHandler);
     this.strokeRenderer.destroy();
+    this.imageRenderer.destroy();
     this.dotGridRenderer.destroy();
     this.lineGridRenderer.destroy();
     this.context.destroy();

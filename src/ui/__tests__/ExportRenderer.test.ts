@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 import { computeContentBounds, renderExport, downloadCanvas } from "../ExportRenderer";
 import type { Stroke } from "../../model/Stroke";
 import type { Shape } from "../../model/Shape";
+import type { CanvasImage } from "../../model/Image";
 
 function makeStroke(overrides: Partial<Stroke> = {}): Stroke {
   return {
@@ -30,6 +31,21 @@ function makeShape(overrides: Partial<Shape> = {}): Shape {
     strokeColor: "#FF0000",
     strokeWidth: 2,
     fillColor: "#00FF00",
+    opacity: 1,
+    timestamp: 1,
+    ...overrides,
+  };
+}
+
+function makeImage(overrides: Partial<CanvasImage> = {}): CanvasImage {
+  return {
+    id: "img1",
+    src: "data:image/png;base64,aW1hZ2U=",
+    x: 100,
+    y: 80,
+    width: 40,
+    height: 20,
+    rotation: 0,
     opacity: 1,
     timestamp: 1,
     ...overrides,
@@ -80,6 +96,25 @@ describe("computeContentBounds", () => {
     expect(bounds!.maxY).toBe(205);
   });
 
+  it("computes bounds from images", () => {
+    const image = makeImage({ x: 100, y: 80, width: 40, height: 20, rotation: 0 });
+    const bounds = computeContentBounds([], [], [image]);
+    expect(bounds).not.toBeNull();
+    expect(bounds!.minX).toBe(80);
+    expect(bounds!.maxX).toBe(120);
+    expect(bounds!.minY).toBe(70);
+    expect(bounds!.maxY).toBe(90);
+  });
+
+  it("accounts for rotated image bounds", () => {
+    const image = makeImage({ x: 0, y: 0, width: 100, height: 20, rotation: Math.PI / 2 });
+    const bounds = computeContentBounds([], [], [image]);
+    expect(bounds!.minX).toBeCloseTo(-10, 5);
+    expect(bounds!.maxX).toBeCloseTo(10, 5);
+    expect(bounds!.minY).toBeCloseTo(-50, 5);
+    expect(bounds!.maxY).toBeCloseTo(50, 5);
+  });
+
   it("handles rotated shapes", () => {
     // 90 degree rotation swaps width/height contribution
     const shape = makeShape({
@@ -101,8 +136,8 @@ describe("computeContentBounds", () => {
 });
 
 describe("renderExport", () => {
-  it("returns null for fitAll with no content", () => {
-    const result = renderExport([], [], {
+  it("returns null for fitAll with no content", async () => {
+    const result = await renderExport([], [], {
       scope: "fitAll",
       scale: 1,
       includeBackground: true,
@@ -110,8 +145,8 @@ describe("renderExport", () => {
     expect(result).toBeNull();
   });
 
-  it("returns null for viewport scope without required options", () => {
-    const result = renderExport([makeStroke()], [], {
+  it("returns null for viewport scope without required options", async () => {
+    const result = await renderExport([makeStroke()], [], {
       scope: "viewport",
       scale: 1,
       includeBackground: true,
@@ -120,8 +155,8 @@ describe("renderExport", () => {
     expect(result).toBeNull();
   });
 
-  it("returns null for viewport scope with missing viewportMatrix", () => {
-    const result = renderExport([makeStroke()], [], {
+  it("returns null for viewport scope with missing viewportMatrix", async () => {
+    const result = await renderExport([makeStroke()], [], {
       scope: "viewport",
       scale: 1,
       includeBackground: true,
@@ -133,8 +168,8 @@ describe("renderExport", () => {
   // Note: Full WebGL rendering tests require a real WebGL2 context.
   // jsdom does not support WebGL, so renderExport returns null when
   // canvas.getContext("webgl2") is unavailable.
-  it("returns null when WebGL2 is not available (jsdom)", () => {
-    const result = renderExport([makeStroke()], [], {
+  it("returns null when WebGL2 is not available (jsdom)", async () => {
+    const result = await renderExport([makeStroke()], [], {
       scope: "fitAll",
       scale: 1,
       includeBackground: true,

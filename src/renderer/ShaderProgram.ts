@@ -94,3 +94,35 @@ export const STROKE_FRAGMENT_SHADER = `#version 300 es
     fragColor = v_color;
   }
 `;
+
+export const IMAGE_VERTEX_SHADER = `#version 300 es
+  precision highp float;
+
+  in vec2 a_position;
+  in vec2 a_uv;
+
+  uniform mat3 u_camera;
+
+  out vec2 v_uv;
+
+  void main() {
+    vec3 transformed = u_camera * vec3(a_position, 1.0);
+    gl_Position = vec4(transformed.xy, 0.0, 1.0);
+    v_uv = a_uv;
+  }
+`;
+
+export const IMAGE_FRAGMENT_SHADER = `#version 300 es
+  precision highp float;
+
+  in vec2 v_uv;
+
+  uniform sampler2D u_sampler;
+  uniform float u_opacity;
+
+  out vec4 fragColor;
+
+  void main() {
+    fragColor = texture(u_sampler, v_uv) * vec4(1.0, 1.0, 1.0, u_opacity);
+  }
+`;

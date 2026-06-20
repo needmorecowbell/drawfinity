@@ -4,12 +4,12 @@ import { DrawfinityDoc } from "../DrawfinityDoc";
 import { Stroke } from "../../model/Stroke";
 import { Shape } from "../../model/Shape";
 
-function makeStroke(id: string): Stroke {
+function makeStroke(id: string, timestamp = 1000): Stroke {
   return {
     id,
     color: "#ff0000",
     width: 3,
-    timestamp: 1000,
+    timestamp,
     points: [
       { x: 0, y: 0, pressure: 0.5 },
       { x: 5, y: 5, pressure: 0.7 },
@@ -17,7 +17,7 @@ function makeStroke(id: string): Stroke {
   };
 }
 
-function makeShape(id: string, type: Shape["type"] = "rectangle"): Shape {
+function makeShape(id: string, type: Shape["type"] = "rectangle", timestamp = 2000): Shape {
   return {
     id,
     type,
@@ -30,7 +30,7 @@ function makeShape(id: string, type: Shape["type"] = "rectangle"): Shape {
     strokeWidth: 2,
     fillColor: "#00ff00",
     opacity: 0.9,
-    timestamp: 2000,
+    timestamp,
   };
 }
 
@@ -109,11 +109,11 @@ describe("DrawfinityDoc — shape support", () => {
   });
 
   describe("getAllItems()", () => {
-    it("returns all items in document order", () => {
-      doc.addStroke(makeStroke("s1"));
-      doc.addShape(makeShape("sh1"));
-      doc.addStroke(makeStroke("s2"));
-      doc.addShape(makeShape("sh2", "ellipse"));
+    it("returns all items in timestamp order", () => {
+      doc.addStroke(makeStroke("s1", 1000));
+      doc.addShape(makeShape("sh1", "rectangle", 2000));
+      doc.addStroke(makeStroke("s2", 3000));
+      doc.addShape(makeShape("sh2", "ellipse", 4000));
 
       const items = doc.getAllItems();
       expect(items).toHaveLength(4);

@@ -34,7 +34,7 @@ Images are textured quads — two triangles forming a rectangle. This requires:
 
 ## Tasks
 
-- [ ] Define the Image data model in `src/model/Image.ts`:
+- [x] Define the Image data model in `src/model/Image.ts`:
   ```ts
   interface CanvasImage {
     id: string;              // "image-{timestamp}-{counter}"
@@ -49,20 +49,23 @@ Images are textured quads — two triangles forming a rectangle. This requires:
   ```
   - Add `CanvasImage` to the `CanvasItem` union type
   - Enforce a max source size (e.g., 2MB) — reject or resize larger images
+  - Completed: added `CanvasImage`, image ID generation, 2MB encoded-source validation helpers, model tests, and image-aware `CanvasItem` narrowing at existing render/export call sites.
 
-- [ ] Create `src/crdt/ImageAdapter.ts`:
+- [x] Create `src/crdt/ImageAdapter.ts`:
   - `imageToYMap(image: CanvasImage): Y.Map<any>` — serialize to Yjs map
   - `yMapToImage(map: Y.Map<any>): CanvasImage` — deserialize from Yjs map
   - Store `src` as a string field in the Y.Map (base64 data URI)
+  - Completed: added `ImageAdapter` with `type: "image"` Y.Map serialization, base64 `src` storage, deserialization defaults, source size validation, barrel export, and adapter round-trip tests.
 
-- [ ] Add image CRUD to `DrawfinityDoc.ts`:
+- [x] Add image CRUD to `DrawfinityDoc.ts`:
   - `addImage(image: CanvasImage): void`
   - `getImages(): CanvasImage[]`
   - `removeImage(id: string): boolean`
   - `updateImage(id: string, updates: Partial<CanvasImage>): void` (for move/resize)
   - Include images in `getAllItems()` with correct timestamp ordering
+  - Completed: added Yjs-backed image add/get/remove/update methods, image-aware `getAllItems()` timestamp ordering, source-size validation on add/update, CRDT sync/undo/change notification coverage, and full test/type-check verification.
 
-- [ ] Create upload UI:
+- [x] Create upload UI:
   - Add an "Insert Image" button to the toolbar (or a menu option)
   - On click: open a file picker (`<input type="file" accept="image/*">`)
   - Read the file as a data URI via `FileReader.readAsDataURL()`
@@ -70,30 +73,35 @@ Images are textured quads — two triangles forming a rectangle. This requires:
   - Place the image centered at the current viewport center
   - Set initial world-space width to fill ~50% of the viewport width, preserving aspect ratio
   - Also support **paste** (`Ctrl+V`) and **drag-and-drop** onto the canvas
+  - Completed: added a toolbar Insert Image action, hidden image file picker, data URI import and client-side canvas resizing before CRDT storage, viewport-centered image placement at ~50% viewport width, paste and drag/drop insertion support, and focused toolbar/app/image-import tests.
 
-- [ ] Create the texture shader in `src/renderer/`:
+- [x] Create the texture shader in `src/renderer/`:
   - Vertex shader: transform position by camera matrix, pass through UV coordinates
   - Fragment shader: `texture(sampler, uv) * vec4(1, 1, 1, opacity)`
   - Vertex format: `[x, y, u, v]` (position + texture coordinates)
   - Create `ImageRenderer.ts` that manages textures and draws image quads
+  - Completed: added GLSL ES 300 image shader constants, `ImageRenderer` textured-quad drawing with `[x, y, u, v]` vertices, async data URI image decode/upload via `gl.texImage2D()`, renderer wrapper APIs, barrel exports, and focused shader/image-renderer tests.
 
-- [ ] Implement texture management:
+- [x] Implement texture management:
   - `TextureCache`: map from `image.id` → `WebGLTexture`
   - Upload texture on first render, cache for reuse
   - Delete texture when image is removed from document
   - Handle context loss gracefully (re-upload on restore)
   - Use `gl.texImage2D()` with the image element decoded from the data URI
+  - Completed: extracted image GPU lifecycle into `TextureCache`, added lazy first-render upload and reuse, source-change replacement cleanup, document-retain cleanup for removed images, context loss/restore invalidation for re-upload, renderer wrapper APIs, and focused lifecycle test coverage.
 
-- [ ] Integrate with spatial index and rendering:
+- [x] Integrate with spatial index and rendering:
   - Add image bounding boxes to `SpatialIndex.ts`
   - In the render loop, draw images interleaved with strokes/shapes by timestamp
   - Switch shader programs between image quads and stroke/shape geometry
+  - Completed: added rotated image AABB computation and image culling/query support to `SpatialIndex`, included document images in CanvasApp index rebuilds and texture retention, drew image quads through the existing texture renderer in timestamp order between stroke/shape batches, and verified with focused spatial-index tests, full Vitest, and TypeScript type-check.
 
-- [ ] Integrate with export:
+- [x] Integrate with export:
   - **PNG export** (`ExportRenderer.ts`): render image quads in the offscreen canvas using the texture shader
   - **SVG export** (if FEATURE-03 is implemented): emit `<image>` elements with embedded base64 data URIs
+  - Completed: added image-aware PNG export with async texture preloading and timestamp-ordered rendering through the texture shader, included image bounds in fit-all export sizing, emitted embedded-data-URI SVG `<image>` elements with rotation/opacity, and covered image export behavior with focused tests plus full Vitest/type-check verification.
 
-- [ ] Tests:
+- [x] Tests:
   - Test: `CanvasImage` model creation with valid fields
   - Test: ImageAdapter round-trip (serialize → deserialize)
   - Test: image added to doc appears in `getAllItems()` at correct timestamp position
@@ -101,3 +109,4 @@ Images are textured quads — two triangles forming a rectangle. This requires:
   - Test: oversized image source is rejected or resized
   - Test: spatial index includes image bounding boxes
   - All existing tests must still pass: `npx vitest run`
+  - Completed: verified existing focused coverage in `Image.test.ts`, `ImageAdapter.test.ts`, `DrawfinityDocImages.test.ts`, `ImageUpload.test.ts`, and `SpatialIndex.test.ts`; ran full Vitest and TypeScript type-check successfully.

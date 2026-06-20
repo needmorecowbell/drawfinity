@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { exportSVG, strokeToSVG, shapeToSVG, computeStrokeOutline } from "../SVGExporter";
+import { exportSVG, strokeToSVG, shapeToSVG, imageToSVG, computeStrokeOutline } from "../SVGExporter";
 import type { Stroke } from "../../model/Stroke";
 import type { Shape } from "../../model/Shape";
+import type { CanvasImage } from "../../model/Image";
 import type { CanvasItem } from "../../model/Shape";
 import type { ExportOptions } from "../ExportRenderer";
 
@@ -37,6 +38,21 @@ function makeShape(overrides: Partial<Shape> = {}): Shape {
   };
 }
 
+function makeImage(overrides: Partial<CanvasImage> = {}): CanvasImage {
+  return {
+    id: "img1",
+    src: "data:image/png;base64,aW1hZ2U=",
+    x: 80,
+    y: 60,
+    width: 40,
+    height: 20,
+    rotation: 0,
+    opacity: 1,
+    timestamp: 1500,
+    ...overrides,
+  };
+}
+
 function defaultOptions(overrides: Partial<ExportOptions> = {}): ExportOptions {
   return {
     scope: "fitAll",
@@ -68,6 +84,15 @@ describe("SVGExporter", () => {
       expect(svg).toContain("<svg xmlns=");
       expect(svg).toContain("viewBox=");
       expect(svg).toContain("</svg>");
+    });
+
+    it("produces SVG for image-only content", () => {
+      const items: CanvasItem[] = [{ kind: "image", item: makeImage() }];
+      const svg = exportSVG(items, defaultOptions());
+      expect(svg).not.toBeNull();
+      expect(svg).toContain("<image");
+      expect(svg).toContain('href="data:image/png;base64,aW1hZ2U="');
+      expect(svg).toContain('viewBox="58 49 44 22"');
     });
 
     it("includes background rect when includeBackground is true", () => {
@@ -243,6 +268,24 @@ describe("SVGExporter", () => {
     });
   });
 
+  describe("imageToSVG", () => {
+    it("embeds the image data URI and dimensions", () => {
+      const svg = imageToSVG(makeImage());
+      expect(svg).toContain("<image");
+      expect(svg).toContain('href="data:image/png;base64,aW1hZ2U="');
+      expect(svg).toContain('x="60"');
+      expect(svg).toContain('y="50"');
+      expect(svg).toContain('width="40"');
+      expect(svg).toContain('height="20"');
+    });
+
+    it("includes rotation and opacity when present", () => {
+      const svg = imageToSVG(makeImage({ rotation: Math.PI / 2, opacity: 0.5 }));
+      expect(svg).toContain('transform="rotate(90, 80, 60)"');
+      expect(svg).toContain('opacity="0.5"');
+    });
+  });
+
   describe("document order", () => {
     it("preserves document order in SVG element order", () => {
       const stroke1 = makeStroke({ id: "s1", timestamp: 1000 });
@@ -259,6 +302,7 @@ describe("SVGExporter", () => {
 
       const items: CanvasItem[] = [
         { kind: "stroke", item: stroke1 },
+        { kind: "image", item: makeImage({ timestamp: 1500 }) },
         { kind: "shape", item: shape1 },
         { kind: "stroke", item: stroke2 },
       ];
@@ -268,15 +312,19 @@ describe("SVGExporter", () => {
 
       // Find positions of elements
       const firstStroke = svg.indexOf('fill="#ff0000"');
+      const imagePos = svg.indexOf("<image");
       const rectPos = svg.indexOf("<rect");
       const secondStroke = svg.indexOf('fill="#0000ff"');
 
       expect(firstStroke).toBeGreaterThan(-1);
+      expect(imagePos).toBeGreaterThan(-1);
       expect(rectPos).toBeGreaterThan(-1);
       expect(secondStroke).toBeGreaterThan(-1);
 
-      // Order should be: stroke1 < shape1 < stroke2
+      // Order should be: stroke1 < image < shape1 < stroke2
       expect(firstStroke).toBeLessThan(rectPos);
+      expect(firstStroke).toBeLessThan(imagePos);
+      expect(imagePos).toBeLessThan(rectPos);
       expect(rectPos).toBeLessThan(secondStroke);
     });
 

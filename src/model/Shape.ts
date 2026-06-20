@@ -1,3 +1,5 @@
+import type { CanvasImage } from "./Image";
+
 /**
  * The set of geometric shape types supported by the canvas drawing tools.
  *
@@ -64,9 +66,9 @@ export interface Shape {
 }
 
 /**
- * Discriminator type identifying whether a {@link CanvasItem} wraps a stroke or a shape.
+ * Discriminator type identifying whether a {@link CanvasItem} wraps a stroke, shape, or image.
  */
-export type CanvasItemKind = "stroke" | "shape";
+export type CanvasItemKind = "stroke" | "shape" | "image";
 
 /**
  * A tagged union representing any drawable item on the canvas.
@@ -77,7 +79,8 @@ export type CanvasItemKind = "stroke" | "shape";
  */
 export type CanvasItem =
   | { kind: "stroke"; item: import("./Stroke").Stroke }
-  | { kind: "shape"; item: Shape };
+  | { kind: "shape"; item: Shape }
+  | { kind: "image"; item: CanvasImage };
 
 let shapeIdCounter = 0;
 

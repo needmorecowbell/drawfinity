@@ -33,6 +33,7 @@ import { ToolbarOverflow } from "./ToolbarOverflow";
  * @property onRenameDrawing - Called when the user renames the current drawing via the toolbar.
  * @property onCheatSheet - Called when the user clicks the help/keyboard shortcuts button.
  * @property onExport - Called when the user confirms an export from the export dialog.
+ * @property onInsertImage - Called when the user clicks the insert image button.
  * @property onZoomIn - Called when the user clicks the zoom in button.
  * @property onZoomOut - Called when the user clicks the zoom out button.
  * @property onZoomReset - Called when the user clicks the zoom display to reset to 100%.
@@ -53,6 +54,7 @@ export interface ToolbarCallbacks {
   onRenameDrawing?: (name: string) => void;
   onCheatSheet?: () => void;
   onExport?: (options: ExportDialogResult) => void;
+  onInsertImage?: () => void;
   onZoomIn?: () => void;
   onZoomOut?: () => void;
   onZoomReset?: () => void;
@@ -153,6 +155,7 @@ export class Toolbar {
   private homeButton!: HTMLButtonElement;
   private helpButton!: HTMLButtonElement;
   private exportButton!: HTMLButtonElement;
+  private insertImageButton!: HTMLButtonElement;
   private exportDialog!: ExportDialog;
   private drawingNameEl!: HTMLSpanElement;
   private drawingNameInput!: HTMLInputElement;
@@ -458,6 +461,17 @@ export class Toolbar {
       this.callbacks.onRedo();
     });
     actionsGroup.appendChild(this.redoButton);
+
+    // Insert image button
+    this.insertImageButton = document.createElement("button");
+    this.insertImageButton.className = "toolbar-btn insert-image-btn";
+    this.tooltip.attach(this.insertImageButton, "Insert image");
+    this.insertImageButton.innerHTML = ICONS.image;
+    this.insertImageButton.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.callbacks.onInsertImage?.();
+    });
+    actionsGroup.appendChild(this.insertImageButton);
 
     // Export button
     this.exportButton = document.createElement("button");

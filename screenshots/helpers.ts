@@ -126,6 +126,53 @@ export async function addShape(
 }
 
 /**
+ * Add an image to the current drawing via the CRDT document.
+ */
+export async function addImage(
+  page: Page,
+  opts: {
+    src: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    rotation?: number;
+    opacity?: number;
+  }
+) {
+  await page.evaluate((o) => {
+    const vm = (window as any).__drawfinity.viewManager;
+    const app = vm.getCanvasApp();
+    const doc = app.getInternals().doc;
+    const id = `img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    doc.addImage({
+      id,
+      src: o.src,
+      x: o.x,
+      y: o.y,
+      width: o.width,
+      height: o.height,
+      rotation: o.rotation ?? 0,
+      opacity: o.opacity ?? 1,
+      timestamp: Date.now(),
+    });
+  }, opts);
+  await waitForRender(page);
+}
+
+/**
+ * Wait for an image to decode and upload to the GPU.
+ *
+ * The TextureCache uploads textures asynchronously after the image source
+ * decodes, so a fixed delay plus one render frame is sufficient to ensure the
+ * texture is available before sampling the canvas.
+ */
+export async function waitForTexture(page: Page, ms = 800) {
+  await page.waitForTimeout(ms);
+  await waitForRender(page);
+}
+
+/**
  * Set the camera position and zoom level.
  */
 export async function setCamera(

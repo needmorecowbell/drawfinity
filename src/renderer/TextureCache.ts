@@ -1,3 +1,4 @@
+import { loadHtmlImage } from "../model/loadImage";
 import type { CanvasImage } from "../model/Image";
 
 interface TextureEntry {
@@ -118,7 +119,7 @@ export class TextureCache {
 
     const uploadGeneration = this.contextGeneration;
     let uploadPromise: Promise<WebGLTexture>;
-    uploadPromise = this.loadHtmlImage(image.src)
+    uploadPromise = loadHtmlImage(image.src)
       .then((element) => this.uploadTexture(element))
       .then((texture) => {
         if (entry.promise !== uploadPromise || uploadGeneration !== this.contextGeneration) {
@@ -141,27 +142,6 @@ export class TextureCache {
     entry.promise = uploadPromise;
 
     return entry.promise;
-  }
-
-  private loadHtmlImage(src: string): Promise<HTMLImageElement> {
-    return new Promise((resolve, reject) => {
-      const element = new Image();
-      element.onload = async (): Promise<void> => {
-        try {
-          if (typeof element.decode === "function") {
-            await element.decode();
-          }
-          resolve(element);
-        } catch (error) {
-          reject(error);
-        }
-      };
-      element.onerror = (): void => reject(new Error("Failed to decode image source"));
-      element.src = src;
-      if (element.complete && element.naturalWidth > 0) {
-        element.onload?.(new Event("load"));
-      }
-    });
   }
 
   private uploadTexture(element: HTMLImageElement): WebGLTexture {

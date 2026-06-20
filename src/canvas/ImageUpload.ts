@@ -3,6 +3,7 @@ import {
   generateImageId,
   getImageSourceSizeBytes,
   isImageSourceWithinLimit,
+  loadHtmlImage,
   type CanvasImage,
 } from "../model";
 
@@ -41,16 +42,12 @@ export function readFileAsDataUri(file: File): Promise<string> {
   });
 }
 
-export function loadImageDimensions(src: string): Promise<ImageDimensions> {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve({
-      width: image.naturalWidth || image.width,
-      height: image.naturalHeight || image.height,
-    });
-    image.onerror = () => reject(new Error("Image data could not be decoded"));
-    image.src = src;
-  });
+export async function loadImageDimensions(src: string): Promise<ImageDimensions> {
+  const image = await loadHtmlImage(src);
+  return {
+    width: image.naturalWidth || image.width,
+    height: image.naturalHeight || image.height,
+  };
 }
 
 export function calculatePlacedImageSize(
@@ -138,13 +135,4 @@ function normalizeOutputMimeType(mimeType: string): string {
     return mimeType.toLowerCase() === "image/jpg" ? "image/jpeg" : mimeType;
   }
   return "image/png";
-}
-
-function loadHtmlImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("Image data could not be decoded"));
-    image.src = src;
-  });
 }

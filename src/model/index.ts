@@ -12,6 +12,7 @@ export {
   isImageSourceWithinLimit,
 } from "./Image";
 export type { CanvasImage } from "./Image";
+export { loadHtmlImage } from "./loadImage";
 export { generateBookmarkId } from "./Bookmark";
 export type { CameraBookmark } from "./Bookmark";
 export { getSelectedItems, hitTestShape, hitTestStroke, pointInRegion, translateSelectionRegion } from "./Selection";

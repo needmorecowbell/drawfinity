@@ -82,6 +82,13 @@
   --turtle-syntax-punctuation: #64748b;
 }
 
+/*
+ * KEEP IN SYNC with the [data-theme="auto"] palette inside the
+ * @media (prefers-color-scheme: dark) block below. Plain CSS has no
+ * mechanism to share a custom-property block between an unconditional
+ * selector and a media-gated one, so these two declaration sets must be
+ * kept byte-for-byte identical. Update both whenever the dark palette changes.
+ */
 [data-theme="dark"] {
   --bg-primary: #1a1a1a;
   --bg-secondary: #242424;
@@ -94,7 +101,7 @@
   --text-primary: #e8e8e8;
   --text-secondary: #b0b0b0;
   --text-tertiary: #888;
-  --text-muted: #666;
+  --text-muted: #7a7a7a;
   --text-subtle: #555;
   --text-on-accent: #fff;
   --border-primary: #3a3a3a;
@@ -167,6 +174,12 @@
 }
 
 @media (prefers-color-scheme: dark) {
+  /*
+   * KEEP IN SYNC with the [data-theme="dark"] palette above. These
+   * declarations must remain byte-for-byte identical to the dark block;
+   * see the note above that rule for why the duplication is unavoidable
+   * in plain CSS.
+   */
   [data-theme="auto"] {
     --bg-primary: #1a1a1a;
     --bg-secondary: #242424;
@@ -179,7 +192,7 @@
     --text-primary: #e8e8e8;
     --text-secondary: #b0b0b0;
     --text-tertiary: #888;
-    --text-muted: #666;
+    --text-muted: #7a7a7a;
     --text-subtle: #555;
     --text-on-accent: #fff;
     --border-primary: #3a3a3a;

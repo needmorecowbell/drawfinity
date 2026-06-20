@@ -356,8 +356,11 @@ export class RemoteTurtleRenderer {
     for (const client of this.lastSnapshot) {
       for (const turtle of client.turtles) {
         const key = `${client.userId}:${turtle.id}`;
+        // updateIndicator already records the trail point and renders the trail
+        // (using clientColor || container color). A second explicit renderTrail
+        // here would be redundant work on every pan/zoom frame and could render
+        // with a different color argument, so we rely solely on updateIndicator.
         this.updateIndicator(key, turtle, client.userName, client.userColor);
-        this.renderTrail(key, client.userColor);
       }
     }
   }

@@ -2,6 +2,25 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // FOUC guard: apply the saved theme before the stylesheet/module load so
+      // dark-OS users don't see a light flash. Mirrors ThemeManager.applyTheme(),
+      // which sets data-theme to the raw preference ("auto" | "light" | "dark");
+      // CSS resolves "auto" via the prefers-color-scheme media query. Key and
+      // value format must match src/user/UserPreferences.ts.
+      (function () {
+        try {
+          var raw = localStorage.getItem("drawfinity:user-preferences");
+          var theme = raw ? JSON.parse(raw).theme : undefined;
+          if (theme !== "light" && theme !== "dark" && theme !== "auto") {
+            theme = "auto";
+          }
+          document.documentElement.dataset.theme = theme;
+        } catch (e) {
+          document.documentElement.dataset.theme = "auto";
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="/src/styles.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Drawfinity</title>

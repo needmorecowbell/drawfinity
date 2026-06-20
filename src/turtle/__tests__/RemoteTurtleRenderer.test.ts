@@ -48,6 +48,29 @@ function makeRemoteTurtles(
   };
 }
 
+/**
+ * Extract the two numeric arguments of a `translate(<x>px, <y>px)` token from a
+ * transform string. Robust to jsdom transform-string normalization (extra
+ * whitespace, reordering, or other tokens being present/absent).
+ */
+function parseTranslate(transform: string): { x: number; y: number } | null {
+  const match = transform.match(
+    /translate\(\s*(-?[\d.]+)px\s*,\s*(-?[\d.]+)px\s*\)/,
+  );
+  if (!match) return null;
+  return { x: Number(match[1]), y: Number(match[2]) };
+}
+
+/**
+ * Extract the numeric angle (in degrees) of a `rotate(<deg>deg)` token from a
+ * transform string. Robust to jsdom transform-string normalization.
+ */
+function parseRotate(transform: string): number | null {
+  const match = transform.match(/rotate\(\s*(-?[\d.]+)deg\s*\)/);
+  if (!match) return null;
+  return Number(match[1]);
+}
+
 describe("RemoteTurtleRenderer", () => {
   let root: HTMLElement;
   let camera: Camera;
@@ -64,6 +87,9 @@ describe("RemoteTurtleRenderer", () => {
   afterEach(() => {
     renderer.destroy();
     root.remove();
+    // Reset the document body to avoid DOM/CSS state leaking across test files,
+    // which can cause jsdom to normalize transform strings inconsistently.
+    document.body.replaceChildren();
   });
 
   describe("initial state", () => {
@@ -310,8 +336,8 @@ describe("RemoteTurtleRenderer", () => {
       const glyph = el.querySelector(".turtle-indicator__glyph") as HTMLElement;
       // screenX = (0-0)*1 + 400 = 400, screenY = (0-0)*1 + 300 = 300
       // offset by -9 (half of 18) for centering
-      expect(el.style.transform).toBe("translate(391px, 291px)");
-      expect(glyph.style.transform).toBe("rotate(0deg)");
+      expect(parseTranslate(el.style.transform)).toEqual({ x: 391, y: 291 });
+      expect(parseRotate(glyph.style.transform)).toBe(0);
     });
 
     it("accounts for camera offset", () => {
@@ -326,7 +352,7 @@ describe("RemoteTurtleRenderer", () => {
 
       const el = root.querySelector('[data-turtle-id="user-1:main"]') as HTMLElement;
       // screenX = (0-100)*1 + 400 = 300, screenY = (0-50)*1 + 300 = 250
-      expect(el.style.transform).toBe("translate(291px, 241px)");
+      expect(parseTranslate(el.style.transform)).toEqual({ x: 291, y: 241 });
     });
 
     it("accounts for zoom level", () => {
@@ -340,7 +366,7 @@ describe("RemoteTurtleRenderer", () => {
 
       const el = root.querySelector('[data-turtle-id="user-1:main"]') as HTMLElement;
       // screenX = (50-0)*2 + 400 = 500, screenY = (25-0)*2 + 300 = 350
-      expect(el.style.transform).toBe("translate(491px, 341px)");
+      expect(parseTranslate(el.style.transform)).toEqual({ x: 491, y: 341 });
     });
 
     it("applies heading rotation", () => {
@@ -353,8 +379,8 @@ describe("RemoteTurtleRenderer", () => {
 
       const el = root.querySelector('[data-turtle-id="user-1:main"]') as HTMLElement;
       const glyph = el.querySelector(".turtle-indicator__glyph") as HTMLElement;
-      expect(el.style.transform).toBe("translate(391px, 291px)");
-      expect(glyph.style.transform).toBe("rotate(90deg)");
+      expect(parseTranslate(el.style.transform)).toEqual({ x: 391, y: 291 });
+      expect(parseRotate(glyph.style.transform)).toBe(90);
     });
   });
 

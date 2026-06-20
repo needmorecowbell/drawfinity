@@ -170,7 +170,11 @@ export class TextureCache {
     if (!texture) throw new Error("Failed to create image texture");
 
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+    // Upload straight (non-premultiplied) alpha. Images are composited with the
+    // global SRC_ALPHA / ONE_MINUS_SRC_ALPHA blend func set by StrokeRenderer, which
+    // already multiplies RGB by alpha. Premultiplying here too would double-multiply
+    // and cause dark edge fringing on semi-transparent pixels and opacity < 1 images.
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);

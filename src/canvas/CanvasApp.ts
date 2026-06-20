@@ -10,7 +10,7 @@ import type { SelectionRegion } from "../input";
 import { getSelectedItems, translateSelectionRegion } from "../model";
 import type { CanvasItem } from "../model";
 import { ToolManager, BRUSH_PRESETS, isShapeTool } from "../tools";
-import type { ToolType } from "../tools";
+import type { ToolType, SelectionMode } from "../tools";
 import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel, TurtlePanel, BookmarkPanel, StatsPanel, BadgeToast, RecordToast, SessionEventCollector, showSessionSummary, hasSessionActivity, buildSessionData } from "../ui";
 import type { SessionSnapshot } from "../ui";
 import { LuaRuntime, TurtleRegistry, TurtleExecutor, TurtleIndicator, ReplExecutor } from "../turtle";
@@ -1121,6 +1121,17 @@ export class CanvasApp {
    */
   getActiveSelectionItems(): CanvasItem[] {
     return this.refreshActiveSelectionItems();
+  }
+
+  /**
+   * Switches the selection marquee mode (rectangle / ellipse / lasso),
+   * mirroring the toolbar's `onSelectionModeChange` path so the active
+   * `SelectionCapture` immediately uses the new mode. Primarily a hook for
+   * driving mode switching outside the toolbar UI (e.g. verification specs).
+   */
+  setSelectionMode(mode: SelectionMode): void {
+    this.toolManager.setSelectionConfig({ mode });
+    this.selectionCapture.setMode(mode);
   }
 
   /**

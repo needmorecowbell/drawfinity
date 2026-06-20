@@ -119,6 +119,7 @@ Each module has an `index.ts` barrel. Import from the barrel (`from "./renderer"
 | `O` | Switch to ellipse shape tool |
 | `P` | Switch to polygon shape tool |
 | `S` | Switch to star shape tool |
+| `V` | Switch to selection tool |
 | `G` | Toggle pan/zoom tool |
 | `1`–`4` | Select brush preset (Pen, Pencil, Marker, Highlighter) |
 | `[` / `]` | Decrease / increase brush size |

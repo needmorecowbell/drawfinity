@@ -1,6 +1,6 @@
 import { BrushConfig } from "../tools/Brush";
 import { BRUSH_PRESETS } from "../tools/BrushPresets";
-import { ToolType, isShapeTool, ShapeToolConfig } from "../tools/ToolManager";
+import { ToolType, isShapeTool, ShapeToolConfig, SelectionMode } from "../tools/ToolManager";
 import type { GridStyle } from "../user/UserPreferences";
 import { BrushSizeSlider } from "./BrushSizeSlider";
 import { OpacitySlider } from "./OpacitySlider";
@@ -43,6 +43,7 @@ export interface ToolbarCallbacks {
   onBrushSelect: (brush: BrushConfig) => void;
   onColorChange: (color: string) => void;
   onToolChange: (tool: ToolType) => void;
+  onSelectionModeChange?: (mode: SelectionMode) => void;
   onUndo: () => void;
   onRedo: () => void;
   onBrushSizeChange: (size: number) => void;
@@ -80,6 +81,13 @@ const SHAPE_TOOLS: { type: ToolType; label: string; title: string; shortcut: str
   { type: "ellipse", label: ICONS.ellipse, title: "Ellipse", shortcut: "O" },
   { type: "polygon", label: ICONS.polygon, title: "Polygon", shortcut: "P" },
   { type: "star", label: ICONS.star, title: "Star", shortcut: "S" },
+];
+
+/** Selection mode definitions for the toolbar. */
+const SELECTION_MODES: { type: SelectionMode; label: string; title: string }[] = [
+  { type: "rectangle", label: ICONS.selectRect, title: "Rectangle selection" },
+  { type: "ellipse", label: ICONS.selectEllipse, title: "Ellipse selection" },
+  { type: "lasso", label: ICONS.selectLasso, title: "Lasso selection" },
 ];
 
 /** Toolbar group identifiers for logical organization. */
@@ -122,10 +130,12 @@ export class Toolbar {
   private callbacks: ToolbarCallbacks;
   private brushButton!: HTMLButtonElement;
   private shapeButton!: HTMLButtonElement;
+  private selectButton!: HTMLButtonElement;
   private panButton!: HTMLButtonElement;
   private magnifyButton!: HTMLButtonElement;
   private brushPicker!: SubToolPicker;
   private shapePicker!: SubToolPicker;
+  private selectionPicker!: SubToolPicker;
   private gridPicker!: SubToolPicker;
   private brushSizeSlider!: BrushSizeSlider;
   private brushSizeButton!: HTMLButtonElement;
@@ -238,6 +248,22 @@ export class Toolbar {
     this.shapePicker.attach(this.shapeButton);
     this.tooltip.attach(this.shapeButton, "Shapes (hold to select)");
     toolsGroup.appendChild(this.shapeButton);
+
+    // Selection button with hold-to-select region modes
+    const selectionOptions: SubToolOption[] = SELECTION_MODES.map(mode => ({
+      id: mode.type,
+      label: mode.label,
+      title: `${mode.title} (V)`,
+    }));
+    this.selectButton = document.createElement("button");
+    this.selectButton.className = "toolbar-btn select-btn";
+    this.selectionPicker = new SubToolPicker({
+      options: selectionOptions,
+      onSelect: (id) => this.selectSelectionMode(id as SelectionMode),
+    });
+    this.selectionPicker.attach(this.selectButton);
+    this.tooltip.attach(this.selectButton, "Select (hold to choose mode, V)");
+    toolsGroup.appendChild(this.selectButton);
 
     // Pan/Zoom tool
     this.panButton = document.createElement("button");
@@ -653,6 +679,12 @@ export class Toolbar {
     this.callbacks.onToolChange(tool);
   }
 
+  selectSelectionMode(mode: SelectionMode): void {
+    this.selectionPicker.setLastUsedId(mode);
+    this.callbacks.onSelectionModeChange?.(mode);
+    this.setTool("select");
+  }
+
   /** Update UI only (called from external keyboard shortcuts). */
   setToolUI(tool: ToolType): void {
     if (this.activeTool !== "pan" && this.activeTool !== "magnify" && tool !== this.activeTool) {
@@ -661,6 +693,7 @@ export class Toolbar {
     this.activeTool = tool;
     this.eraserButton.classList.toggle("active", tool === "eraser");
     this.brushButton.classList.toggle("active", tool === "brush");
+    this.selectButton.classList.toggle("active", tool === "select");
     this.panButton.classList.toggle("active", tool === "pan");
     this.magnifyButton.classList.toggle("active", tool === "magnify");
     const shapeActive = isShapeTool(tool);
@@ -882,6 +915,11 @@ export class Toolbar {
     return this.shapePicker;
   }
 
+  /** Get the selection mode SubToolPicker (for testing or external use). */
+  getSelectionPicker(): SubToolPicker {
+    return this.selectionPicker;
+  }
+
   /** Get the grid SubToolPicker (for testing or external use). */
   getGridPicker(): SubToolPicker {
     return this.gridPicker;
@@ -911,6 +949,7 @@ export class Toolbar {
     this.overflow.destroy();
     this.brushPicker.destroy();
     this.shapePicker.destroy();
+    this.selectionPicker.destroy();
     this.gridPicker.destroy();
     this.brushSizeSlider.destroy();
     this.opacitySlider.destroy();

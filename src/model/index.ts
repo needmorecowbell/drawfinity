@@ -14,3 +14,5 @@ export {
 export type { CanvasImage } from "./Image";
 export { generateBookmarkId } from "./Bookmark";
 export type { CameraBookmark } from "./Bookmark";
+export { getSelectedItems, hitTestShape, hitTestStroke, pointInRegion, translateSelectionRegion } from "./Selection";
+export type { SelectionBounds, SelectionDocumentModel, SelectionPoint, SelectionRegion } from "./Selection";

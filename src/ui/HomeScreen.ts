@@ -381,6 +381,7 @@ export class HomeScreen {
     r.register({ id: "tool-ellipse", label: "Ellipse", shortcut: "O", category: "Tools", execute: noop });
     r.register({ id: "tool-polygon", label: "Polygon", shortcut: "P", category: "Tools", execute: noop });
     r.register({ id: "tool-star", label: "Star", shortcut: "S", category: "Tools", execute: noop });
+    r.register({ id: "tool-select", label: "Select", shortcut: "V", category: "Tools", execute: noop });
     // Drawing
     r.register({ id: "brush-preset-1", label: "Pen preset", shortcut: "1", category: "Drawing", execute: noop });
     r.register({ id: "brush-preset-2", label: "Pencil preset", shortcut: "2", category: "Drawing", execute: noop });

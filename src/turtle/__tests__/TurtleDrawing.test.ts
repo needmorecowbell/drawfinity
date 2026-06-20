@@ -249,6 +249,92 @@ describe("TurtleDrawing", () => {
     });
   });
 
+  describe("selection constraints", () => {
+    it("clips turtle strokes to a rectangular selection", () => {
+      drawing.setSelectionRegion({
+        type: "rect",
+        bounds: { x: 0, y: 0, width: 10, height: 10 },
+      });
+
+      drawing.addSegment(makeSegment(-5, 5, 15, 5), false);
+
+      expect(doc.strokes).toHaveLength(1);
+      expect(doc.strokes[0].points).toEqual([
+        { x: 0, y: 5, pressure: 1 },
+        { x: 10, y: 5, pressure: 1 },
+      ]);
+    });
+
+    it("skips turtle strokes that remain outside the active selection", () => {
+      drawing.setSelectionRegion({
+        type: "rect",
+        bounds: { x: 0, y: 0, width: 10, height: 10 },
+      });
+
+      drawing.addSegment(makeSegment(-5, -5, -1, -1), false);
+
+      expect(doc.strokes).toHaveLength(0);
+    });
+
+    it("clips turtle strokes to an elliptical selection", () => {
+      drawing.setSelectionRegion({
+        type: "ellipse",
+        bounds: { x: 0, y: 0, width: 20, height: 10 },
+      });
+
+      drawing.addSegment(makeSegment(-5, 5, 25, 5), false);
+
+      expect(doc.strokes).toHaveLength(1);
+      expect(doc.strokes[0].points[0].x).toBeCloseTo(0);
+      expect(doc.strokes[0].points[0].y).toBeCloseTo(5);
+      expect(doc.strokes[0].points[1].x).toBeCloseTo(20);
+      expect(doc.strokes[0].points[1].y).toBeCloseTo(5);
+    });
+
+    it("clips turtle strokes to a lasso selection", () => {
+      drawing.setSelectionRegion({
+        type: "lasso",
+        bounds: { x: 0, y: 0, width: 10, height: 10 },
+        points: [
+          { x: 0, y: 0 },
+          { x: 10, y: 0 },
+          { x: 10, y: 10 },
+          { x: 0, y: 10 },
+        ],
+      });
+
+      drawing.addSegment(makeSegment(-5, 5, 15, 5), false);
+
+      expect(doc.strokes).toHaveLength(1);
+      expect(doc.strokes[0].points).toEqual([
+        { x: 0, y: 5, pressure: 1 },
+        { x: 10, y: 5, pressure: 1 },
+      ]);
+    });
+
+    it("flushes batched strokes when clipping creates a drawing gap", () => {
+      drawing.setSelectionRegion({
+        type: "rect",
+        bounds: { x: 0, y: 0, width: 10, height: 10 },
+      });
+
+      drawing.addSegment(makeSegment(1, 1, 2, 1), true);
+      drawing.addSegment(makeSegment(20, 1, 30, 1), true);
+      drawing.addSegment(makeSegment(3, 1, 4, 1), true);
+      drawing.flush();
+
+      expect(doc.strokes).toHaveLength(2);
+      expect(doc.strokes[0].points).toEqual([
+        { x: 1, y: 1, pressure: 1 },
+        { x: 2, y: 1, pressure: 1 },
+      ]);
+      expect(doc.strokes[1].points).toEqual([
+        { x: 3, y: 1, pressure: 1 },
+        { x: 4, y: 1, pressure: 1 },
+      ]);
+    });
+  });
+
   describe("createShape", () => {
     it("creates a rectangle shape in the document", () => {
       drawing.createShape({

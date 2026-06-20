@@ -5,7 +5,10 @@ import { generateShapeVertices } from "../renderer/ShapeMesh";
 import { Camera, CameraAnimator, CameraController } from "../camera";
 import * as Y from "yjs";
 import { DrawfinityDoc, UndoManager } from "../crdt";
-import { StrokeCapture, ShapeCapture, MagnifyCapture } from "../input";
+import { StrokeCapture, ShapeCapture, MagnifyCapture, SelectionCapture } from "../input";
+import type { SelectionRegion } from "../input";
+import { getSelectedItems, translateSelectionRegion } from "../model";
+import type { CanvasItem } from "../model";
 import { ToolManager, BRUSH_PRESETS, isShapeTool } from "../tools";
 import type { ToolType } from "../tools";
 import { Toolbar, ConnectionPanel, RemoteCursors, SettingsPanel, TurtlePanel, BookmarkPanel, StatsPanel, BadgeToast, RecordToast, SessionEventCollector, showSessionSummary, hasSessionActivity, buildSessionData } from "../ui";
@@ -108,6 +111,7 @@ export class CanvasApp {
   private toolManager!: ToolManager;
   private strokeCapture!: StrokeCapture;
   private shapeCapture!: ShapeCapture;
+  private selectionCapture!: SelectionCapture;
   private magnifyCapture!: MagnifyCapture;
   private undoManager!: UndoManager;
   private toolbar!: Toolbar;
@@ -158,6 +162,8 @@ export class CanvasApp {
   private sessionSnapshot: SessionSnapshot | null = null;
   private sessionStartMs = 0;
   private imageFileInput!: HTMLInputElement;
+  private activeSelectionRegion: SelectionRegion | null = null;
+  private movingSelectionItems: CanvasItem[] = [];
 
   /**
    * Initializes all subsystems and starts the render loop.
@@ -368,6 +374,35 @@ export class CanvasApp {
     this.strokeCapture.onEraseComplete = () => this.statsTracker?.recordEraseAction();
     this.shapeCapture = new ShapeCapture(this.camera, this.cameraController, this.doc, canvas);
     this.shapeCapture.setEnabled(false);
+    this.selectionCapture = new SelectionCapture(this.camera, this.cameraController, canvas);
+    this.selectionCapture.setEnabled(false);
+    this.selectionCapture.onSelectionComplete = (region) => {
+      this.activeSelectionRegion = region;
+      this.selectionCapture.setActiveRegion(region);
+      this.syncTurtleSelectionConstraint();
+    };
+    this.selectionCapture.onSelectionMoveStart = () => {
+      this.movingSelectionItems = this.refreshActiveSelectionItems();
+      if (this.movingSelectionItems.length > 0) {
+        this.undoManager.beginBatch();
+      }
+    };
+    this.selectionCapture.onSelectionMove = (dx, dy) => {
+      if (this.movingSelectionItems.length === 0) return;
+      this.doc.translateItems(this.movingSelectionItems, dx, dy);
+      if (this.activeSelectionRegion) {
+        this.activeSelectionRegion = translateSelectionRegion(this.activeSelectionRegion, dx, dy);
+      }
+      this.syncTurtleSelectionConstraint();
+    };
+    this.selectionCapture.onSelectionMoveEnd = () => {
+      if (this.movingSelectionItems.length > 0) {
+        this.undoManager.endBatch();
+        this.updateUndoRedoState();
+      }
+      this.movingSelectionItems = [];
+      this.refreshActiveSelectionItems();
+    };
     this.magnifyCapture = new MagnifyCapture(this.camera, this.cameraAnimator, this.cameraController, canvas);
     this.magnifyCapture.setEnabled(false);
     this.magnifyCapture.onCursorChange = (mode) => this.cursorManager.setMagnifyMode(mode);
@@ -414,6 +449,7 @@ export class CanvasApp {
         this.toolManager.setTool("brush");
         this.toolManager.setBrush(brush);
         this.shapeCapture.setEnabled(false);
+        this.selectionCapture.setEnabled(false);
         this.magnifyCapture.setEnabled(false);
         this.strokeCapture.setEnabled(true);
         this.strokeCapture.setTool("brush");
@@ -430,6 +466,10 @@ export class CanvasApp {
       },
       onToolChange: (tool: ToolType) => {
         this.switchTool(tool);
+      },
+      onSelectionModeChange: (mode) => {
+        this.toolManager.setSelectionConfig({ mode });
+        this.selectionCapture.setMode(mode);
       },
       onUndo: () => this.doUndo(),
       onRedo: () => this.doRedo(),
@@ -639,6 +679,7 @@ export class CanvasApp {
     this.turtlePanel = new TurtlePanel(drawingId, {
       onRun: (script) => {
         this.turtlePanel.clearConsole();
+        this.syncTurtleSelectionConstraint();
         // Only set origin to camera center if not explicitly placed
         if (!this.turtleOriginPlaced) {
           this.turtleExecutor.getMainState()?.setOrigin(this.camera.x, this.camera.y);
@@ -693,6 +734,7 @@ export class CanvasApp {
         }
       },
       onReplCommand: async (line) => {
+        this.syncTurtleSelectionConstraint();
         return this.replExecutor.executeCommand(line);
       },
       onReplReset: async () => {
@@ -715,6 +757,7 @@ export class CanvasApp {
     this.turtleButton.addEventListener("pointerdown", (e) => {
       e.stopPropagation();
       this.turtlePanel.toggle();
+      this.syncTurtleSelectionConstraint();
     });
     const panelsGroup = this.toolbar.getGroup("panels");
     if (panelsGroup) {
@@ -894,6 +937,11 @@ export class CanvasApp {
         if (pvd.outline) this.renderer.drawShapeOutlineBatch([pvd.outline]);
       }
 
+      this.renderer.drawSelectionOverlay(this.camera, [
+        this.activeSelectionRegion,
+        this.selectionCapture.getPreviewRegion(),
+      ]);
+
       this.fpsCounter.update(now, allStrokes.length, visibleStrokeCount);
 
       // Periodic thumbnail generation (throttled to every 30s by ThumbnailGenerator)
@@ -1023,6 +1071,7 @@ export class CanvasApp {
     // Clean up input
     this.strokeCapture.destroy();
     this.shapeCapture.destroy();
+    this.selectionCapture.destroy();
     this.magnifyCapture.destroy();
     this.cameraController.destroy();
 
@@ -1044,6 +1093,11 @@ export class CanvasApp {
   /** Returns the Yjs-backed CRDT document that holds all strokes, shapes, and metadata. */
   getDoc(): DrawfinityDoc {
     return this.doc;
+  }
+
+  /** Returns the most recently finalized selection region, if one exists. */
+  getActiveSelectionRegion(): SelectionRegion | null {
+    return this.activeSelectionRegion;
   }
 
   /**
@@ -1109,6 +1163,7 @@ export class CanvasApp {
     if (tool === "magnify") {
       this.strokeCapture.setEnabled(false);
       this.shapeCapture.setEnabled(false);
+      this.selectionCapture.setEnabled(false);
       this.magnifyCapture.setEnabled(true);
       this.cameraController.panToolActive = false;
       this.toolbar.setToolUI(tool);
@@ -1116,14 +1171,25 @@ export class CanvasApp {
     } else if (tool === "pan") {
       this.strokeCapture.setEnabled(false);
       this.shapeCapture.setEnabled(false);
+      this.selectionCapture.setEnabled(false);
       this.magnifyCapture.setEnabled(false);
       this.cameraController.panToolActive = true;
       this.toolbar.setToolUI(tool);
       this.cursorManager.setTool("pan");
+    } else if (tool === "select") {
+      this.strokeCapture.setEnabled(false);
+      this.shapeCapture.setEnabled(false);
+      this.selectionCapture.setEnabled(true);
+      this.selectionCapture.setMode(this.toolManager.getSelectionConfig().mode);
+      this.magnifyCapture.setEnabled(false);
+      this.cameraController.panToolActive = false;
+      this.toolbar.setToolUI(tool);
+      this.cursorManager.setTool("select");
     } else if (isShapeTool(tool)) {
       this.strokeCapture.setTool("brush");
       this.strokeCapture.setEnabled(false);
       this.shapeCapture.setEnabled(true);
+      this.selectionCapture.setEnabled(false);
       this.magnifyCapture.setEnabled(false);
       this.shapeCapture.setConfig({
         shapeType: tool,
@@ -1138,6 +1204,7 @@ export class CanvasApp {
       this.cursorManager.setTool("brush");
     } else {
       this.shapeCapture.setEnabled(false);
+      this.selectionCapture.setEnabled(false);
       this.magnifyCapture.setEnabled(false);
       this.strokeCapture.setEnabled(true);
       this.strokeCapture.setTool(tool as "brush" | "eraser");
@@ -1359,6 +1426,55 @@ export class CanvasApp {
       Boolean(active?.closest?.(".cm-editor"));
   }
 
+  private refreshActiveSelectionItems(): CanvasItem[] {
+    if (!this.activeSelectionRegion) {
+      return [];
+    }
+    return getSelectedItems(this.doc, this.activeSelectionRegion);
+  }
+
+  private clearSelection(): void {
+    this.activeSelectionRegion = null;
+    this.movingSelectionItems = [];
+    this.selectionCapture.setActiveRegion(null);
+    this.syncTurtleSelectionConstraint();
+  }
+
+  private syncTurtleSelectionConstraint(): void {
+    if (!this.turtleRegistry || !this.turtlePanel) return;
+    this.turtleRegistry.setSelectionRegion(
+      this.turtlePanel.isVisible() ? this.activeSelectionRegion : null,
+    );
+  }
+
+  private deleteActiveSelection(): void {
+    const items = this.refreshActiveSelectionItems();
+    if (items.length === 0) return;
+
+    this.undoManager.beginBatch();
+    this.doc.removeItems(items);
+    this.undoManager.endBatch();
+    this.clearSelection();
+    this.updateUndoRedoState();
+  }
+
+  private duplicateActiveSelection(): boolean {
+    if (!this.activeSelectionRegion) return false;
+
+    const items = this.refreshActiveSelectionItems();
+    if (items.length === 0) return false;
+
+    const offset = 24 / this.camera.zoom;
+    this.undoManager.beginBatch();
+    this.doc.duplicateItems(items, offset, offset);
+    this.undoManager.endBatch();
+
+    this.activeSelectionRegion = translateSelectionRegion(this.activeSelectionRegion, offset, offset);
+    this.selectionCapture.setActiveRegion(this.activeSelectionRegion);
+    this.updateUndoRedoState();
+    return true;
+  }
+
   private updateUserColorIndicator(profile: { color: string; name: string }): void {
     this.userColorIndicator.style.backgroundColor = profile.color;
     this.userColorIndicator.title = profile.name;
@@ -1374,6 +1490,7 @@ export class CanvasApp {
     r.register({ id: "tool-ellipse", label: "Ellipse", shortcut: "O", category: "Tools", execute: () => this.switchTool("ellipse") });
     r.register({ id: "tool-polygon", label: "Polygon", shortcut: "P", category: "Tools", execute: () => this.switchTool("polygon") });
     r.register({ id: "tool-star", label: "Star", shortcut: "S", category: "Tools", execute: () => this.switchTool("star") });
+    r.register({ id: "tool-select", label: "Select", shortcut: "V", category: "Tools", execute: () => this.switchTool("select") });
     r.register({ id: "tool-pan", label: "Pan/Zoom", shortcut: "G", category: "Tools", execute: () => {
       if (this.toolManager.getTool() === "pan") {
         this.switchTool(this.toolbar.getPreviousTool());
@@ -1422,10 +1539,17 @@ export class CanvasApp {
 
     // Panels
     r.register({ id: "toggle-bookmarks", label: "Bookmarks panel", shortcut: "Ctrl+B", category: "Panels", execute: () => this.bookmarkPanel.toggle() });
-    r.register({ id: "quick-add-bookmark", label: "Add bookmark", shortcut: "Ctrl+D", category: "Panels", execute: () => { this.bookmarkPanel.addBookmark(); this.statsTracker?.recordBookmarkCreated(); } });
+    r.register({ id: "quick-add-bookmark", label: "Add bookmark", shortcut: "Ctrl+D", category: "Panels", execute: () => {
+      if (this.duplicateActiveSelection()) return;
+      this.bookmarkPanel.addBookmark();
+      this.statsTracker?.recordBookmarkCreated();
+    } });
     r.register({ id: "toggle-connection", label: "Connection panel", shortcut: "Ctrl+K", category: "Panels", execute: () => this.connectionPanel.toggle() });
     r.register({ id: "toggle-settings", label: "Settings", shortcut: "Ctrl+,", category: "Panels", execute: () => this.settingsPanel.toggle() });
-    r.register({ id: "toggle-turtle", label: "Turtle graphics", shortcut: "Ctrl+`", category: "Panels", execute: () => this.turtlePanel.toggle() });
+    r.register({ id: "toggle-turtle", label: "Turtle graphics", shortcut: "Ctrl+`", category: "Panels", execute: () => {
+      this.turtlePanel.toggle();
+      this.syncTurtleSelectionConstraint();
+    } });
     r.register({ id: "toggle-stats", label: "Stats & Achievements", shortcut: "Ctrl+Shift+S", category: "Panels", execute: () => this.statsPanel.toggle() });
     r.register({ id: "toggle-cheatsheet", label: "Keyboard shortcuts", shortcut: "Ctrl+?", category: "Panels", execute: () => this.cheatSheet.toggle() });
     r.register({ id: "toggle-grid", label: "Toggle grid", shortcut: "Ctrl+'", category: "Navigation", execute: () => this.toggleGrid() });
@@ -1487,6 +1611,7 @@ export class CanvasApp {
 
     if (mod && (e.key === "d" || e.key === "D") && !e.shiftKey) {
       e.preventDefault();
+      if (this.duplicateActiveSelection()) return;
       this.bookmarkPanel.addBookmark();
       this.statsTracker?.recordBookmarkCreated();
       return;
@@ -1513,6 +1638,7 @@ export class CanvasApp {
     if (mod && e.key === "`") {
       e.preventDefault();
       this.turtlePanel.toggle();
+      this.syncTurtleSelectionConstraint();
       return;
     }
 
@@ -1542,6 +1668,12 @@ export class CanvasApp {
 
     if (mod) return;
 
+    if (e.key === "Backspace" || e.key === "Delete") {
+      e.preventDefault();
+      this.deleteActiveSelection();
+      return;
+    }
+
     if (e.key === "Escape") {
       this.goHome();
       return;
@@ -1559,6 +1691,8 @@ export class CanvasApp {
       this.switchTool("polygon");
     } else if (e.key === "s" || e.key === "S") {
       this.switchTool("star");
+    } else if (e.key === "v" || e.key === "V") {
+      this.switchTool("select");
     } else if (e.key === "g" || e.key === "G") {
       if (this.toolManager.getTool() === "pan") {
         this.switchTool(this.toolbar.getPreviousTool());

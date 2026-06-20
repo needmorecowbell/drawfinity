@@ -44,46 +44,52 @@ Once a region is selected, the user can:
 
 ## Tasks
 
-- [ ] Add `"select"` to the tool type enum in `ToolManager.ts`:
+- [x] Add `"select"` to the tool type enum in `ToolManager.ts`:
   - Add keyboard shortcut `V` to activate (standard selection shortcut)
   - Add a selection tool button to the toolbar with a mode picker (rectangle/ellipse/lasso)
   - Update `CursorManager.ts` with a crosshair cursor for selection mode
+  - Notes: Added selection mode state (`rectangle`/`ellipse`/`lasso`) to `ToolManager`, wired the toolbar selection mode picker and `V` shortcut, updated the cheat sheet references, and added focused tests for tool state, toolbar selection UI, and cursor behavior. Verified with `npx tsc --noEmit`, focused Vitest tests, and full `npx vitest run`.
 
-- [ ] Create `src/input/SelectionCapture.ts`:
+- [x] Create `src/input/SelectionCapture.ts`:
   - Handle pointer events for all three selection modes
   - **Rectangle mode**: `pointerdown` sets corner 1, `pointermove` updates corner 2, `pointerup` finalizes
   - **Ellipse mode**: Same drag mechanic, defines bounding box of ellipse
   - **Lasso mode**: Each `pointerdown` adds a vertex; double-click or clicking near the first vertex closes the polygon
   - Convert screen coordinates to world coordinates using `camera.screenToWorld()`
   - Emit a `SelectionRegion` object: `{ type: "rect" | "ellipse" | "lasso", bounds: ... , points?: ... }`
+  - Notes: Added `SelectionCapture` with rectangle/ellipse drag selection, Shift-constrained square/circle bounds, lasso vertex capture with double-click/near-first closure, preview access, and a completion callback. Wired it into `CanvasApp` select-tool activation and toolbar mode changes, exported the new capture/types, and added focused tests. Verified with `npx tsc --noEmit`, `npx vitest run src/input/__tests__/SelectionCapture.test.ts`, and full `npx vitest run`.
 
-- [ ] Create `src/model/Selection.ts`:
+- [x] Create `src/model/Selection.ts`:
   - `SelectionRegion` type definition (rect, ellipse, lasso with their parameters)
   - `hitTestStroke(stroke, region): boolean` — check if any stroke point falls inside the region
   - `hitTestShape(shape, region): boolean` — check if shape bounding box intersects the region
   - `getSelectedItems(doc, region): CanvasItem[]` — query document for all items in region
   - Point-in-ellipse: `((x-cx)/rx)^2 + ((y-cy)/ry)^2 <= 1`
   - Point-in-polygon: ray-casting algorithm for lasso regions
+  - Notes: Added the shared selection model/types, point-in-region helpers for rectangle/ellipse/lasso, stroke and shape hit testing, and `getSelectedItems()` with `getAllItems()` document-order support plus fallback document querying. Updated `SelectionCapture` and barrels to use/re-export the model types, and added focused model tests. Verified with `npx tsc --noEmit`, focused Vitest selection tests, and full `npx vitest run`.
 
-- [ ] Implement selection actions:
+- [x] Implement selection actions:
   - **Delete**: call `doc.removeStroke(id)` / `doc.removeShape(id)` for each selected item, wrapped in a single Yjs transaction for atomic undo
   - **Move**: on drag, compute delta in world coordinates, update all point positions (strokes) and center coordinates (shapes) via CRDT mutations
   - **Duplicate**: clone selected items with new IDs and offset positions, add to document
+  - Notes: Added bulk selection mutation APIs to `DrawfinityDoc` for atomic remove, in-place translate, and duplicate of mixed stroke/shape selections. Extended `SelectionCapture` so dragging inside an active region moves the selection, wired CanvasApp delete (`Backspace`/`Delete`), duplicate (`Ctrl+D` when a selection is active), and drag-move behavior, and added focused tests for CRDT selection actions and selection-region move capture. Verified with `npx tsc --noEmit`, focused Vitest selection/CRDT tests, and full `npx vitest run`.
 
-- [ ] Render selection overlay in `src/renderer/Renderer.ts`:
+- [x] Render selection overlay in `src/renderer/Renderer.ts`:
   - Draw selection region outline (dashed rectangle/ellipse/polygon)
   - Use a separate shader pass or overlay canvas for the selection visualization
   - The selection overlay should be in screen-space (doesn't scale with zoom)
+  - Notes: Added a pointer-transparent 2D overlay canvas owned by `Renderer`, drawing dashed rectangle, ellipse, and lasso paths from world-space selection regions with fixed screen-space line/dash styling. Wired `CanvasApp` to render both active and preview selection regions each frame, cleaned up the overlay on renderer destroy, and added focused renderer coverage. Verified with `npx tsc --noEmit`, focused Vitest renderer/selection tests, and full `npx vitest run`.
 
-- [ ] Integrate turtle bounds constraining:
+- [x] Integrate turtle bounds constraining:
   - When a `SelectionRegion` is active, pass it to `TurtleDrawing.ts`
   - In `TurtleDrawing.addSegment()`, clip the line segment to the selection boundary
   - For rectangle: standard line-rect clipping (Cohen-Sutherland or similar)
   - For ellipse: line-ellipse intersection
   - For lasso: line-polygon clipping (Sutherland-Hodgman)
   - If the turtle moves entirely outside the region, the pen produces no stroke
+  - Notes: Added selection-region constraints to `TurtleDrawing`, propagated the active selection through `TurtleRegistry` when the turtle panel is open, and clipped turtle stroke segments against rectangle, ellipse, and lasso boundaries. Outside-only movements now produce no stroke, and batched drawing flushes across selection gaps to avoid drawing outside the active region. Added focused turtle clipping tests. Verified with `npx tsc --noEmit`, focused turtle tests, and full `npx vitest run`.
 
-- [ ] Tests:
+- [x] Tests:
   - Test: point-in-rectangle hit testing (inside, outside, on edge)
   - Test: point-in-ellipse hit testing
   - Test: point-in-polygon (lasso) hit testing with convex and concave polygons
@@ -92,3 +98,4 @@ Once a region is selected, the user can:
   - Test: move action translates all selected item coordinates correctly
   - Test: turtle line clipping at rectangle boundary
   - All existing tests must still pass: `npx vitest run`
+  - Notes: Confirmed existing selection, CRDT action, and turtle clipping coverage; added explicit `getSelectedItems()` assertions for rectangle, ellipse, and lasso modes, and tightened the bulk delete test to assert exactly one undo stack item. Verified with focused Vitest runs for selection, CRDT shape actions, and turtle drawing, plus `npx tsc --noEmit` and full `npx vitest run` (110 files / 2316 tests).

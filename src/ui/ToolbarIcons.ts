@@ -30,6 +30,15 @@ export const ICONS = {
   /** Five-pointed star */
   star: svg('<path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01z"/>'),
 
+  /** Dashed rectangle selection */
+  selectRect: svg('<rect x="4" y="4" width="16" height="16" rx="1" stroke-dasharray="3 2"/><path d="M14 14l5 5"/><path d="M14 20l5-5"/>'),
+
+  /** Dashed ellipse selection */
+  selectEllipse: svg('<ellipse cx="12" cy="12" rx="8" ry="6" stroke-dasharray="3 2"/><path d="M15 15l4 4"/><path d="M15 20l4-4"/>'),
+
+  /** Freeform lasso selection */
+  selectLasso: svg('<path d="M5 13c-2-4 2-8 7-8 5 0 8 3 7 7-1 5-9 7-13 4" stroke-dasharray="3 2"/><path d="M13 15l6 6"/><path d="M14 21l5-5"/>'),
+
   /** Open hand for pan/grab */
   pan: svg('<path d="M18 11V6a2 2 0 0 0-4 0"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 11a2 2 0 0 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34L3.35 16.5a2 2 0 0 1 3.3-2.26L8 16"/>'),
 

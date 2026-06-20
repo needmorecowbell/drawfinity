@@ -1,8 +1,8 @@
 import * as Y from "yjs";
-import { Stroke, DocumentModel } from "../model/Stroke";
-import { Shape } from "../model/Shape";
+import { Stroke, DocumentModel, generateStrokeId } from "../model/Stroke";
+import { Shape, generateShapeId } from "../model/Shape";
 import { CanvasItem } from "../model/Shape";
-import { CanvasImage, createCanvasImage } from "../model/Image";
+import { CanvasImage, createCanvasImage, generateImageId } from "../model/Image";
 import { strokeToYMap, yMapToStroke } from "./StrokeAdapter";
 import { shapeToYMap, yMapToShape } from "./ShapeAdapter";
 import { imageToYMap, yMapToImage } from "./ImageAdapter";
@@ -174,6 +174,117 @@ export class DrawfinityDoc implements DocumentModel {
       }
     });
     return removed;
+  }
+
+  /**
+   * Removes multiple canvas items in one Yjs transaction.
+   *
+   * @param entries - Stroke/shape entries to remove.
+   * @returns The number of items removed.
+   */
+  removeItems(entries: readonly CanvasItem[]): number {
+    const ids = new Set(entries.map((entry) => entry.item.id));
+    let removed = 0;
+
+    this.doc.transact(() => {
+      const arr = this.items.toArray();
+      for (let i = arr.length - 1; i >= 0; i--) {
+        if (ids.has(arr[i].get("id") as string)) {
+          this.items.delete(i, 1);
+          removed++;
+        }
+      }
+    });
+
+    return removed;
+  }
+
+  /**
+   * Translates multiple canvas items in one Yjs transaction.
+   *
+   * Stroke point coordinates and shape centers are updated in-place so CRDT
+   * observers see property-level changes without replacing the item entries.
+   */
+  translateItems(entries: readonly CanvasItem[], dx: number, dy: number): number {
+    const ids = new Set(entries.map((entry) => entry.item.id));
+    let translated = 0;
+
+    this.doc.transact(() => {
+      for (const yMap of this.items.toArray()) {
+        if (!ids.has(yMap.get("id") as string)) continue;
+
+        const type = yMap.get("type") as string | undefined;
+        if (type === "shape" || type === "image") {
+          yMap.set("x", (yMap.get("x") as number) + dx);
+          yMap.set("y", (yMap.get("y") as number) + dy);
+        } else {
+          const yPoints = yMap.get("points") as Y.Array<Y.Map<number>>;
+          for (const point of yPoints.toArray()) {
+            point.set("x", (point.get("x") as number) + dx);
+            point.set("y", (point.get("y") as number) + dy);
+          }
+        }
+        translated++;
+      }
+    });
+
+    return translated;
+  }
+
+  /**
+   * Clones canvas items with new IDs and translated coordinates in one Yjs transaction.
+   *
+   * @param entries - Items to duplicate.
+   * @param dx - World-space X offset for duplicates.
+   * @param dy - World-space Y offset for duplicates.
+   * @returns Plain cloned entries in the same order they were inserted.
+   */
+  duplicateItems(entries: readonly CanvasItem[], dx: number, dy: number): CanvasItem[] {
+    const clones = entries.map((entry): CanvasItem => {
+      if (entry.kind === "stroke") {
+        const clone: Stroke = {
+          ...entry.item,
+          id: generateStrokeId(),
+          timestamp: Date.now(),
+          points: entry.item.points.map((point) => ({
+            ...point,
+            x: point.x + dx,
+            y: point.y + dy,
+          })),
+        };
+        return { kind: "stroke", item: clone };
+      }
+
+      if (entry.kind === "image") {
+        const clone: CanvasImage = {
+          ...entry.item,
+          id: generateImageId(),
+          timestamp: Date.now(),
+          x: entry.item.x + dx,
+          y: entry.item.y + dy,
+        };
+        return { kind: "image", item: clone };
+      }
+
+      const clone: Shape = {
+        ...entry.item,
+        id: generateShapeId(),
+        timestamp: Date.now(),
+        x: entry.item.x + dx,
+        y: entry.item.y + dy,
+      };
+      return { kind: "shape", item: clone };
+    });
+
+    this.doc.transact(() => {
+      this.items.push(clones.map((entry) => {
+        if (entry.kind === "stroke") return strokeToYMap(entry.item);
+        if (entry.kind === "image") return imageToYMap(entry.item);
+        return shapeToYMap(entry.item);
+      }));
+    });
+
+    return clones;
   }
 
   /**

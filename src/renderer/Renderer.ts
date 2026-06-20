@@ -7,6 +7,14 @@ import { StrokeVertexCache } from "./StrokeVertexCache";
 import { ShapeVertexCache } from "./ShapeVertexCache";
 import type { GridStyle } from "../user/UserPreferences";
 import type { CanvasImage } from "../model/Image";
+import type { SelectionPoint, SelectionRegion } from "../model";
+
+interface SelectionOverlayCamera {
+  x: number;
+  y: number;
+  zoom: number;
+  getViewportSize(): [number, number];
+}
 
 /**
  * Top-level renderer that owns the WebGL context, shaders, and stroke/shape renderers.
@@ -19,6 +27,8 @@ export class Renderer {
   private dotGridRenderer: DotGridRenderer;
   private lineGridRenderer: LineGridRenderer;
   private gridStyle: GridStyle = "dots";
+  private overlayCanvas: HTMLCanvasElement | null = null;
+  private overlayContext: CanvasRenderingContext2D | null = null;
   readonly vertexCache: StrokeVertexCache;
   readonly shapeVertexCache: ShapeVertexCache;
   private contextLostHandler: (event: Event) => void;
@@ -221,6 +231,47 @@ export class Renderer {
   }
 
   /**
+   * Draws finalized and in-progress selection regions into a pointer-transparent
+   * 2D overlay above the WebGL canvas. Geometry is positioned from world space,
+   * while stroke width and dash lengths stay fixed in screen-space pixels.
+   */
+  drawSelectionOverlay(
+    camera: SelectionOverlayCamera,
+    regions: readonly (SelectionRegion | null | undefined)[],
+  ): void {
+    const ctx = this.ensureSelectionOverlay();
+    if (!ctx || !this.overlayCanvas) return;
+
+    const [width, height] = camera.getViewportSize();
+    this.resizeSelectionOverlay(width, height);
+    ctx.clearRect(0, 0, width, height);
+
+    const visibleRegions = regions.filter((region): region is SelectionRegion => Boolean(region));
+    if (visibleRegions.length === 0) return;
+
+    ctx.save();
+    ctx.lineWidth = 1.5;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "rgba(37, 99, 235, 0.95)";
+    ctx.fillStyle = "rgba(37, 99, 235, 0.06)";
+    ctx.setLineDash([6, 4]);
+
+    for (const region of visibleRegions) {
+      this.traceSelectionPath(ctx, camera, region);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  clearSelectionOverlay(): void {
+    if (!this.overlayCanvas || !this.overlayContext) return;
+    this.overlayContext.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
+  }
+
+  /**
    * Releases all WebGL resources held by this renderer, including the stroke renderer,
    * grid renderers, and the underlying WebGL context. Call this when the canvas is being
    * removed from the DOM or the application is shutting down to avoid GPU memory leaks.
@@ -230,10 +281,113 @@ export class Renderer {
   destroy(): void {
     this.canvas.removeEventListener("webglcontextlost", this.contextLostHandler);
     this.canvas.removeEventListener("webglcontextrestored", this.contextRestoredHandler);
+    this.overlayCanvas?.remove();
+    this.overlayCanvas = null;
+    this.overlayContext = null;
     this.strokeRenderer.destroy();
     this.imageRenderer.destroy();
     this.dotGridRenderer.destroy();
     this.lineGridRenderer.destroy();
     this.context.destroy();
   }
+
+  private ensureSelectionOverlay(): CanvasRenderingContext2D | null {
+    if (this.overlayContext) return this.overlayContext;
+
+    const sourceCanvas = this.context.canvas;
+    const ownerDocument = sourceCanvas.ownerDocument;
+    const parent = sourceCanvas.parentElement;
+    if (!ownerDocument || !parent) return null;
+
+    const overlay = ownerDocument.createElement("canvas");
+    overlay.className = "selection-overlay-canvas";
+    overlay.setAttribute("aria-hidden", "true");
+    Object.assign(overlay.style, {
+      position: "absolute",
+      inset: "0",
+      width: "100%",
+      height: "100%",
+      pointerEvents: "none",
+      zIndex: "1",
+    });
+
+    parent.appendChild(overlay);
+    this.overlayCanvas = overlay;
+    this.overlayContext = overlay.getContext("2d");
+    return this.overlayContext;
+  }
+
+  private resizeSelectionOverlay(width: number, height: number): void {
+    if (!this.overlayCanvas || !this.overlayContext) return;
+    const dpr =
+      typeof globalThis.devicePixelRatio === "number" && globalThis.devicePixelRatio > 0
+        ? globalThis.devicePixelRatio
+        : 1;
+    const pixelWidth = Math.max(1, Math.floor(width * dpr));
+    const pixelHeight = Math.max(1, Math.floor(height * dpr));
+
+    if (this.overlayCanvas.width !== pixelWidth || this.overlayCanvas.height !== pixelHeight) {
+      this.overlayCanvas.width = pixelWidth;
+      this.overlayCanvas.height = pixelHeight;
+    }
+
+    this.overlayContext.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  private traceSelectionPath(
+    ctx: CanvasRenderingContext2D,
+    camera: SelectionOverlayCamera,
+    region: SelectionRegion,
+  ): void {
+    ctx.beginPath();
+
+    if (region.type === "rect") {
+      const topLeft = worldToScreen(camera, { x: region.bounds.x, y: region.bounds.y });
+      ctx.rect(
+        topLeft.x,
+        topLeft.y,
+        region.bounds.width * camera.zoom,
+        region.bounds.height * camera.zoom,
+      );
+      return;
+    }
+
+    if (region.type === "ellipse") {
+      const center = worldToScreen(camera, {
+        x: region.bounds.x + region.bounds.width / 2,
+        y: region.bounds.y + region.bounds.height / 2,
+      });
+      ctx.ellipse(
+        center.x,
+        center.y,
+        Math.abs(region.bounds.width * camera.zoom) / 2,
+        Math.abs(region.bounds.height * camera.zoom) / 2,
+        0,
+        0,
+        Math.PI * 2,
+      );
+      return;
+    }
+
+    const [first, ...rest] = region.points;
+    if (!first) return;
+
+    const start = worldToScreen(camera, first);
+    ctx.moveTo(start.x, start.y);
+    for (const point of rest) {
+      const screen = worldToScreen(camera, point);
+      ctx.lineTo(screen.x, screen.y);
+    }
+    if (region.points.length >= 3) {
+      ctx.closePath();
+    }
+  }
+}
+
+function worldToScreen(camera: SelectionOverlayCamera, point: SelectionPoint): SelectionPoint {
+  const [width, height] = camera.getViewportSize();
+  return {
+    x: (point.x - camera.x) * camera.zoom + width / 2,
+    y: (point.y - camera.y) * camera.zoom + height / 2,
+  };
 }

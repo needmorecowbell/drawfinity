@@ -1,6 +1,7 @@
 import { TurtleState } from "./TurtleState";
 import { TurtleDrawing } from "./TurtleDrawing";
 import type { DocumentModel } from "../model/Stroke";
+import type { SelectionRegion } from "../model";
 import { computeStrokeBounds } from "../renderer/SpatialIndex";
 
 /** Entry for a single turtle in the registry. */
@@ -40,6 +41,7 @@ export class TurtleRegistry {
   private children = new Map<string, Set<string>>();
   private maxTurtles = 1000;
   private maxDepth = 10;
+  private selectionRegion: SelectionRegion | null = null;
 
   /** Create the main turtle for a script, returning its full ID. */
   createMain(scriptId: string, doc: DocumentModel): string {
@@ -49,6 +51,7 @@ export class TurtleRegistry {
     }
     const state = new TurtleState();
     const drawing = new TurtleDrawing(doc);
+    drawing.setSelectionRegion(this.selectionRegion);
     this.turtles.set(id, { state, drawing, scriptId, parentId: null });
     return id;
   }
@@ -90,6 +93,7 @@ export class TurtleRegistry {
     if (options?.width !== undefined) state.pen.width = options.width;
 
     const drawing = new TurtleDrawing(doc);
+    drawing.setSelectionRegion(this.selectionRegion);
     this.turtles.set(id, {
       state,
       drawing,
@@ -104,6 +108,14 @@ export class TurtleRegistry {
     this.children.get(resolvedParentId)!.add(id);
 
     return id;
+  }
+
+  /** Set the selection region that constrains turtle drawing. */
+  setSelectionRegion(region: SelectionRegion | null): void {
+    this.selectionRegion = region;
+    for (const [, entry] of this.turtles) {
+      entry.drawing.setSelectionRegion(region);
+    }
   }
 
   /** Get a turtle entry by full ID. */

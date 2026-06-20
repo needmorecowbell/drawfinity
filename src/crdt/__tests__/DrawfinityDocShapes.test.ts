@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import * as Y from "yjs";
 import { DrawfinityDoc } from "../DrawfinityDoc";
+import { UndoManager } from "../UndoManager";
 import { Stroke } from "../../model/Stroke";
 import { Shape } from "../../model/Shape";
 
@@ -125,6 +126,60 @@ describe("DrawfinityDoc — shape support", () => {
 
     it("returns empty array for empty doc", () => {
       expect(doc.getAllItems()).toEqual([]);
+    });
+  });
+
+  describe("selection item actions", () => {
+    it("removes selected strokes and shapes in one undo step", () => {
+      doc.addStroke(makeStroke("s1"));
+      doc.addShape(makeShape("sh1"));
+      doc.addStroke(makeStroke("s2"));
+      const undoManager = new UndoManager(doc.getStrokesArray());
+      const selected = doc.getAllItems().filter((entry) => entry.item.id !== "s2");
+
+      expect(doc.removeItems(selected)).toBe(2);
+      expect(doc.getAllItems().map((entry) => entry.item.id)).toEqual(["s2"]);
+      expect(undoManager.getRawUndoManager().undoStack).toHaveLength(1);
+
+      undoManager.undo();
+      // getAllItems() is timestamp-ordered: s1/s2 default to 1000, sh1 to 2000,
+      // so the restored order is [s1, s2, sh1] (stable sort keeps s1 before s2).
+      expect(doc.getAllItems().map((entry) => entry.item.id)).toEqual(["s1", "s2", "sh1"]);
+      expect(undoManager.canUndo()).toBe(false);
+    });
+
+    it("translates selected stroke points and shape centers", () => {
+      doc.addStroke(makeStroke("s1"));
+      doc.addShape(makeShape("sh1"));
+      const selected = doc.getAllItems();
+
+      expect(doc.translateItems(selected, 10, -5)).toBe(2);
+
+      expect(doc.getStrokes()[0].points).toEqual([
+        { x: 10, y: -5, pressure: 0.5 },
+        { x: 15, y: 0, pressure: 0.7 },
+      ]);
+      expect(doc.getShapes()[0]).toEqual(expect.objectContaining({ x: 110, y: 195 }));
+    });
+
+    it("duplicates selected items with new ids and offset coordinates", () => {
+      doc.addStroke(makeStroke("s1"));
+      doc.addShape(makeShape("sh1"));
+      const clones = doc.duplicateItems(doc.getAllItems(), 20, 30);
+
+      expect(clones).toHaveLength(2);
+      expect(clones[0].kind).toBe("stroke");
+      expect(clones[0].item.id).not.toBe("s1");
+      expect(clones[1].kind).toBe("shape");
+      expect(clones[1].item.id).not.toBe("sh1");
+
+      const items = doc.getAllItems();
+      expect(items).toHaveLength(4);
+      expect(doc.getStrokes()[1].points).toEqual([
+        { x: 20, y: 30, pressure: 0.5 },
+        { x: 25, y: 35, pressure: 0.7 },
+      ]);
+      expect(doc.getShapes()[1]).toEqual(expect.objectContaining({ x: 120, y: 230 }));
     });
   });
 

@@ -8,13 +8,17 @@ import type { ShapeType } from "../model/Shape";
  * - `"brush"` — freehand pressure-sensitive drawing
  * - `"eraser"` — removes strokes under the pointer
  * - `"rectangle"`, `"ellipse"`, `"polygon"`, `"star"` — shape tools
+ * - `"select"` — selects canvas regions for later actions
  * - `"pan"` — click-drag to pan the canvas
  * - `"magnify"` — click to zoom in/out
  */
-export type ToolType = "brush" | "eraser" | "rectangle" | "ellipse" | "polygon" | "star" | "pan" | "magnify";
+export type ToolType = "brush" | "eraser" | "rectangle" | "ellipse" | "polygon" | "star" | "select" | "pan" | "magnify";
 
 /** Shape tool types that map to ShapeType. */
 export const SHAPE_TOOL_TYPES: readonly ToolType[] = ["rectangle", "ellipse", "polygon", "star"] as const;
+
+/** Selection region modes exposed by the selection toolbar picker. */
+export type SelectionMode = "rectangle" | "ellipse" | "lasso";
 
 /**
  * Configuration for shape drawing tools (rectangle, ellipse, polygon, star).
@@ -27,6 +31,11 @@ export interface ShapeToolConfig {
   fillColor: string | null;
   sides: number;
   starInnerRadius: number;
+}
+
+/** Configuration for the selection tool. */
+export interface SelectionToolConfig {
+  mode: SelectionMode;
 }
 
 /**
@@ -68,6 +77,9 @@ export class ToolManager {
     fillColor: null,
     sides: 5,
     starInnerRadius: 0.4,
+  };
+  private selectionConfig: SelectionToolConfig = {
+    mode: "rectangle",
   };
 
   /**
@@ -169,6 +181,24 @@ export class ToolManager {
   }
 
   /**
+   * Merges partial selection configuration into the current settings.
+   *
+   * @param config - A partial {@link SelectionToolConfig} with the properties to update.
+   */
+  setSelectionConfig(config: Partial<SelectionToolConfig>): void {
+    Object.assign(this.selectionConfig, config);
+  }
+
+  /**
+   * Returns a shallow copy of the current selection tool configuration.
+   *
+   * @returns A copy of the active {@link SelectionToolConfig}.
+   */
+  getSelectionConfig(): SelectionToolConfig {
+    return { ...this.selectionConfig };
+  }
+
+  /**
    * Returns a snapshot of all active tool state in a single object.
    * The shape config is shallow-copied; other values are primitives or
    * references to the internal brush.
@@ -180,12 +210,14 @@ export class ToolManager {
     brush: BrushConfig;
     color: string;
     shapeConfig: ShapeToolConfig;
+    selectionConfig: SelectionToolConfig;
   } {
     return {
       tool: this.activeTool,
       brush: this.activeBrush,
       color: this.currentColor,
       shapeConfig: { ...this.shapeConfig },
+      selectionConfig: { ...this.selectionConfig },
     };
   }
 }

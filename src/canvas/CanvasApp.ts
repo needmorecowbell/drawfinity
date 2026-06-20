@@ -1116,6 +1116,14 @@ export class CanvasApp {
   }
 
   /**
+   * Returns the canvas items currently intersected by the active selection
+   * region, recomputed against the live document. Empty when no region exists.
+   */
+  getActiveSelectionItems(): CanvasItem[] {
+    return this.refreshActiveSelectionItems();
+  }
+
+  /**
    * Updates the drawing name displayed in the toolbar title area.
    *
    * @param name - The new display name for the drawing.

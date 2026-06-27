@@ -76,8 +76,8 @@ typecheck: node_modules ## TypeScript type check
 build: node_modules ## Production build (frontend only)
 	npm run build
 
-build-tauri: node_modules ## Production Tauri desktop build
-	npm run tauri build
+build-tauri: node_modules ## Production Tauri desktop build (NO_STRIP works around linuxdeploy/.relr.dyn on Arch/Manjaro)
+	npm run tauri:build
 
 build-server: ## Production server build
 	cd server && cargo build --release

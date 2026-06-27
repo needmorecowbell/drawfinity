@@ -176,7 +176,9 @@ For the full native experience with file save/load and tablet support:
 make tauri
 ```
 
-This starts Tauri in dev mode with hot-reload. For a production build: `npm run tauri build`.
+This starts Tauri in dev mode with hot-reload. For a production build: `npm run tauri:build` (equivalently `make build-tauri`).
+
+> **Linux note:** the `tauri:build` script sets `NO_STRIP=true`. On Arch/Manjaro (and other distros with recent binutils/glibc) the AppImage bundler's `linuxdeploy` ships an old `strip` that can't parse the modern `.relr.dyn` ELF section, which otherwise aborts the whole build after the `.deb`/`.rpm` succeed. `NO_STRIP=true` skips that broken strip step and lets the AppImage bundle. Plain `npm run tauri build` (without the env var) may still fail at the AppImage step on those distros.
 
 | Platform | Format | Location |
 |----------|--------|----------|
@@ -419,7 +421,7 @@ Pressure data is read from `PointerEvent.pressure` and works with:
 
 ## Known Issues
 
-- **AppImage builds** may fail on some Linux distributions — use `.deb`/`.rpm` packages or run the binary directly
+- **AppImage builds** can fail on Arch/Manjaro (and other recent-binutils distros) because `linuxdeploy`'s bundled `strip` rejects the modern `.relr.dyn` ELF section — build via `npm run tauri:build` / `make build-tauri`, which set `NO_STRIP=true` to skip that step. As a fallback, the `.deb`/`.rpm` packages or the raw binary in `src-tauri/target/release/` always work.
 - **WebKitGTK cache staleness** (Linux): if the UI shows stale content after code changes, run `npm run clean:cache`
 - **macOS code signing**: unsigned builds work locally but require signing for distribution
 

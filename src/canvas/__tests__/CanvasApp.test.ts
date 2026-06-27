@@ -400,4 +400,70 @@ describe("CanvasApp", () => {
     );
     expect(beforeUnloadCalls.length).toBeGreaterThan(0);
   });
+
+  // Build a `drop` DragEvent with a synthetic dataTransfer carrying the given files.
+  // jsdom does not construct a real DataTransfer, so we attach a minimal stand-in.
+  function makeDropEvent(files: File[], clientX: number, clientY: number): Event {
+    const event = new MouseEvent("drop", { bubbles: true, cancelable: true, clientX, clientY });
+    Object.defineProperty(event, "dataTransfer", {
+      value: {
+        files,
+        items: files.map((f) => ({ kind: "file", type: f.type })),
+      },
+      configurable: true,
+    });
+    return event;
+  }
+
+  it("inserts a dropped image at the drop position via the DOM drop handler", async () => {
+    // Spy on the private insertImageFile so we verify routing without reading the file.
+    const insertSpy = vi
+      .spyOn(CanvasApp.prototype as unknown as { insertImageFile: (file: File, pos?: unknown) => Promise<void> }, "insertImageFile")
+      .mockResolvedValue(undefined);
+
+    const app = new CanvasApp();
+    await app.init("test-drop-image");
+
+    const file = new File([new Uint8Array([1, 2, 3])], "dropped.png", { type: "image/png" });
+    canvas.dispatchEvent(makeDropEvent([file], 120, 80));
+
+    expect(insertSpy).toHaveBeenCalledTimes(1);
+    expect(insertSpy.mock.calls[0][0]).toBe(file);
+    // Canvas rect is mocked at top/left 0, so screen position equals client coords.
+    expect(insertSpy.mock.calls[0][1]).toEqual({ x: 120, y: 80 });
+
+    await app.destroy();
+  });
+
+  it("ignores a drop that contains no supported image file", async () => {
+    const insertSpy = vi
+      .spyOn(CanvasApp.prototype as unknown as { insertImageFile: (file: File, pos?: unknown) => Promise<void> }, "insertImageFile")
+      .mockResolvedValue(undefined);
+
+    const app = new CanvasApp();
+    await app.init("test-drop-nonimage");
+
+    const file = new File(["hello"], "notes.txt", { type: "text/plain" });
+    canvas.dispatchEvent(makeDropEvent([file], 50, 50));
+
+    expect(insertSpy).not.toHaveBeenCalled();
+
+    await app.destroy();
+  });
+
+  it("sets the copy drop effect when dragging an image over the canvas", async () => {
+    const app = new CanvasApp();
+    await app.init("test-dragover");
+
+    const dataTransfer = { items: [{ kind: "file", type: "image/png" }], dropEffect: "none" };
+    const event = new MouseEvent("dragover", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "dataTransfer", { value: dataTransfer, configurable: true });
+
+    canvas.dispatchEvent(event);
+
+    expect(dataTransfer.dropEffect).toBe("copy");
+    expect(event.defaultPrevented).toBe(true);
+
+    await app.destroy();
+  });
 });

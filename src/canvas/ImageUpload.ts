@@ -27,6 +27,24 @@ export function isSupportedImageFile(file: File): boolean {
   return /^image\/(png|jpe?g|webp)$/i.test(file.type);
 }
 
+/** Formats a byte count as megabytes with one decimal, for user-facing messages. */
+function formatBytesAsMb(bytes: number): string {
+  return (bytes / (1024 * 1024)).toFixed(1);
+}
+
+/**
+ * Pre-flight check on a raw file's size against the inline storage limit.
+ *
+ * This compares the on-disk byte size (not the base64-inflated data URI) so an
+ * oversized file can be rejected before it is ever read or resized.
+ */
+export function isFileSizeWithinLimit(
+  file: File,
+  limitBytes = MAX_IMAGE_SOURCE_BYTES,
+): boolean {
+  return file.size <= limitBytes;
+}
+
 export function readFileAsDataUri(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -109,6 +127,13 @@ export async function createCanvasImageFromFile(
 ): Promise<CanvasImage> {
   if (!isSupportedImageFile(file)) {
     throw new Error("Only PNG, JPG, and WebP images can be inserted");
+  }
+
+  if (!isFileSizeWithinLimit(file)) {
+    throw new Error(
+      `Image is too large (${formatBytesAsMb(file.size)} MB). ` +
+        `Maximum size is ${formatBytesAsMb(MAX_IMAGE_SOURCE_BYTES)} MB.`,
+    );
   }
 
   const dataUri = await readFileAsDataUri(file);

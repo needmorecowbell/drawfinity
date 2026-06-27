@@ -3,9 +3,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   calculatePlacedImageSize,
   createCanvasImageFromFile,
+  isFileSizeWithinLimit,
   isSupportedImageFile,
   resizeDataUriToLimit,
 } from "../ImageUpload";
+import { MAX_IMAGE_SOURCE_BYTES } from "../../model";
+
+function makeFileOfSize(bytes: number, type = "image/png"): File {
+  const file = new File(["x"], "huge.png", { type });
+  Object.defineProperty(file, "size", { value: bytes });
+  return file;
+}
 
 class MockImage {
   onload: (() => void) | null = null;
@@ -71,6 +79,34 @@ describe("ImageUpload", () => {
     expect(image.width).toBe(400);
     expect(image.height).toBe(200);
     expect(image.opacity).toBe(1);
+  });
+
+  it("reports whether a raw file is within the inline byte limit", () => {
+    expect(isFileSizeWithinLimit(makeFileOfSize(MAX_IMAGE_SOURCE_BYTES))).toBe(true);
+    expect(isFileSizeWithinLimit(makeFileOfSize(MAX_IMAGE_SOURCE_BYTES + 1))).toBe(false);
+  });
+
+  it("rejects an oversized file up-front instead of silently downsampling it", async () => {
+    const context = {
+      clearRect: vi.fn(),
+      drawImage: vi.fn(),
+    };
+    HTMLCanvasElement.prototype.getContext = vi.fn(() => context) as unknown as typeof originalGetContext;
+    HTMLCanvasElement.prototype.toDataURL = vi.fn().mockReturnValue("data:image/png;base64,small");
+
+    const oversized = makeFileOfSize(MAX_IMAGE_SOURCE_BYTES + 1);
+    const promise = createCanvasImageFromFile(oversized, {
+      viewportWidth: 800,
+      viewportHeight: 600,
+      zoom: 1,
+      centerX: 0,
+      centerY: 0,
+    });
+    await vi.runAllTimersAsync();
+
+    await expect(promise).rejects.toThrow(/too large|2(\.0)? ?MB/i);
+    // Guard must fire before any resize/draw work happens.
+    expect(context.drawImage).not.toHaveBeenCalled();
   });
 
   it("resizes oversized data URIs until they fit the inline byte limit", async () => {

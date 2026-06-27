@@ -26,6 +26,7 @@ function makeCallbacks(): ToolbarCallbacks {
     onSelectionModeChange: vi.fn(),
     onHome: vi.fn(),
     onRenameDrawing: vi.fn(),
+    onDuplicateSelection: vi.fn(),
   };
 }
 
@@ -95,8 +96,32 @@ describe("Toolbar", () => {
   it("renders undo and redo buttons in actions group", () => {
     const actionsGroup = document.querySelector('[data-group="actions"]');
     const buttons = actionsGroup!.querySelectorAll(".toolbar-btn");
-    expect(buttons.length).toBe(4); // undo + redo + insert image + export
+    expect(buttons.length).toBe(5); // undo + redo + duplicate + insert image + export
     expect(actionsGroup!.querySelector(".insert-image-btn")).not.toBeNull();
+  });
+
+  it("renders a duplicate-selection button, disabled by default, in actions group", () => {
+    const actionsGroup = document.querySelector('[data-group="actions"]');
+    const dup = actionsGroup!.querySelector(".duplicate-btn") as HTMLButtonElement | null;
+    expect(dup).not.toBeNull();
+    // No selection active on construction → duplicate must be disabled.
+    expect(dup!.disabled).toBe(true);
+  });
+
+  it("setDuplicateEnabled toggles the duplicate button's disabled state", () => {
+    const dup = document.querySelector(".duplicate-btn") as HTMLButtonElement;
+    expect(dup.disabled).toBe(true);
+    toolbar.setDuplicateEnabled(true);
+    expect(dup.disabled).toBe(false);
+    toolbar.setDuplicateEnabled(false);
+    expect(dup.disabled).toBe(true);
+  });
+
+  it("fires onDuplicateSelection when the duplicate button is pressed", () => {
+    toolbar.setDuplicateEnabled(true);
+    const dup = document.querySelector(".duplicate-btn") as HTMLButtonElement;
+    dup.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    expect(callbacks.onDuplicateSelection).toHaveBeenCalledTimes(1);
   });
 
   it("renders zoom display in navigation group", () => {

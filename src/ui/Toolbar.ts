@@ -34,6 +34,7 @@ import { ToolbarOverflow } from "./ToolbarOverflow";
  * @property onCheatSheet - Called when the user clicks the help/keyboard shortcuts button.
  * @property onExport - Called when the user confirms an export from the export dialog.
  * @property onInsertImage - Called when the user clicks the insert image button.
+ * @property onDuplicateSelection - Called when the user clicks the duplicate-selection button.
  * @property onZoomIn - Called when the user clicks the zoom in button.
  * @property onZoomOut - Called when the user clicks the zoom out button.
  * @property onZoomReset - Called when the user clicks the zoom display to reset to 100%.
@@ -56,6 +57,7 @@ export interface ToolbarCallbacks {
   onCheatSheet?: () => void;
   onExport?: (options: ExportDialogResult) => void;
   onInsertImage?: () => void;
+  onDuplicateSelection?: () => void;
   onZoomIn?: () => void;
   onZoomOut?: () => void;
   onZoomReset?: () => void;
@@ -166,6 +168,7 @@ export class Toolbar {
   private helpButton!: HTMLButtonElement;
   private exportButton!: HTMLButtonElement;
   private insertImageButton!: HTMLButtonElement;
+  private duplicateButton!: HTMLButtonElement;
   private exportDialog!: ExportDialog;
   private drawingNameEl!: HTMLSpanElement;
   private drawingNameInput!: HTMLInputElement;
@@ -488,6 +491,18 @@ export class Toolbar {
     });
     actionsGroup.appendChild(this.redoButton);
 
+    // Duplicate selection button (enabled only while a selection is active)
+    this.duplicateButton = document.createElement("button");
+    this.duplicateButton.className = "toolbar-btn duplicate-btn";
+    this.tooltip.attach(this.duplicateButton, "Duplicate selection (Ctrl+D)");
+    this.duplicateButton.innerHTML = ICONS.duplicate;
+    this.duplicateButton.disabled = true;
+    this.duplicateButton.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      this.callbacks.onDuplicateSelection?.();
+    });
+    actionsGroup.appendChild(this.duplicateButton);
+
     // Insert image button
     this.insertImageButton = document.createElement("button");
     this.insertImageButton.className = "toolbar-btn insert-image-btn";
@@ -736,6 +751,11 @@ export class Toolbar {
   updateUndoRedo(canUndo: boolean, canRedo: boolean): void {
     this.undoButton.disabled = !canUndo;
     this.redoButton.disabled = !canRedo;
+  }
+
+  /** Enable/disable the duplicate-selection button (active only while a selection exists). */
+  setDuplicateEnabled(enabled: boolean): void {
+    this.duplicateButton.disabled = !enabled;
   }
 
   updateZoom(zoomPercent: number): void {

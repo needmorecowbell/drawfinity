@@ -388,6 +388,7 @@ export class CanvasApp {
       this.activeSelectionRegion = region;
       this.selectionCapture.setActiveRegion(region);
       this.syncTurtleSelectionConstraint();
+      this.updateSelectionActionState();
     };
     this.selectionCapture.onSelectionMoveStart = () => {
       this.movingSelectionItems = this.refreshActiveSelectionItems();
@@ -505,6 +506,7 @@ export class CanvasApp {
       },
       onExport: (options: ExportDialogResult) => this.handleExport(options),
       onInsertImage: () => this.openImageFilePicker(),
+      onDuplicateSelection: () => { this.duplicateActiveSelection(); },
       onCheatSheet: () => this.cheatSheet.toggle(),
       onZoomIn: () => {
         const [vw, vh] = this.camera.getViewportSize();
@@ -1490,6 +1492,12 @@ export class CanvasApp {
     this.movingSelectionItems = [];
     this.selectionCapture.setActiveRegion(null);
     this.syncTurtleSelectionConstraint();
+    this.updateSelectionActionState();
+  }
+
+  /** Keep selection-dependent toolbar actions (e.g. duplicate) in sync with selection state. */
+  private updateSelectionActionState(): void {
+    this.toolbar.setDuplicateEnabled(this.activeSelectionRegion !== null);
   }
 
   private syncTurtleSelectionConstraint(): void {
@@ -1551,6 +1559,7 @@ export class CanvasApp {
       }
     }});
     r.register({ id: "tool-magnify", label: "Magnify", shortcut: "Z", category: "Tools", execute: () => this.switchTool("magnify") });
+    r.register({ id: "duplicate-selection", label: "Duplicate selection", shortcut: "Ctrl+D", category: "Tools", execute: () => { this.duplicateActiveSelection(); } });
 
     // Drawing
     r.register({ id: "brush-preset-1", label: "Pen preset", shortcut: "1", category: "Drawing", execute: () => this.switchBrush(0) });

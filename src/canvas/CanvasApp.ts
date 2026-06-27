@@ -27,7 +27,12 @@ import { SyncManager } from "../sync";
 import { loadProfileAsync, loadPreferencesAsync, savePreferences, loadStatsAsync, loadBadgeStateAsync, loadRecordsAsync, loadBadgeState, loadRecords, StatsTracker, type UserPreferences, type GridStyle } from "../user";
 import { showStorageNotification } from "../ui/StorageNotification";
 import { showCorruptionDialog } from "../ui/CorruptionDialog";
-import { createCanvasImageFromFile, isSupportedImageFile } from "./ImageUpload";
+import {
+  createCanvasImageFromFile,
+  dataTransferHasImageContent,
+  extractImageFileFromDataTransfer,
+  isSupportedImageFile,
+} from "./ImageUpload";
 
 /**
  * Callbacks for CanvasApp lifecycle events, provided by the parent view manager.
@@ -1442,11 +1447,26 @@ export class CanvasApp {
   private handlePaste(e: ClipboardEvent): void {
     if (this.isEditingText()) return;
 
-    const file = Array.from(e.clipboardData?.files ?? []).find(isSupportedImageFile);
-    if (!file) return;
+    const clipboardData = e.clipboardData;
+    const file = extractImageFileFromDataTransfer(clipboardData);
+    if (file) {
+      e.preventDefault();
+      void this.insertImageFile(file);
+      return;
+    }
 
-    e.preventDefault();
-    void this.insertImageFile(file);
+    // The clipboard held image content we couldn't turn into a usable file
+    // (e.g. an unsupported format, or a WebView that exposed no blob). Surface
+    // it so the paste never fails silently — but stay quiet for plain-text
+    // pastes, which carry no image content at all.
+    if (dataTransferHasImageContent(clipboardData)) {
+      e.preventDefault();
+      showStorageNotification(
+        "That image couldn't be pasted. Try saving it to a file and inserting it instead.",
+        "error",
+        6000,
+      );
+    }
   }
 
   private handleDragOver(e: DragEvent): void {
@@ -1462,7 +1482,7 @@ export class CanvasApp {
   }
 
   private handleDrop(e: DragEvent): void {
-    const file = Array.from(e.dataTransfer?.files ?? []).find(isSupportedImageFile);
+    const file = extractImageFileFromDataTransfer(e.dataTransfer);
     if (!file) return;
 
     e.preventDefault();

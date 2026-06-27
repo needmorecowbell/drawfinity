@@ -27,6 +27,44 @@ export function isSupportedImageFile(file: File): boolean {
   return /^image\/(png|jpe?g|webp)$/i.test(file.type);
 }
 
+/**
+ * Extracts the first supported image from a paste/drop `DataTransfer`.
+ *
+ * Reads `.files` first (populated by Chromium and most browsers), then falls
+ * back to `.items` via `getAsFile()`. The Tauri WebKitGTK WebView frequently
+ * delivers a *pasted* image only through `items` (a `DataTransferItem` of kind
+ * "file"), leaving `.files` empty — so reading both is what makes clipboard
+ * paste actually insert an image in the desktop shell, not just the browser.
+ */
+export function extractImageFileFromDataTransfer(
+  data: Pick<DataTransfer, "files" | "items"> | null | undefined,
+): File | null {
+  if (!data) return null;
+
+  const fromFiles = Array.from(data.files ?? []).find(isSupportedImageFile);
+  if (fromFiles) return fromFiles;
+
+  for (const item of Array.from(data.items ?? [])) {
+    if (item.kind === "file" && /^image\//i.test(item.type)) {
+      const file = item.getAsFile();
+      if (file && isSupportedImageFile(file)) return file;
+    }
+  }
+  return null;
+}
+
+/**
+ * True if a `DataTransfer` appears to carry image content, even if no usable
+ * file could be extracted. Used to decide whether a failed paste should surface
+ * a notification (image present but unreadable) versus stay silent (plain text).
+ */
+export function dataTransferHasImageContent(
+  data: Pick<DataTransfer, "items"> | null | undefined,
+): boolean {
+  if (!data) return false;
+  return Array.from(data.items ?? []).some((item) => /^image\//i.test(item.type));
+}
+
 /** Formats a byte count as megabytes with one decimal, for user-facing messages. */
 function formatBytesAsMb(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(1);

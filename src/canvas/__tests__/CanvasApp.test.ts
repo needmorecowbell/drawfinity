@@ -451,6 +451,85 @@ describe("CanvasApp", () => {
     await app.destroy();
   });
 
+  // Build a `paste` ClipboardEvent with a synthetic clipboardData. jsdom does
+  // not construct a real DataTransfer for paste, so we attach a minimal stand-in
+  // that can populate `files`, `items`, or both — mirroring how different
+  // WebViews expose pasted images.
+  function makePasteEvent(opts: {
+    files?: File[];
+    items?: Array<{ kind: string; type: string; file?: File | null }>;
+  }): Event {
+    const event = new Event("paste", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "clipboardData", {
+      value: {
+        files: opts.files ?? [],
+        items: (opts.items ?? []).map((i) => ({
+          kind: i.kind,
+          type: i.type,
+          getAsFile: () => i.file ?? null,
+        })),
+      },
+      configurable: true,
+    });
+    return event;
+  }
+
+  it("inserts a pasted image delivered only via clipboard items (WebKitGTK path)", async () => {
+    const insertSpy = vi
+      .spyOn(CanvasApp.prototype as unknown as { insertImageFile: (file: File, pos?: unknown) => Promise<void> }, "insertImageFile")
+      .mockResolvedValue(undefined);
+
+    const app = new CanvasApp();
+    await app.init("test-paste-items");
+
+    const file = new File([new Uint8Array([1, 2, 3])], "pasted.png", { type: "image/png" });
+    // .files intentionally empty: only items carries the blob, as in the Tauri WebView.
+    document.dispatchEvent(makePasteEvent({ items: [{ kind: "file", type: "image/png", file }] }));
+
+    expect(insertSpy).toHaveBeenCalledTimes(1);
+    expect(insertSpy.mock.calls[0][0]).toBe(file);
+
+    await app.destroy();
+  });
+
+  it("notifies the user when a pasted image cannot be used instead of failing silently", async () => {
+    const insertSpy = vi
+      .spyOn(CanvasApp.prototype as unknown as { insertImageFile: (file: File, pos?: unknown) => Promise<void> }, "insertImageFile")
+      .mockResolvedValue(undefined);
+
+    const app = new CanvasApp();
+    await app.init("test-paste-broken");
+
+    // Toasts persist in a shared container across tests; isolate this assertion.
+    document.getElementById("storage-notifications")?.remove();
+    // Clipboard reports image content, but no blob can be extracted (getAsFile -> null).
+    document.dispatchEvent(makePasteEvent({ items: [{ kind: "file", type: "image/png", file: null }] }));
+
+    expect(insertSpy).not.toHaveBeenCalled();
+    // The failure surfaces as an error toast rather than silently doing nothing.
+    expect(document.querySelector(".storage-toast--error")).not.toBeNull();
+
+    await app.destroy();
+  });
+
+  it("stays silent when pasting non-image content", async () => {
+    const insertSpy = vi
+      .spyOn(CanvasApp.prototype as unknown as { insertImageFile: (file: File, pos?: unknown) => Promise<void> }, "insertImageFile")
+      .mockResolvedValue(undefined);
+
+    const app = new CanvasApp();
+    await app.init("test-paste-text");
+
+    // Toasts persist in a shared container across tests; isolate this assertion.
+    document.getElementById("storage-notifications")?.remove();
+    document.dispatchEvent(makePasteEvent({ items: [{ kind: "string", type: "text/plain" }] }));
+
+    expect(insertSpy).not.toHaveBeenCalled();
+    expect(document.querySelector(".storage-toast")).toBeNull();
+
+    await app.destroy();
+  });
+
   it("sets the copy drop effect when dragging an image over the canvas", async () => {
     const app = new CanvasApp();
     await app.init("test-dragover");

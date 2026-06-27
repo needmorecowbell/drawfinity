@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   calculatePlacedImageSize,
   createCanvasImageFromFile,
+  dataTransferHasImageContent,
+  extractImageFileFromDataTransfer,
   isFileSizeWithinLimit,
   isSupportedImageFile,
   resizeDataUriToLimit,
@@ -52,6 +54,59 @@ describe("ImageUpload", () => {
     expect(isSupportedImageFile(new File([""], "a.jpeg", { type: "image/jpeg" }))).toBe(true);
     expect(isSupportedImageFile(new File([""], "a.webp", { type: "image/webp" }))).toBe(true);
     expect(isSupportedImageFile(new File([""], "a.gif", { type: "image/gif" }))).toBe(false);
+  });
+
+  // Minimal DataTransfer stand-in: jsdom does not build a real one, and the
+  // WebKitGTK (Tauri) WebView often only populates `items`, not `files`.
+  function makeDataTransfer(opts: {
+    files?: File[];
+    items?: Array<{ kind: string; type: string; file?: File | null }>;
+  }): Pick<DataTransfer, "files" | "items"> {
+    return {
+      files: (opts.files ?? []) as unknown as FileList,
+      items: (opts.items ?? []).map((i) => ({
+        kind: i.kind,
+        type: i.type,
+        getAsFile: () => i.file ?? null,
+      })) as unknown as DataTransferItemList,
+    };
+  }
+
+  it("extracts a pasted image from .files when present", () => {
+    const file = new File(["x"], "p.png", { type: "image/png" });
+    expect(extractImageFileFromDataTransfer(makeDataTransfer({ files: [file] }))).toBe(file);
+  });
+
+  it("falls back to .items when .files is empty (WebKitGTK paste path)", () => {
+    const file = new File(["x"], "p.png", { type: "image/png" });
+    const data = makeDataTransfer({
+      items: [{ kind: "file", type: "image/png", file }],
+    });
+    expect(extractImageFileFromDataTransfer(data)).toBe(file);
+  });
+
+  it("ignores unsupported item types and null blobs", () => {
+    expect(
+      extractImageFileFromDataTransfer(
+        makeDataTransfer({ items: [{ kind: "file", type: "image/gif", file: new File(["x"], "g.gif", { type: "image/gif" }) }] }),
+      ),
+    ).toBeNull();
+    expect(
+      extractImageFileFromDataTransfer(
+        makeDataTransfer({ items: [{ kind: "file", type: "image/png", file: null }] }),
+      ),
+    ).toBeNull();
+    expect(extractImageFileFromDataTransfer(null)).toBeNull();
+  });
+
+  it("detects image content even when no usable file can be extracted", () => {
+    expect(
+      dataTransferHasImageContent(makeDataTransfer({ items: [{ kind: "file", type: "image/png", file: null }] })),
+    ).toBe(true);
+    expect(
+      dataTransferHasImageContent(makeDataTransfer({ items: [{ kind: "string", type: "text/plain" }] })),
+    ).toBe(false);
+    expect(dataTransferHasImageContent(null)).toBe(false);
   });
 
   it("sizes inserted images to half the viewport width in world space", () => {

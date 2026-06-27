@@ -1519,6 +1519,9 @@ html, body {
 }
 
 .turtle-indicator--remote .turtle-indicator__glyph {
+  display: block;
+  width: 18px;
+  height: 18px;
   line-height: 0;
   transform-origin: 50% 50%;
   transition: transform 100ms linear;

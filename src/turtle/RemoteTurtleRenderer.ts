@@ -268,9 +268,9 @@ export class RemoteTurtleRenderer {
       entry.container.style.display = "none";
       return;
     }
-    if (this.globalVisible) {
-      entry.container.style.display = "";
-    }
+    // Guard both branches: a visible turtle is shown whenever the renderer is
+    // globally visible, and hidden (rather than left in a stale state) otherwise.
+    entry.container.style.display = this.globalVisible ? "" : "none";
 
     // Update label text if name changed
     const label = entry.container.querySelector(".turtle-indicator__label") as HTMLElement | null;

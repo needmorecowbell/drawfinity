@@ -216,7 +216,7 @@ describe("SelectionCapture", () => {
     capture.onSelectionMove = onMove;
     capture.onSelectionMoveEnd = onMoveEnd;
 
-    canvas.__fire("pointerdown", { button: 0, ctrlKey: false, clientX: 450, clientY: 350, pointerId: 1 });
+    canvas.__fire("pointerdown", { button: 0, ctrlKey: false, clientX: 450, clientY: 350, pointerId: 1, preventDefault: vi.fn() });
     canvas.__fire("pointermove", { clientX: 470, clientY: 380, pointerId: 1 });
     canvas.__fire("pointerup", { clientX: 470, clientY: 380, pointerId: 1 });
 
@@ -225,6 +225,40 @@ describe("SelectionCapture", () => {
     expect(onMove).toHaveBeenCalledWith(20, 30);
     expect(onMoveEnd).toHaveBeenCalledTimes(1);
     expect(capture.getPreviewRegion()).toBeNull();
+  });
+
+  it("prevents the default gesture when starting a selection move so the camera does not pan", () => {
+    capture.setEnabled(true);
+    capture.setActiveRegion({ type: "rect", bounds: { x: 0, y: 0, width: 100, height: 100 } });
+
+    const preventDefault = vi.fn();
+    canvas.__fire("pointerdown", {
+      button: 0,
+      ctrlKey: false,
+      clientX: 450,
+      clientY: 350,
+      pointerId: 1,
+      preventDefault,
+    });
+
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not prevent the default gesture for a normal marquee drag", () => {
+    capture.setEnabled(true);
+
+    const preventDefault = vi.fn();
+    canvas.__fire("pointerdown", {
+      button: 0,
+      ctrlKey: false,
+      shiftKey: false,
+      clientX: 400,
+      clientY: 300,
+      pointerId: 1,
+      preventDefault,
+    });
+
+    expect(preventDefault).not.toHaveBeenCalled();
   });
 
   it("clears active selection input when disabled or mode changes", () => {

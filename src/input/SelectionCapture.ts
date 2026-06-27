@@ -100,6 +100,11 @@ export class SelectionCapture {
     const world = this.camera.screenToWorld(e.clientX, e.clientY);
 
     if (this.activeRegion && pointInRegion(world, this.activeRegion)) {
+      // Suppress the browser's native pan/scroll gesture (and the camera pan
+      // handler) so dragging inside the selection translates the items instead
+      // of panning the viewport. Mirrors CameraController.handlePointerDown,
+      // which preventDefault()s when it begins a pan.
+      e.preventDefault();
       this.movingSelection = true;
       this.lastMovePoint = world;
       this.onSelectionMoveStart?.();

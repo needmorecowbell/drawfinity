@@ -15,6 +15,7 @@ import {
 } from "../EraserTool";
 import { Stroke } from "../../model/Stroke";
 import { Shape } from "../../model/Shape";
+import { CanvasImage } from "../../model/Image";
 
 function makeStroke(
   id: string,
@@ -344,6 +345,56 @@ function makeShape(overrides: Partial<Shape> = {}): Shape {
     ...overrides,
   };
 }
+
+// --- Image eraser tests ---
+
+function makeImage(overrides: Partial<CanvasImage> = {}): CanvasImage {
+  return {
+    id: "image-1",
+    src: "data:image/png;base64,",
+    x: 50,
+    y: 50,
+    width: 100,
+    height: 100,
+    rotation: 0,
+    opacity: 1,
+    timestamp: Date.now(),
+    ...overrides,
+  };
+}
+
+describe("EraserTool.findIntersectingImages", () => {
+  it("returns the id of an image whose box contains the eraser point", () => {
+    const eraser = new EraserTool({ radius: 5 });
+    // Image box spans world x∈[0,100], y∈[0,100]; the eraser point sits at the center.
+    const images = [makeImage({ id: "hit", x: 50, y: 50, width: 100, height: 100 })];
+    expect(eraser.findIntersectingImages(50, 50, images)).toEqual(["hit"]);
+  });
+
+  it("excludes an image whose box does not contain the eraser point", () => {
+    const eraser = new EraserTool({ radius: 5 });
+    const images = [makeImage({ id: "miss", x: 500, y: 500, width: 20, height: 20 })];
+    expect(eraser.findIntersectingImages(0, 0, images)).toEqual([]);
+  });
+
+  it("returns only the images that intersect the eraser, in document order", () => {
+    const eraser = new EraserTool({ radius: 5 });
+    const images = [
+      makeImage({ id: "a", x: 0, y: 0, width: 40, height: 40 }),
+      makeImage({ id: "far", x: 800, y: 800, width: 40, height: 40 }),
+      makeImage({ id: "b", x: 10, y: 10, width: 60, height: 60 }),
+    ];
+    const hits = eraser.findIntersectingImages(0, 0, images);
+    expect(hits).toContain("a");
+    expect(hits).toContain("b");
+    expect(hits).not.toContain("far");
+  });
+
+  it("returns an empty array for an empty images list", () => {
+    const eraser = new EraserTool();
+    expect(eraser.findIntersectingImages(0, 0, [])).toEqual([]);
+  });
+});
 
 describe("worldToShapeLocal", () => {
   it("returns offset from center when rotation is 0", () => {

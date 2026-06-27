@@ -1,5 +1,6 @@
 import { Stroke, StrokePoint, generateStrokeId } from "../model/Stroke";
 import { Shape } from "../model/Shape";
+import { CanvasImage } from "../model/Image";
 
 /**
  * Computes the axis-aligned bounding box of a stroke's points.
@@ -289,6 +290,44 @@ function pointIntersectsShape(
   }
 }
 
+/**
+ * Tests if a point is within `radius` of an image's box.
+ *
+ * Images are axis-aligned boxes centered at `(x, y)` with `width`/`height`,
+ * optionally rotated about their center. Mirrors {@link pointIntersectsRectangle}'s
+ * signed-distance-field test but uses image bounds (no stroke outline).
+ */
+function pointIntersectsImage(
+  wx: number,
+  wy: number,
+  image: CanvasImage,
+  radius: number,
+): boolean {
+  // Transform the world point into the image's local, un-rotated coordinate space.
+  const dx = wx - image.x;
+  const dy = wy - image.y;
+  let lx = dx;
+  let ly = dy;
+  if (image.rotation !== 0) {
+    const cos = Math.cos(-image.rotation);
+    const sin = Math.sin(-image.rotation);
+    lx = dx * cos - dy * sin;
+    ly = dx * sin + dy * cos;
+  }
+
+  const hw = image.width / 2;
+  const hh = image.height / 2;
+
+  // Signed distance from point to axis-aligned box centered at origin.
+  const ox = Math.abs(lx) - hw;
+  const oy = Math.abs(ly) - hh;
+  const outsideDist = Math.sqrt(Math.max(ox, 0) ** 2 + Math.max(oy, 0) ** 2);
+  const insideDist = Math.min(Math.max(ox, oy), 0);
+  const signedDist = outsideDist + insideDist;
+
+  return signedDist <= radius;
+}
+
 export interface EraserConfig {
   radius: number;
 }
@@ -367,6 +406,30 @@ export class EraserTool {
     for (const shape of shapes) {
       if (pointIntersectsShape(worldX, worldY, shape, radius)) {
         hits.push(shape.id);
+      }
+    }
+    return hits;
+  }
+
+  /**
+   * Given the eraser position in world coordinates and the current images,
+   * returns the IDs of images that intersect the eraser.
+   * Images are erased whole (no splitting), like shapes.
+   *
+   * @param zoom - Current camera zoom level. When provided, the eraser radius
+   *   is scaled by `1 / zoom` so it feels consistent in screen space.
+   */
+  findIntersectingImages(
+    worldX: number,
+    worldY: number,
+    images: CanvasImage[],
+    zoom = 1,
+  ): string[] {
+    const radius = this.getEffectiveRadius(zoom);
+    const hits: string[] = [];
+    for (const image of images) {
+      if (pointIntersectsImage(worldX, worldY, image, radius)) {
+        hits.push(image.id);
       }
     }
     return hits;
@@ -488,6 +551,7 @@ export {
   pointIntersectsStroke,
   splitStrokeAroundEraser,
   pointIntersectsShape,
+  pointIntersectsImage,
   pointIntersectsRectangle,
   pointIntersectsEllipse,
   pointIntersectsPolygonVertices,

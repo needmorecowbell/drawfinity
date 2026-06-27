@@ -109,6 +109,19 @@ export interface DocumentModel {
    * @returns `true` if the shape was found and removed, `false` otherwise.
    */
   removeShape?(shapeId: string): boolean;
+  /**
+   * Return all images in the document.
+   * Optional — only available when image items are supported.
+   */
+  getImages?(): import("./Image").CanvasImage[];
+  /**
+   * Remove an image by its unique ID.
+   * Optional — only available when image items are supported.
+   *
+   * @param imageId - The image ID to remove.
+   * @returns `true` if the image was found and removed, `false` otherwise.
+   */
+  removeImage?(imageId: string): boolean;
 }
 
 let idCounter = 0;

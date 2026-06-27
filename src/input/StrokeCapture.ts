@@ -195,6 +195,15 @@ export class StrokeCapture {
         this.document.removeShape(shapeId);
       }
     }
+
+    // Erase images (whole-image removal)
+    if (this.document.getImages && this.document.removeImage) {
+      const images = this.document.getImages();
+      const hitImageIds = this.eraserTool.findIntersectingImages(worldX, worldY, images, zoom);
+      for (const imageId of hitImageIds) {
+        this.document.removeImage(imageId);
+      }
+    }
   }
 
   /** Returns the in-progress stroke points (smoothed, for live rendering), or null. */

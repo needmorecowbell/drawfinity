@@ -183,13 +183,22 @@ export class DrawfinityDoc implements DocumentModel {
    * @returns The number of items removed.
    */
   removeItems(entries: readonly CanvasItem[]): number {
-    const ids = new Set(entries.map((entry) => entry.item.id));
+    // Only delete by *concrete* ids. Dropping undefined/null guards against the
+    // data-loss class where a selected entry without an id would otherwise put
+    // `undefined` in the set and match (and erase) every id-less item in the
+    // document — i.e. "Delete wipes strokes outside the selection" (RC-FIX-01).
+    const ids = new Set(
+      entries.map((entry) => entry.item.id).filter((id): id is string => id != null),
+    );
+    if (ids.size === 0) return 0;
+
     let removed = 0;
 
     this.doc.transact(() => {
       const arr = this.items.toArray();
       for (let i = arr.length - 1; i >= 0; i--) {
-        if (ids.has(arr[i].get("id") as string)) {
+        const id = arr[i].get("id");
+        if (id != null && ids.has(id as string)) {
           this.items.delete(i, 1);
           removed++;
         }

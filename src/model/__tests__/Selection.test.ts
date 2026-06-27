@@ -9,6 +9,7 @@ import {
 } from "../Selection";
 import type { Shape } from "../Shape";
 import type { Stroke } from "../Stroke";
+import type { CanvasImage } from "../Image";
 
 function makeStroke(id: string, points: Array<{ x: number; y: number }>): Stroke {
   return {
@@ -32,6 +33,21 @@ function makeShape(id: string, overrides: Partial<Shape> = {}): Shape {
     strokeColor: "#000000",
     strokeWidth: 0,
     fillColor: null,
+    opacity: 1,
+    timestamp: Date.now(),
+    ...overrides,
+  };
+}
+
+function makeImage(id: string, overrides: Partial<CanvasImage> = {}): CanvasImage {
+  return {
+    id,
+    src: "data:image/png;base64,iVBORw0KGgo=",
+    x: 0,
+    y: 0,
+    width: 10,
+    height: 10,
+    rotation: 0,
     opacity: 1,
     timestamp: Date.now(),
     ...overrides,
@@ -189,6 +205,47 @@ describe("selection hit testing", () => {
 
     for (const region of regions) {
       expect(getSelectedItems(doc, region).map((entry) => entry.item.id)).toEqual(["stroke-hit", "shape-hit"]);
+    }
+  });
+
+  it("selects exactly the mixed items overlapping the region and excludes everything outside (delete data-loss guard)", () => {
+    // Reproduces the human-test mixed scene (stroke + shape + image) from
+    // RC-FIX-01: marquee a subset, and getSelectedItems must return ONLY the
+    // overlapping items so a subsequent removeItems(...) can never touch the
+    // items the user left unselected.
+    const strokeIn = makeStroke("stroke-in", [{ x: 5, y: 5 }]);
+    const shapeIn = makeShape("shape-in", { x: 6, y: 6, width: 4, height: 4 });
+    const imageIn = makeImage("image-in", { x: 6, y: 6, width: 4, height: 4 });
+
+    const strokeOut = makeStroke("stroke-out", [{ x: 500, y: 500 }]);
+    const shapeOut = makeShape("shape-out", { x: 500, y: 500, width: 4, height: 4 });
+    const imageOut = makeImage("image-out", { x: 500, y: 500, width: 4, height: 4 });
+
+    const doc: SelectionDocumentModel = {
+      addStroke: () => undefined,
+      getStrokes: () => [strokeIn, strokeOut],
+      getShapes: () => [shapeIn, shapeOut],
+      getAllItems: () => [
+        { kind: "stroke", item: strokeIn },
+        { kind: "shape", item: shapeIn },
+        { kind: "image", item: imageIn },
+        { kind: "stroke", item: strokeOut },
+        { kind: "shape", item: shapeOut },
+        { kind: "image", item: imageOut },
+      ],
+    };
+
+    const selected = getSelectedItems(doc, { type: "rect", bounds: { x: 0, y: 0, width: 12, height: 12 } });
+
+    expect(selected.map((entry) => `${entry.kind}:${entry.item.id}`)).toEqual([
+      "stroke:stroke-in",
+      "shape:shape-in",
+      "image:image-in",
+    ]);
+    // Belt-and-suspenders: no out-of-region id leaks into the selection.
+    const selectedIds = new Set(selected.map((entry) => entry.item.id));
+    for (const id of ["stroke-out", "shape-out", "image-out"]) {
+      expect(selectedIds.has(id)).toBe(false);
     }
   });
 

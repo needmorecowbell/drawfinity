@@ -4,6 +4,8 @@ import { DrawfinityDoc } from "../DrawfinityDoc";
 import { UndoManager } from "../UndoManager";
 import { Stroke } from "../../model/Stroke";
 import { Shape } from "../../model/Shape";
+import { CanvasImage } from "../../model/Image";
+import { getSelectedItems, SelectionRegion } from "../../model/Selection";
 
 function makeStroke(id: string, timestamp = 1000): Stroke {
   return {
@@ -15,6 +17,20 @@ function makeStroke(id: string, timestamp = 1000): Stroke {
       { x: 0, y: 0, pressure: 0.5 },
       { x: 5, y: 5, pressure: 0.7 },
     ],
+  };
+}
+
+function makeImage(id: string, x: number, y: number, timestamp = 3000): CanvasImage {
+  return {
+    id,
+    src: "data:image/png;base64,iVBORw0KGgo=",
+    x,
+    y,
+    width: 8,
+    height: 8,
+    rotation: 0,
+    opacity: 1,
+    timestamp,
   };
 }
 
@@ -146,6 +162,89 @@ describe("DrawfinityDoc — shape support", () => {
       // so the restored order is [s1, s2, sh1] (stable sort keeps s1 before s2).
       expect(doc.getAllItems().map((entry) => entry.item.id)).toEqual(["s1", "s2", "sh1"]);
       expect(undoManager.canUndo()).toBe(false);
+    });
+
+    it("deletes ONLY the marquee-selected mixed items, never the unselected ones (RC-FIX-01 data-loss guard)", () => {
+      // End-to-end reproduction of the human-reported data-loss path:
+      // mixed stroke + shape + image scene, marquee a subset, then run the
+      // exact deleteActiveSelection() flow (getSelectedItems -> removeItems).
+      // Items left outside the marquee MUST survive.
+      const region: SelectionRegion = { type: "rect", bounds: { x: 0, y: 0, width: 20, height: 20 } };
+
+      // Inside the marquee region.
+      const strokeIn = makeStroke("stroke-in");
+      strokeIn.points = [{ x: 5, y: 5, pressure: 0.5 }];
+      const shapeIn = makeShape("shape-in");
+      shapeIn.x = 10;
+      shapeIn.y = 10;
+      shapeIn.width = 4;
+      shapeIn.height = 4;
+      const imageIn = makeImage("image-in", 10, 10);
+
+      // Far outside the marquee region — these must NOT be deleted.
+      const strokeOut = makeStroke("stroke-out");
+      strokeOut.points = [{ x: 500, y: 500, pressure: 0.5 }];
+      const shapeOut = makeShape("shape-out");
+      shapeOut.x = 500;
+      shapeOut.y = 500;
+      const imageOut = makeImage("image-out", 500, 500);
+
+      doc.addStroke(strokeIn);
+      doc.addShape(shapeIn);
+      doc.addImage(imageIn);
+      doc.addStroke(strokeOut);
+      doc.addShape(shapeOut);
+      doc.addImage(imageOut);
+
+      const selected = getSelectedItems(doc, region);
+      expect(selected.map((entry) => entry.item.id).sort()).toEqual(["image-in", "shape-in", "stroke-in"]);
+
+      expect(doc.removeItems(selected)).toBe(3);
+
+      // The three unselected, out-of-region items survive — no data loss.
+      expect(doc.getAllItems().map((entry) => entry.item.id).sort()).toEqual([
+        "image-out",
+        "shape-out",
+        "stroke-out",
+      ]);
+    });
+
+    it("never mass-deletes items that lack an id when a selected entry has no id (RC-FIX-01 data-loss root cause)", () => {
+      // Root-cause class for the human-reported "Delete erases everything
+      // outside the selection": removeItems() keys on item.id via a Set. If a
+      // selected entry's id is undefined/missing, a naive Set([undefined])
+      // matches EVERY id-less item in the document and wipes items the user
+      // never selected. Guard: entries without a usable id must match nothing.
+      const yDoc = doc.getDoc();
+      yDoc.transact(() => {
+        const arr = doc.getStrokesArray();
+        for (const tag of ["selected-no-id", "bystander-no-id"]) {
+          const yMap = new Y.Map<unknown>();
+          // Intentionally NO "id" field set — simulates a legacy/peer item.
+          yMap.set("marker", tag);
+          yMap.set("color", "#000000");
+          yMap.set("width", 2);
+          yMap.set("timestamp", 500);
+          const yPoints = new Y.Array<Y.Map<number>>();
+          const pt = new Y.Map<number>();
+          pt.set("x", 1);
+          pt.set("y", 1);
+          pt.set("pressure", 0.5);
+          yPoints.push([pt]);
+          yMap.set("points", yPoints);
+          arr.push([yMap]);
+        }
+      });
+
+      // Simulate selecting only ONE of the two id-less items (its id reads back
+      // as undefined). A correct removeItems must NOT also erase the bystander.
+      const selectedWithoutId = { kind: "stroke" as const, item: { id: undefined as unknown as string } as Stroke };
+
+      const removed = doc.removeItems([selectedWithoutId]);
+
+      // The bystander id-less item must still exist — no mass deletion.
+      expect(doc.getStrokes()).toHaveLength(2);
+      expect(removed).toBe(0);
     });
 
     it("translates selected stroke points and shape centers", () => {
